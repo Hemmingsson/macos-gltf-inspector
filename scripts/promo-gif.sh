@@ -7,8 +7,8 @@ set -euo pipefail
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/screenshots/source_assets"
-OUT="$ROOT/screenshots"
+SRC="$ROOT/assets"
+OUT="$ROOT/assets"
 MODEL="$SRC/DamagedHelmet.glb"
 FRAMES="/tmp/glb-promo-frames"
 BASE="$SRC/base-image.png"
@@ -33,7 +33,7 @@ mkdir -p "$FRAMES"
 
 python3 "$ROOT/scripts/compose-finder-gif.py" --base "$BASE" --frames "$FRAMES" --fps 24 --scale-width 1271 --out "$GIF"
 
-# Quick Look tree spin onto source_assets/quick-look.png → screenshots/quick-look.gif
+# Quick Look tree spin onto assets/quick-look.png → assets/quick-look.gif
 QL_MODEL="$SRC/american_tree.glb"
 QL_BASE="$SRC/quick-look.png"
 QL_GIF="$OUT/quick-look.gif"

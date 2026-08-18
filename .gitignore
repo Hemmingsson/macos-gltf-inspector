@@ -29,4 +29,4 @@ ThumbnailExtension/ThumbnailExtension.entitlements
 
 # Local-only bake inputs (ICON.icon + DamagedHelmet stay in git)
 ICON.zip
-screenshots/source_assets/american_tree.glb
+assets/american_tree.glb

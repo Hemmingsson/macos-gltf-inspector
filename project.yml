@@ -41,7 +41,7 @@ targets:
     platform: macOS
     sources:
       - GLBPreview
-      - path: ICON.icon
+      - path: assets/ICON.icon
         type: file
         buildPhase: resources
       - path: Shared

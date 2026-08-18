@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Bake README assets from ICON.icon and the promo turntables.
 #
-#   ./scripts/publish.sh             # icon PNG + GIFs → screenshots/
-#   ./scripts/publish.sh --icon-only # ICON.icon → screenshots/icon.png
+#   ./scripts/publish.sh             # icon PNG + GIFs → assets/
+#   ./scripts/publish.sh --icon-only # ICON.icon → assets/icon.png
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ICON="$ROOT/ICON.icon"
-PNG="$ROOT/screenshots/icon.png"
+ICON="$ROOT/assets/ICON.icon"
+PNG="$ROOT/assets/icon.png"
 ICON_ONLY=0
 if [[ -n "${DEVELOPER_DIR:-}" ]]; then
   ICTOOL="$(dirname "$(dirname "$DEVELOPER_DIR")")/Applications/Icon Composer.app/Contents/Executables/ictool"

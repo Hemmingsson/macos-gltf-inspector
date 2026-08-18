@@ -80,7 +80,12 @@ struct GLBPreviewView: View {
         Group {
             switch state {
             case .loading:
-                GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
+                ZStack {
+                    GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
+                    ProgressView()
+                        .controlSize(.regular)
+                        .progressViewStyle(.circular)
+                }
             case .ready(let entity, let stats):
                 GLBPreviewScene(entity: entity, stats: stats, interaction: interaction, isDark: isDark)
             case .failed:

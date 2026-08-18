@@ -1,29 +1,27 @@
 <p align="center">
-  <img src="screenshots/icon.png" width="128" height="128" alt="GLB Preview">
+  <img src="assets/icon.png" width="128" height="128" alt="GLB Preview">
 </p>
 
 # macOS glTF Preview
 
 Quick Look previews and Finder thumbnails for `.glb` and `.gltf` on macOS 15+.
 
-- Drag to orbit, scroll to zoom.
-- Play / pause when the file has animations.
+- Finder preview pane for `.glb` / `.gltf`.
+- Quick Look (Space) with orbit, zoom, and play / pause for animations.
+- Finder icon thumbnails.
 - Mesh, material, and animation counts in Quick Look.
 
 <p align="center">
-  <strong>Finder preview for .glb / .gltf</strong><br>
-  <img src="screenshots/preview.gif" alt="Finder preview of a .glb file">
+  <img src="assets/preview.gif" alt="Finder preview of a .glb file">
 </p>
 
 <table>
   <tr>
     <td align="center" valign="top" width="50%">
-      <strong>Quick Look</strong><br>
-      <img src="screenshots/quick-look.gif" alt="Quick Look preview of a .glb file">
+      <img src="assets/quick-look.gif" alt="Quick Look preview of a .glb file">
     </td>
     <td align="center" valign="top" width="50%">
-      <strong>Finder thumbnails</strong><br>
-      <img src="screenshots/finder-thumbnail.png" alt="Finder icon thumbnails for .glb files">
+      <img src="assets/finder-thumbnail.png" alt="Finder icon thumbnails for .glb files">
     </td>
   </tr>
 </table>
@@ -42,7 +40,7 @@ Requires Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [ffmpeg](
 1. `brew install xcodegen ffmpeg`
 2. `./scripts/verify.sh --build`
 
-This generates the Xcode project, builds, installs to `/Applications`, and updates the screenshots used in this README (`./scripts/publish.sh`).
+This generates the Xcode project, builds, installs to `/Applications`, and updates the README images in `assets/` (`./scripts/publish.sh`).
 
 ## How it works
 
