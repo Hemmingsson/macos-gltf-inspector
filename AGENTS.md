@@ -5,9 +5,8 @@ macOS 15+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview`
 ## Commands
 
 ```bash
-./scripts/verify.sh --build   # xcodegen + build + install to /Applications + README assets
+./scripts/verify.sh --build   # xcodegen + build + install to /Applications
 ./scripts/verify.sh           # check installed app + pluginkit
-./scripts/publish.sh          # assets/ICON.icon + promo → assets/
 qlmanage -p path/to/file.glb  # preview proof
 qlmanage -t path/to/file.glb  # thumbnail proof
 ```

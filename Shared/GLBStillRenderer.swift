@@ -5,7 +5,7 @@ import Metal
 import RealityKit
 import UniformTypeIdentifiers
 
-/// Offscreen RealityRenderer. No window — used by Finder icons and the promo GIF.
+/// Offscreen RealityRenderer. No window — used by Finder icon thumbnails.
 @MainActor
 final class GLBStillRenderer {
     private let renderer: RealityRenderer
@@ -19,9 +19,7 @@ final class GLBStillRenderer {
         width: Int,
         height: Int,
         background: CGColor,
-        padding: Float,
-        cameraAspect: Float? = nil,
-        fillBackdrop: Bool = false
+        padding: Float
     ) async throws {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw error("No Metal device", code: 1)
@@ -34,7 +32,7 @@ final class GLBStillRenderer {
         renderer.cameraSettings.antialiasing = .multisample4X
         renderer.extendedDynamicRangeOutput = false
 
-        let aspect = cameraAspect ?? Float(width) / Float(max(height, 1))
+        let aspect = Float(width) / Float(max(height, 1))
         let camera = GLBPreviewCamera.makeFrontThreeQuarter(
             minBound: bounds.min,
             maxBound: bounds.max,
@@ -48,17 +46,6 @@ final class GLBStillRenderer {
         )
         renderer.entities.append(camera)
         renderer.activeCamera = camera
-        if fillBackdrop {
-            var sky = PhysicallyBasedMaterial()
-            sky.baseColor = .init(tint: .white)
-            sky.roughness = .init(floatLiteral: 1)
-            sky.metallic = .init(floatLiteral: 0)
-            sky.emissiveColor = .init(color: .white)
-            sky.emissiveIntensity = 12
-            let dome = ModelEntity(mesh: .generateSphere(radius: 80), materials: [sky])
-            dome.scale = [-1, 1, 1]
-            renderer.entities.append(dome)
-        }
 
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm,

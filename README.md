@@ -35,12 +35,12 @@ Quick Look previews and Finder thumbnails for `.glb` and `.gltf` on macOS 15+.
 
 ## Build
 
-Requires Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [ffmpeg](https://ffmpeg.org). Set `DEVELOPMENT_TEAM` in `project.yml`.
+Requires Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Set `DEVELOPMENT_TEAM` in `project.yml`.
 
-1. `brew install xcodegen ffmpeg`
+1. `brew install xcodegen`
 2. `./scripts/verify.sh --build`
 
-This generates the Xcode project, builds, installs to `/Applications`, and updates the README images in `assets/` (`./scripts/publish.sh`).
+This generates the Xcode project, builds, and installs to `/Applications`.
 
 ## How it works
 

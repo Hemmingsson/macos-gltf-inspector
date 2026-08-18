@@ -20,12 +20,6 @@ schemes:
         config: Debug
         targets:
           - GLBPreviewTests
-    GLBPromo:
-      build:
-        targets:
-          GLBPromo: all
-      run:
-        config: Release
 
 packages:
   GLTFKit2:
@@ -110,9 +104,13 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: 94A9N4B67S
         ENABLE_DEBUG_DYLIB: NO
-        ENABLE_TESTABILITY: NO
         SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
         ASSETCATALOG_COMPILER_APPICON_NAME: ICON
+      configs:
+        Debug:
+          ENABLE_TESTABILITY: YES
+        Release:
+          ENABLE_TESTABILITY: NO
     dependencies:
       - target: PreviewExtension
         embed: true
@@ -234,32 +232,5 @@ targets:
         SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
     dependencies:
       - target: GLBPreview
-      - package: GLTFKit2
-      - package: DracoSwift
-
-  GLBPromo:
-    type: tool
-    platform: macOS
-    sources:
-      - PromoTool
-      - path: Shared
-        includes:
-          - "*.swift"
-          - GLBDracoDecompressor.mm
-          - GLBTry.mm
-        excludes:
-          - GLBPreviewView.swift
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview.Promo
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_LSUIElement: YES
-        CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 94A9N4B67S
-        ENABLE_DEBUG_DYLIB: NO
-        SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
-        MACOSX_DEPLOYMENT_TARGET: "15.0"
-        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path @executable_path/Frameworks"
-    dependencies:
       - package: GLTFKit2
       - package: DracoSwift

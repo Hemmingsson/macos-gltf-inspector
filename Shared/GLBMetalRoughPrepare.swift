@@ -10,6 +10,7 @@ enum GLBMetalRoughPrepare {
     private static let specGlossName = "KHR_materials_pbrSpecularGlossiness"
     private static let specularName = "KHR_materials_specular"
     private static let iorName = "KHR_materials_ior"
+    private static let maxBakeEdge = 1024
 
     static func preparedURL(from url: URL) throws -> URL {
         let json = try GLBBox.peekJSON(from: url)
@@ -34,6 +35,12 @@ enum GLBMetalRoughPrepare {
         var materials = json["materials"] as? [[String: Any]] ?? []
 
         let bakeTextures = shouldBakeTextures(json: json, materials: materials)
+
+        func addPNGTexture(_ png: Data) -> Int {
+            let bufferView = GLBBox.appendBytes(png, bin: &bin, bufferViews: &bufferViews)
+            images.append(["mimeType": "image/png", "bufferView": bufferView])
+            return appendTexture(&json, imageIndex: images.count - 1)
+        }
 
         for i in materials.indices {
             guard var extensions = materials[i]["extensions"] as? [String: Any],
@@ -61,12 +68,12 @@ enum GLBMetalRoughPrepare {
                let sgInfo = specGloss["specularGlossinessTexture"] as? [String: Any],
                let sgImageIndex = textureImageIndex(json: json, textureInfo: sgInfo)
             {
-                let sgPixels = try decodeImage(glb: glb, images: images, imageIndex: sgImageIndex).downsampled(maxEdge: 1024)
+                let sgPixels = try decodeImage(glb: glb, images: images, imageIndex: sgImageIndex).downsampled(maxEdge: maxBakeEdge)
                 var diffusePixels: PixelImage?
                 if let diffuseInfo = specGloss["diffuseTexture"] as? [String: Any],
                    let diffuseIndex = textureImageIndex(json: json, textureInfo: diffuseInfo)
                 {
-                    diffusePixels = try decodeImage(glb: glb, images: images, imageIndex: diffuseIndex).downsampled(maxEdge: 1024)
+                    diffusePixels = try decodeImage(glb: glb, images: images, imageIndex: diffuseIndex).downsampled(maxEdge: maxBakeEdge)
                 }
                 let baked = bakeWorkflow(
                     diffuse: diffusePixels,
@@ -79,15 +86,9 @@ enum GLBMetalRoughPrepare {
                 let basePNG = try encodePNG(baked.baseColor)
                 let metalRoughPNG = try encodePNG(baked.metalRough)
 
-                let specularBV = GLBBox.appendBytes(specularPNG, bin: &bin, bufferViews: &bufferViews)
-                images.append(["mimeType": "image/png", "bufferView": specularBV])
-                let specularTex = appendTexture(&json, imageIndex: images.count - 1)
-                let baseBV = GLBBox.appendBytes(basePNG, bin: &bin, bufferViews: &bufferViews)
-                images.append(["mimeType": "image/png", "bufferView": baseBV])
-                let baseTex = appendTexture(&json, imageIndex: images.count - 1)
-                let metalRoughBV = GLBBox.appendBytes(metalRoughPNG, bin: &bin, bufferViews: &bufferViews)
-                images.append(["mimeType": "image/png", "bufferView": metalRoughBV])
-                let metalRoughTex = appendTexture(&json, imageIndex: images.count - 1)
+                let specularTex = addPNGTexture(specularPNG)
+                let baseTex = addPNGTexture(basePNG)
+                let metalRoughTex = addPNGTexture(metalRoughPNG)
 
                 var specTex = sgInfo
                 specTex["index"] = specularTex

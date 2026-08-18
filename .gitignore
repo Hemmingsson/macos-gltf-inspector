@@ -27,6 +27,5 @@ ThumbnailExtension/ThumbnailExtension.entitlements
 # macOS
 .DS_Store
 
-# Local-only bake inputs (ICON.icon + DamagedHelmet stay in git)
+# Local-only icon bake input (ICON.icon stays in git)
 ICON.zip
-assets/american_tree.glb

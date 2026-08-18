@@ -41,7 +41,7 @@ struct GLBBox {
             guard end <= data.count else { throw Error.invalidGLB }
             let payload = data.subdata(in: start..<end)
             if type.hasPrefix("JSON") {
-                json = try jsonObject(from: payload)
+                json = try parseJSON(payload)
             } else if type.hasPrefix("BIN") {
                 bin = payload
             }
@@ -66,7 +66,7 @@ struct GLBBox {
         else {
             throw Error.invalidGLB
         }
-        return try jsonObject(from: payload)
+        return try parseJSON(payload)
     }
 
     /// Packs a sidecar `.gltf` (JSON + external/data-URI buffers and images) into a GLB
@@ -221,10 +221,6 @@ struct GLBBox {
             data.copyBytes(to: dest, from: offset..<(offset + 4))
         }
         return UInt32(littleEndian: value)
-    }
-
-    private static func jsonObject(from payload: Data) throws -> [String: Any] {
-        try parseJSON(payload)
     }
 
     private static func payload(for buffer: [String: Any], readURI: (String) throws -> Data) throws -> Data {
