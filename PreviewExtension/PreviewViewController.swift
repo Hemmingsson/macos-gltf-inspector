@@ -1,58 +1,83 @@
 import Cocoa
 import QuickLookUI
-import WebKit
+import SwiftUI
 
-class PreviewViewController: NSViewController, QLPreviewingController, WKNavigationDelegate {
-
-    private var webView: WKWebView!
-    private var stagingDir: URL?
-    private var continuation: CheckedContinuation<Void, Error>?
+class PreviewViewController: NSViewController, QLPreviewingController {
+    private let interaction = GLBPreviewInteraction()
+    private var hostingView: GLBPreviewHostingView!
 
     override func loadView() {
-        let config = WKWebViewConfiguration()
-        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-        webView = WKWebView(frame: .zero, configuration: config)
-        webView.setValue(false, forKey: "drawsBackground")
-        webView.navigationDelegate = self
-        self.view = webView
+        GLBLog.processBanner("ql-loadView")
+        GLBWindowLog.start()
+        let dark = Self.systemIsDark()
+        let backdrop = GLBPreviewBackdrop.cgColor(dark: dark)
+        GLBLog.event(GLBLog.preview, "QL loadView dark=\(dark)")
+
+        hostingView = GLBPreviewHostingView(
+            rootView: GLBPreviewView(state: .loading, interaction: interaction, isDark: dark)
+        )
+        hostingView.interaction = interaction
+        hostingView.wantsLayer = true
+        hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        hostingView.layer?.backgroundColor = backdrop
+        hostingView.autoresizingMask = [.width, .height]
+
+        let root = GLBPreviewEventView(frame: .zero)
+        root.interaction = interaction
+        root.wantsLayer = true
+        root.layer?.backgroundColor = backdrop
+        root.addSubview(hostingView)
+        view = root
+        GLBLog.event(GLBLog.window, "QL root view created hosting=\(hostingView.frame)")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        GLBLog.event(GLBLog.window, "QL viewDidLoad bounds=\(NSStringFromRect(view.bounds))")
+        GLBWindowLog.dumpWindows("ql-viewDidLoad")
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        GLBLog.event(GLBLog.window, "QL viewDidAppear")
+        if let window = view.window {
+            GLBLog.event(GLBLog.window, "QL window \(GLBWindowLog.describe(index: nil, window: window))")
+        } else {
+            GLBLog.event(GLBLog.window, "QL viewDidAppear with no window yet")
+        }
+        GLBWindowLog.dumpWindows("ql-viewDidAppear")
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        hostingView.frame = view.bounds
+        GLBWindowLog.layoutIfChanged(view, reason: "ql-layout")
+    }
+
+    override func viewWillDisappear() {
+        super.viewWillDisappear()
+        GLBLog.event(GLBLog.window, "QL viewWillDisappear")
+        GLBWindowLog.dumpWindows("ql-viewWillDisappear")
     }
 
     func preparePreviewOfFile(at url: URL) async throws {
-        guard
-            let htmlURL = Bundle.main.url(forResource: "viewer", withExtension: "html"),
-            let jsURL = Bundle.main.url(forResource: "model-viewer.min", withExtension: "js")
-        else {
-            return
-        }
-
-        let accessed = url.startAccessingSecurityScopedResource()
-        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-
-        let glbData = GLBMaterialConverter.prepareForWebPreview(try Data(contentsOf: url))
-
-        let staging = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
-        stagingDir = staging
-        try FileManager.default.copyItem(at: htmlURL, to: staging.appendingPathComponent("viewer.html"))
-        try FileManager.default.copyItem(at: jsURL, to: staging.appendingPathComponent("model-viewer.min.js"))
-        try glbData.write(to: staging.appendingPathComponent("model.glb"))
-
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            self.continuation = cont
-            let page = staging.appendingPathComponent("viewer.html")
-            webView.loadFileURL(page, allowingReadAccessTo: staging)
+        GLBLog.event(GLBLog.preview, "QL preparePreviewOfFile \(GLBLog.describeURL(url))")
+        let dark = Self.systemIsDark()
+        let state = await GLBPreviewView.State.loaded(from: url)
+        let failed: Bool
+        if case .failed = state { failed = true } else { failed = false }
+        GLBLog.event(GLBLog.preview, "QL prepare finished failed=\(failed) dark=\(dark)")
+        await MainActor.run {
+            hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            hostingView.rootView = GLBPreviewView(state: state, interaction: interaction, isDark: dark)
+            GLBWindowLog.dumpWindows("ql-after-prepare")
         }
     }
 
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        webView.evaluateJavaScript("document.getElementById('viewer').src = 'model.glb'") { [weak self] _, _ in
-            self?.continuation?.resume()
-            self?.continuation = nil
+    private static func systemIsDark() -> Bool {
+        if NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+            return true
         }
-    }
-
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        continuation?.resume(throwing: error)
-        continuation = nil
+        return UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
     }
 }

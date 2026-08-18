@@ -2,7 +2,7 @@ name: GLBPreview
 options:
   bundleIdPrefix: com.laurie
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "15.0"
   xcodeVersion: "15.0"
 
 schemes:
@@ -16,13 +16,21 @@ schemes:
 packages:
   GLTFKit2:
     url: https://github.com/warrenm/GLTFKit2
-    from: "0.5.0"
+    from: "0.5.15"
+  DracoSwift:
+    url: https://github.com/warrenm/DracoSwift
+    from: "1.5.7"
 
 targets:
   GLBPreview:
     type: application
     platform: macOS
-    sources: [GLBPreview]
+    sources:
+      - GLBPreview
+      - path: Shared
+        includes:
+          - "*.swift"
+          - GLBDracoDecompressor.mm
     info:
       path: GLBPreview/Info.plist
       properties:
@@ -32,8 +40,36 @@ targets:
             LSHandlerRank: Default
             LSItemContentTypes:
               - org.khronos.glb
+          - CFBundleTypeName: GL Transmission Format
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Default
+            LSItemContentTypes:
+              - org.khronos.gltf
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.khronos.glb
+            UTTypeDescription: GL Transmission Format Binary
+            UTTypeConformsTo:
+              - public.data
+              - public.3d-content
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - glb
+              public.mime-type:
+                - model/gltf-binary
+          - UTTypeIdentifier: org.khronos.gltf
+            UTTypeDescription: GL Transmission Format
+            UTTypeConformsTo:
+              - public.data
+              - public.3d-content
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - gltf
+              public.mime-type:
+                - model/gltf+json
         NSMainStoryboardFile: ""
         NSPrincipalClass: NSApplication
+        CFBundleShortVersionString: "1.1"
+        CFBundleVersion: "4"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview
@@ -41,13 +77,15 @@ targets:
         CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 6XPHVL44C5
+        DEVELOPMENT_TEAM: 94A9N4B67S
+        ENABLE_DEBUG_DYLIB: NO
     dependencies:
       - target: PreviewExtension
         embed: true
       - target: ThumbnailExtension
         embed: true
       - package: GLTFKit2
+      - package: DracoSwift
 
   PreviewExtension:
     type: app-extension
@@ -56,57 +94,83 @@ targets:
       - path: PreviewExtension
         includes:
           - "*.swift"
-          - "*.html"
-          - "*.js"
+      - path: Shared
+        includes:
+          - "*.swift"
+          - GLBDracoDecompressor.mm
     entitlements:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-only: true
     info:
       path: PreviewExtension/Info.plist
       properties:
         CFBundleDisplayName: GLB Preview
+        CFBundleShortVersionString: "1.1"
+        CFBundleVersion: "4"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.preview
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).PreviewViewController"
           NSExtensionAttributes:
             QLSupportedContentTypes:
               - org.khronos.glb
+              - org.khronos.gltf
             QLSupportsSearchableItems: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview.PreviewExtension
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 6XPHVL44C5
+        DEVELOPMENT_TEAM: 94A9N4B67S
+        ENABLE_DEBUG_DYLIB: NO
+    dependencies:
+      - package: GLTFKit2
+      - package: DracoSwift
 
   ThumbnailExtension:
     type: app-extension
     platform: macOS
-    sources: [ThumbnailExtension]
+    sources:
+      - ThumbnailExtension
+      - path: Shared
+        includes:
+          - "*.swift"
+          - GLBDracoDecompressor.mm
+        excludes:
+          - GLBPreviewView.swift
     entitlements:
       path: ThumbnailExtension/ThumbnailExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
     info:
       path: ThumbnailExtension/Info.plist
       properties:
         CFBundleDisplayName: GLB Thumbnail
+        CFBundleShortVersionString: "1.1"
+        CFBundleVersion: "4"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.thumbnail
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ThumbnailProvider"
           NSExtensionAttributes:
             QLSupportedContentTypes:
               - org.khronos.glb
+              - org.khronos.gltf
             QLSupportsSearchableItems: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview.ThumbnailExtension
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 6XPHVL44C5
+        DEVELOPMENT_TEAM: 94A9N4B67S
+        ENABLE_DEBUG_DYLIB: NO
     dependencies:
       - package: GLTFKit2
+      - package: DracoSwift
