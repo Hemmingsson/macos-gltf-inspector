@@ -23,3 +23,5 @@ brew install xcodegen ffmpeg
 ```
 
 `--build` also writes `screenshots/preview.gif` (360° of DamagedHelmet composited onto `screenshots/base-image.png`).
+
+Started from [DeepAR's glb-preview](https://github.com/DeepARSDK/glb-preview) Quick Look / thumbnail skeleton; rewritten to native RealityKit.
