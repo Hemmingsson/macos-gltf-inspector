@@ -28,16 +28,25 @@ final class GLBPreviewInteraction {
 final class GLBPreviewHostingView: NSHostingView<GLBPreviewView> {
     var interaction: GLBPreviewInteraction?
 
+    override var isOpaque: Bool { false }
     override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
     override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
     override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
     override var acceptsFirstResponder: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        wantsLayer = true
+        layer?.isOpaque = false
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
 }
 
 /// Non-hosting root used by Quick Look so scroll events still hit before the hosting view.
 final class GLBPreviewEventView: NSView {
     var interaction: GLBPreviewInteraction?
 
+    override var isOpaque: Bool { false }
     override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
     override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
     override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
@@ -47,7 +56,7 @@ final class GLBPreviewEventView: NSView {
 struct GLBPreviewView: View {
     enum State {
         case loading
-        case ready(Entity)
+        case ready(Entity, stats: GLBPreviewStats?)
         case failed
 
         var isFailed: Bool {
@@ -57,8 +66,9 @@ struct GLBPreviewView: View {
         /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
             do {
+                let stats = try? GLBPreviewStats.from(url: url)
                 let entity = try await GLBEntityLoader.load(from: url)
-                return .ready(entity)
+                return .ready(entity, stats: stats)
             } catch {
                 GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
                 return .failed
@@ -74,12 +84,12 @@ struct GLBPreviewView: View {
         Group {
             switch state {
             case .loading:
-                GLBPreviewBackdrop.color(at: 0, dark: isDark).ignoresSafeArea()
-            case .ready(let entity):
-                GLBPreviewScene(entity: entity, interaction: interaction, isDark: isDark)
+                GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
+            case .ready(let entity, let stats):
+                GLBPreviewScene(entity: entity, stats: stats, interaction: interaction, isDark: isDark)
             case .failed:
                 ZStack {
-                    GLBPreviewBackdrop.color(at: 0, dark: isDark).ignoresSafeArea()
+                    GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
                     Text("Failed to load model")
                         .font(.system(size: 13))
                         .foregroundStyle(isDark ? .white.opacity(0.5) : .black.opacity(0.45))
@@ -89,12 +99,7 @@ struct GLBPreviewView: View {
             }
         }
         .onAppear {
-            switch state {
-            case .loading:
-                GLBLog.event(GLBLog.preview, "view appear loading dark=\(isDark)")
-            case .ready(let entity):
-                GLBLog.event(GLBLog.preview, "view appear ready dark=\(isDark) \(GLBLog.describe(entity))")
-            case .failed:
+            if case .failed = state {
                 GLBLog.error(GLBLog.preview, "view appear failed dark=\(isDark)")
             }
         }
@@ -104,23 +109,34 @@ struct GLBPreviewView: View {
 enum GLBPreviewBackdrop {
     static let darkRGB = (r: 38.0 / 255, g: 38.0 / 255, b: 38.0 / 255)
     static let dark = Color(red: darkRGB.r, green: darkRGB.g, blue: darkRGB.b)
-    static let mid = Color(red: 128 / 255, green: 128 / 255, blue: 128 / 255)
-    static let light = Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
+    /// Lets the host window / Quick Look panel show through.
+    static let window = Color.clear
+    static let all = [window, Color.white, dark]
 
-    static func colors(dark: Bool) -> [Color] {
-        dark ? [Self.dark, mid, light, .white] : [.white, light, mid, Self.dark]
+    static func color(at index: Int) -> Color {
+        all[index % all.count]
     }
 
-    static func color(at index: Int, dark: Bool) -> Color {
-        let palette = colors(dark: dark)
-        return palette[index % palette.count]
-    }
+    /// Dark icons use the same charcoal as the dark backdrop.
+    static var iconDark: Color { dark }
 
-    static func cgColor(dark: Bool) -> CGColor {
-        if dark {
-            return CGColor(srgbRed: darkRGB.r, green: darkRGB.g, blue: darkRGB.b, alpha: 1)
+    /// White icons on dark surfaces; charcoal on light / clear+light system.
+    static func useLightIcons(at index: Int, systemDark: Bool) -> Bool {
+        switch index % all.count {
+        case 1: return false // white backdrop → dark icons
+        case 2: return true // dark backdrop → light icons
+        default:
+            // Clear backdrop: trust OS setting first (QL colorScheme is unreliable).
+            if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
+                return true
+            }
+            return systemDark
         }
-        return CGColor(gray: 1, alpha: 1)
+    }
+
+    static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
+        let base: Color = useLightIcons(at: index, systemDark: systemDark) ? .white : iconDark
+        return active ? base : base.opacity(0.4)
     }
 }
 
@@ -132,13 +148,13 @@ private final class PreviewFrame {
 
 private struct GLBPreviewScene: View {
     let entity: Entity
+    var stats: GLBPreviewStats?
     @Bindable var interaction: GLBPreviewInteraction
     var isDark: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var backdropIndex = 0
     @State private var autoRotate: Bool
-    @State private var lightingEnabled = true
     @State private var orbitYaw: Float = 0
     @State private var orbitPitch: Float = 0
     @State private var dragOrigin: (yaw: Float, pitch: Float)?
@@ -146,16 +162,16 @@ private struct GLBPreviewScene: View {
     @State private var clipDuration: TimeInterval = 0
     @State private var currentTime: TimeInterval = 0
     @State private var isPlaying = true
-    @State private var isScrubbing = false
     @State private var viewport = CGSize(width: 810, height: 600)
-    @State private var iblResource: EnvironmentResource?
+    @State private var chromeVisible = true
     private let frame = PreviewFrame()
 
-    init(entity: Entity, interaction: GLBPreviewInteraction, isDark: Bool) {
+    init(entity: Entity, stats: GLBPreviewStats?, interaction: GLBPreviewInteraction, isDark: Bool) {
         self.entity = entity
+        self.stats = stats
         self.interaction = interaction
         self.isDark = isDark
-        let bounds = entity.visualBounds(relativeTo: nil)
+        let bounds = GLBPreviewCamera.modelBounds(of: entity)
         let extent = bounds.max - bounds.min
         if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
             _autoRotate = State(initialValue: false)
@@ -170,105 +186,109 @@ private struct GLBPreviewScene: View {
     }
 
     var body: some View {
-        RealityView { content in
-            GLBLog.event(GLBLog.preview, "RealityView.make dark=\(isDark) viewport=\(viewport.width)x\(viewport.height)")
-            content.camera = .virtual
-            let assembled = GLBPreviewCamera.makeTurntable(for: entity)
-            frame.bounds = assembled.bounds
+        ZStack {
+            RealityView { content in
+                content.camera = .virtual
+                let assembled = GLBPreviewCamera.makeTurntable(for: entity)
+                frame.bounds = assembled.bounds
 
-            content.add(assembled.pivot)
-            Self.syncStudioLights(in: &content, enabled: lightingEnabled, probe: iblResource)
-            content.add(
-                GLBPreviewCamera.makeFrontThreeQuarter(
-                    minBound: assembled.bounds.min,
-                    maxBound: assembled.bounds.max,
-                    padding: GLBPreviewCamera.previewFitPadding,
-                    aspect: aspect(of: viewport)
+                content.add(assembled.pivot)
+                content.add(
+                    GLBPreviewCamera.makeFrontThreeQuarter(
+                        minBound: assembled.bounds.min,
+                        maxBound: assembled.bounds.max,
+                        padding: GLBPreviewCamera.previewFitPadding,
+                        aspect: aspect(of: viewport)
+                    )
                 )
-            )
 
-            if let animation = entity.availableAnimations.first {
-                let probe = entity.playAnimation(animation, startsPaused: true)
-                let duration = probe.duration
-                probe.stop()
-                clipDuration = duration.isFinite && duration > 0 ? duration : 0
-                GLBLog.event(
-                    GLBLog.preview,
-                    "animation probe name=\(animation.name) duration=\(duration) clipDuration=\(clipDuration)"
-                )
-                if clipDuration > 0 {
-                    playback = entity.playAnimation(animation.repeat())
-                    GLBLog.event(GLBLog.preview, "animation looping")
-                }
-            } else {
-                GLBLog.event(GLBLog.preview, "no animations on entity")
-            }
-            GLBLog.event(GLBLog.preview, "RealityView.make done entities=\(content.entities.count)")
-        } update: { content in
-            Self.syncStudioLights(in: &content, enabled: lightingEnabled, probe: iblResource)
-            for entity in content.entities where entity.name == "turntable" {
-                entity.orientation =
-                    simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
-                    simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
-                entity.scale = SIMD3<Float>(repeating: interaction.zoom)
-            }
-            let viewAspect = aspect(of: viewport)
-            guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
-            frame.cameraAspect = viewAspect
-            for entity in content.entities where entity.name == "previewCamera" {
-                let position = GLBPreviewCamera.cameraPosition(
-                    minBound: frame.bounds.min,
-                    maxBound: frame.bounds.max,
-                    padding: GLBPreviewCamera.previewFitPadding,
-                    aspect: viewAspect
-                )
-                entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
-            }
-        }
-        .gesture(orbitDragGesture)
-        .background {
-            GeometryReader { proxy in
-                GLBPreviewBackdrop.color(at: backdropIndex, dark: isDark)
-                    .onAppear { applyViewport(proxy.size) }
-                    .onChange(of: proxy.size) { _, size in
-                        applyViewport(size)
+                if let animation = entity.availableAnimations.first {
+                    let probe = entity.playAnimation(animation, startsPaused: true)
+                    let duration = probe.duration
+                    probe.stop()
+                    clipDuration = duration.isFinite && duration > 0 ? duration : 0
+                    if clipDuration > 0 {
+                        playback = entity.playAnimation(animation.repeat())
                     }
+                }
+            } update: { content in
+                for entity in content.entities where entity.name == "turntable" {
+                    entity.orientation =
+                        simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
+                        simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
+                    entity.scale = SIMD3<Float>(repeating: interaction.zoom)
+                }
+                let viewAspect = aspect(of: viewport)
+                guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
+                frame.cameraAspect = viewAspect
+                for entity in content.entities where entity.name == "previewCamera" {
+                    let position = GLBPreviewCamera.cameraPosition(
+                        minBound: frame.bounds.min,
+                        maxBound: frame.bounds.max,
+                        padding: GLBPreviewCamera.previewFitPadding,
+                        aspect: viewAspect
+                    )
+                    entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
+                }
+            }
+            .background {
+                GeometryReader { proxy in
+                    GLBPreviewBackdrop.color(at: backdropIndex)
+                        .onAppear { applyViewport(proxy.size) }
+                        .onChange(of: proxy.size) { _, size in
+                            applyViewport(size)
+                        }
+                }
+            }
+            // RealityView often eats SwiftUI taps in QL; drive orbit + chrome toggle from this layer.
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(orbitDragGesture)
+                .onTapGesture {
+                    chromeVisible.toggle()
+                }
+
+            if chromeVisible {
+                HStack(alignment: .bottom, spacing: 12) {
+                    GLBPreviewToolbar(
+                        backdropIndex: $backdropIndex,
+                        autoRotate: $autoRotate,
+                        showPlayback: playback != nil && clipDuration > 0,
+                        isPlaying: $isPlaying,
+                        currentTime: currentTime,
+                        systemDark: isDark
+                    )
+                    Spacer(minLength: 8)
+                        .allowsHitTesting(false)
+                    if let stats {
+                        let lines = stats.previewLines
+                        if !lines.isEmpty {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                ForEach(lines, id: \.self) { line in
+                                    Text(line)
+                                        .font(.system(size: 11, weight: .regular).monospacedDigit())
+                                        .foregroundStyle(
+                                            GLBPreviewBackdrop.iconColor(
+                                                at: backdropIndex,
+                                                systemDark: isDark,
+                                                active: true
+                                            ).opacity(0.55)
+                                        )
+                                }
+                            }
+                            .allowsHitTesting(false)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .transition(.opacity)
             }
         }
-        .overlay(alignment: .bottomLeading) {
-            GLBPreviewToolbar(
-                backdropIndex: $backdropIndex,
-                autoRotate: $autoRotate,
-                lightingEnabled: $lightingEnabled,
-                isDark: isDark
-            )
-            .padding(10)
-        }
-        .overlay(alignment: .bottom) {
-            if playback != nil, clipDuration > 0 {
-                GLBPreviewPlayback(
-                    isPlaying: $isPlaying,
-                    isScrubbing: $isScrubbing,
-                    currentTime: $currentTime,
-                    duration: clipDuration,
-                    onScrub: seek(to:)
-                )
-                .padding(.bottom, 10)
-                .padding(.leading, 84)
-            }
-        }
-        .task {
-            iblResource = await GLBPreviewLighting.softProbeResource()
-            if iblResource == nil {
-                GLBLog.error(GLBLog.lighting, "IBL failed")
-            }
-        }
+        .animation(.easeInOut(duration: 0.15), value: chromeVisible)
         .onAppear {
-            GLBLog.event(
-                GLBLog.preview,
-                "scene appear reduceMotion=\(reduceMotion) autoRotate=\(autoRotate) lighting=\(lightingEnabled) anims=\(entity.availableAnimations.count)"
-            )
-            let bounds = entity.visualBounds(relativeTo: nil)
+            let bounds = GLBPreviewCamera.modelBounds(of: entity)
             let extent = bounds.max - bounds.min
             if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
                 autoRotate = false
@@ -276,12 +296,10 @@ private struct GLBPreviewScene: View {
             }
             if reduceMotion {
                 autoRotate = false
-                GLBLog.event(GLBLog.preview, "autoRotate disabled for Reduce Motion")
             }
         }
         .onChange(of: isPlaying) { _, playing in
             guard let playback else { return }
-            GLBLog.event(GLBLog.preview, "playback \(playing ? "resume" : "pause") time=\(playback.time)")
             if playing {
                 playback.resume()
             } else {
@@ -290,40 +308,34 @@ private struct GLBPreviewScene: View {
         }
         .task(id: tickWhileActive) {
             guard tickWhileActive else { return }
-            GLBLog.event(GLBLog.preview, "tick loop start autoRotate=\(autoRotate) playing=\(isPlaying)")
             var lastTick = Date()
             while !Task.isCancelled {
                 let now = Date()
                 let dt = now.timeIntervalSince(lastTick)
                 lastTick = now
-                // Pause spin while the user is dragging; keep `autoRotate` preference.
                 if autoRotate, dragOrigin == nil {
                     orbitYaw += Float(dt) * 20 * .pi / 180
                 }
-                if isPlaying, !isScrubbing, let playback, clipDuration > 0 {
+                if isPlaying, let playback, clipDuration > 0 {
                     currentTime = playback.time.truncatingRemainder(dividingBy: clipDuration)
                     if currentTime < 0 { currentTime += clipDuration }
                 }
                 try? await Task.sleep(for: .milliseconds(16))
             }
-            GLBLog.event(GLBLog.preview, "tick loop end")
         }
     }
 
     private var orbitDragGesture: some Gesture {
-        // minimumDistance 0 so mouse-down immediately pauses auto-rotate.
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 10)
             .onChanged { value in
                 if dragOrigin == nil {
                     dragOrigin = (orbitYaw, orbitPitch)
-                    GLBLog.event(GLBLog.preview, "orbit drag begin yaw=\(orbitYaw) pitch=\(orbitPitch)")
                 }
                 guard let dragOrigin else { return }
                 orbitYaw = dragOrigin.yaw + Float(value.translation.width) * 0.008
                 orbitPitch = dragOrigin.pitch + Float(value.translation.height) * 0.008
             }
             .onEnded { _ in
-                GLBLog.event(GLBLog.preview, "orbit drag end yaw=\(orbitYaw) pitch=\(orbitPitch)")
                 dragOrigin = nil
             }
     }
@@ -331,10 +343,6 @@ private struct GLBPreviewScene: View {
     private func applyViewport(_ size: CGSize) {
         guard size.width > 1, size.height > 1 else { return }
         if abs(size.width - viewport.width) > 0.5 || abs(size.height - viewport.height) > 0.5 {
-            GLBLog.event(
-                GLBLog.window,
-                "preview viewport \(viewport.width)x\(viewport.height) → \(size.width)x\(size.height)"
-            )
             viewport = size
         }
     }
@@ -342,156 +350,76 @@ private struct GLBPreviewScene: View {
     private func aspect(of size: CGSize) -> Float {
         Float(size.width / max(size.height, 1))
     }
-
-    private func seek(to time: TimeInterval) {
-        playback?.time = time
-        currentTime = time
-    }
-
-    @MainActor
-    private static func syncStudioLights(
-        in content: inout RealityViewCameraContent,
-        enabled: Bool,
-        probe: EnvironmentResource?
-    ) {
-        let existing = content.entities.filter { GLBPreviewLighting.studioLightNames.contains($0.name) }
-        if enabled {
-            if !existing.contains(where: { $0.name == GLBPreviewLighting.keyLightName }) {
-                GLBLog.event(GLBLog.lighting, "adding studio lights")
-                for light in GLBPreviewLighting.makeStudioLights() {
-                    content.add(light)
-                }
-            }
-            if let probe, !existing.contains(where: { $0.name == GLBPreviewLighting.iblLightName }) {
-                let ibl = GLBPreviewLighting.makeIBLLight(resource: probe)
-                content.add(ibl)
-                if let turntable = content.entities.first(where: { $0.name == "turntable" }) {
-                    GLBPreviewLighting.attachReceivers(on: turntable, light: ibl)
-                }
-                GLBLog.info(GLBLog.lighting, "IBL attached")
-            }
-        } else if !existing.isEmpty {
-            GLBLog.info(GLBLog.lighting, "IBL removed count=\(existing.count)")
-            for light in existing {
-                content.remove(light)
-            }
-            if let turntable = content.entities.first(where: { $0.name == "turntable" }) {
-                GLBPreviewLighting.removeReceivers(from: turntable)
-            }
-        }
-    }
 }
 
 private struct GLBPreviewToolbar: View {
     @Binding var backdropIndex: Int
     @Binding var autoRotate: Bool
-    @Binding var lightingEnabled: Bool
-    let isDark: Bool
+    var showPlayback: Bool
+    @Binding var isPlaying: Bool
+    var currentTime: TimeInterval
+    var systemDark: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Prefer live SwiftUI color scheme; fall back to the QL/host `isDark` flag.
+    private var resolvedSystemDark: Bool {
+        switch colorScheme {
+        case .dark: return true
+        case .light: return false
+        @unknown default: return systemDark
+        }
+    }
+
+    private func tint(active: Bool) -> Color {
+        GLBPreviewBackdrop.iconColor(at: backdropIndex, systemDark: resolvedSystemDark, active: active)
+    }
 
     var body: some View {
-        if #available(macOS 26, *) {
-            GlassEffectContainer(spacing: 6) {
-                toolbarButtons
+        HStack(spacing: 12) {
+            iconButton("circle.lefthalf.filled", active: true, help: "Toggle background") {
+                backdropIndex = (backdropIndex + 1) % GLBPreviewBackdrop.all.count
             }
-        } else {
-            toolbarButtons
-        }
-    }
-
-    private var toolbarButtons: some View {
-        HStack(spacing: 6) {
-            overlayButton("circle.lefthalf.filled", selected: false, help: "Toggle background") {
-                let count = GLBPreviewBackdrop.colors(dark: isDark).count
-                backdropIndex = (backdropIndex + 1) % count
-                GLBLog.event(GLBLog.preview, "backdrop → \(backdropIndex)")
-            }
-            overlayButton(
-                lightingEnabled ? "lightbulb.fill" : "lightbulb",
-                selected: lightingEnabled,
-                help: "Studio lighting"
+            iconButton(
+                "arrow.trianglehead.2.clockwise.rotate.90",
+                active: autoRotate,
+                help: "Auto-rotate"
             ) {
-                lightingEnabled.toggle()
-                GLBLog.event(GLBLog.preview, "lightingEnabled=\(lightingEnabled)")
-            }
-            overlayButton("arrow.trianglehead.2.clockwise.rotate.90", selected: autoRotate, help: "Auto-rotate") {
                 autoRotate.toggle()
-                GLBLog.event(GLBLog.preview, "autoRotate=\(autoRotate)")
+            }
+            if showPlayback {
+                iconButton(
+                    isPlaying ? "pause.fill" : "play.fill",
+                    active: isPlaying,
+                    help: "Play/Pause"
+                ) {
+                    isPlaying.toggle()
+                }
+                Text(String(format: "%.2f", currentTime))
+                    .font(.system(size: 11, weight: .regular).monospacedDigit())
+                    .foregroundStyle(tint(active: isPlaying))
+                    .frame(minWidth: 36, alignment: .leading)
             }
         }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 2)
     }
 
-    private func overlayButton(_ systemName: String, selected: Bool, help: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(
+        _ systemName: String,
+        active: Bool,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.primary)
-                .frame(width: 28, height: 28)
-                .overlayChrome(selected: selected, cornerRadius: 6)
+                .font(.system(size: 14, weight: .regular))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(tint(active: active))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(help)
-    }
-}
-
-private struct GLBPreviewPlayback: View {
-    @Binding var isPlaying: Bool
-    @Binding var isScrubbing: Bool
-    @Binding var currentTime: TimeInterval
-    let duration: TimeInterval
-    let onScrub: (TimeInterval) -> Void
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Button {
-                isPlaying.toggle()
-                GLBLog.event(GLBLog.preview, "play/pause tapped isPlaying=\(isPlaying)")
-            } label: {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.primary)
-                    .frame(width: 22, height: 22)
-            }
-            .buttonStyle(.plain)
-            .help("Play/Pause")
-
-            Slider(
-                value: Binding(
-                    get: { duration > 0 ? currentTime : 0 },
-                    set: { onScrub($0) }
-                ),
-                in: 0...max(duration, 0.001),
-                onEditingChanged: { editing in
-                    isScrubbing = editing
-                    GLBLog.event(GLBLog.preview, "scrub editing=\(editing) time=\(currentTime)")
-                }
-            )
-
-            Text("\(currentTime, specifier: "%.1f")s")
-                .font(.system(size: 10).monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 32, alignment: .trailing)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .frame(minWidth: 200, maxWidth: 360)
-        .overlayChrome(selected: false, cornerRadius: 8)
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func overlayChrome(selected: Bool, cornerRadius: CGFloat) -> some View {
-        if #available(macOS 26, *) {
-            glassEffect(
-                selected ? .regular.tint(Color.primary.opacity(0.12)).interactive() : .regular.interactive(),
-                in: .rect(cornerRadius: cornerRadius)
-            )
-        } else {
-            background(.black.opacity(selected ? 0.55 : 0.4), in: RoundedRectangle(cornerRadius: cornerRadius))
-                .overlay {
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(.white.opacity(0.12))
-                }
-        }
     }
 }

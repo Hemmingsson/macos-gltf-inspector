@@ -8,8 +8,8 @@ macOS Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host app `GLBPreview`
 brew install xcodegen
 xcodegen generate
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
-  -derivedDataPath /tmp/GLBPreview-dd build
+ xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
+ -derivedDataPath /tmp/GLBPreview-dd build
 
 rm -rf /Applications/GLBPreview.app
 cp -R /tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app /Applications/
@@ -17,13 +17,18 @@ qlmanage -r
 open /Applications/GLBPreview.app
 ```
 
-Signing team is in `project.yml` (`DEVELOPMENT_TEAM`). There is no unit-test target; verify with `qlmanage -p path/to/file.glb` and `qlmanage -t path/to/file.glb`.
+Signing team is in `project.yml` (`DEVELOPMENT_TEAM`). No unit-test target. Proof is Quick Look, not a browser.
 
 ```bash
+./scripts/verify.sh # /Applications/GLBPreview.app + pluginkit
+./scripts/verify.sh --build # generate + build + install + README GIF
+./scripts/promo-gif.sh # offscreen 360° GIF, no host window
+qlmanage -p path/to/file.glb
+qlmanage -t path/to/file.glb
 log stream --style compact --info --predicate 'subsystem == "com.laurie.GLBPreview"'
 ```
 
-`GLBLog.event` is a no-op (Spacebar hitch). Use `GLBLog.info` / `GLBLog.error` for anything that must reach Unified Logging.
+Use `GLBLog.info` / `GLBLog.error` only. Do not add load-path or per-frame logging.
 
 ## Architecture
 
@@ -33,8 +38,11 @@ log stream --style compact --info --predicate 'subsystem == "com.laurie.GLBPrevi
 | `GLBMetalRoughPrepare` | Peeks the GLB JSON chunk first; only reads the full file when conversion is needed |
 | `GLBPreviewCamera.makeTurntable` | Returns `(pivot, bounds)` — do not change that shape (`ThumbnailProvider` unpacks it) |
 | `GLBPreviewLighting` | Shared gray `EnvironmentResource` + key 2500 |
-| `GLBPreviewView` | `RealityView` preview (excluded from the thumbnail target) |
+| `GLBPreviewView` | `RealityView` preview (excluded from the thumbnail and promo targets) |
+| `GLBPreviewStats` | JSON-only mesh/material/animation/node/texture counts + duration for the in-viewer overlay |
+| `GLBStillRenderer` | Offscreen `RealityRenderer` frames (Finder icons + README GIF) |
 | `ThumbnailProvider` | `RealityRenderer` still life |
+| `GLBPromo` | Windowless CLI: 360° PNG frames → `scripts/promo-gif.sh` → GIF |
 
 Preview IBL: top-level `iblLight` sibling of the turntable, `ImageBasedLightComponent(source: .single(resource), intensityExponent: 0)`, receivers on every `ModelComponent` under the turntable. Load the probe once (`.task`); attach synchronously in `update` when the resource exists. Never `Task` inside RealityView `update` (it runs every frame). After lights-off, in-flight IBL work must no-op.
 
@@ -53,4 +61,6 @@ Do not add “robust” / outlier AABB clustering. On the 50-model set it “fix
 - Change `makeTurntable`’s return type
 - Put `iblLight` under the turntable (`syncStudioLights` only sees `content.entities` by name)
 - Re-enable verbose file/`print` logging on the hot path
-- Check in `.build/`, `test-models/`, `Fixtures/`, `.cursor/`, `.dex/`, or `plans/`
+- Recreate `test-models/`, `Fixtures/`, `.build/`, `.cursor/`, `.dex/`, or `plans/`
+- Verify preview in a browser — use `qlmanage` only
+- Add Spotlight importers or Finder Information metadata plugins

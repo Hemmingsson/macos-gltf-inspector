@@ -52,7 +52,6 @@ enum GLBPreviewLighting {
         if let resource = await softProbeResource() {
             renderer.lighting.resource = resource
             renderer.lighting.intensityExponent = 0
-            GLBLog.event(GLBLog.lighting, "thumbnail IBL probe attached intensityExponent=0")
         } else {
             GLBLog.error(GLBLog.lighting, "thumbnail IBL probe missing; key light only")
         }
@@ -62,7 +61,6 @@ enum GLBPreviewLighting {
         key.light.intensity = 2_500
         key.look(at: .zero, from: cameraPosition, relativeTo: nil)
         renderer.entities.append(key)
-        GLBLog.event(GLBLog.lighting, "thumbnail key light from \(GLBLog.fmt3(cameraPosition)) intensity=2500")
     }
 
     @MainActor

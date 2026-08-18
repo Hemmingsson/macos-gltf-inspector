@@ -8,11 +8,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     private var loadTask: Task<Void, Never>?
 
     override func loadView() {
-        GLBLog.processBanner("ql-loadView")
-        GLBWindowLog.start()
         let dark = Self.systemIsDark()
-        let backdrop = GLBPreviewBackdrop.cgColor(dark: dark)
-        GLBLog.event(GLBLog.preview, "QL loadView dark=\(dark)")
 
         hostingView = GLBPreviewHostingView(
             rootView: GLBPreviewView(state: .loading, interaction: interaction, isDark: dark)
@@ -20,50 +16,30 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         hostingView.interaction = interaction
         hostingView.wantsLayer = true
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        hostingView.layer?.backgroundColor = backdrop
+        hostingView.layer?.isOpaque = false
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         hostingView.autoresizingMask = [.width, .height]
 
         let root = GLBPreviewEventView(frame: .zero)
         root.interaction = interaction
         root.wantsLayer = true
-        root.layer?.backgroundColor = backdrop
+        root.layer?.isOpaque = false
+        root.layer?.backgroundColor = NSColor.clear.cgColor
         root.addSubview(hostingView)
         view = root
-        GLBLog.event(GLBLog.window, "QL root view created hosting=\(hostingView.frame)")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        GLBLog.event(GLBLog.window, "QL viewDidLoad bounds=\(NSStringFromRect(view.bounds))")
-        GLBWindowLog.dumpWindows("ql-viewDidLoad")
-    }
-
-    override func viewDidAppear() {
-        super.viewDidAppear()
-        GLBLog.event(GLBLog.window, "QL viewDidAppear")
-        if let window = view.window {
-            GLBLog.event(GLBLog.window, "QL window \(GLBWindowLog.describe(index: nil, window: window))")
-        } else {
-            GLBLog.event(GLBLog.window, "QL viewDidAppear with no window yet")
-        }
-        GLBWindowLog.dumpWindows("ql-viewDidAppear")
     }
 
     override func viewDidLayout() {
         super.viewDidLayout()
         hostingView.frame = view.bounds
-        GLBWindowLog.layoutIfChanged(view, reason: "ql-layout")
     }
 
     override func viewWillDisappear() {
         super.viewWillDisappear()
         loadTask?.cancel()
-        GLBLog.event(GLBLog.window, "QL viewWillDisappear")
-        GLBWindowLog.dumpWindows("ql-viewWillDisappear")
     }
 
     func preparePreviewOfFile(at url: URL) async throws {
-        GLBLog.event(GLBLog.preview, "QL preparePreviewOfFile \(GLBLog.describeURL(url))")
         let dark = Self.systemIsDark()
         // Detached so Quick Look can present the loading view on the main actor
         // before GLTFKit2 convert occupies it.
@@ -74,21 +50,21 @@ class PreviewViewController: NSViewController, QLPreviewingController {
             guard !Task.isCancelled else { return }
             await self?.present(state, dark: dark)
         }
-        GLBLog.event(GLBLog.preview, "QL prepare returned; load running in background")
     }
 
     @MainActor
     private func present(_ state: GLBPreviewView.State, dark: Bool) {
-        GLBLog.event(GLBLog.preview, "QL prepare finished failed=\(state.isFailed) dark=\(dark)")
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         hostingView.rootView = GLBPreviewView(state: state, interaction: interaction, isDark: dark)
-        GLBWindowLog.dumpWindows("ql-after-prepare")
     }
 
     private static func systemIsDark() -> Bool {
+        if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
+            return true
+        }
         if NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
             return true
         }
-        return UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+        return false
     }
 }

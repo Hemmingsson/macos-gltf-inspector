@@ -12,33 +12,14 @@ enum GLBMetalRoughPrepare {
     private static let iorName = "KHR_materials_ior"
 
     static func preparedURL(from url: URL) throws -> URL {
-        GLBLog.event(GLBLog.prepare, "preparedURL start \(GLBLog.describeURL(url))")
         let json = try GLBBox.peekJSON(from: url)
-        let materials = (json["materials"] as? [[String: Any]])?.count ?? 0
-        let images = (json["images"] as? [[String: Any]])?.count ?? 0
-        let extensionsUsed = (json["extensionsUsed"] as? [String]) ?? []
-        GLBLog.event(
-            GLBLog.prepare,
-            "peeked json jsonKeys=\(json.keys.sorted()) materials=\(materials) images=\(images) extensionsUsed=\(extensionsUsed)"
-        )
-        guard needsConversion(json) else {
-            GLBLog.event(GLBLog.prepare, "no spec/gloss conversion needed")
-            return url
-        }
-        GLBLog.event(GLBLog.prepare, "converting spec/gloss → metal/rough")
+        guard needsConversion(json) else { return url }
         let data = try Data(contentsOf: url)
-        let glb = try GLBBox.parse(data)
-        let converted = try GLBLog.timed(GLBLog.prepare, "specGloss convert") {
-            try convert(glb)
-        }
-        let out = FileManager.default.temporaryDirectory
-            .appendingPathComponent("glb-metalrough-\(UUID().uuidString).glb")
-        try converted.write(to: out)
-        GLBLog.event(GLBLog.prepare, "wrote rewritten glb bytes=\(converted.count) path=\(out.path)")
-        return out
+        let converted = try convert(try GLBBox.parse(data))
+        return try GLBBox.writePrepared(converted, prefix: "glb-metalrough")
     }
 
-    private static func needsConversion(_ json: [String: Any]) -> Bool {
+    static func needsConversion(_ json: [String: Any]) -> Bool {
         guard let materials = json["materials"] as? [[String: Any]] else { return false }
         return materials.contains { material in
             ((material["extensions"] as? [String: Any])?[specGlossName]) != nil
@@ -51,6 +32,8 @@ enum GLBMetalRoughPrepare {
         var images = json["images"] as? [[String: Any]] ?? []
         var bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
         var materials = json["materials"] as? [[String: Any]] ?? []
+
+        let bakeTextures = shouldBakeTextures(json: json, materials: materials)
 
         for i in materials.indices {
             guard var extensions = materials[i]["extensions"] as? [String: Any],
@@ -74,15 +57,16 @@ enum GLBMetalRoughPrepare {
                 "specularColorFactor": specularFactor,
             ]
 
-            if let sgInfo = specGloss["specularGlossinessTexture"] as? [String: Any],
+            if bakeTextures,
+               let sgInfo = specGloss["specularGlossinessTexture"] as? [String: Any],
                let sgImageIndex = textureImageIndex(json: json, textureInfo: sgInfo)
             {
-                let sgPixels = try decodeImage(glb: glb, images: images, imageIndex: sgImageIndex)
+                let sgPixels = try decodeImage(glb: glb, images: images, imageIndex: sgImageIndex).downsampled(maxEdge: 1024)
                 var diffusePixels: PixelImage?
                 if let diffuseInfo = specGloss["diffuseTexture"] as? [String: Any],
                    let diffuseIndex = textureImageIndex(json: json, textureInfo: diffuseInfo)
                 {
-                    diffusePixels = try decodeImage(glb: glb, images: images, imageIndex: diffuseIndex)
+                    diffusePixels = try decodeImage(glb: glb, images: images, imageIndex: diffuseIndex).downsampled(maxEdge: 1024)
                 }
                 let baked = bakeWorkflow(
                     diffuse: diffusePixels,
@@ -95,13 +79,13 @@ enum GLBMetalRoughPrepare {
                 let basePNG = try encodePNG(baked.baseColor)
                 let metalRoughPNG = try encodePNG(baked.metalRough)
 
-                let specularBV = appendImage(&bin, &bufferViews, png: specularPNG)
+                let specularBV = GLBBox.appendBytes(specularPNG, bin: &bin, bufferViews: &bufferViews)
                 images.append(["mimeType": "image/png", "bufferView": specularBV])
                 let specularTex = appendTexture(&json, imageIndex: images.count - 1)
-                let baseBV = appendImage(&bin, &bufferViews, png: basePNG)
+                let baseBV = GLBBox.appendBytes(basePNG, bin: &bin, bufferViews: &bufferViews)
                 images.append(["mimeType": "image/png", "bufferView": baseBV])
                 let baseTex = appendTexture(&json, imageIndex: images.count - 1)
-                let metalRoughBV = appendImage(&bin, &bufferViews, png: metalRoughPNG)
+                let metalRoughBV = GLBBox.appendBytes(metalRoughPNG, bin: &bin, bufferViews: &bufferViews)
                 images.append(["mimeType": "image/png", "bufferView": metalRoughBV])
                 let metalRoughTex = appendTexture(&json, imageIndex: images.count - 1)
 
@@ -138,29 +122,35 @@ enum GLBMetalRoughPrepare {
         json["materials"] = materials
         json["images"] = images
         json["bufferViews"] = bufferViews
-        if var buffers = json["buffers"] as? [[String: Any]], !buffers.isEmpty {
-            buffers[0]["byteLength"] = bin.count
-            json["buffers"] = buffers
-        }
+        GLBBox.setPrimaryBufferLength(&json, bin.count)
 
-        rewriteExtensionLists(&json)
+        GLBBox.rewriteExtensionLists(
+            &json,
+            removing: [specGlossName],
+            addingToUsed: [specularName, iorName]
+        )
         return try GLBBox.serialize(json: json, bin: bin)
     }
 
+    static func shouldBakeTextures(json: [String: Any], materials: [[String: Any]]) -> Bool {
+        let images = (json["images"] as? [[String: Any]])?.count ?? 0
+        if images > 40 { return false }
+        var textured = 0
+        for material in materials {
+            let specGloss = (material["extensions"] as? [String: Any])?[specGlossName] as? [String: Any]
+            if specGloss?["specularGlossinessTexture"] != nil {
+                textured += 1
+            }
+        }
+        return textured <= 24
+    }
+
     private static func textureImageIndex(json: [String: Any], textureInfo: [String: Any]) -> Int? {
-        guard let index = intValue(textureInfo["index"]),
+        guard let index = GLBBox.intValue(textureInfo["index"]),
               let textures = json["textures"] as? [[String: Any]],
               textures.indices.contains(index)
         else { return nil }
-        return intValue(textures[index]["source"])
-    }
-
-    private static func intValue(_ value: Any?) -> Int? {
-        switch value {
-        case let n as Int: return n
-        case let n as NSNumber: return n.intValue
-        default: return nil
-        }
+        return GLBBox.intValue(textures[index]["source"])
     }
 
     private static func doubleValue(_ value: Any?, fallback: Double) -> Double {
@@ -184,48 +174,17 @@ enum GLBMetalRoughPrepare {
         return textures.count - 1
     }
 
-    private static func appendImage(_ bin: inout Data, _ bufferViews: inout [[String: Any]], png: Data) -> Int {
-        let offset = glbAligned(bin.count, 4)
-        if offset > bin.count {
-            bin.append(Data(count: offset - bin.count))
-        }
-        bin.append(png)
-        bufferViews.append([
-            "buffer": 0,
-            "byteOffset": offset,
-            "byteLength": png.count,
-        ])
-        return bufferViews.count - 1
-    }
-
-    private static func rewriteExtensionLists(_ json: inout [String: Any]) {
-        func rewrite(_ key: String, adding: [String]) {
-            var list = (json[key] as? [String]) ?? []
-            list.removeAll { $0 == specGlossName }
-            for name in adding where !list.contains(name) {
-                list.append(name)
-            }
-            if list.isEmpty {
-                json.removeValue(forKey: key)
-            } else {
-                json[key] = list
-            }
-        }
-        rewrite("extensionsUsed", adding: [specularName, iorName])
-        rewrite("extensionsRequired", adding: [])
-    }
-
     private static func decodeImage(glb: GLBBox, images: [[String: Any]], imageIndex: Int) throws -> PixelImage {
         guard images.indices.contains(imageIndex),
-              let viewIndex = intValue(images[imageIndex]["bufferView"]),
+              let viewIndex = GLBBox.intValue(images[imageIndex]["bufferView"]),
               let views = glb.json["bufferViews"] as? [[String: Any]],
               views.indices.contains(viewIndex)
         else {
             throw PrepareError.missingImage
         }
         let view = views[viewIndex]
-        let offset = intValue(view["byteOffset"]) ?? 0
-        let length = intValue(view["byteLength"]) ?? 0
+        let offset = GLBBox.intValue(view["byteOffset"]) ?? 0
+        let length = GLBBox.intValue(view["byteLength"]) ?? 0
         guard offset >= 0, length >= 0, offset + length <= glb.bin.count else {
             throw PrepareError.missingImage
         }
@@ -337,109 +296,10 @@ enum GLBMetalRoughPrepare {
         case missingImage
         case decodeImage
         case encodeImage
-        case invalidGLB
     }
 }
 
-private func glbAligned(_ value: Int, _ align: Int) -> Int {
-    (value + align - 1) / align * align
-}
-
-private struct GLBBox {
-    private static let magic = Data("glTF".utf8)
-
-    var json: [String: Any]
-    var bin: Data
-
-    static func parse(_ data: Data) throws -> GLBBox {
-        guard data.count >= 12, data.prefix(4) == magic else {
-            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
-        }
-        var offset = 12
-        var json: [String: Any] = [:]
-        var bin = Data()
-        while offset + 8 <= data.count {
-            let chunkLen = Int(readUInt32(data, offset))
-            let type = String(data: data.subdata(in: (offset + 4)..<(offset + 8)), encoding: .ascii) ?? ""
-            let start = offset + 8
-            let end = start + chunkLen
-            guard end <= data.count else { throw GLBMetalRoughPrepare.PrepareError.invalidGLB }
-            let payload = data.subdata(in: start..<end)
-            if type.hasPrefix("JSON") {
-                json = try jsonObject(from: payload)
-            } else if type.hasPrefix("BIN") {
-                bin = payload
-            }
-            offset = glbAligned(end, 4)
-        }
-        return GLBBox(json: json, bin: bin)
-    }
-
-    /// JSON chunk only — skips the BIN so metal/rough files are not fully copied just to
-    /// decide that spec/gloss conversion is unnecessary. First chunk is JSON per the GLB spec.
-    static func peekJSON(from url: URL) throws -> [String: Any] {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        guard let header = try handle.read(upToCount: 12), header.count == 12, header.prefix(4) == magic,
-              let chunkHeader = try handle.read(upToCount: 8), chunkHeader.count == 8
-        else {
-            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
-        }
-        let chunkLen = Int(readUInt32(chunkHeader, 0))
-        let type = String(data: chunkHeader.subdata(in: 4..<8), encoding: .ascii) ?? ""
-        guard type.hasPrefix("JSON"),
-              let payload = try handle.read(upToCount: chunkLen), payload.count == chunkLen
-        else {
-            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
-        }
-        return try jsonObject(from: payload)
-    }
-
-    static func serialize(json: [String: Any], bin: Data) throws -> Data {
-        var jsonData = try JSONSerialization.data(withJSONObject: json, options: [])
-        jsonData.append(Data(repeating: 0x20, count: pad4(jsonData.count)))
-        var binData = bin
-        binData.append(Data(count: pad4(binData.count)))
-
-        var out = Data()
-        out.append(contentsOf: Array("glTF".utf8))
-        out.append(contentsOf: uint32(2))
-        let total = 12 + 8 + jsonData.count + 8 + binData.count
-        out.append(contentsOf: uint32(UInt32(total)))
-        out.append(contentsOf: uint32(UInt32(jsonData.count)))
-        out.append(contentsOf: Array("JSON".utf8))
-        out.append(jsonData)
-        out.append(contentsOf: uint32(UInt32(binData.count)))
-        out.append(contentsOf: Array("BIN\0".utf8))
-        out.append(binData)
-        return out
-    }
-
-    private static func jsonObject(from payload: Data) throws -> [String: Any] {
-        guard let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any] else {
-            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
-        }
-        return object
-    }
-
-    private static func readUInt32(_ data: Data, _ offset: Int) -> UInt32 {
-        var value: UInt32 = 0
-        _ = withUnsafeMutableBytes(of: &value) { dest in
-            data.copyBytes(to: dest, from: offset..<(offset + 4))
-        }
-        return UInt32(littleEndian: value)
-    }
-
-    private static func uint32(_ value: UInt32) -> [UInt8] {
-        withUnsafeBytes(of: value.littleEndian, Array.init)
-    }
-
-    private static func pad4(_ count: Int) -> Int {
-        (4 - (count % 4)) % 4
-    }
-}
-
-private struct PixelImage {
+struct PixelImage {
     var width: Int
     var height: Int
     var bytes: [UInt8]
@@ -485,6 +345,28 @@ private struct PixelImage {
             throw GLBMetalRoughPrepare.PrepareError.decodeImage
         }
         ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+    }
+
+    func downsampled(maxEdge: Int) -> PixelImage {
+        let longest = max(width, height)
+        guard longest > maxEdge, longest > 0 else { return self }
+        let scaledW = max(1, width * maxEdge / longest)
+        let scaledH = max(1, height * maxEdge / longest)
+        guard let source = try? makeCGImage() else { return self }
+        var bytes = [UInt8](repeating: 0, count: scaledW * scaledH * 4)
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: &bytes,
+            width: scaledW,
+            height: scaledH,
+            bitsPerComponent: 8,
+            bytesPerRow: scaledW * 4,
+            space: cs,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return self }
+        ctx.interpolationQuality = .medium
+        ctx.draw(source, in: CGRect(x: 0, y: 0, width: scaledW, height: scaledH))
+        return PixelImage(width: scaledW, height: scaledH, bytes: bytes)
     }
 
     func makeCGImage() throws -> CGImage {

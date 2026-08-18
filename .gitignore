@@ -12,6 +12,8 @@ build/
 plans/
 test-models/
 Fixtures/
+.readme-preview.html
+scripts/.cache/
 
 # Generated plists (xcodegen recreates these)
 PreviewExtension/Info.plist

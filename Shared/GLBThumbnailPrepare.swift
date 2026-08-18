@@ -4,9 +4,7 @@ import RealityKit
 enum GLBThumbnailPrepare {
     @MainActor
     static func apply(to entity: Entity) {
-        GLBLog.event(GLBLog.thumbnail, "flatten PBR start \(GLBLog.describe(entity))")
         applyRecursive(entity)
-        GLBLog.event(GLBLog.thumbnail, "flatten PBR done")
     }
 
     @MainActor

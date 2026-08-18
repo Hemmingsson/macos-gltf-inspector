@@ -22,40 +22,25 @@ struct ContentView: View {
         }
         .frame(minWidth: 400, minHeight: 300)
         .navigationTitle(openedFileName ?? "GLB Preview")
-        .onAppear {
-            GLBLog.event(
-                GLBLog.host,
-                "ContentView appear file=\(openedFileName ?? "nil") dark=\(colorScheme == .dark)"
-            )
-            applyWindowTitle()
-            GLBWindowLog.dumpWindows("contentview-appear")
-        }
-        .onChange(of: openedFileName) { _, name in
-            GLBLog.event(GLBLog.host, "openedFileName=\(name ?? "nil")")
-            applyWindowTitle()
-        }
-        .onChange(of: colorScheme) { _, scheme in
-            GLBLog.event(GLBLog.window, "colorScheme=\(scheme)")
-        }
+        .onAppear(perform: applyWindowTitle)
+        .onChange(of: openedFileName) { _, _ in applyWindowTitle() }
         .onOpenURL(perform: openIfGLB)
         .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
     }
 
     private func applyWindowTitle() {
         let title = openedFileName ?? "GLB Preview"
-        let windows = NSApp.windows
-        GLBLog.event(GLBLog.window, "applyWindowTitle \(title.debugDescription) windows=\(windows.count)")
-        for window in windows where window.isVisible {
+        for window in NSApp.windows where window.isVisible {
             window.title = title
-            GLBLog.event(GLBLog.window, "titled \(GLBWindowLog.describe(index: nil, window: window))")
         }
     }
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "cube.transparent")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 96, height: 96)
             Text("GLB Quick Look")
                 .font(.title)
             Text("Quick Look preview and thumbnails for .glb and .gltf files are installed.")
@@ -63,31 +48,21 @@ struct ContentView: View {
         }
         .padding(40)
         .frame(minWidth: 400, minHeight: 300)
-        .onAppear { GLBLog.event(GLBLog.host, "empty state appear") }
     }
 
     private func openIfGLB(_ url: URL) {
         let ext = url.pathExtension.lowercased()
-        GLBLog.event(GLBLog.host, "openIfGLB \(GLBLog.describeURL(url))")
-        guard ext == "glb" || ext == "gltf" else {
-            GLBLog.event(GLBLog.host, "ignored non-gltf URL ext=\(ext)")
-            return
-        }
+        guard ext == "glb" || ext == "gltf" else { return }
         openedFileName = url.lastPathComponent
         previewState = .loading
         interaction = GLBPreviewInteraction()
         Task {
-            let state = await GLBPreviewView.State.loaded(from: url)
-            GLBLog.event(GLBLog.host, "host load finished file=\(url.lastPathComponent) failed=\(state.isFailed)")
-            previewState = state
-            GLBWindowLog.dumpWindows("after-host-load")
+            previewState = await GLBPreviewView.State.loaded(from: url)
         }
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        GLBLog.event(GLBLog.host, "drop providers=\(providers.count)")
         guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }) else {
-            GLBLog.event(GLBLog.host, "drop ignored: no file URL")
             return false
         }
         _ = provider.loadObject(ofClass: URL.self) { url, error in
@@ -96,7 +71,6 @@ struct ContentView: View {
             }
             guard let url else { return }
             Task { @MainActor in
-                GLBLog.event(GLBLog.host, "drop opened \(url.path)")
                 openIfGLB(url)
             }
         }
@@ -110,7 +84,6 @@ private struct HostPreviewContainer: NSViewRepresentable {
     var isDark: Bool
 
     func makeNSView(context: Context) -> GLBPreviewHostingView {
-        GLBLog.event(GLBLog.window, "HostPreviewContainer.makeNSView dark=\(isDark)")
         let view = GLBPreviewHostingView(
             rootView: GLBPreviewView(state: state, interaction: interaction, isDark: isDark)
         )
@@ -121,8 +94,5 @@ private struct HostPreviewContainer: NSViewRepresentable {
     func updateNSView(_ nsView: GLBPreviewHostingView, context: Context) {
         nsView.interaction = interaction
         nsView.rootView = GLBPreviewView(state: state, interaction: interaction, isDark: isDark)
-        if nsView.window != nil {
-            GLBWindowLog.layoutIfChanged(nsView, reason: "host-update")
-        }
     }
 }

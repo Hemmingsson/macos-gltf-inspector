@@ -10,12 +10,7 @@ enum GLBEntityLoader {
     /// File IO and `GLTFAsset` stay off the main actor so Spacebar can show the loading
     /// view while the file is parsed; RealityKit convert hops to the main actor.
     static func load(from url: URL, includeAnimations: Bool = true) async throws -> Entity {
-        GLBLog.event(
-            GLBLog.load,
-            "load start includeAnimations=\(includeAnimations) \(GLBLog.describeURL(url))"
-        )
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
-        GLBLog.event(GLBLog.draco, "dracoDecompressorClassName=\(GLTFAsset.dracoDecompressorClassName)")
 
         let directoryURL = URL(
             fileURLWithPath: url.deletingLastPathComponent().path,
@@ -23,10 +18,6 @@ enum GLBEntityLoader {
         )
         let accessedDirectory = directoryURL.startAccessingSecurityScopedResource()
         let accessedFile = url.startAccessingSecurityScopedResource()
-        GLBLog.event(
-            GLBLog.load,
-            "security-scope dir=\(accessedDirectory) file=\(accessedFile) directory=\(directoryURL.path)"
-        )
         defer {
             if accessedDirectory {
                 directoryURL.stopAccessingSecurityScopedResource()
@@ -34,129 +25,160 @@ enum GLBEntityLoader {
             if accessedFile {
                 url.stopAccessingSecurityScopedResource()
             }
-            GLBLog.event(GLBLog.load, "security-scope released for \(url.lastPathComponent)")
         }
 
         let loadURL: URL
         let assetDirectory: URL
         if url.pathExtension.lowercased() == "glb" {
-            // Spec/gloss rewrite is best-effort; fall back to the original GLB.
-            do {
-                let prepared = try GLBMetalRoughPrepare.preparedURL(from: url)
-                loadURL = prepared
-                GLBLog.event(
-                    GLBLog.prepare,
-                    "metal-rough prepared=\(prepared.path) rewritten=\(prepared != url)"
-                )
-            } catch {
-                loadURL = url
-                GLBLog.error(GLBLog.prepare, "metal-rough failed, using original: \(error)")
-            }
+            loadURL = prepareGLB(url)
             assetDirectory = directoryURL
         } else {
-            let staged = try GLBLog.timed(GLBLog.load, "stageGLTF \(url.lastPathComponent)") {
-                try stageGLTF(from: url, directoryURL: directoryURL)
-            }
-            loadURL = staged.file
-            assetDirectory = staged.directory
-            GLBLog.event(
-                GLBLog.load,
-                "staged gltf file=\(loadURL.path) directory=\(assetDirectory.path)"
-            )
+            loadURL = try packAndPrepareGLTF(from: url, directoryURL: directoryURL)
+            assetDirectory = loadURL.deletingLastPathComponent()
         }
 
-        GLBLog.event(
-            GLBLog.load,
-            "GLTFAsset open \(GLBLog.describeURL(loadURL)) assetDirectory=\(assetDirectory.path)"
-        )
-        let asset = try GLBLog.timed(GLBLog.load, "GLTFAsset \(loadURL.lastPathComponent)") {
-            try GLTFAsset(
-                url: loadURL,
-                options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
+        do {
+            return try await convertAsset(
+                at: loadURL,
+                assetDirectory: assetDirectory,
+                includeAnimations: includeAnimations,
+                name: url.lastPathComponent
+            )
+        } catch {
+            guard loadURL != url else { throw error }
+            GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
+            return try await convertAsset(
+                at: url,
+                assetDirectory: directoryURL,
+                includeAnimations: includeAnimations,
+                name: url.lastPathComponent
             )
         }
-        GLBLog.event(
-            GLBLog.load,
-            "asset scenes=\(asset.scenes.count) nodes=\(asset.nodes.count) meshes=\(asset.meshes.count) materials=\(asset.materials.count) images=\(asset.images.count) animations=\(asset.animations.count) defaultScene=\(asset.defaultScene?.name ?? "nil")"
+    }
+
+    /// Spec/gloss then RealityKit-safe rewrite. Either step is best-effort.
+    private static func prepareGLB(_ url: URL) -> URL {
+        var prepared = url
+        do {
+            prepared = try GLBMetalRoughPrepare.preparedURL(from: prepared)
+        } catch {
+            GLBLog.error(GLBLog.prepare, "metal-rough failed, using original: \(error)")
+        }
+        do {
+            prepared = try GLBRealityPrepare.preparedURL(from: prepared)
+        } catch {
+            GLBLog.error(GLBLog.prepare, "reality prepare failed, using previous: \(error)")
+        }
+        return prepared
+    }
+
+    /// Sidecar `.gltf` is JSON, not a GLB. Pack buffers/images into a temp GLB, then
+    /// run the same prepare path as a native `.glb`.
+    private static func packAndPrepareGLTF(from url: URL, directoryURL: URL) throws -> URL {
+        let data = try Data(contentsOf: url)
+        let json = try GLBBox.parseJSON(data)
+        let packed = try GLBBox.packSidecar(json) { uri in
+            guard isAllowedSidecarURI(uri, assetDirectory: directoryURL) else {
+                throw GLBPreviewError.make(1021, "glTF sidecar URI is not a safe relative path")
+            }
+            let decoded = uri.removingPercentEncoding ?? uri
+            // Derive from the previewed file URL so a security-scoped .gltf
+            // can still reach same-folder `model.bin` / `textures/`.
+            let sidecar = url.deletingLastPathComponent().appendingPathComponent(decoded)
+            do {
+                return try Data(contentsOf: sidecar)
+            } catch {
+                GLBLog.error(GLBLog.load, "sidecar \(decoded): \(error.localizedDescription)")
+                throw error
+            }
+        }
+        let packedURL = try GLBBox.writePrepared(packed, prefix: "gltf-packed")
+        return prepareGLB(packedURL)
+    }
+
+    private static func convertAsset(
+        at loadURL: URL,
+        assetDirectory: URL,
+        includeAnimations: Bool,
+        name: String
+    ) async throws -> Entity {
+        let asset = try GLTFAsset(
+            url: loadURL,
+            options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
         )
         // Sketchfab/FBX often embeds a 1-keyframe "Default Take". GLTFKit2 then
         // calls stride(from:through:by: 0) and traps.
-        let rawAnimCount = asset.animations.count
         if includeAnimations {
             asset.animations = asset.animations.filter { hasPositiveDuration($0) }
         } else {
             asset.animations = []
         }
-        GLBLog.event(
-            GLBLog.load,
-            "animation filter raw=\(rawAnimCount) kept=\(asset.animations.count) includeAnimations=\(includeAnimations)"
-        )
         guard let scene = asset.defaultScene else {
-            GLBLog.error(GLBLog.load, "no default scene for \(url.lastPathComponent)")
-            throw NSError(
-                domain: "GLBPreview",
-                code: 1020,
-                userInfo: [NSLocalizedDescriptionKey: "The glTF asset did not specify a default scene"]
+            GLBLog.error(GLBLog.load, "no default scene for \(name)")
+            throw GLBPreviewError.make(1020, "The glTF asset did not specify a default scene")
+        }
+        let retryWithoutAnimations = includeAnimations && !asset.animations.isEmpty
+        return try await MainActor.run {
+            try convertOrRetry(
+                scene: scene,
+                asset: asset,
+                retryWithoutAnimations: retryWithoutAnimations
             )
         }
-        let entity = await MainActor.run {
-            GLBLog.timed(GLBLog.load, "GLTFRealityKitLoader.convert \(url.lastPathComponent)") {
-                GLTFRealityKitLoader.convert(scene: scene, asset: asset)
-            }
-        }
-        return entity
     }
 
-    /// Copies the JSON plus relative `.bin` / image URIs into the sandbox temp
-    /// directory so GLTFKit2 can read sidecars after source scopes are released.
-    private static func stageGLTF(from url: URL, directoryURL: URL) throws -> (file: URL, directory: URL) {
-        let data = try Data(contentsOf: url)
-        let relatives = try relativeURIs(in: data, directoryURL: directoryURL)
-        GLBLog.event(GLBLog.load, "stageGLTF bytes=\(data.count) sidecars=\(relatives)")
-        let stage = FileManager.default.temporaryDirectory
-            .appendingPathComponent("gltf-stage-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: stage, withIntermediateDirectories: true)
-        let stagedFile = stage.appendingPathComponent(url.lastPathComponent)
-        try data.write(to: stagedFile)
-        for rel in relatives {
-            let src = directoryURL.appendingPathComponent(rel)
-            let dest = stage.appendingPathComponent(rel)
-            try FileManager.default.createDirectory(
-                at: dest.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
+    /// Empty results (zero `ModelComponent`s) retry once without animations when
+    /// the first pass still had clips — some Draco + skin + animation assets trap
+    /// or yield a blank entity otherwise. NSException is caught by `GLBTry`.
+    @MainActor
+    private static func convertOrRetry(
+        scene: GLTFScene,
+        asset: GLTFAsset,
+        retryWithoutAnimations: Bool
+    ) throws -> Entity {
+        var lastError: Error?
+        let attempts = retryWithoutAnimations ? 2 : 1
+        for pass in 0..<attempts {
+            if pass == 1 {
+                asset.animations = []
+            }
             do {
-                try FileManager.default.copyItem(at: src, to: dest)
+                return try convertVisible(scene: scene, asset: asset)
             } catch {
-                try Data(contentsOf: src).write(to: dest)
+                lastError = error
+                GLBLog.error(GLBLog.load, error.localizedDescription)
             }
         }
-        GLBLog.event(GLBLog.load, "stageGLTF wrote \(stagedFile.path)")
-        return (stagedFile, stage)
+        throw convertFailure(from: lastError ?? GLBPreviewError.make(1022, "Failed to convert the glTF asset"))
     }
 
-    private static func relativeURIs(in data: Data, directoryURL: URL) throws -> [String] {
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return []
+    @MainActor
+    private static func convertVisible(scene: GLTFScene, asset: GLTFAsset) throws -> Entity {
+        var converted: Entity?
+        try GLBTry.run {
+            converted = GLBRealityKitConvert.convert(scene: scene, asset: asset)
         }
-        var uris: [String] = []
-        for key in ["buffers", "images"] {
-            guard let items = json[key] as? [[String: Any]] else { continue }
-            for item in items {
-                guard let uri = item["uri"] as? String, !uri.isEmpty, !uri.hasPrefix("data:") else {
-                    continue
-                }
-                guard isAllowedSidecarURI(uri, assetDirectory: directoryURL) else {
-                    throw NSError(
-                        domain: "GLBPreview",
-                        code: 1021,
-                        userInfo: [NSLocalizedDescriptionKey: "glTF sidecar URI is not a safe relative path"]
-                    )
-                }
-                uris.append(uri)
-            }
+        guard let converted, modelComponentCount(in: converted) > 0 else {
+            throw GLBPreviewError.make(1022, "The glTF asset has no visible mesh")
         }
-        return uris
+        return converted
+    }
+
+    @MainActor
+    static func modelComponentCount(in entity: Entity) -> Int {
+        var count = entity.components[ModelComponent.self] != nil ? 1 : 0
+        for child in entity.children {
+            count += modelComponentCount(in: child)
+        }
+        return count
+    }
+
+    private static func convertFailure(from error: Error) -> NSError {
+        let nsError = error as NSError
+        if nsError.domain == GLBPreviewError.domain, nsError.code == 1022 || nsError.code == 1023 {
+            return nsError
+        }
+        return GLBPreviewError.make(1022, "Failed to convert the glTF asset")
     }
 
     /// Sidecars must stay inside the asset directory: no `..`, no absolute paths,
