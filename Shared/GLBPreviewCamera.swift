@@ -5,7 +5,7 @@ enum GLBPreviewCamera {
     private static let fieldOfViewDegrees: Float = 35
     private static let yawDegrees: Float = 35
     private static let pitchDegrees: Float = 18
-    static let previewFitPadding: Float = 1.15
+    static let previewFitPadding: Float = 1.02
     static let thumbnailFitPadding: Float = 1.08
     /// Standing planes (doors, decals): X or Z vs longest. 0.08 catches architectural
     /// doors; snowdrop packs (0.11/1.83 ≈ 0.06) stay below and keep 3/4 framing.
@@ -85,32 +85,51 @@ enum GLBPreviewCamera {
     ) -> SIMD3<Float> {
         let center = (minBound + maxBound) * 0.5
         let extent = maxBound - minBound
-        let radius = max(0.0001, length(extent) * 0.5)
-        let distance = fitDistance(radius: radius, aspect: aspect, padding: padding)
         var yaw = yawDegrees * .pi / 180
         let pitch = pitchDegrees * .pi / 180
         if let axis = thinAxis(extent) {
             if axis == 0 { yaw = .pi / 2 }
             if axis == 2 { yaw = 0 }
         }
-        let position = SIMD3<Float>(
-            center.x + distance * sin(yaw) * cos(pitch),
-            center.y + distance * sin(pitch),
-            center.z - distance * cos(yaw) * cos(pitch)
+        // Unit vector from the model center toward the camera.
+        let toCamera = SIMD3<Float>(
+            sin(yaw) * cos(pitch),
+            sin(pitch),
+            -cos(yaw) * cos(pitch)
         )
-        return position
+        let distance = fitDistance(extent: extent, toCamera: toCamera, aspect: aspect, padding: padding)
+        return center + distance * toCamera
     }
 
-    /// Distance that keeps a bounding sphere inside the view even if FOV is applied
-    /// to the long axis of a non-square viewport.
-    private static func fitDistance(radius: Float, aspect: Float, padding: Float) -> Float {
-        let fovHalf = fieldOfViewDegrees * .pi / 360
+    /// Distance that frames the model's *projected bounding box* — not its bounding
+    /// sphere — so irregular shapes (a tree, a car) fill the viewport instead of
+    /// floating inside the sphere's slack. Fits both the horizontal and vertical FOV.
+    private static func fitDistance(
+        extent: SIMD3<Float>,
+        toCamera: SIMD3<Float>,
+        aspect: Float,
+        padding: Float
+    ) -> Float {
+        let forward = -toCamera
+        var right = cross(forward, SIMD3<Float>(0, 1, 0))
+        // forward parallel to world up (top-down decals): pick any horizontal axis.
+        right = length(right) < 1e-4 ? SIMD3<Float>(1, 0, 0) : normalize(right)
+        let up = normalize(cross(right, forward))
+        // Half-extent of an axis-aligned box projected onto a unit axis (closed form).
+        let half = extent * 0.5
+        func projectedHalf(_ axis: SIMD3<Float>) -> Float {
+            abs(axis.x) * half.x + abs(axis.y) * half.y + abs(axis.z) * half.z
+        }
         // RealityView.make often runs before layout; a ~0 aspect used to push the
         // camera tens of kilometers away so the first frames looked empty.
         let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : 1
-        let longOverShort = max(safeAspect, 1 / safeAspect)
-        let limitingHalf = atan(tan(fovHalf) / longOverShort)
-        return (radius / tan(limitingHalf)) * padding
+        let vHalfFOV = fieldOfViewDegrees * .pi / 360 // camera FOV orientation is vertical
+        let hHalfFOV = atan(tan(vHalfFOV) * safeAspect)
+        let distanceV = projectedHalf(up) / tan(vHalfFOV)
+        let distanceH = projectedHalf(right) / tan(hHalfFOV)
+        // + depth so the near face of the box still fits, not just the center slice.
+        let distance = max(distanceV, distanceH) + projectedHalf(forward)
+        return max(0.0001, distance * padding)
     }
 
     @MainActor

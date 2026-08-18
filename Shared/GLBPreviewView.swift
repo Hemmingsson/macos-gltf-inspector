@@ -62,9 +62,8 @@ struct GLBPreviewView: View {
         /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
             do {
-                let stats = try? GLBPreviewStats.from(url: url)
-                let entity = try await GLBEntityLoader.load(from: url)
-                return .ready(entity, stats: stats)
+                let model = try await GLBEntityLoader.load(from: url)
+                return .ready(model.entity, stats: model.stats)
             } catch {
                 GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
                 return .failed

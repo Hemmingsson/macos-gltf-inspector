@@ -3,13 +3,19 @@ import GLTFKit2
 import RealityKit
 
 enum GLBEntityLoader {
+    /// A converted model plus the cheap glTF-header stats shown in the preview overlay.
+    struct LoadedModel {
+        let entity: Entity
+        let stats: GLBPreviewStats
+    }
+
     /// Loads a self-contained `.glb` or a sidecar `.gltf` (buffers/textures next to the JSON).
     /// Thumbnails should pass `includeAnimations: false` — Finder icons never play clips,
     /// and GLTFKit2 still traps on some zero-stride Sketchfab “Default Take” channels
     /// that slip past the duration filter.
     /// File IO and `GLTFAsset` stay off the main actor so Spacebar can show the loading
     /// view while the file is parsed; RealityKit convert hops to the main actor.
-    static func load(from url: URL, includeAnimations: Bool = true) async throws -> Entity {
+    static func load(from url: URL, includeAnimations: Bool = true) async throws -> LoadedModel {
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
 
         let directoryURL = URL(
@@ -27,53 +33,94 @@ enum GLBEntityLoader {
             }
         }
 
+        // Parse the glTF header once and reuse it for stats and the prepare gates,
+        // instead of re-opening the file for each concern.
+        let isGLB = url.pathExtension.lowercased() == "glb"
+        let sourceJSON: [String: Any]
+        if isGLB {
+            sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
+        } else {
+            sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
+        }
+        let stats = GLBPreviewStats.from(json: sourceJSON)
+
         let loadURL: URL
         let assetDirectory: URL
-        if url.pathExtension.lowercased() == "glb" {
-            loadURL = prepareGLB(url)
+        if isGLB {
+            loadURL = prepareGLB(url, json: sourceJSON)
             assetDirectory = directoryURL
         } else {
             loadURL = try packAndPrepareGLTF(from: url, directoryURL: directoryURL)
             assetDirectory = loadURL.deletingLastPathComponent()
         }
+        // Prepared/packed GLBs are throwaway temp files; the retry path below only ever
+        // reopens the original `url`, so the temp is safe to delete once loading finishes.
+        defer {
+            if loadURL != url {
+                try? FileManager.default.removeItem(at: loadURL)
+            }
+        }
 
         do {
-            return try await convertAsset(
+            let entity = try await convertAsset(
                 at: loadURL,
                 assetDirectory: assetDirectory,
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent
             )
+            return LoadedModel(entity: entity, stats: stats)
         } catch {
             guard loadURL != url else { throw error }
             GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
-            return try await convertAsset(
+            let entity = try await convertAsset(
                 at: url,
                 assetDirectory: directoryURL,
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent
             )
+            return LoadedModel(entity: entity, stats: stats)
         }
     }
 
-    /// Spec/gloss then RealityKit-safe rewrite. Either step is best-effort.
-    private static func prepareGLB(_ url: URL) -> URL {
-        var prepared = url
-        do {
-            prepared = try GLBMetalRoughPrepare.preparedURL(from: prepared)
-        } catch {
-            GLBLog.error(GLBLog.prepare, "metal-rough failed, using original: \(error)")
+    /// Spec/gloss then RealityKit-safe rewrite, fused into one parse → serialize → write.
+    /// Fully best-effort: if neither rewrite applies, or any step (parse, a rewrite, the
+    /// final serialize/write) fails, the original URL is returned so `convertAsset` still
+    /// gets a chance on the untouched bytes.
+    private static func prepareGLB(_ url: URL, json: [String: Any]) -> URL {
+        guard GLBMetalRoughPrepare.needsConversion(json) || GLBRealityPrepare.needsPrepare(json) else {
+            return url
         }
         do {
-            prepared = try GLBRealityPrepare.preparedURL(from: prepared)
+            let prepared = applyPrepares(try GLBBox.parse(Data(contentsOf: url)))
+            let data = try GLBBox.serialize(json: prepared.json, bin: prepared.bin)
+            return try GLBBox.writePrepared(data, prefix: "glb-prepared")
         } catch {
-            GLBLog.error(GLBLog.prepare, "reality prepare failed, using previous: \(error)")
+            GLBLog.error(GLBLog.prepare, "prepare failed, using original: \(error)")
+            return url
         }
-        return prepared
     }
 
-    /// Sidecar `.gltf` is JSON, not a GLB. Pack buffers/images into a temp GLB, then
-    /// run the same prepare path as a native `.glb`.
+    private static func applyPrepares(_ glb: GLBBox) -> GLBBox {
+        var out = glb
+        if GLBMetalRoughPrepare.needsConversion(out.json) {
+            do {
+                out = try GLBMetalRoughPrepare.transformed(out)
+            } catch {
+                GLBLog.error(GLBLog.prepare, "metal-rough failed, using original: \(error)")
+            }
+        }
+        if GLBRealityPrepare.needsPrepare(out.json) {
+            do {
+                out = try GLBRealityPrepare.transformed(out)
+            } catch {
+                GLBLog.error(GLBLog.prepare, "reality prepare failed, using previous: \(error)")
+            }
+        }
+        return out
+    }
+
+    /// Sidecar `.gltf` is JSON, not a GLB. Pack buffers/images into a GLB in memory,
+    /// run the same prepares, and write one temp file.
     private static func packAndPrepareGLTF(from url: URL, directoryURL: URL) throws -> URL {
         let data = try Data(contentsOf: url)
         let json = try GLBBox.parseJSON(data)
@@ -92,8 +139,15 @@ enum GLBEntityLoader {
                 throw error
             }
         }
-        let packedURL = try GLBBox.writePrepared(packed, prefix: "gltf-packed")
-        return prepareGLB(packedURL)
+        // Prepare is best-effort; fall back to the unprepared packed GLB on any failure.
+        do {
+            let prepared = applyPrepares(try GLBBox.parse(packed))
+            let out = try GLBBox.serialize(json: prepared.json, bin: prepared.bin)
+            return try GLBBox.writePrepared(out, prefix: "gltf-prepared")
+        } catch {
+            GLBLog.error(GLBLog.prepare, "gltf prepare failed, using packed: \(error)")
+            return try GLBBox.writePrepared(packed, prefix: "gltf-packed")
+        }
     }
 
     private static func convertAsset(

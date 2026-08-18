@@ -21,6 +21,15 @@ schemes:
         targets:
           - GLBPreviewTests
 
+# Shared across every target so signing and versions live in one place.
+settings:
+  base:
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 94A9N4B67S
+    MARKETING_VERSION: "1.1"
+    CURRENT_PROJECT_VERSION: "4"
+    SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
+
 packages:
   GLTFKit2:
     url: https://github.com/warrenm/GLTFKit2
@@ -93,18 +102,13 @@ targets:
                 - model/gltf+json
         NSMainStoryboardFile: ""
         NSPrincipalClass: NSApplication
-        CFBundleShortVersionString: "1.1"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview
-        MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 94A9N4B67S
         ENABLE_DEBUG_DYLIB: NO
-        SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
         ASSETCATALOG_COMPILER_APPICON_NAME: ICON
       configs:
         Debug:
@@ -143,8 +147,8 @@ targets:
       path: PreviewExtension/Info.plist
       properties:
         CFBundleDisplayName: GLB Preview
-        CFBundleShortVersionString: "1.1"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.preview
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).PreviewViewController"
@@ -156,14 +160,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview.PreviewExtension
-        MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
-        CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 94A9N4B67S
         ENABLE_DEBUG_DYLIB: NO
-        SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
     dependencies:
       - package: GLTFKit2
       - package: DracoSwift
@@ -192,8 +191,8 @@ targets:
       path: ThumbnailExtension/Info.plist
       properties:
         CFBundleDisplayName: GLB Thumbnail
-        CFBundleShortVersionString: "1.1"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.thumbnail
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ThumbnailProvider"
@@ -205,14 +204,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview.ThumbnailExtension
-        MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
-        CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 94A9N4B67S
         ENABLE_DEBUG_DYLIB: NO
-        SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
     dependencies:
       - package: GLTFKit2
       - package: DracoSwift
@@ -226,10 +220,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreviewTests
         GENERATE_INFOPLIST_FILE: YES
-        CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 94A9N4B67S
         ENABLE_TESTING_SEARCH_PATHS: YES
-        SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
     dependencies:
       - target: GLBPreview
       - package: GLTFKit2

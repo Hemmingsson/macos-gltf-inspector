@@ -275,6 +275,20 @@ struct LoaderHelpersTests {
         root.addChild(ModelEntity(mesh: .generateBox(size: 0.2), materials: [SimpleMaterial()]))
         #expect(GLBEntityLoader.modelComponentCount(in: root) == 1)
     }
+
+    /// End-to-end proof of the fused load pipeline: single header parse → convert →
+    /// `LoadedModel` with stats, against a real `.glb`.
+    @MainActor
+    @Test func loadsRealGLBEndToEnd() async throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let url = repoRoot.appendingPathComponent("scripts/tiny.glb")
+        try #require(FileManager.default.fileExists(atPath: url.path))
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        #expect(GLBEntityLoader.modelComponentCount(in: model.entity) > 0)
+        #expect(model.stats.meshCount >= 1)
+    }
 }
 
 private func shortTriangleGLB() throws -> Data {

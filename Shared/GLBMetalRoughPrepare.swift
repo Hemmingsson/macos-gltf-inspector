@@ -12,14 +12,6 @@ enum GLBMetalRoughPrepare {
     private static let iorName = "KHR_materials_ior"
     private static let maxBakeEdge = 1024
 
-    static func preparedURL(from url: URL) throws -> URL {
-        let json = try GLBBox.peekJSON(from: url)
-        guard needsConversion(json) else { return url }
-        let data = try Data(contentsOf: url)
-        let converted = try convert(try GLBBox.parse(data))
-        return try GLBBox.writePrepared(converted, prefix: "glb-metalrough")
-    }
-
     static func needsConversion(_ json: [String: Any]) -> Bool {
         guard let materials = json["materials"] as? [[String: Any]] else { return false }
         return materials.contains { material in
@@ -27,7 +19,9 @@ enum GLBMetalRoughPrepare {
         }
     }
 
-    private static func convert(_ glb: GLBBox) throws -> Data {
+    /// Spec/gloss → metal/rough rewrite, in memory. Serialization happens once at the
+    /// end of the fused prepare in `GLBEntityLoader`.
+    static func transformed(_ glb: GLBBox) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
         var images = json["images"] as? [[String: Any]] ?? []
@@ -130,7 +124,7 @@ enum GLBMetalRoughPrepare {
             removing: [specGlossName],
             addingToUsed: [specularName, iorName]
         )
-        return try GLBBox.serialize(json: json, bin: bin)
+        return GLBBox(json: json, bin: bin)
     }
 
     static func shouldBakeTextures(json: [String: Any], materials: [[String: Any]]) -> Bool {
@@ -155,17 +149,11 @@ enum GLBMetalRoughPrepare {
     }
 
     private static func doubleValue(_ value: Any?, fallback: Double) -> Double {
-        switch value {
-        case let n as Double: return n
-        case let n as Int: return Double(n)
-        case let n as NSNumber: return n.doubleValue
-        default: return fallback
-        }
+        GLBBox.doubleValue(value) ?? fallback
     }
 
     private static func doubleArray(_ value: Any?, fallback: [Double]) -> [Double] {
-        guard let items = value as? [Any] else { return fallback }
-        return items.map { doubleValue($0, fallback: 0) }
+        GLBBox.doubleArray(value) ?? fallback
     }
 
     private static func appendTexture(_ json: inout [String: Any], imageIndex: Int) -> Int {

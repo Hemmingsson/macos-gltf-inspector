@@ -187,6 +187,19 @@ struct GLBBox {
         }
     }
 
+    static func doubleValue(_ value: Any?) -> Double? {
+        switch value {
+        case let n as Double: return n
+        case let n as Int: return Double(n)
+        case let n as NSNumber: return n.doubleValue
+        default: return nil
+        }
+    }
+
+    static func doubleArray(_ value: Any?) -> [Double]? {
+        (value as? [Any])?.map { doubleValue($0) ?? 0 }
+    }
+
     static func appendBytes(_ bytes: Data, bin: inout Data, bufferViews: inout [[String: Any]]) -> Int {
         let offset = aligned(bin.count, to: 4)
         if offset > bin.count {

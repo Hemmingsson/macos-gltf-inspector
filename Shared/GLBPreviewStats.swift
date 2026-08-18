@@ -22,16 +22,6 @@ struct GLBPreviewStats: Equatable {
         )
     }
 
-    static func from(url: URL) throws -> GLBPreviewStats {
-        let json: [String: Any]
-        if url.pathExtension.lowercased() == "gltf" {
-            json = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
-        } else {
-            json = try GLBBox.peekJSON(from: url)
-        }
-        return from(json: json)
-    }
-
     /// Non-zero counts only — for the preview corner list.
     var previewLines: [String] {
         var lines: [String] = []
@@ -62,20 +52,11 @@ struct GLBPreviewStats: Equatable {
                 guard let index = GLBBox.intValue(sampler["input"]),
                       accessors.indices.contains(index),
                       let maxValues = accessors[index]["max"] as? [Any],
-                      let end = doubleValue(maxValues.first)
+                      let end = GLBBox.doubleValue(maxValues.first)
                 else { continue }
                 duration = max(duration ?? end, end)
             }
         }
         return duration
-    }
-
-    private static func doubleValue(_ value: Any?) -> Double? {
-        switch value {
-        case let n as Double: return n
-        case let n as NSNumber: return n.doubleValue
-        case let n as Int: return Double(n)
-        default: return nil
-        }
     }
 }

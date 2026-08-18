@@ -11,14 +11,6 @@ enum GLBRealityPrepare {
     private static let webp = "EXT_texture_webp"
     private static let floatType = 5126
 
-    static func preparedURL(from url: URL) throws -> URL {
-        let json = try GLBBox.peekJSON(from: url)
-        guard needsPrepare(json) else { return url }
-        let glb = try GLBBox.parse(Data(contentsOf: url))
-        let converted = try convert(glb)
-        return try GLBBox.writePrepared(converted, prefix: "glb-reality")
-    }
-
     static func needsPrepare(_ json: [String: Any]) -> Bool {
         let used = (json["extensionsUsed"] as? [String]) ?? []
         if used.contains(quantization) || used.contains(instancing) || used.contains(webp) {
@@ -38,7 +30,9 @@ enum GLBRealityPrepare {
         return hasUnnamedSkinJoints(json)
     }
 
-    static func convert(_ glb: GLBBox) throws -> Data {
+    /// Float positions, PNG textures, expanded GPU instances — in memory. Serialization
+    /// happens once at the end of the fused prepare in `GLBEntityLoader`.
+    static func transformed(_ glb: GLBBox) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
         dequantizeAccessors(&json, bin: &bin)
@@ -47,7 +41,13 @@ enum GLBRealityPrepare {
         nameUnnamedSkinJoints(&json)
         GLBBox.rewriteExtensionLists(&json, removing: [quantization, instancing, webp])
         GLBBox.setPrimaryBufferLength(&json, bin.count)
-        return try GLBBox.serialize(json: json, bin: bin)
+        return GLBBox(json: json, bin: bin)
+    }
+
+    /// Serializing wrapper kept for the unit tests, which assert on GLB bytes.
+    static func convert(_ glb: GLBBox) throws -> Data {
+        let out = try transformed(glb)
+        return try GLBBox.serialize(json: out.json, bin: out.bin)
     }
 
     // MARK: - Dequantize
