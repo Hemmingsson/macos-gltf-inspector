@@ -19,14 +19,3 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
   -derivedDataPath /tmp/GLBPreview-dd test
 ```
-
-## Do not
-
-- Change `GLBPreviewCamera.makeTurntable`’s `(pivot, bounds)` return shape
-- Set `content.environment` / `.skybox` in the preview (replaces the SwiftUI backdrop on macOS)
-- Put studio/IBL entities under the turntable in preview (preview is unlit; thumbnails use `GLBPreviewLighting`)
-- Spawn a `Task` per RealityView `update`
-- Add load-path or per-frame logging — use `GLBLog.info` / `GLBLog.error` only
-- Add outlier AABB / “robust” framing heuristics
-- Add Spotlight importers or Finder Information metadata plugins
-- Recreate `test-models/`, `Fixtures/`, `.build/`, `.cursor/`, `.dex/`, or `plans/`
