@@ -1,5 +1,7 @@
 # GLB Quick Look
 
+Personal fork of [DeepARSDK/glb-preview](https://github.com/DeepARSDK/glb-preview) with thumbnail framing, spec/gloss texture preview, and slower auto-rotate.
+
 macOS Quick Look extension for previewing `.glb` (glTF Binary) files. Press spacebar on any `.glb` file in Finder to get an interactive 3D preview with orbit, pan and zoom.
 
 ![Finder preview of a shoe model](screenshots/finder-preview.png)
@@ -11,11 +13,17 @@ macOS Quick Look extension for previewing `.glb` (glTF Binary) files. Press spac
 - Interactive 3D viewer (orbit, pan, zoom)
 - Draco mesh compression support
 - Animation playback with scrubber and pause
-- Auto-rotate toggle
+- Auto-rotate toggle (20°/s)
 - Background colour toggle (dark/mid/light/white)
-- Camera reset
-- Thumbnail generation for Finder icons
+- Finder thumbnails framed to fill the icon (front 3/4, crop-to-content)
+- Sketchfab spec/gloss materials converted so Spacebar preview shows diffuse textures
 - Fully offline (no network required)
+
+## Fork changes
+
+- **Thumbnails:** SceneKit was snapshotting at Retina scale into the bottom-left of the icon and often used cameras baked into the GLB. Icons now use a fixed front 3/4 view, `SCNView` at scale 1, and crop empty pixels so the mesh fills the square.
+- **Preview textures:** `model-viewer` ignores `KHR_materials_pbrSpecularGlossiness`. The previewer rewrites those materials to metallic-roughness and loads the `.glb` from a local file instead of a huge base64 JavaScript inject.
+- **Preview chrome:** slower auto-rotate; reset-camera button removed.
 
 ## Install (pre-built)
 
@@ -74,7 +82,7 @@ open /Applications/GLBPreview.app
 - Select a `.glb` file in Finder and press **Space** to preview
 - **Left-drag** to orbit
 - **Scroll** to zoom
-- Toolbar buttons (top right): background toggle, auto-rotate, camera reset
+- Toolbar buttons (top right): background toggle, auto-rotate
 - Animation controls appear at the bottom when the model has animations
 
 ## Set as default app for .glb files
@@ -91,6 +99,7 @@ glb-preview/
 │   └── ContentView.swift
 ├── PreviewExtension/                        # Quick Look preview (spacebar)
 │   ├── PreviewViewController.swift
+│   ├── GLBMaterialConverter.swift           # spec/gloss → metallic-roughness
 │   ├── viewer.html                          # model-viewer based 3D viewer
 │   └── model-viewer.min.js                  # Bundled model-viewer v4.0.0
 └── ThumbnailExtension/                      # Finder icon thumbnails

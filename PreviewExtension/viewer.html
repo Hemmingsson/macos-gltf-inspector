@@ -133,10 +133,6 @@
   <button id="bgToggle" title="Toggle background">&#9681;</button>
   <div class="sep"></div>
   <button id="rotateToggle" class="active" title="Auto-rotate">&#8635;</button>
-  <div class="sep"></div>
-  <button id="resetCamera" title="Reset camera">
-    <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><line x1="8" y1="4" x2="8" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" stroke-width="1.5"/></svg>
-  </button>
 </div>
 
 <div class="playback" id="playback">
@@ -153,7 +149,7 @@
   camera-controls
   auto-rotate
   auto-rotate-delay="0"
-  rotation-per-second="45deg"
+  rotation-per-second="20deg"
   interaction-prompt="none"
   min-field-of-view="5deg"
   max-field-of-view="120deg"
@@ -199,14 +195,6 @@
       viewer.removeAttribute('auto-rotate');
       rotateBtn.classList.remove('active');
     }
-  });
-
-  document.getElementById('resetCamera').addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    viewer.cameraOrbit = 'auto auto auto';
-    viewer.cameraTarget = 'auto auto auto';
-    viewer.fieldOfView = 'auto';
-    viewer.jumpCameraToGoal();
   });
 
   document.getElementById('playPause').addEventListener('mousedown', (e) => {

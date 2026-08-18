@@ -5,7 +5,7 @@ import WebKit
 class PreviewViewController: NSViewController, QLPreviewingController, WKNavigationDelegate {
 
     private var webView: WKWebView!
-    private var pendingBase64: String?
+    private var stagingDir: URL?
     private var continuation: CheckedContinuation<Void, Error>?
 
     override func loadView() {
@@ -18,39 +18,34 @@ class PreviewViewController: NSViewController, QLPreviewingController, WKNavigat
     }
 
     func preparePreviewOfFile(at url: URL) async throws {
-        guard let htmlURL = Bundle.main.url(forResource: "viewer", withExtension: "html") else {
+        guard
+            let htmlURL = Bundle.main.url(forResource: "viewer", withExtension: "html"),
+            let jsURL = Bundle.main.url(forResource: "model-viewer.min", withExtension: "js")
+        else {
             return
         }
 
-        let glbData = try Data(contentsOf: url)
-        pendingBase64 = glbData.base64EncodedString()
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+
+        let glbData = GLBMaterialConverter.prepareForWebPreview(try Data(contentsOf: url))
+
+        let staging = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        stagingDir = staging
+        try FileManager.default.copyItem(at: htmlURL, to: staging.appendingPathComponent("viewer.html"))
+        try FileManager.default.copyItem(at: jsURL, to: staging.appendingPathComponent("model-viewer.min.js"))
+        try glbData.write(to: staging.appendingPathComponent("model.glb"))
 
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             self.continuation = cont
-            webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
+            let page = staging.appendingPathComponent("viewer.html")
+            webView.loadFileURL(page, allowingReadAccessTo: staging)
         }
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        guard let base64 = pendingBase64 else {
-            continuation?.resume()
-            continuation = nil
-            return
-        }
-        pendingBase64 = nil
-
-        let js = """
-        (function() {
-            const binary = atob('\(base64)');
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            const blob = new Blob([bytes], { type: 'model/gltf-binary' });
-            const url = URL.createObjectURL(blob);
-            document.getElementById('viewer').src = url;
-        })();
-        """
-
-        webView.evaluateJavaScript(js) { [weak self] _, _ in
+        webView.evaluateJavaScript("document.getElementById('viewer').src = 'model.glb'") { [weak self] _, _ in
             self?.continuation?.resume()
             self?.continuation = nil
         }
