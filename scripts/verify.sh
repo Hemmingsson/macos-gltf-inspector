@@ -33,7 +33,7 @@ if [[ "$BUILD" -eq 1 ]]; then
     -derivedDataPath /tmp/GLBPreview-dd build
   rm -rf "$APP"
   cp -R /tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app "$APP"
-  rm -rf "$APP/Contents/PlugIns/GLBPreviewTests.xctest" "$APP/Contents/Library/Spotlight"
+  rm -rf "$APP/Contents/PlugIns/GLBPreviewTests.xctest"
   qlmanage -r
   open "$APP"
   sleep 2

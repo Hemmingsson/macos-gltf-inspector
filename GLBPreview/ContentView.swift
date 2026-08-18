@@ -41,7 +41,7 @@ struct ContentView: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 96, height: 96)
-            Text("GLB Quick Look")
+            Text("GLB Preview")
                 .font(.title)
             Text("Quick Look preview and thumbnails for .glb and .gltf files are installed.")
                 .foregroundStyle(.secondary)

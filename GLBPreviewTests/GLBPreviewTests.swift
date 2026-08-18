@@ -246,28 +246,6 @@ struct SidecarPackTests {
         #expect(box.bin.count == bin.count)
     }
 
-    @Test func packsSketchfabSidecarWithTexturesFolder() throws {
-        let gltf = URL(fileURLWithPath: "/Users/mattias/Downloads/Cocaine_Pack-9daea520-textures (1)/model.gltf")
-        guard FileManager.default.isReadableFile(atPath: gltf.path) else { return }
-        let dir = gltf.deletingLastPathComponent()
-        let json = try GLBBox.parseJSON(Data(contentsOf: gltf))
-        let packed = try GLBBox.packSidecar(json) { uri in
-            try Data(contentsOf: dir.appendingPathComponent(uri))
-        }
-        let box = try GLBBox.parse(packed)
-        #expect(box.bin.count > 2_000_000)
-        let images = box.json["images"] as? [[String: Any]] ?? []
-        #expect(images.contains { $0["bufferView"] != nil })
-        #expect(images.allSatisfy { $0["uri"] == nil })
-    }
-
-    @MainActor
-    @Test func loadsSketchfabSidecarMesh() async throws {
-        let gltf = URL(fileURLWithPath: "/Users/mattias/Downloads/Cocaine_Pack-9daea520-textures (1)/model.gltf")
-        guard FileManager.default.isReadableFile(atPath: gltf.path) else { return }
-        let entity = try await GLBEntityLoader.load(from: gltf)
-        #expect(GLBEntityLoader.modelComponentCount(in: entity) > 0)
-    }
 }
 
 struct LoaderHelpersTests {

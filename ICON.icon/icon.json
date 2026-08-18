@@ -75,8 +75,8 @@
               }
             }
           ],
-          "image-name" : "gemini-svg (2) 3 3.svg",
-          "name" : "gemini-svg (2) 3 3",
+          "image-name" : "cube-top.svg",
+          "name" : "cube-top",
           "opacity-specializations" : [
             {
               "value" : 0.93
@@ -122,8 +122,8 @@
               }
             }
           ],
-          "image-name" : "gemini-svg (2) 1 3.svg",
-          "name" : "gemini-svg (2) 1 3",
+          "image-name" : "cube-left.svg",
+          "name" : "cube-left",
           "opacity-specializations" : [
             {
               "value" : 1
@@ -170,8 +170,8 @@
             }
           ],
           "glass" : true,
-          "image-name" : "gemini-svg (2) 2 3.svg",
-          "name" : "gemini-svg (2) 2 3",
+          "image-name" : "cube-right.svg",
+          "name" : "cube-right",
           "opacity-specializations" : [
             {
               "value" : 1
@@ -214,8 +214,8 @@
               }
             }
           ],
-          "image-name" : "gemini-svg (2) 3 3.svg",
-          "name" : "gemini-svg (2) 3 3",
+          "image-name" : "cube-top.svg",
+          "name" : "cube-top",
           "opacity-specializations" : [
             {
               "value" : 1

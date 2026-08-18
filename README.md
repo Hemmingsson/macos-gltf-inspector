@@ -30,17 +30,18 @@ Spacebar preview / Quick Look and Finder thumbnails for `.glb` / `.gltf`. macOS 
 
 ## Install
 
-[GLBPreview.zip](https://github.com/Hemmingsson/macos-gltf-preview/releases/latest) → `/Applications`. Right-click → Open. Gatekeeper: **System Settings → Privacy & Security → Open Anyway**. Launch once.
+1. Download [GLBPreview.zip](https://github.com/Hemmingsson/macos-gltf-preview/releases/latest).
+2. Move `GLBPreview.app` to `/Applications`.
+3. Right-click → **Open** (or allow in **System Settings → Privacy & Security**).
+4. Launch once so the Quick Look plugins register.
 
 ## Build
 
-Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen), [ffmpeg](https://ffmpeg.org), team ID in `project.yml` (`DEVELOPMENT_TEAM`).
+Needs Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen), [ffmpeg](https://ffmpeg.org). Set your team ID in `project.yml` (`DEVELOPMENT_TEAM`).
 
-```bash
-brew install xcodegen ffmpeg
-./scripts/verify.sh --build
-```
+1. `brew install xcodegen ffmpeg`
+2. `./scripts/verify.sh --build`
 
-`--build` also writes `screenshots/icon.png` and the README GIFs (`./scripts/publish.sh`).
+That generates the Xcode project, builds, installs to `/Applications`, and refreshes README assets (`./scripts/publish.sh`).
 
 Started from [DeepAR's glb-preview](https://github.com/DeepARSDK/glb-preview) Quick Look / thumbnail skeleton; rewritten to native RealityKit.
