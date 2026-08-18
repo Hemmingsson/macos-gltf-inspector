@@ -13,7 +13,6 @@ enum GLBPreviewCamera {
     /// Also strips cameras embedded in the glTF so framing uses our turntable camera only.
     @MainActor
     static func makeTurntable(for entity: Entity) -> (pivot: Entity, bounds: BoundingBox) {
-        GLBLog.event(GLBLog.camera, "makeTurntable in \(GLBLog.describe(entity))")
         disableFileCameras(entity)
         let worldBounds = entity.visualBounds(relativeTo: nil)
         let center = worldBounds.center
@@ -48,7 +47,19 @@ enum GLBPreviewCamera {
         }
     }
 
+    /// `nil` = not a decal. 0/1/2 = thin X/Y/Z.
+    /// Threshold from the 50-set (graffiti/manhole min=0; snowdrop 0.11/1.83 ≈ 0.06 must not match).
+    static func thinAxis(_ extent: SIMD3<Float>) -> Int? {
+        let longest = max(extent.x, max(extent.y, extent.z))
+        guard longest > 0 else { return nil }
+        if extent.x / longest < 0.02 { return 0 }
+        if extent.y / longest < 0.02 { return 1 }
+        if extent.z / longest < 0.02 { return 2 }
+        return nil
+    }
+
     /// Front 3/4, Y-up. glTF models face +Z, so the camera stands on −Z.
+    /// Standing decals (thin X or Z) look along the thin axis so the face is visible.
     static func cameraPosition(
         minBound: SIMD3<Float>,
         maxBound: SIMD3<Float>,
@@ -59,8 +70,13 @@ enum GLBPreviewCamera {
         let extent = maxBound - minBound
         let radius = max(0.0001, length(extent) * 0.5)
         let distance = fitDistance(radius: radius, aspect: aspect, padding: padding)
-        let yaw = yawDegrees * .pi / 180
+        var yaw = yawDegrees * .pi / 180
         let pitch = pitchDegrees * .pi / 180
+        if let axis = thinAxis(extent) {
+            GLBLog.info(GLBLog.camera, "thinAxis=\(axis) extent=\(GLBLog.fmt3(extent))")
+            if axis == 0 { yaw = .pi / 2 }
+            if axis == 2 { yaw = 0 }
+        }
         let position = SIMD3<Float>(
             center.x + distance * sin(yaw) * cos(pitch),
             center.y + distance * sin(pitch),
@@ -73,7 +89,9 @@ enum GLBPreviewCamera {
     /// to the long axis of a non-square viewport.
     private static func fitDistance(radius: Float, aspect: Float, padding: Float) -> Float {
         let fovHalf = fieldOfViewDegrees * .pi / 360
-        let safeAspect = max(aspect, 0.0001)
+        // RealityView.make often runs before layout; a ~0 aspect used to push the
+        // camera tens of kilometers away so the first frames looked empty.
+        let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : 1
         let longOverShort = max(safeAspect, 1 / safeAspect)
         let limitingHalf = atan(tan(fovHalf) / longOverShort)
         return (radius / tan(limitingHalf)) * padding

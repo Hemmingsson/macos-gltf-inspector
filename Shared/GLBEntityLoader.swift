@@ -7,14 +7,15 @@ enum GLBEntityLoader {
     /// Thumbnails should pass `includeAnimations: false` — Finder icons never play clips,
     /// and GLTFKit2 still traps on some zero-stride Sketchfab “Default Take” channels
     /// that slip past the duration filter.
-    @MainActor
+    /// File IO and `GLTFAsset` stay off the main actor so Spacebar can show the loading
+    /// view while the file is parsed; RealityKit convert hops to the main actor.
     static func load(from url: URL, includeAnimations: Bool = true) async throws -> Entity {
         GLBLog.event(
             GLBLog.load,
             "load start includeAnimations=\(includeAnimations) \(GLBLog.describeURL(url))"
         )
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
-            GLBLog.event(GLBLog.draco, "dracoDecompressorClassName=\(GLTFAsset.dracoDecompressorClassName)")
+        GLBLog.event(GLBLog.draco, "dracoDecompressorClassName=\(GLTFAsset.dracoDecompressorClassName)")
 
         let directoryURL = URL(
             fileURLWithPath: url.deletingLastPathComponent().path,
@@ -98,10 +99,11 @@ enum GLBEntityLoader {
                 userInfo: [NSLocalizedDescriptionKey: "The glTF asset did not specify a default scene"]
             )
         }
-        let entity = GLBLog.timed(GLBLog.load, "GLTFRealityKitLoader.convert \(url.lastPathComponent)") {
-            GLTFRealityKitLoader.convert(scene: scene, asset: asset)
+        let entity = await MainActor.run {
+            GLBLog.timed(GLBLog.load, "GLTFRealityKitLoader.convert \(url.lastPathComponent)") {
+                GLTFRealityKitLoader.convert(scene: scene, asset: asset)
+            }
         }
-        GLBLog.event(GLBLog.load, "entity \(GLBLog.describe(entity))")
         return entity
     }
 

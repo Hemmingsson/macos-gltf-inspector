@@ -78,15 +78,10 @@ struct ContentView: View {
         interaction = GLBPreviewInteraction()
         Task {
             let state = await GLBPreviewView.State.loaded(from: url)
-            GLBLog.event(GLBLog.host, "host load finished file=\(url.lastPathComponent) failed=\(isFailed(state))")
+            GLBLog.event(GLBLog.host, "host load finished file=\(url.lastPathComponent) failed=\(state.isFailed)")
             previewState = state
             GLBWindowLog.dumpWindows("after-host-load")
         }
-    }
-
-    private func isFailed(_ state: GLBPreviewView.State) -> Bool {
-        if case .failed = state { return true }
-        return false
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {

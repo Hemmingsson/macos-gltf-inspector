@@ -8,20 +8,18 @@ final class GLBPreviewInteraction {
 
     func applyScroll(_ event: NSEvent) {
         let dy = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 8
-        GLBLog.event(GLBLog.preview, "scroll dy=\(dy) precise=\(event.hasPreciseScrollingDeltas) zoom=\(zoom)")
+        guard dy != 0 else { return }
         setZoom(zoom * exp(Float(-dy) * 0.004))
     }
 
     func applyMagnify(_ event: NSEvent) {
-        GLBLog.event(GLBLog.preview, "magnify=\(event.magnification) zoom=\(zoom)")
+        guard event.magnification != 0 else { return }
         setZoom(zoom * Float(1 + event.magnification))
     }
 
     private func setZoom(_ value: Float) {
         let clamped = min(max(value, 0.12), 8)
-        if abs(clamped - zoom) > 0.0001 {
-            GLBLog.event(GLBLog.preview, "zoom \(zoom) → \(clamped)")
-        }
+        guard abs(clamped - zoom) > 0.0001 else { return }
         zoom = clamped
     }
 }
@@ -52,12 +50,14 @@ struct GLBPreviewView: View {
         case ready(Entity)
         case failed
 
-        @MainActor
+        var isFailed: Bool {
+            if case .failed = self { true } else { false }
+        }
+
+        /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
-            GLBLog.event(GLBLog.preview, "State.loaded \(GLBLog.describeURL(url))")
             do {
                 let entity = try await GLBEntityLoader.load(from: url)
-                GLBLog.event(GLBLog.preview, "State.ready \(GLBLog.describe(entity))")
                 return .ready(entity)
             } catch {
                 GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
@@ -127,6 +127,7 @@ enum GLBPreviewBackdrop {
 /// Reference box so RealityView `make` can stash unscaled bounds while zoom scales the pivot.
 private final class PreviewFrame {
     var bounds = BoundingBox()
+    var cameraAspect: Float = -1
 }
 
 private struct GLBPreviewScene: View {
@@ -136,7 +137,7 @@ private struct GLBPreviewScene: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var backdropIndex = 0
-    @State private var autoRotate = true
+    @State private var autoRotate: Bool
     @State private var lightingEnabled = true
     @State private var orbitYaw: Float = 0
     @State private var orbitPitch: Float = 0
@@ -147,7 +148,22 @@ private struct GLBPreviewScene: View {
     @State private var isPlaying = true
     @State private var isScrubbing = false
     @State private var viewport = CGSize(width: 810, height: 600)
+    @State private var iblResource: EnvironmentResource?
     private let frame = PreviewFrame()
+
+    init(entity: Entity, interaction: GLBPreviewInteraction, isDark: Bool) {
+        self.entity = entity
+        self.interaction = interaction
+        self.isDark = isDark
+        let bounds = entity.visualBounds(relativeTo: nil)
+        let extent = bounds.max - bounds.min
+        if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
+            _autoRotate = State(initialValue: false)
+            GLBLog.info(GLBLog.preview, "autoRotate disabled for standing plane thinAxis=\(axis)")
+        } else {
+            _autoRotate = State(initialValue: true)
+        }
+    }
 
     private var tickWhileActive: Bool {
         autoRotate || (isPlaying && playback != nil)
@@ -161,7 +177,7 @@ private struct GLBPreviewScene: View {
             frame.bounds = assembled.bounds
 
             content.add(assembled.pivot)
-            Self.syncStudioLights(in: &content, enabled: lightingEnabled)
+            Self.syncStudioLights(in: &content, enabled: lightingEnabled, probe: iblResource)
             content.add(
                 GLBPreviewCamera.makeFrontThreeQuarter(
                     minBound: assembled.bounds.min,
@@ -189,19 +205,22 @@ private struct GLBPreviewScene: View {
             }
             GLBLog.event(GLBLog.preview, "RealityView.make done entities=\(content.entities.count)")
         } update: { content in
-            Self.syncStudioLights(in: &content, enabled: lightingEnabled)
+            Self.syncStudioLights(in: &content, enabled: lightingEnabled, probe: iblResource)
             for entity in content.entities where entity.name == "turntable" {
                 entity.orientation =
                     simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
                     simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
                 entity.scale = SIMD3<Float>(repeating: interaction.zoom)
             }
+            let viewAspect = aspect(of: viewport)
+            guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
+            frame.cameraAspect = viewAspect
             for entity in content.entities where entity.name == "previewCamera" {
                 let position = GLBPreviewCamera.cameraPosition(
                     minBound: frame.bounds.min,
                     maxBound: frame.bounds.max,
                     padding: GLBPreviewCamera.previewFitPadding,
-                    aspect: aspect(of: viewport)
+                    aspect: viewAspect
                 )
                 entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
             }
@@ -210,10 +229,9 @@ private struct GLBPreviewScene: View {
         .background {
             GeometryReader { proxy in
                 GLBPreviewBackdrop.color(at: backdropIndex, dark: isDark)
-                    .onAppear { viewport = proxy.size }
+                    .onAppear { applyViewport(proxy.size) }
                     .onChange(of: proxy.size) { _, size in
-                        GLBLog.event(GLBLog.window, "preview viewport \(viewport.width)x\(viewport.height) → \(size.width)x\(size.height)")
-                        viewport = size
+                        applyViewport(size)
                     }
             }
         }
@@ -239,11 +257,23 @@ private struct GLBPreviewScene: View {
                 .padding(.leading, 84)
             }
         }
+        .task {
+            iblResource = await GLBPreviewLighting.softProbeResource()
+            if iblResource == nil {
+                GLBLog.error(GLBLog.lighting, "IBL failed")
+            }
+        }
         .onAppear {
             GLBLog.event(
                 GLBLog.preview,
                 "scene appear reduceMotion=\(reduceMotion) autoRotate=\(autoRotate) lighting=\(lightingEnabled) anims=\(entity.availableAnimations.count)"
             )
+            let bounds = entity.visualBounds(relativeTo: nil)
+            let extent = bounds.max - bounds.min
+            if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
+                autoRotate = false
+                GLBLog.info(GLBLog.preview, "autoRotate disabled for standing plane thinAxis=\(axis)")
+            }
             if reduceMotion {
                 autoRotate = false
                 GLBLog.event(GLBLog.preview, "autoRotate disabled for Reduce Motion")
@@ -290,15 +320,23 @@ private struct GLBPreviewScene: View {
                 }
                 guard let dragOrigin else { return }
                 orbitYaw = dragOrigin.yaw + Float(value.translation.width) * 0.008
-                orbitPitch = min(
-                    max(dragOrigin.pitch + Float(value.translation.height) * 0.008, -1.2),
-                    1.2
-                )
+                orbitPitch = dragOrigin.pitch + Float(value.translation.height) * 0.008
             }
             .onEnded { _ in
                 GLBLog.event(GLBLog.preview, "orbit drag end yaw=\(orbitYaw) pitch=\(orbitPitch)")
                 dragOrigin = nil
             }
+    }
+
+    private func applyViewport(_ size: CGSize) {
+        guard size.width > 1, size.height > 1 else { return }
+        if abs(size.width - viewport.width) > 0.5 || abs(size.height - viewport.height) > 0.5 {
+            GLBLog.event(
+                GLBLog.window,
+                "preview viewport \(viewport.width)x\(viewport.height) → \(size.width)x\(size.height)"
+            )
+            viewport = size
+        }
     }
 
     private func aspect(of size: CGSize) -> Float {
@@ -311,21 +349,34 @@ private struct GLBPreviewScene: View {
     }
 
     @MainActor
-    private static func syncStudioLights(in content: inout RealityViewCameraContent, enabled: Bool) {
+    private static func syncStudioLights(
+        in content: inout RealityViewCameraContent,
+        enabled: Bool,
+        probe: EnvironmentResource?
+    ) {
         let existing = content.entities.filter { GLBPreviewLighting.studioLightNames.contains($0.name) }
         if enabled {
-            if existing.isEmpty {
+            if !existing.contains(where: { $0.name == GLBPreviewLighting.keyLightName }) {
                 GLBLog.event(GLBLog.lighting, "adding studio lights")
                 for light in GLBPreviewLighting.makeStudioLights() {
                     content.add(light)
                 }
             }
-        } else {
-            if !existing.isEmpty {
-                GLBLog.event(GLBLog.lighting, "removing studio lights count=\(existing.count)")
+            if let probe, !existing.contains(where: { $0.name == GLBPreviewLighting.iblLightName }) {
+                let ibl = GLBPreviewLighting.makeIBLLight(resource: probe)
+                content.add(ibl)
+                if let turntable = content.entities.first(where: { $0.name == "turntable" }) {
+                    GLBPreviewLighting.attachReceivers(on: turntable, light: ibl)
+                }
+                GLBLog.info(GLBLog.lighting, "IBL attached")
             }
+        } else if !existing.isEmpty {
+            GLBLog.info(GLBLog.lighting, "IBL removed count=\(existing.count)")
             for light in existing {
                 content.remove(light)
+            }
+            if let turntable = content.entities.first(where: { $0.name == "turntable" }) {
+                GLBPreviewLighting.removeReceivers(from: turntable)
             }
         }
     }

@@ -3,22 +3,46 @@ import RealityKit
 import simd
 
 enum GLBPreviewLighting {
-    static let studioLightNames: Set<String> = ["keyLight", "fillLight"]
+    static let keyLightName = "keyLight"
+    static let iblLightName = "iblLight"
+    static let studioLightNames: Set<String> = [keyLightName, iblLightName]
 
     @MainActor
     static func makeStudioLights() -> [Entity] {
         let key = DirectionalLight()
-        key.name = "keyLight"
-        key.light.intensity = 8_000
+        key.name = keyLightName
+        key.light.intensity = 2_500
         key.look(at: .zero, from: [1.2, 1.8, 1.5], relativeTo: nil)
+        GLBLog.info(GLBLog.lighting, "makeStudioLights key=2500")
+        return [key]
+    }
 
-        let fill = DirectionalLight()
-        fill.name = "fillLight"
-        fill.light.intensity = 4_000
-        fill.look(at: .zero, from: [-1.6, 0.8, 0.8], relativeTo: nil)
+    @MainActor
+    static func makeIBLLight(resource: EnvironmentResource) -> Entity {
+        let light = Entity()
+        light.name = iblLightName
+        light.components.set(
+            ImageBasedLightComponent(source: .single(resource), intensityExponent: 0)
+        )
+        return light
+    }
 
-        GLBLog.event(GLBLog.lighting, "makeStudioLights key=8000 fill=4000")
-        return [key, fill]
+    @MainActor
+    static func attachReceivers(on root: Entity, light: Entity) {
+        if root.components[ModelComponent.self] != nil {
+            root.components.set(ImageBasedLightReceiverComponent(imageBasedLight: light))
+        }
+        for child in root.children {
+            attachReceivers(on: child, light: light)
+        }
+    }
+
+    @MainActor
+    static func removeReceivers(from root: Entity) {
+        root.components.remove(ImageBasedLightReceiverComponent.self)
+        for child in root.children {
+            removeReceivers(from: child)
+        }
     }
 
     /// Finder icons: soft ambient + one gentle key from the camera.
@@ -45,7 +69,7 @@ enum GLBPreviewLighting {
     private static var cachedProbe: EnvironmentResource?
 
     @MainActor
-    private static func softProbeResource() async -> EnvironmentResource? {
+    static func softProbeResource() async -> EnvironmentResource? {
         if let cachedProbe { return cachedProbe }
         guard let image = softEquirectangular() else { return nil }
         do {

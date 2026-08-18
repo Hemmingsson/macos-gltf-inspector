@@ -13,20 +13,21 @@ enum GLBMetalRoughPrepare {
 
     static func preparedURL(from url: URL) throws -> URL {
         GLBLog.event(GLBLog.prepare, "preparedURL start \(GLBLog.describeURL(url))")
-        let data = try Data(contentsOf: url)
-        let glb = try GLBBox.parse(data)
-        let materials = (glb.json["materials"] as? [[String: Any]])?.count ?? 0
-        let images = (glb.json["images"] as? [[String: Any]])?.count ?? 0
-        let extensionsUsed = (glb.json["extensionsUsed"] as? [String]) ?? []
+        let json = try GLBBox.peekJSON(from: url)
+        let materials = (json["materials"] as? [[String: Any]])?.count ?? 0
+        let images = (json["images"] as? [[String: Any]])?.count ?? 0
+        let extensionsUsed = (json["extensionsUsed"] as? [String]) ?? []
         GLBLog.event(
             GLBLog.prepare,
-            "parsed glb bytes=\(data.count) jsonKeys=\(glb.json.keys.sorted()) bin=\(glb.bin.count) materials=\(materials) images=\(images) extensionsUsed=\(extensionsUsed)"
+            "peeked json jsonKeys=\(json.keys.sorted()) materials=\(materials) images=\(images) extensionsUsed=\(extensionsUsed)"
         )
-        guard needsConversion(glb.json) else {
+        guard needsConversion(json) else {
             GLBLog.event(GLBLog.prepare, "no spec/gloss conversion needed")
             return url
         }
         GLBLog.event(GLBLog.prepare, "converting spec/gloss → metal/rough")
+        let data = try Data(contentsOf: url)
+        let glb = try GLBBox.parse(data)
         let converted = try GLBLog.timed(GLBLog.prepare, "specGloss convert") {
             try convert(glb)
         }
@@ -345,13 +346,15 @@ private func glbAligned(_ value: Int, _ align: Int) -> Int {
 }
 
 private struct GLBBox {
+    private static let magic = Data("glTF".utf8)
+
     var json: [String: Any]
     var bin: Data
 
     static func parse(_ data: Data) throws -> GLBBox {
-        guard data.count >= 12 else { throw GLBMetalRoughPrepare.PrepareError.invalidGLB }
-        let magic = data.subdata(in: 0..<4)
-        guard magic == Data("glTF".utf8) else { throw GLBMetalRoughPrepare.PrepareError.invalidGLB }
+        guard data.count >= 12, data.prefix(4) == magic else {
+            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
+        }
         var offset = 12
         var json: [String: Any] = [:]
         var bin = Data()
@@ -363,16 +366,33 @@ private struct GLBBox {
             guard end <= data.count else { throw GLBMetalRoughPrepare.PrepareError.invalidGLB }
             let payload = data.subdata(in: start..<end)
             if type.hasPrefix("JSON") {
-                guard let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any] else {
-                    throw GLBMetalRoughPrepare.PrepareError.invalidGLB
-                }
-                json = object
+                json = try jsonObject(from: payload)
             } else if type.hasPrefix("BIN") {
                 bin = payload
             }
             offset = glbAligned(end, 4)
         }
         return GLBBox(json: json, bin: bin)
+    }
+
+    /// JSON chunk only — skips the BIN so metal/rough files are not fully copied just to
+    /// decide that spec/gloss conversion is unnecessary. First chunk is JSON per the GLB spec.
+    static func peekJSON(from url: URL) throws -> [String: Any] {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        guard let header = try handle.read(upToCount: 12), header.count == 12, header.prefix(4) == magic,
+              let chunkHeader = try handle.read(upToCount: 8), chunkHeader.count == 8
+        else {
+            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
+        }
+        let chunkLen = Int(readUInt32(chunkHeader, 0))
+        let type = String(data: chunkHeader.subdata(in: 4..<8), encoding: .ascii) ?? ""
+        guard type.hasPrefix("JSON"),
+              let payload = try handle.read(upToCount: chunkLen), payload.count == chunkLen
+        else {
+            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
+        }
+        return try jsonObject(from: payload)
     }
 
     static func serialize(json: [String: Any], bin: Data) throws -> Data {
@@ -393,6 +413,13 @@ private struct GLBBox {
         out.append(contentsOf: Array("BIN\0".utf8))
         out.append(binData)
         return out
+    }
+
+    private static func jsonObject(from payload: Data) throws -> [String: Any] {
+        guard let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any] else {
+            throw GLBMetalRoughPrepare.PrepareError.invalidGLB
+        }
+        return object
     }
 
     private static func readUInt32(_ data: Data, _ offset: Int) -> UInt32 {

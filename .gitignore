@@ -4,6 +4,14 @@ xcuserdata/
 *.xcworkspace
 DerivedData/
 build/
+.build/
+
+# Local research / agent scratch (not the product)
+.cursor/
+.dex/
+plans/
+test-models/
+Fixtures/
 
 # Generated plists (xcodegen recreates these)
 PreviewExtension/Info.plist

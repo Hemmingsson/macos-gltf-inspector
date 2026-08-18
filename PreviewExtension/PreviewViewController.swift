@@ -5,6 +5,7 @@ import SwiftUI
 class PreviewViewController: NSViewController, QLPreviewingController {
     private let interaction = GLBPreviewInteraction()
     private var hostingView: GLBPreviewHostingView!
+    private var loadTask: Task<Void, Never>?
 
     override func loadView() {
         GLBLog.processBanner("ql-loadView")
@@ -56,6 +57,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
 
     override func viewWillDisappear() {
         super.viewWillDisappear()
+        loadTask?.cancel()
         GLBLog.event(GLBLog.window, "QL viewWillDisappear")
         GLBWindowLog.dumpWindows("ql-viewWillDisappear")
     }
@@ -63,15 +65,24 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     func preparePreviewOfFile(at url: URL) async throws {
         GLBLog.event(GLBLog.preview, "QL preparePreviewOfFile \(GLBLog.describeURL(url))")
         let dark = Self.systemIsDark()
-        let state = await GLBPreviewView.State.loaded(from: url)
-        let failed: Bool
-        if case .failed = state { failed = true } else { failed = false }
-        GLBLog.event(GLBLog.preview, "QL prepare finished failed=\(failed) dark=\(dark)")
-        await MainActor.run {
-            hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-            hostingView.rootView = GLBPreviewView(state: state, interaction: interaction, isDark: dark)
-            GLBWindowLog.dumpWindows("ql-after-prepare")
+        // Detached so Quick Look can present the loading view on the main actor
+        // before GLTFKit2 convert occupies it.
+        loadTask?.cancel()
+        loadTask = Task.detached { [weak self] in
+            await Task.yield()
+            let state = await GLBPreviewView.State.loaded(from: url)
+            guard !Task.isCancelled else { return }
+            await self?.present(state, dark: dark)
         }
+        GLBLog.event(GLBLog.preview, "QL prepare returned; load running in background")
+    }
+
+    @MainActor
+    private func present(_ state: GLBPreviewView.State, dark: Bool) {
+        GLBLog.event(GLBLog.preview, "QL prepare finished failed=\(state.isFailed) dark=\(dark)")
+        hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        hostingView.rootView = GLBPreviewView(state: state, interaction: interaction, isDark: dark)
+        GLBWindowLog.dumpWindows("ql-after-prepare")
     }
 
     private static func systemIsDark() -> Bool {

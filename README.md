@@ -10,9 +10,10 @@ macOS Quick Look extension for previewing `.glb` (glTF Binary) files. Press spac
 ## Features
 
 - Spacebar preview of `.glb` and sidecar `.gltf` files (`.bin` / textures next to the JSON) in Finder
-- Interactive 3D viewer (orbit, pan, zoom)
+- Interactive 3D viewer (orbit, zoom)
 - Animation playback with scrubber and pause
-- Auto-rotate toggle (20°/s)
+- Auto-rotate toggle (20°/s; off for Reduce Motion and standing-plane decals)
+- Studio lighting toggle (soft IBL + one key light, same as Finder icons)
 - Background colour toggle (dark/mid/light/white)
 - Finder thumbnails framed to fill the icon (front 3/4)
 - Spec/gloss materials rewritten natively (`GLBMetalRoughPrepare`) before load
@@ -22,7 +23,10 @@ macOS Quick Look extension for previewing `.glb` (glTF Binary) files. Press spac
 
 - **One renderer:** Spacebar preview and Finder icons both load with GLTFKit2 → RealityKit (`RealityView` / `RealityRenderer`).
 - **Thumbnails:** Front 3/4 camera from visual bounds. File cameras in the asset are ignored. Mesh fills the square by framing, not a pixel crop.
-- **Preview chrome:** Native overlay (backdrop cycle, auto-rotate, animation scrubber). Auto-rotate respects Reduce Motion.
+- **Lighting:** Preview and icons share a gray IBL probe plus a key at intensity 2500. Preview attaches IBL with `ImageBasedLightComponent` + receivers (do not set `content.environment` — that replaces the SwiftUI backdrop on macOS).
+- **Standing decals:** Very thin X or Z extents face the camera and do not auto-rotate (graffiti-style cards). Thin Y (manhole covers) still uses the usual 3/4 view and can spin.
+- **Preview chrome:** Native overlay (backdrop cycle, lighting, auto-rotate, animation scrubber). Auto-rotate respects Reduce Motion.
+- **Load path:** File IO and glTF parse stay off the main actor so Spacebar can show a loading view; RealityKit convert hops to the main actor.
 
 ## Install (pre-built)
 
@@ -81,7 +85,7 @@ open /Applications/GLBPreview.app
 - Select a `.glb` file in Finder and press **Space** to preview
 - **Left-drag** to orbit
 - **Scroll** to zoom
-- Toolbar buttons (bottom left): background toggle, auto-rotate
+- Toolbar buttons (bottom left): background, studio lighting, auto-rotate
 - Scroll or pinch to zoom
 - Animation controls appear at the bottom when the model has animations
 
@@ -94,13 +98,16 @@ Right-click any `.glb` file > **Get Info** > **Open With** > select **GLBPreview
 ```
 glb-preview/
 ├── project.yml                              # XcodeGen project spec
-├── Shared/                                  # Load + viewer + 3/4 camera (both extensions)
+├── Shared/                                  # Load + viewer + camera + lights (both extensions)
 │   ├── GLBEntityLoader.swift
 │   ├── GLBPreviewCamera.swift
+│   ├── GLBPreviewLighting.swift
 │   ├── GLBPreviewView.swift
 │   ├── GLBMetalRoughPrepare.swift
+│   ├── GLBLog.swift
 │   ├── GLBDracoDecompressor.h
 │   └── GLBDracoDecompressor.mm
+├── AGENTS.md                                # Agent / contributor map
 ├── GLBPreview/                              # Host app (minimal)
 │   ├── GLBPreviewApp.swift
 │   └── ContentView.swift
