@@ -12,19 +12,23 @@ Quick Look previews and Finder thumbnails for `.glb` and `.gltf` on macOS 15+.
 - Mesh, material, and animation counts in Quick Look.
 
 <p align="center">
-  <img src="assets/preview.gif" alt="Finder preview of a .glb file">
+  <img src="assets/exported/quick_look.webp" alt="Quick Look preview of a .glb file, model spinning">
 </p>
 
 <table>
   <tr>
     <td align="center" valign="top" width="50%">
-      <img src="assets/quick-look.gif" alt="Quick Look preview of a .glb file">
+      <img src="assets/exported/app_window.webp" alt="App window preview of a spinning .glb file">
     </td>
     <td align="center" valign="top" width="50%">
-      <img src="assets/finder-thumbnail.png" alt="Finder icon thumbnails for .glb files">
+      <img src="assets/exported/finder_details_pane.webp" alt="Finder open-panel preview of a spinning .glb file">
     </td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="assets/exported/finder_thumbnails.webp" alt="Finder thumbnail previews for .glb / .gltf files">
+</p>
 
 ## Install
 
