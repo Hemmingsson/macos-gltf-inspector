@@ -7,10 +7,12 @@ set -euo pipefail
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MODEL="$ROOT/screenshots/DamagedHelmet.glb"
+SRC="$ROOT/screenshots/source_assets"
+OUT="$ROOT/screenshots"
+MODEL="$SRC/DamagedHelmet.glb"
 FRAMES="/tmp/glb-promo-frames"
-BASE="$ROOT/screenshots/base-image.png"
-GIF="$ROOT/screenshots/preview.gif"
+BASE="$SRC/base-image.png"
+GIF="$OUT/preview.gif"
 DD="/tmp/GLBPromo-dd"
 
 command -v xcodegen >/dev/null || { echo "install XcodeGen: brew install xcodegen" >&2; exit 1; }
@@ -31,18 +33,18 @@ mkdir -p "$FRAMES"
 
 python3 "$ROOT/scripts/compose-finder-gif.py" --base "$BASE" --frames "$FRAMES" --fps 24 --scale-width 1271 --out "$GIF"
 
-# Quick Look tree spin onto screenshots/quick-look.png
-QL_MODEL="$ROOT/screenshots/american_tree.glb"
-QL_BASE="$ROOT/screenshots/quick-look.png"
-QL_GIF="$ROOT/screenshots/quick-look.gif"
+# Quick Look tree spin onto source_assets/quick-look.png → screenshots/quick-look.gif
+QL_MODEL="$SRC/american_tree.glb"
+QL_BASE="$SRC/quick-look.png"
+QL_GIF="$OUT/quick-look.gif"
 QL_FRAMES="/tmp/glb-promo-tree-frames"
 if [[ -f "$QL_MODEL" && -f "$QL_BASE" ]]; then
   rm -rf "$QL_FRAMES"
   mkdir -p "$QL_FRAMES"
-  "$PROMO" --model "$QL_MODEL" --out-dir "$QL_FRAMES" --frames 72 --width 1558 --height 984 \
-    --aspect 1.583 --padding 1.08
+  "$PROMO" --model "$QL_MODEL" --out-dir "$QL_FRAMES" --frames 72 --width 1558 --height 994 \
+    --aspect 1 --padding 1
   python3 "$ROOT/scripts/compose-finder-gif.py" --base "$QL_BASE" --frames "$QL_FRAMES" \
-    --fps 24 --pane white --out "$QL_GIF"
+    --fps 24 --pane white --content-crop --out "$QL_GIF"
   echo "ok $QL_GIF"
 fi
 

@@ -2,7 +2,7 @@
 # Check the installed Quick Look extensions.
 #
 #   ./scripts/verify.sh              # app + pluginkit
-#   ./scripts/verify.sh --build      # xcodegen + xcodebuild + install + README GIF
+#   ./scripts/verify.sh --build      # xcodegen + xcodebuild + install + README assets
 #   qlmanage -p scripts/tiny.glb     # interactive preview (separate)
 set -euo pipefail
 
@@ -37,7 +37,7 @@ if [[ "$BUILD" -eq 1 ]]; then
   qlmanage -r
   open "$APP"
   sleep 2
-  "$ROOT/scripts/promo-gif.sh"
+  "$ROOT/scripts/publish.sh"
 fi
 
 if [[ ! -d "$APP" ]]; then

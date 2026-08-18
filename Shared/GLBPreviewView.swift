@@ -59,10 +59,6 @@ struct GLBPreviewView: View {
         case ready(Entity, stats: GLBPreviewStats?)
         case failed
 
-        var isFailed: Bool {
-            if case .failed = self { true } else { false }
-        }
-
         /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
             do {
@@ -92,15 +88,12 @@ struct GLBPreviewView: View {
                     GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
                     Text("Failed to load model")
                         .font(.system(size: 13))
-                        .foregroundStyle(isDark ? .white.opacity(0.5) : .black.opacity(0.45))
+                        .foregroundStyle(
+                            GLBPreviewBackdrop.iconColor(at: 0, systemDark: isDark, active: true).opacity(0.5)
+                        )
                         .multilineTextAlignment(.center)
                         .padding()
                 }
-            }
-        }
-        .onAppear {
-            if case .failed = state {
-                GLBLog.error(GLBLog.preview, "view appear failed dark=\(isDark)")
             }
         }
     }
@@ -117,16 +110,12 @@ enum GLBPreviewBackdrop {
         all[index % all.count]
     }
 
-    /// Dark icons use the same charcoal as the dark backdrop.
-    static var iconDark: Color { dark }
-
-    /// White icons on dark surfaces; charcoal on light / clear+light system.
+    /// White icons on dark surfaces; charcoal on light. Clear backdrop: OS setting first (QL `isDark` is flaky).
     static func useLightIcons(at index: Int, systemDark: Bool) -> Bool {
         switch index % all.count {
-        case 1: return false // white backdrop → dark icons
-        case 2: return true // dark backdrop → light icons
+        case 1: return false
+        case 2: return true
         default:
-            // Clear backdrop: trust OS setting first (QL colorScheme is unreliable).
             if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
                 return true
             }
@@ -135,7 +124,7 @@ enum GLBPreviewBackdrop {
     }
 
     static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
-        let base: Color = useLightIcons(at: index, systemDark: systemDark) ? .white : iconDark
+        let base: Color = useLightIcons(at: index, systemDark: systemDark) ? .white : dark
         return active ? base : base.opacity(0.4)
     }
 }
@@ -182,7 +171,7 @@ private struct GLBPreviewScene: View {
     }
 
     private var tickWhileActive: Bool {
-        autoRotate || (isPlaying && playback != nil)
+        autoRotate || (chromeVisible && isPlaying && playback != nil)
     }
 
     var body: some View {
@@ -253,31 +242,28 @@ private struct GLBPreviewScene: View {
                     GLBPreviewToolbar(
                         backdropIndex: $backdropIndex,
                         autoRotate: $autoRotate,
-                        showPlayback: playback != nil && clipDuration > 0,
+                        showPlayback: playback != nil,
                         isPlaying: $isPlaying,
                         currentTime: currentTime,
                         systemDark: isDark
                     )
                     Spacer(minLength: 8)
                         .allowsHitTesting(false)
-                    if let stats {
-                        let lines = stats.previewLines
-                        if !lines.isEmpty {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                ForEach(lines, id: \.self) { line in
-                                    Text(line)
-                                        .font(.system(size: 11, weight: .regular).monospacedDigit())
-                                        .foregroundStyle(
-                                            GLBPreviewBackdrop.iconColor(
-                                                at: backdropIndex,
-                                                systemDark: isDark,
-                                                active: true
-                                            ).opacity(0.55)
-                                        )
-                                }
+                    if let lines = stats?.previewLines, !lines.isEmpty {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            ForEach(lines, id: \.self) { line in
+                                Text(line)
+                                    .font(.system(size: 11, weight: .regular).monospacedDigit())
+                                    .foregroundStyle(
+                                        GLBPreviewBackdrop.iconColor(
+                                            at: backdropIndex,
+                                            systemDark: isDark,
+                                            active: true
+                                        ).opacity(0.55)
+                                    )
                             }
-                            .allowsHitTesting(false)
                         }
+                        .allowsHitTesting(false)
                     }
                 }
                 .padding(.horizontal, 14)
@@ -288,12 +274,6 @@ private struct GLBPreviewScene: View {
         }
         .animation(.easeInOut(duration: 0.15), value: chromeVisible)
         .onAppear {
-            let bounds = GLBPreviewCamera.modelBounds(of: entity)
-            let extent = bounds.max - bounds.min
-            if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
-                autoRotate = false
-                GLBLog.info(GLBLog.preview, "autoRotate disabled for standing plane thinAxis=\(axis)")
-            }
             if reduceMotion {
                 autoRotate = false
             }
@@ -316,7 +296,7 @@ private struct GLBPreviewScene: View {
                 if autoRotate, dragOrigin == nil {
                     orbitYaw += Float(dt) * 20 * .pi / 180
                 }
-                if isPlaying, let playback, clipDuration > 0 {
+                if chromeVisible, isPlaying, let playback, clipDuration > 0 {
                     currentTime = playback.time.truncatingRemainder(dividingBy: clipDuration)
                     if currentTime < 0 { currentTime += clipDuration }
                 }
@@ -328,12 +308,10 @@ private struct GLBPreviewScene: View {
     private var orbitDragGesture: some Gesture {
         DragGesture(minimumDistance: 10)
             .onChanged { value in
-                if dragOrigin == nil {
-                    dragOrigin = (orbitYaw, orbitPitch)
-                }
-                guard let dragOrigin else { return }
-                orbitYaw = dragOrigin.yaw + Float(value.translation.width) * 0.008
-                orbitPitch = dragOrigin.pitch + Float(value.translation.height) * 0.008
+                let origin = dragOrigin ?? (orbitYaw, orbitPitch)
+                dragOrigin = origin
+                orbitYaw = origin.yaw + Float(value.translation.width) * 0.008
+                orbitPitch = origin.pitch + Float(value.translation.height) * 0.008
             }
             .onEnded { _ in
                 dragOrigin = nil
@@ -360,19 +338,8 @@ private struct GLBPreviewToolbar: View {
     var currentTime: TimeInterval
     var systemDark: Bool
 
-    @Environment(\.colorScheme) private var colorScheme
-
-    /// Prefer live SwiftUI color scheme; fall back to the QL/host `isDark` flag.
-    private var resolvedSystemDark: Bool {
-        switch colorScheme {
-        case .dark: return true
-        case .light: return false
-        @unknown default: return systemDark
-        }
-    }
-
     private func tint(active: Bool) -> Color {
-        GLBPreviewBackdrop.iconColor(at: backdropIndex, systemDark: resolvedSystemDark, active: active)
+        GLBPreviewBackdrop.iconColor(at: backdropIndex, systemDark: systemDark, active: active)
     }
 
     var body: some View {

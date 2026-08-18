@@ -14,10 +14,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
             rootView: GLBPreviewView(state: .loading, interaction: interaction, isDark: dark)
         )
         hostingView.interaction = interaction
-        hostingView.wantsLayer = true
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        hostingView.layer?.isOpaque = false
-        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         hostingView.autoresizingMask = [.width, .height]
 
         let root = GLBPreviewEventView(frame: .zero)

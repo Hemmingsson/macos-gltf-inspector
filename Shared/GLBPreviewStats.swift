@@ -2,12 +2,12 @@ import Foundation
 
 /// Cheap glTF JSON stats for the in-viewer overlay. JSON chunk only — no BIN.
 struct GLBPreviewStats: Equatable {
-    var meshCount: Int
-    var materialCount: Int
-    var animationCount: Int
-    var nodeCount: Int
-    var textureCount: Int
-    var durationSeconds: Double?
+    let meshCount: Int
+    let materialCount: Int
+    let animationCount: Int
+    let nodeCount: Int
+    let textureCount: Int
+    let durationSeconds: Double?
 
     static func from(json: [String: Any]) -> GLBPreviewStats {
         let animations = json["animations"] as? [[String: Any]] ?? []

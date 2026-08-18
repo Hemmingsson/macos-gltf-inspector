@@ -3,48 +3,6 @@ import RealityKit
 import simd
 
 enum GLBPreviewLighting {
-    static let keyLightName = "keyLight"
-    static let iblLightName = "iblLight"
-    static let studioLightNames: Set<String> = [keyLightName, iblLightName]
-
-    @MainActor
-    static func makeStudioLights() -> [Entity] {
-        let key = DirectionalLight()
-        key.name = keyLightName
-        key.light.intensity = 2_500
-        key.look(at: .zero, from: [1.2, 1.8, 1.5], relativeTo: nil)
-        GLBLog.info(GLBLog.lighting, "makeStudioLights key=2500")
-        return [key]
-    }
-
-    @MainActor
-    static func makeIBLLight(resource: EnvironmentResource) -> Entity {
-        let light = Entity()
-        light.name = iblLightName
-        light.components.set(
-            ImageBasedLightComponent(source: .single(resource), intensityExponent: 0)
-        )
-        return light
-    }
-
-    @MainActor
-    static func attachReceivers(on root: Entity, light: Entity) {
-        if root.components[ModelComponent.self] != nil {
-            root.components.set(ImageBasedLightReceiverComponent(imageBasedLight: light))
-        }
-        for child in root.children {
-            attachReceivers(on: child, light: light)
-        }
-    }
-
-    @MainActor
-    static func removeReceivers(from root: Entity) {
-        root.components.remove(ImageBasedLightReceiverComponent.self)
-        for child in root.children {
-            removeReceivers(from: child)
-        }
-    }
-
     /// Finder icons: soft ambient + one gentle key from the camera.
     /// `intensityExponent` is power-of-two (0 ≈ 1×).
     @MainActor
@@ -67,7 +25,7 @@ enum GLBPreviewLighting {
     private static var cachedProbe: EnvironmentResource?
 
     @MainActor
-    static func softProbeResource() async -> EnvironmentResource? {
+    private static func softProbeResource() async -> EnvironmentResource? {
         if let cachedProbe { return cachedProbe }
         guard let image = softEquirectangular() else { return nil }
         do {
