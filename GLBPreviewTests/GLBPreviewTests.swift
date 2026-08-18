@@ -84,6 +84,25 @@ struct RealityPrepareTests {
         #expect(GLBBox.intValue(position?["componentType"]) == 5126)
     }
 
+    @Test func dequantizesShortPositionsToRawValues() throws {
+        let glb = try GLBBox.parse(try shortTriangleGLB())
+        let converted = try GLBRealityPrepare.convert(glb)
+        let prepared = try GLBBox.parse(converted)
+        let accessors = prepared.json["accessors"] as? [[String: Any]] ?? []
+        let bufferViews = prepared.json["bufferViews"] as? [[String: Any]] ?? []
+        let position = try #require(accessors.first { ($0["type"] as? String) == "VEC3" })
+        #expect(GLBBox.intValue(position["componentType"]) == 5126)
+        let viewIndex = try #require(GLBBox.intValue(position["bufferView"]))
+        let offset = GLBBox.intValue(bufferViews[viewIndex]["byteOffset"]) ?? 0
+        let count = GLBBox.intValue(position["count"]) ?? 0
+        let floats = (0..<(count * 3)).map { i in
+            Float(bitPattern: GLBBox.readUInt32(prepared.bin, offset + i * 4))
+        }
+        // The node carries no transform, so non-normalized quantized positions
+        // must dequantize to their raw integer values, not a min/max remap.
+        #expect(floats == [0, 0, 0, 100, 0, 0, 0, 100, 0])
+    }
+
     @Test func skipAccessorIndicesIncludesMeshoptViews() {
         let json: [String: Any] = [
             "bufferViews": [

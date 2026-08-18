@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
 import ImageIO
-import Metal
+@preconcurrency import Metal
 import RealityKit
 import UniformTypeIdentifiers
 

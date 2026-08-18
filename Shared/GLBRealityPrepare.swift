@@ -64,15 +64,11 @@ enum GLBRealityPrepare {
             let dimension = componentCount(accessors[i]["type"] as? String)
             guard dimension > 0 else { continue }
             let normalized = accessors[i]["normalized"] as? Bool ?? false
-            let minValues = accessors[i]["min"] as? [Double]
-            let maxValues = accessors[i]["max"] as? [Double]
             guard let values = readNumeric(
                 accessor: accessors[i],
                 bufferViews: bufferViews,
                 bin: bin,
-                normalized: normalized,
-                minValues: minValues,
-                maxValues: maxValues
+                normalized: normalized
             ) else { continue }
             var payload = Data(count: values.count * MemoryLayout<Float>.size)
             payload.withUnsafeMutableBytes { raw in
@@ -318,9 +314,7 @@ enum GLBRealityPrepare {
             accessor: accessors[index],
             bufferViews: bufferViews,
             bin: bin,
-            normalized: accessors[index]["normalized"] as? Bool ?? false,
-            minValues: accessors[index]["min"] as? [Double],
-            maxValues: accessors[index]["max"] as? [Double]
+            normalized: accessors[index]["normalized"] as? Bool ?? false
         ) ?? []
     }
 
@@ -328,9 +322,7 @@ enum GLBRealityPrepare {
         accessor: [String: Any],
         bufferViews: [[String: Any]],
         bin: Data,
-        normalized: Bool,
-        minValues: [Double]?,
-        maxValues: [Double]?
+        normalized: Bool
     ) -> [Double]? {
         guard let viewIndex = GLBBox.intValue(accessor["bufferView"]),
               bufferViews.indices.contains(viewIndex),
@@ -354,21 +346,10 @@ enum GLBRealityPrepare {
                 guard offset + componentSize(componentType) <= bin.count else { return nil }
                 let raw = readComponent(bin, offset: offset, type: componentType)
                 let index = i * dimension + c
-                if componentType == floatType {
-                    out[index] = raw
-                } else if normalized {
-                    out[index] = normalize(raw, type: componentType)
-                } else if let minValues, let maxValues,
-                          minValues.indices.contains(c), maxValues.indices.contains(c),
-                          maxValues[c] != minValues[c]
-                {
-                    let lo = integerMin(componentType)
-                    let hi = integerMax(componentType)
-                    let t = hi == lo ? 0 : (raw - lo) / (hi - lo)
-                    out[index] = minValues[c] + t * (maxValues[c] - minValues[c])
-                } else {
-                    out[index] = raw
-                }
+                // glTF: normalized integers divide by the type max; non-normalized
+                // integers (KHR_mesh_quantization) are used as-is and placed by the
+                // node transform. `min`/`max` are descriptive bounds, not a remap range.
+                out[index] = normalized ? normalize(raw, type: componentType) : raw
             }
         }
         return out
@@ -400,25 +381,6 @@ enum GLBRealityPrepare {
         case 5122: return max(value / 32767, -1)
         case 5123: return value / 65535
         default: return value
-        }
-    }
-
-    private static func integerMin(_ type: Int) -> Double {
-        switch type {
-        case 5120: return -128
-        case 5122: return -32768
-        default: return 0
-        }
-    }
-
-    private static func integerMax(_ type: Int) -> Double {
-        switch type {
-        case 5120: return 127
-        case 5121: return 255
-        case 5122: return 32767
-        case 5123: return 65535
-        case 5125: return Double(UInt32.max)
-        default: return 1
         }
     }
 
