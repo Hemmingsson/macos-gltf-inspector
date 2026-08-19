@@ -1,7 +1,7 @@
 # glTF host viewer (RealityKit)
 
 Date: 2026-08-19  
-Status: draft for user review  
+Status: approved pending implementation plan  
 Repo: glb-preview (macOS 15+ Quick Look + Finder thumbnails + host app)
 
 ## Goal
@@ -37,11 +37,11 @@ Quick Look and Finder thumbnails stay chrome-less. They must use the same **defa
 One `DefaultLook.apply` used by host on load, `GLBPreviewView` (Quick Look), and `RealityRenderer` thumbnails:
 
 1. Convert the **default scene** (`asset.defaultScene` / glTF `scene`).
-2. Studio IBL always attached. `intensityExponent` is **0** if the file has no punctual lights, **−2** if it does (current scenery rule).
+2. IBL always attached using bundled **Studio Neutral** (Khronos pack, not Poly Haven `studio_small_09`). `intensityExponent` is **0** if the file has no punctual lights, **−2** if it does (current scenery rule).
 3. File punctual lights enabled when present.
 4. Fit camera (file cameras exist but are inactive until the host picks one).
 5. Backdrop is the current clear / white / dark cycle — **not** a skybox.
-6. Debug mode none. Exposure gain 1. Environment Map off. Blur off. Tone map is RealityKit’s built-in (no Neutral post-process).
+6. Debug mode none. Exposure gain 1. Environment Map off. Blur off. Tone map on host macOS 26+ is **Khronos PBR Neutral** (same default as Sample Viewer). QL / thumbs use that same Neutral Metal when the still/`RealityView` path can run it; on macOS 15 they keep RealityKit’s built-in map.
 7. If `KHR_materials_variants` exists, bind the file’s default / recommended variant so QL and thumbs match the host.
 8. Thumbnails: `includeAnimations: false`. QL: first usable clip / existing scenery playback. No inspector.
 
@@ -90,16 +90,39 @@ Three panes: left file | center `RealityView` | right view.
 - Blur (default off) → blur **skybox only** (rougher prefilter / higher mip). IBL lighting stays sharp.
 - Background Color — used when Environment Map is off.
 - Environment Rotation — `+Z` / `−X` / `−Z` / `+X`. Rotates IBL entity and skybox, not the model.
-- Active Environment — Studio + HDRs added this session.
+- Active Environment — the **exact Khronos Sample Viewer library** (names as in the viewer), plus HDRs added this session.
 - + Add New HDR — file picker / drop, session only.
+
+Bundled environments (vendor from [glTF-Sample-Environments](https://github.com/KhronosGroup/glTF-Sample-Environments) and/or the Sample Viewer `assets` HDR set at implement time; keep each file’s license next to it). Labels must match the viewer:
+
+1. Cannon Exterior  
+2. Footprint Court  
+3. Pisa  
+4. Doge's palace  
+5. Dining room  
+6. Field  
+7. Helipad Goldenhour  
+8. Papermill Ruins  
+9. Studio Neutral *(DefaultLook)*  
+10. Colorful Studio  
+11. Wide Street  
+
+Drop `assets/ibl/studio_small_09_1k.hdr` once Studio Neutral is wired. Do not invent extra built-in names.
 
 **Lighting**
 
-- Image Based — default **on** (Studio). Off removes IBL receivers. Uses Active Environment.
+- Image Based — default **on** (Studio Neutral). Off removes IBL receivers. Uses Active Environment.
 - Punctual Lighting — default on; off disables converted light components. No fake key light.
 - IBL Intensity — log **0.01 … 10000**, default **1**. Maps onto `intensityExponent` so 1 equals DefaultLook’s 0 or −2.
 - Exposure — log **0 … 64**, default **1** (photographic EV, not a light). Framebuffer gain.
-- Tone Map — RealityKit, Khronos PBR Neutral, ACES Hill + exposure boost, ACES Narkowicz, ACES Hill, None. **Default on open is RealityKit** so the window matches QL/thumbs. Neutral is a host session choice, not DefaultLook.
+- Tone Map — **exact Sample Viewer titles**, in this order:
+  1. Khronos PBR Neutral *(host default on 26+)*
+  2. ACES Filmic Tone Mapping (Hill - Exposure Boost)
+  3. ACES Filmic Tone Mapping (Narkowicz)
+  4. ACES Filmic Tone Mapping (Hill)
+  5. None (Linear mapping, clamped at 1.0)
+
+  Implement the published Khronos / ACES curves in Metal. No extra “RealityKit” menu item. On macOS 15 the Tone Map row is visible and disabled.
 
 **Debug** — None, Base Color, Roughness, Metalness, Normals, Emission, Wireframe.
 
@@ -121,7 +144,7 @@ These are different Sample Viewer controls.
 - **IBL intensity** scales the environment *as light* (`ImageBasedLightComponent`).
 - **Exposure** is photographic EV on the rendered HDR into the tone mapper ([Sample Viewer EV behavior](https://github.com/KhronosGroup/glTF-Sample-Viewer/issues/317), [Renderer API](https://github.com/KhronosGroup/glTF-Sample-Renderer/blob/HEAD/API.md)).
 
-RealityKit has no camera-exposure API. Exposure and Neutral/ACES/None are a Metal `PostProcessEffect` using the published Khronos curves — not a relabel of IBL. **macOS 26+.** On 15, Exposure is visible and disabled; Tone Map is locked to RealityKit. QL/thumbs never use this post-process.
+RealityKit has no camera-exposure API. Exposure and the five Khronos tone maps are a Metal `PostProcessEffect` using the published curves ([ToneMapping](https://github.com/KhronosGroup/ToneMapping), Sample Renderer `GltfState.ToneMaps`) — not a relabel of IBL. **macOS 26+** on `RealityView`. On 15, Exposure is visible and disabled; Tone Map is visible and disabled.
 
 ## Apply pipeline
 
@@ -162,7 +185,8 @@ Proof is `xcodebuild` + `qlmanage`, not a browser.
 
 - Two-scene synthetic GLB: document lists both; default entity is the default scene; host can switch after lazy convert.
 - Node / light / camera ids resolve to entities.
-- DefaultLook: exponent 0 vs −2; thumbnail lighting is studio HDR; no skybox; no debug component.
+- DefaultLook: exponent 0 vs −2; thumbnail lighting is bundled **Studio Neutral**; no skybox; no debug component.
+- Bundled env list has the 11 Khronos names; Active Environment default is Studio Neutral.
 - IBL off removes receivers; punctual off disables lights; hide sets `isEnabled`.
 - Variants: two-variant synthetic → remap materials; files without the extension have no picker.
 - Debug: apply roughness then none restores materials.
@@ -172,4 +196,4 @@ Proof is `xcodebuild` + `qlmanage`, not a browser.
 
 Native: IBL, punctual, skybox, HDR load, `ModelDebugOptionsComponent` channels, `triangleFillMode` wireframe, collision picking, `PostProcessEffect` (macOS 26).
 
-Not native: Khronos tone maps and camera EV (we implement in post-process). Sample Viewer background blur (approximate with skybox mips only). `EXT_lights_image_based` (already logged, studio IBL remains).
+Not native: Khronos tone maps and camera EV (we implement in post-process). Sample Viewer background blur (approximate with skybox mips only). `EXT_lights_image_based` (already logged, Studio Neutral IBL remains).
