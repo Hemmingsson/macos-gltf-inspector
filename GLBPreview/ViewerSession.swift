@@ -36,6 +36,7 @@ final class ViewerSession {
     weak var boundIBL: Entity?
     @ObservationIgnored private var playbackControllers: [AnimationPlaybackController] = []
     @ObservationIgnored private var cachedOriginalMaterials: [ObjectIdentifier: [any RealityKit.Material]] = [:]
+    @ObservationIgnored private var cachedFillMaterials: [ObjectIdentifier: [any RealityKit.Material]] = [:]
 
     enum Selection: Equatable, Hashable {
         case none
@@ -79,6 +80,29 @@ final class ViewerSession {
 
     enum DebugMode: String, CaseIterable {
         case none, baseColor, roughness, metalness, normals, emission, wireframe
+
+        var title: String {
+            switch self {
+            case .none: "None"
+            case .baseColor: "Base Color"
+            case .roughness: "Roughness"
+            case .metalness: "Metalness"
+            case .normals: "Normals"
+            case .emission: "Emission"
+            case .wireframe: "Wireframe"
+            }
+        }
+
+        var visualizationMode: ModelDebugOptionsComponent.VisualizationMode? {
+            switch self {
+            case .none, .wireframe: nil
+            case .baseColor: .baseColor
+            case .roughness: .roughness
+            case .metalness: .metallic
+            case .normals: .normal
+            case .emission: .emissive
+            }
+        }
     }
 
     init(document: GLTFSessionDocument, defaultExponent: Float) {
@@ -101,6 +125,7 @@ final class ViewerSession {
         boundIBL = iblEntity
         if rebound {
             cachedOriginalMaterials.removeAll()
+            cachedFillMaterials.removeAll()
             startPlayback()
         }
     }
@@ -207,8 +232,11 @@ final class ViewerSession {
             )
         }
 
+        restoreFillMaterials(to: root)
+        cachedFillMaterials.removeAll()
         applyVisibility(to: root)
         applyVariant(to: root)
+        applyDebug(to: root)
     }
 
     func showAll() {
@@ -325,6 +353,76 @@ final class ViewerSession {
         }
         for child in entity.children {
             applyVariantMapping(mapping, table: table, to: child)
+        }
+    }
+
+    @MainActor
+    private func restoreFillMaterials(to entity: Entity) {
+        if var model = entity.components[ModelComponent.self] {
+            let id = ObjectIdentifier(entity)
+            if let materials = cachedFillMaterials[id] {
+                model.materials = materials
+                entity.components.set(model)
+            }
+        }
+        entity.components.remove(ModelDebugOptionsComponent.self)
+        for child in entity.children {
+            restoreFillMaterials(to: child)
+        }
+    }
+
+    @MainActor
+    private func applyDebug(to entity: Entity) {
+        switch debug {
+        case .none:
+            break
+        case .wireframe:
+            applyWireframe(to: entity)
+        case .baseColor, .roughness, .metalness, .normals, .emission:
+            if let mode = debug.visualizationMode {
+                applyDebugChannel(mode, to: entity)
+            }
+        }
+    }
+
+    @MainActor
+    private func applyDebugChannel(_ mode: ModelDebugOptionsComponent.VisualizationMode, to entity: Entity) {
+        entity.components.set(ModelDebugOptionsComponent(visualizationMode: mode))
+        for child in entity.children {
+            applyDebugChannel(mode, to: child)
+        }
+    }
+
+    @MainActor
+    private func applyWireframe(to entity: Entity) {
+        if var model = entity.components[ModelComponent.self] {
+            let id = ObjectIdentifier(entity)
+            if cachedFillMaterials[id] == nil {
+                cachedFillMaterials[id] = model.materials
+            }
+            model.materials = lineFillCopies(cachedFillMaterials[id] ?? model.materials)
+            entity.components.set(model)
+        }
+        for child in entity.children {
+            applyWireframe(to: child)
+        }
+    }
+
+    private func lineFillCopies(_ materials: [any RealityKit.Material]) -> [any RealityKit.Material] {
+        materials.map { material in
+            switch material {
+            case var pbr as PhysicallyBasedMaterial:
+                pbr.triangleFillMode = .lines
+                return pbr
+            case var unlit as UnlitMaterial:
+                unlit.triangleFillMode = .lines
+                return unlit
+            case var simple as SimpleMaterial:
+                simple.triangleFillMode = .lines
+                return simple
+            default:
+                return material
+            }
         }
     }
 

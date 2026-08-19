@@ -291,6 +291,21 @@ struct ViewerSessionTests {
         session.apply(root: model.entity, iblEntity: nil)
         #expect(pbrRoughness(model.entity) == 0.8)
     }
+
+    @MainActor
+    @Test func roughnessThenNoneClearsDebugComponent() {
+        let entity = Entity()
+        entity.components.set(ModelComponent(mesh: MeshResource.generateBox(size: 0.1), materials: [PhysicallyBasedMaterial()]))
+
+        let session = ViewerSession(document: GLTFSessionDocument(), defaultExponent: 0)
+        session.debug = .roughness
+        session.apply(root: entity, iblEntity: nil)
+        #expect(debugVisualization(entity) == .roughness)
+
+        session.debug = .none
+        session.apply(root: entity, iblEntity: nil)
+        #expect(debugVisualization(entity) == nil)
+    }
 }
 
 private func testNode(index: Int, name: String, children: [Int]) -> GLTFSessionDocument.Node {
@@ -330,6 +345,18 @@ private func entity(nodeIndex: Int, in root: Entity) -> Entity? {
     for child in root.children {
         if let found = entity(nodeIndex: nodeIndex, in: child) {
             return found
+        }
+    }
+    return nil
+}
+
+private func debugVisualization(_ entity: Entity) -> ModelDebugOptionsComponent.VisualizationMode? {
+    if let mode = entity.components[ModelDebugOptionsComponent.self]?.visualizationMode {
+        return mode
+    }
+    for child in entity.children {
+        if let mode = debugVisualization(child) {
+            return mode
         }
     }
     return nil

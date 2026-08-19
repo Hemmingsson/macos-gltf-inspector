@@ -71,7 +71,13 @@ private struct InspectorForm: View {
                 .disabled(!toneMapEnabled)
             }
 
-            Section("Debug") {}
+            Section("Debug") {
+                Picker("Mode", selection: $session.debug) {
+                    ForEach(ViewerSession.DebugMode.allCases, id: \.self) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+            }
 
             if case .node(let index) = session.selected, let node = session.node(at: index) {
                 NodeDetailSection(session: session, node: node)
@@ -90,6 +96,7 @@ private struct InspectorForm: View {
         .onChange(of: session.environment) { _, _ in session.applyIfBound() }
         .onChange(of: session.environmentRotation) { _, _ in session.applyIfBound() }
         .onChange(of: session.selectedUserHDR) { _, _ in session.applyIfBound() }
+        .onChange(of: session.debug) { _, _ in session.applyIfBound() }
     }
 
     private var exposureEnabled: Bool {

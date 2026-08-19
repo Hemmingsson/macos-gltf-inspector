@@ -63,6 +63,7 @@ struct HostViewerView: View {
         hasher.combine(session.hide)
         hasher.combine(session.soloRoot)
         hasher.combine(session.variantIndex)
+        hasher.combine(session.debug)
         hasher.combine(session.frameNonce)
         return hasher.finalize()
     }
