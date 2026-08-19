@@ -23,6 +23,33 @@ struct ThinAxisTests {
     }
 }
 
+struct FitCameraTests {
+    @Test func standsOnPlusZForPlusZForwardModel() {
+        let minBound = SIMD3<Float>(-1, -1, -1)
+        let maxBound = SIMD3<Float>(1, 1, 1)
+        let position = GLBPreviewCamera.cameraPosition(
+            minBound: minBound,
+            maxBound: maxBound,
+            padding: 1
+        )
+        #expect(position.z > 0)
+        #expect(position.x > 0)
+        #expect(position.y > 0)
+    }
+
+    @Test func thinZDecalCameraIsOnPlusZ() {
+        let minBound = SIMD3<Float>(-1, -1, -0.01)
+        let maxBound = SIMD3<Float>(1, 1, 0.01)
+        let position = GLBPreviewCamera.cameraPosition(
+            minBound: minBound,
+            maxBound: maxBound,
+            padding: 1
+        )
+        #expect(position.z > 0)
+        #expect(abs(position.x) < 0.01)
+    }
+}
+
 struct ModelBoundsTests {
     @MainActor
     @Test func ignoresHelperWithoutMesh() async throws {

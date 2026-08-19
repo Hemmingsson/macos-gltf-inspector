@@ -157,7 +157,7 @@ enum GLBPreviewCamera {
         return nil
     }
 
-    /// Front 3/4, Y-up. glTF models face +Z, so the camera stands on −Z.
+    /// Front 3/4, Y-up. glTF +Z is forward, so the camera stands on +Z.
     /// Standing decals (thin X or Z) look along the thin axis so the face is visible.
     static func cameraPosition(
         minBound: SIMD3<Float>,
@@ -177,7 +177,7 @@ enum GLBPreviewCamera {
         let toCamera = SIMD3<Float>(
             sin(yaw) * cos(pitch),
             sin(pitch),
-            -cos(yaw) * cos(pitch)
+            cos(yaw) * cos(pitch)
         )
         let distance = fitDistance(extent: extent, toCamera: toCamera, aspect: aspect, padding: padding)
         return center + distance * toCamera
