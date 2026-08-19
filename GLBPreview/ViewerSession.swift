@@ -9,6 +9,14 @@ final class ViewerSession {
     var iblIntensity: Float = 1
     var environment: GLBKhronosEnvironments = .studioNeutral
     var environmentRotation: EnvironmentRotation = .plusZ
+    var showEnvironmentMap = false
+    var blurEnvironment = false
+    var backgroundColor = Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
+    var userHDRs: [URL] = []
+    var selectedUserHDR: URL?
+    var inspectorError: String?
+    var toneMap: ToneMap = .khronosPBRNeutral
+    var exposure: Float = 1
     var hide = Set<Int>()
     var soloRoot: Int?
     var debug: DebugMode = .none
@@ -18,6 +26,8 @@ final class ViewerSession {
     var selected: Selection = .none
     let defaultExponent: Float
     let document: GLTFSessionDocument
+    weak var boundRoot: Entity?
+    weak var boundIBL: Entity?
 
     enum Selection: Equatable, Hashable {
         case none
@@ -41,6 +51,24 @@ final class ViewerSession {
         }
     }
 
+    enum ToneMap: String, CaseIterable {
+        case khronosPBRNeutral
+        case acesHillExposureBoost
+        case acesNarkowicz
+        case acesHill
+        case noneLinear
+
+        var title: String {
+            switch self {
+            case .khronosPBRNeutral: "Khronos PBR Neutral"
+            case .acesHillExposureBoost: "ACES Filmic Tone Mapping (Hill - Exposure Boost)"
+            case .acesNarkowicz: "ACES Filmic Tone Mapping (Narkowicz)"
+            case .acesHill: "ACES Filmic Tone Mapping (Hill)"
+            case .noneLinear: "None (Linear mapping, clamped at 1.0)"
+            }
+        }
+    }
+
     enum DebugMode: String, CaseIterable {
         case none, baseColor, roughness, metalness, normals, emission, wireframe
     }
@@ -54,6 +82,17 @@ final class ViewerSession {
     func layerRootIndices() -> [Int] {
         guard document.scenes.indices.contains(activeSceneIndex) else { return [] }
         return document.scenes[activeSceneIndex].rootNodeIndices
+    }
+
+    func bind(root: Entity, iblEntity: Entity?) {
+        boundRoot = root
+        boundIBL = iblEntity
+    }
+
+    @MainActor
+    func applyIfBound() {
+        guard let boundRoot else { return }
+        apply(root: boundRoot, iblEntity: boundIBL)
     }
 
     @MainActor

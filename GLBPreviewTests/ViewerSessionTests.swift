@@ -102,6 +102,12 @@ struct ViewerSessionTests {
         #expect(session.layerRootIndices() == [1])
     }
 
+    @Test func catalogDefaultIsStudioNeutral() {
+        let s = ViewerSession(document: .init(), defaultExponent: 0)
+        #expect(s.environment == .studioNeutral)
+        #expect(s.showEnvironmentMap == false)
+    }
+
     @Test func selectedCameraIndexDefaultsToFit() {
         var doc = GLTFSessionDocument()
         doc.cameras = [

@@ -188,6 +188,7 @@ targets:
           - GLBTry.mm
         excludes:
           - GLBPreviewView.swift
+          - GLBPreviewHostSceneBridge.swift
     entitlements:
       path: ThumbnailExtension/ThumbnailExtension.entitlements
       properties:

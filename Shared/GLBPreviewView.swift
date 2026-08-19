@@ -74,6 +74,7 @@ struct GLBPreviewView: View {
     let state: State
     var interaction: GLBPreviewInteraction
     var isDark: Bool
+    var hostBridge: GLBPreviewHostSceneBridge? = nil
 
     var body: some View {
         Group {
@@ -86,7 +87,13 @@ struct GLBPreviewView: View {
                         .progressViewStyle(.circular)
                 }
             case .ready(let model):
-                GLBPreviewScene(entity: model.entity, stats: model.stats, interaction: interaction, isDark: isDark)
+                GLBPreviewScene(
+                    entity: model.entity,
+                    stats: model.stats,
+                    interaction: interaction,
+                    isDark: isDark,
+                    hostBridge: hostBridge
+                )
             case .failed:
                 ZStack {
                     GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
@@ -144,6 +151,7 @@ private struct GLBPreviewScene: View {
     var stats: GLBPreviewStats?
     @Bindable var interaction: GLBPreviewInteraction
     var isDark: Bool
+    var hostBridge: GLBPreviewHostSceneBridge?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var backdropIndex = 0
@@ -159,11 +167,18 @@ private struct GLBPreviewScene: View {
     @State private var chromeVisible = true
     private let frame = PreviewFrame()
 
-    init(entity: Entity, stats: GLBPreviewStats?, interaction: GLBPreviewInteraction, isDark: Bool) {
+    init(
+        entity: Entity,
+        stats: GLBPreviewStats?,
+        interaction: GLBPreviewInteraction,
+        isDark: Bool,
+        hostBridge: GLBPreviewHostSceneBridge? = nil
+    ) {
         self.entity = entity
         self.stats = stats
         self.interaction = interaction
         self.isDark = isDark
+        self.hostBridge = hostBridge
         let bounds = GLBPreviewCamera.modelBounds(of: entity)
         let extent = bounds.max - bounds.min
         if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
@@ -179,6 +194,7 @@ private struct GLBPreviewScene: View {
     }
 
     var body: some View {
+        let _ = hostBridge?.lookRevision
         ZStack {
             RealityView { content in
                 content.camera = .virtual
@@ -194,6 +210,7 @@ private struct GLBPreviewScene: View {
                         aspect: aspect(of: viewport)
                     )
                 )
+                hostBridge?.applyToContent?(&content, entity)
 
                 if let animation = entity.availableAnimations.first {
                     let probe = entity.playAnimation(animation, startsPaused: true)
@@ -223,10 +240,11 @@ private struct GLBPreviewScene: View {
                     )
                     entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
                 }
+                hostBridge?.applyToContent?(&content, entity)
             }
             .background {
                 GeometryReader { proxy in
-                    GLBPreviewBackdrop.color(at: backdropIndex)
+                    (hostBridge?.backgroundColor ?? GLBPreviewBackdrop.color(at: backdropIndex))
                         .onAppear { applyViewport(proxy.size) }
                         .onChange(of: proxy.size) { _, size in
                             applyViewport(size)
