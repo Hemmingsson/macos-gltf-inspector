@@ -13,10 +13,8 @@ enum GLBPreviewLighting {
     @MainActor
     static func configureThumbnailLighting(
         on renderer: RealityRenderer,
-        cameraPosition: SIMD3<Float>,
         intensityExponent: Float = 0
     ) async {
-        _ = cameraPosition
         let look = AppLook.current
         guard look.useEnvironmentMap else { return }
         await prefetchLook(look)

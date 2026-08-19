@@ -10,6 +10,8 @@ build/
 .worktrees/
 .cursor/
 .dex/
+.superpowers/
+docs/superpowers/reviews/
 plans/
 test-models/
 Fixtures/

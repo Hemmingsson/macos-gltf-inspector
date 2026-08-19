@@ -14,21 +14,17 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if let openedFileName {
-                HostViewerView(
-                    state: previewState,
-                    sidebar: sidebar,
-                    fileName: openedFileName,
-                    interaction: interaction,
-                    isDark: colorScheme == .dark
-                )
-                .id(openedURL)
+            if openedURL != nil {
+                hostViewer
+                    .id(openedURL)
             } else {
                 emptyState
             }
         }
         .frame(minWidth: QAShotLaunch.isActive ? 960 : 400, minHeight: QAShotLaunch.isActive ? 640 : 300)
-        .navigationTitle("GLB Preview")
+        .navigationTitle(openedFileName ?? "GLB Preview")
+        .toolbarBackground(.hidden, for: .windowToolbar)
+        .onAppear { showTrafficLights() }
         .onChange(of: sidebar?.activeSceneIndex) { _, index in
             reloadScene(index)
         }
@@ -49,6 +45,55 @@ struct ContentView: View {
         }
         .padding(40)
         .frame(minWidth: 400, minHeight: 300)
+    }
+
+    private var hostViewer: some View {
+        ZStack(alignment: .topLeading) {
+            HostPreviewContainer(
+                state: previewState,
+                interaction: interaction,
+                isDark: colorScheme == .dark,
+                sidebar: sidebar
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
+
+            HostOutlinerView(model: loadedModel, sidebar: sidebar)
+                .frame(width: 252)
+                .frame(maxHeight: .infinity)
+                .padding(.leading, 10)
+                .padding(.trailing, 0)
+                .padding(.bottom, 10)
+                .padding(.top, 8)
+        }
+        .onAppear { applyDefaultCamera() }
+    }
+
+    private var loadedModel: GLBEntityLoader.LoadedModel? {
+        if case .ready(let model) = previewState { return model }
+        return nil
+    }
+
+    private func showTrafficLights() {
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
+            return
+        }
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = true
+        window.backgroundColor = .windowBackgroundColor
+        window.isOpaque = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.isMovableByWindowBackground = false
+    }
+
+    private func applyDefaultCamera() {
+        guard let sidebar, !sidebar.document.cameras.isEmpty else { return }
+        let raw = UserDefaults.standard.string(forKey: SettingsKeys.defaultCamera)
+            ?? PreviewDefaultCamera.fit.rawValue
+        if raw == PreviewDefaultCamera.firstFile.rawValue {
+            sidebar.selectedCameraIndex = 0
+            sidebar.overlayRevision += 1
+        }
     }
 
     private func openIfGLB(_ url: URL) {
@@ -121,4 +166,34 @@ struct ContentView: View {
 
 private func fileSize(_ url: URL) -> Int64 {
     (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? -1
+}
+
+private struct HostPreviewContainer: NSViewRepresentable {
+    var state: GLBPreviewView.State
+    var interaction: GLBPreviewInteraction
+    var isDark: Bool
+    var sidebar: HostSidebarModel?
+
+    func makeNSView(context: Context) -> GLBPreviewHostingView {
+        let view = GLBPreviewHostingView(
+            rootView: GLBPreviewView(
+                state: state,
+                interaction: interaction,
+                isDark: isDark,
+                sidebar: sidebar
+            )
+        )
+        view.interaction = interaction
+        return view
+    }
+
+    func updateNSView(_ nsView: GLBPreviewHostingView, context: Context) {
+        nsView.interaction = interaction
+        nsView.rootView = GLBPreviewView(
+            state: state,
+            interaction: interaction,
+            isDark: isDark,
+            sidebar: sidebar
+        )
+    }
 }

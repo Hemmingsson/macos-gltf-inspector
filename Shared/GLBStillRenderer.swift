@@ -43,7 +43,6 @@ final class GLBStillRenderer {
         renderer.entities.append(root)
         await GLBPreviewLighting.configureThumbnailLighting(
             on: renderer,
-            cameraPosition: camera.position(relativeTo: nil),
             intensityExponent: intensityExponent
         )
         renderer.entities.append(camera)

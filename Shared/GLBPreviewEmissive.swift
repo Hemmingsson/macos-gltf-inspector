@@ -55,11 +55,9 @@ enum GLBPreviewEmissive {
         return fileLooksBaked(materials.map(hint(fromJSON:)))
     }
 
-    /// Same studio probe as every other file. Only dim when the glTF authored
-    /// punctual lights (they stack with IBL). Do not dim for baked-emissive files.
-    static func studioIBLExponent(punctualLightCount: Int, fileLooksBaked: Bool = false) -> Float {
-        _ = fileLooksBaked
-        return punctualLightCount > 0 ? -2 : 0
+    /// Dim IBL when the file already has punctual lights so they do not stack.
+    static func studioIBLExponent(punctualLightCount: Int) -> Float {
+        punctualLightCount > 0 ? -2 : 0
     }
 
     static func hint(fromJSON material: [String: Any]) -> Hint {

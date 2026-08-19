@@ -65,26 +65,17 @@ struct SceneryConvertTests {
         #expect(abs(roughness - 0.2) < 0.001)
         #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
 
-        GLBThumbnailPrepare.apply(to: model.entity)
         #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
         let after = try #require(pbrMaterials(in: model.entity).first)
         #expect(abs(after.metallic.scale - metallic) < 0.001)
         #expect(abs(after.roughness.scale - roughness) < 0.001)
-        #expect(namedEntity("thumbKey", in: model.entity) == nil)
 
         await GLBPreviewLighting.prefetchStudioIBL()
         try #require(GLBPreviewLighting.makeStudioIBLEntity(receiver: Entity()) != nil)
 
         let renderer = try RealityRenderer()
-        await GLBPreviewLighting.configureThumbnailLighting(
-            on: renderer,
-            cameraPosition: SIMD3<Float>(0, 0, 2)
-        )
+        await GLBPreviewLighting.configureThumbnailLighting(on: renderer)
         #expect(renderer.lighting.resource != nil)
-        #expect(namedEntity("thumbKey", in: model.entity) == nil)
-        for entity in renderer.entities {
-            #expect(namedEntity("thumbKey", in: entity) == nil)
-        }
     }
 
     @MainActor

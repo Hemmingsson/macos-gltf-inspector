@@ -278,7 +278,6 @@ enum QAShotDump {
                 "meshes=\(model.document.meshes.count) nodes=\(model.document.nodes.count)",
                 "lights=\(model.document.lights.count) cameras=\(model.document.cameras.count)",
                 "materials=\(model.document.materials.count) animations=\(model.document.animations.count)",
-                "variants=\(model.document.variants.count)",
                 "rkAnimations=\(model.entity.availableAnimations.count)",
                 "visualBounds min=\(fmt(bounds.min)) max=\(fmt(bounds.max))",
                 "extent=\(fmt(extent)) empty=\(bounds.isEmpty)",
@@ -341,7 +340,6 @@ enum QAShotDump {
             },
             "cameras": document.cameras.map { ["name": $0.name, "type": $0.type] },
             "animations": document.animations.map { ["name": $0.name, "duration": $0.duration] },
-            "variants": document.variants.map { ["name": $0.name, "mapping": $0.mapping] },
         ]
     }
 

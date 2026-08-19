@@ -12,7 +12,6 @@ class ThumbnailProvider: QLThumbnailProvider {
         Task { @MainActor in
             do {
                 let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
-                GLBThumbnailPrepare.apply(to: model.entity)
                 let assembled = GLBPreviewCamera.makeTurntable(for: model.entity)
                 let still = try await GLBStillRenderer(
                     root: assembled.pivot,

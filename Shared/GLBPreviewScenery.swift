@@ -69,31 +69,11 @@ enum GLBPreviewScenery {
         }
     }
 
-    /// JSON-only: `EXT_lights_image_based` is not loaded. Does not parse cubemaps or mesh skyboxes.
-    static func hasUnsupportedFileIBL(json: [String: Any]) -> Bool {
-        if hasEXTLightsImageBased(json["extensions"] as? [String: Any]) {
-            return true
-        }
-        if stringArrayContainsEXT(json["extensionsUsed"]) || stringArrayContainsEXT(json["extensionsRequired"]) {
-            return true
-        }
-        let scenes = json["scenes"] as? [[String: Any]] ?? []
-        return scenes.contains { hasEXTLightsImageBased($0["extensions"] as? [String: Any]) }
-    }
-
     @MainActor
     private static func walk(_ entity: Entity, _ visit: (Entity) -> Void) {
         visit(entity)
         for child in entity.children {
             walk(child, visit)
         }
-    }
-
-    private static func hasEXTLightsImageBased(_ extensions: [String: Any]?) -> Bool {
-        extensions?["EXT_lights_image_based"] != nil
-    }
-
-    private static func stringArrayContainsEXT(_ value: Any?) -> Bool {
-        (value as? [String])?.contains("EXT_lights_image_based") == true
     }
 }

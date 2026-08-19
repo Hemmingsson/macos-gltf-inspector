@@ -40,10 +40,9 @@ struct EmissiveBoostTests {
         #expect(!GLBPreviewEmissive.shouldIgnore(hint, fileLooksBaked: true))
     }
 
-    @Test func onlyBakedFilesDimStudioIBL() {
-        #expect(GLBPreviewEmissive.studioIBLExponent(punctualLightCount: 0, fileLooksBaked: false) == 0)
-        #expect(GLBPreviewEmissive.studioIBLExponent(punctualLightCount: 0, fileLooksBaked: true) == 0)
-        #expect(GLBPreviewEmissive.studioIBLExponent(punctualLightCount: 1, fileLooksBaked: false) == -2)
+    @Test func punctualLightsDimStudioIBL() {
+        #expect(GLBPreviewEmissive.studioIBLExponent(punctualLightCount: 0) == 0)
+        #expect(GLBPreviewEmissive.studioIBLExponent(punctualLightCount: 1) == -2)
         #expect(!GLBPreviewEmissive.fileLooksBaked(json: [
             "materials": [["pbrMetallicRoughness": ["metallicFactor": 0]]],
         ]))

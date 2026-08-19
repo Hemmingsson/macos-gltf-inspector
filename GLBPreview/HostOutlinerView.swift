@@ -211,3 +211,20 @@ private func cameraTitle(_ camera: GLTFSessionDocument.Camera, index: Int) -> St
     camera.name.isEmpty ? "Camera \(index)" : camera.name
 }
 
+/// Liquid glass on macOS 26; plain column on 15.
+struct HostColumnChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content
+                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
+                .frame(maxHeight: .infinity, alignment: .top)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else {
+            content
+                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+}
+

@@ -144,18 +144,12 @@ enum QAShotLaunch {
     /// window is a spinner and is not proof.
     @MainActor
     static func stillPNG(entity: Entity) async -> Data? {
-        await GLBPreviewLighting.prefetchStudioIBL()
         let clone = entity.clone(recursive: true)
         let assembled = GLBPreviewCamera.makeTurntable(for: clone)
-        let root = Entity()
-        root.addChild(assembled.pivot)
-        if let ibl = GLBPreviewLighting.makeStudioIBLEntity(receiver: assembled.pivot) {
-            root.addChild(ibl)
-        }
         let backdrop = CGColor(srgbRed: 38 / 255, green: 38 / 255, blue: 38 / 255, alpha: 1)
         do {
             let renderer = try await GLBStillRenderer(
-                root: root,
+                root: assembled.pivot,
                 bounds: assembled.bounds,
                 width: 960,
                 height: 640,

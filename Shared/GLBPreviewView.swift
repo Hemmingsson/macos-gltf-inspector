@@ -217,7 +217,7 @@ private struct GLBPreviewScene: View {
                         aspect: aspect(of: viewport)
                     )
                 )
-                let exponent: Float = hasPunctualLight(entity) ? -2 : 0
+                let exponent: Float = GLBPreviewScenery.hasPunctualLights(entity) ? -2 : 0
                 GLBPreviewLighting.applyLook(
                     to: &content,
                     pivot: assembled.pivot,
@@ -415,16 +415,6 @@ private struct GLBPreviewScene: View {
     private func aspect(of size: CGSize) -> Float {
         Float(size.width / max(size.height, 1))
     }
-}
-
-private func hasPunctualLight(_ entity: Entity) -> Bool {
-    if entity.components.has(PointLightComponent.self)
-        || entity.components.has(SpotLightComponent.self)
-        || entity.components.has(DirectionalLightComponent.self)
-    {
-        return true
-    }
-    return entity.children.contains { hasPunctualLight($0) }
 }
 
 private struct GLBPreviewToolbar: View {

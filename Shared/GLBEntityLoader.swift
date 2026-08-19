@@ -35,27 +35,16 @@ enum GLBEntityLoader {
     /// view while the file is parsed; RealityKit convert hops to the main actor.
     static func load(from url: URL, includeAnimations: Bool = true) async throws -> LoadedModel {
         try await withPreparedAsset(from: url) { loadURL, assetDirectory, sourceJSON, fileSize, originalURL, directoryURL in
-            do {
-                let (entity, document) = try await convertAsset(
-                    at: loadURL,
-                    assetDirectory: assetDirectory,
-                    includeAnimations: includeAnimations,
-                    name: url.lastPathComponent,
-                    sceneIndex: nil
-                )
-                return await loadedModel(entity: entity, document: document, json: sourceJSON, fileSizeBytes: fileSize)
-            } catch {
-                guard loadURL != originalURL else { throw error }
-                GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
-                let (entity, document) = try await convertAsset(
-                    at: originalURL,
-                    assetDirectory: directoryURL,
-                    includeAnimations: includeAnimations,
-                    name: url.lastPathComponent,
-                    sceneIndex: nil
-                )
-                return await loadedModel(entity: entity, document: document, json: sourceJSON, fileSizeBytes: fileSize)
-            }
+            let (entity, document) = try await convertPreparedOrOriginal(
+                loadURL: loadURL,
+                originalURL: originalURL,
+                assetDirectory: assetDirectory,
+                fallbackDirectory: directoryURL,
+                includeAnimations: includeAnimations,
+                name: url.lastPathComponent,
+                sceneIndex: nil
+            )
+            return await loadedModel(entity: entity, document: document, json: sourceJSON, fileSizeBytes: fileSize)
         }
     }
 
@@ -64,27 +53,46 @@ enum GLBEntityLoader {
     /// `document.scenes`; Quick Look keeps calling `load` only.
     static func convertScene(index: Int, from url: URL, includeAnimations: Bool = true) async throws -> Entity {
         try await withPreparedAsset(from: url) { loadURL, assetDirectory, _, _, originalURL, directoryURL in
-            do {
-                let (entity, _) = try await convertAsset(
-                    at: loadURL,
-                    assetDirectory: assetDirectory,
-                    includeAnimations: includeAnimations,
-                    name: url.lastPathComponent,
-                    sceneIndex: index
-                )
-                return entity
-            } catch {
-                guard loadURL != originalURL else { throw error }
-                GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
-                let (entity, _) = try await convertAsset(
-                    at: originalURL,
-                    assetDirectory: directoryURL,
-                    includeAnimations: includeAnimations,
-                    name: url.lastPathComponent,
-                    sceneIndex: index
-                )
-                return entity
-            }
+            let (entity, _) = try await convertPreparedOrOriginal(
+                loadURL: loadURL,
+                originalURL: originalURL,
+                assetDirectory: assetDirectory,
+                fallbackDirectory: directoryURL,
+                includeAnimations: includeAnimations,
+                name: url.lastPathComponent,
+                sceneIndex: index
+            )
+            return entity
+        }
+    }
+
+    private static func convertPreparedOrOriginal(
+        loadURL: URL,
+        originalURL: URL,
+        assetDirectory: URL,
+        fallbackDirectory: URL,
+        includeAnimations: Bool,
+        name: String,
+        sceneIndex: Int?
+    ) async throws -> (Entity, GLTFSessionDocument) {
+        do {
+            return try await convertAsset(
+                at: loadURL,
+                assetDirectory: assetDirectory,
+                includeAnimations: includeAnimations,
+                name: name,
+                sceneIndex: sceneIndex
+            )
+        } catch {
+            guard loadURL != originalURL else { throw error }
+            GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
+            return try await convertAsset(
+                at: originalURL,
+                assetDirectory: fallbackDirectory,
+                includeAnimations: includeAnimations,
+                name: name,
+                sceneIndex: sceneIndex
+            )
         }
     }
 

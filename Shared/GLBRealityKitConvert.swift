@@ -1040,7 +1040,6 @@ public class GLBRealityKitConvert {
         document.lights = asset.lights.map(makeLight)
         document.cameras = asset.cameras.map(makeCamera)
         document.animations = asset.animations.map(makeAnimation).filter { $0.duration > 0 }
-        document.variants = makeVariants(from: asset)
         return document
     }
 
@@ -1176,85 +1175,6 @@ public class GLBRealityKitConvert {
             name: animation.name ?? "",
             duration: Double(maxTime)
         )
-    }
-
-    static func makeVariants(from asset: GLTFAsset) -> [GLTFSessionDocument.Variant] {
-        let fromKit = makeVariantsFromKit(asset)
-        if fromKit.contains(where: { !$0.mapping.isEmpty }) {
-            return fromKit
-        }
-        let fromJSON = makeVariantsFromJSON(sourceJSON(for: asset))
-        if !fromJSON.isEmpty {
-            return fromJSON
-        }
-        return fromKit
-    }
-
-    static func makeVariantsFromKit(_ asset: GLTFAsset) -> [GLTFSessionDocument.Variant] {
-        guard let variants = asset.materialVariants, !variants.isEmpty else { return [] }
-        return variants.map { variant in
-            var mapping: [String: Int] = [:]
-            for (meshIndex, mesh) in asset.meshes.enumerated() {
-                for (primitiveIndex, primitive) in mesh.primitives.enumerated() {
-                    let material = primitive.effectiveMaterial(for: variant)
-                    if let materialIndex = asset.materials.firstIndex(where: { $0 === material }) {
-                        mapping["\(meshIndex):\(primitiveIndex)"] = materialIndex
-                    }
-                }
-            }
-            return GLTFSessionDocument.Variant(name: variant.name ?? "", mapping: mapping)
-        }
-    }
-
-    static func sourceJSON(for asset: GLTFAsset) -> [String: Any] {
-        guard let url = asset.url else { return [:] }
-        if url.pathExtension.lowercased() == "glb" {
-            return (try? GLBBox.peekJSON(from: url)) ?? [:]
-        }
-        return (try? GLBBox.parseJSON(Data(contentsOf: url, options: [.mappedIfSafe]))) ?? [:]
-    }
-
-    static func makeVariantsFromJSON(_ json: [String: Any]) -> [GLTFSessionDocument.Variant] {
-        let rootExtensions = json["extensions"] as? [String: Any]
-        let variantsExtension = rootExtensions?["KHR_materials_variants"] as? [String: Any]
-        let variantList = variantsExtension?["variants"] as? [[String: Any]] ?? []
-        guard !variantList.isEmpty else { return [] }
-
-        var mappings = Array(repeating: [String: Int](), count: variantList.count)
-        let meshes = json["meshes"] as? [[String: Any]] ?? []
-        for (meshIndex, mesh) in meshes.enumerated() {
-            let primitives = mesh["primitives"] as? [[String: Any]] ?? []
-            for (primitiveIndex, primitive) in primitives.enumerated() {
-                let primitiveExtensions = primitive["extensions"] as? [String: Any]
-                let primitiveVariants = primitiveExtensions?["KHR_materials_variants"] as? [String: Any]
-                let maps = primitiveVariants?["mappings"] as? [[String: Any]] ?? []
-                for map in maps {
-                    guard let materialIndex = jsonInt(map["material"]) else { continue }
-                    for variantIndex in jsonInts(map["variants"]) where mappings.indices.contains(variantIndex) {
-                        mappings[variantIndex]["\(meshIndex):\(primitiveIndex)"] = materialIndex
-                    }
-                }
-            }
-        }
-        return variantList.enumerated().map { index, variant in
-            GLTFSessionDocument.Variant(
-                name: variant["name"] as? String ?? "",
-                mapping: mappings[index]
-            )
-        }
-    }
-
-    private static func jsonInt(_ value: Any?) -> Int? {
-        if let int = value as? Int { return int }
-        if let number = value as? NSNumber { return number.intValue }
-        return nil
-    }
-
-    private static func jsonInts(_ value: Any?) -> [Int] {
-        if let ints = value as? [Int] { return ints }
-        if let numbers = value as? [NSNumber] { return numbers.map(\.intValue) }
-        if let values = value as? [Any] { return values.compactMap(jsonInt) }
-        return []
     }
 
     func platformColor(for vector: simd_float4) -> PlatformColor {
