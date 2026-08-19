@@ -1,0 +1,128 @@
+import Foundation
+import RealityKit
+import Testing
+import simd
+@testable import GLBPreview
+
+struct ViewerSessionTests {
+    @Test func intensityExponentMapsSliderOntoDefault() {
+        let session = ViewerSession(document: GLTFSessionDocument(), defaultExponent: 0)
+        #expect(session.intensityExponent(forSlider: 1) == 0)
+        #expect(session.intensityExponent(forSlider: 2) == 1)
+
+        let dimmed = ViewerSession(document: GLTFSessionDocument(), defaultExponent: -2)
+        #expect(dimmed.intensityExponent(forSlider: 1) == -2)
+        #expect(dimmed.intensityExponent(forSlider: 0) == -2 + log2(Float(0.01)))
+    }
+
+    @MainActor
+    @Test func iblOffRemovesReceivers() async throws {
+        let url = try writeTempOneNodeMeshGLB(nodeName: "Mesh")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        let session = ViewerSession(
+            document: model.document,
+            defaultExponent: hasPunctualLight(model.entity) ? -2 : 0
+        )
+        let ibl = makeDummyIBLEntity()
+        session.apply(root: model.entity, iblEntity: ibl)
+        #expect(model.entity.components[ImageBasedLightReceiverComponent.self] != nil)
+
+        session.imageBased = false
+        session.apply(root: model.entity, iblEntity: ibl)
+        #expect(model.entity.components[ImageBasedLightReceiverComponent.self] == nil)
+    }
+
+    @MainActor
+    @Test func applySetsIBLIntensityAndYaw() {
+        let root = Entity()
+        let ibl = makeDummyIBLEntity()
+        let session = ViewerSession(document: GLTFSessionDocument(), defaultExponent: 0)
+        session.iblIntensity = 2
+        session.environmentRotation = .minusZ
+        session.apply(root: root, iblEntity: ibl)
+
+        #expect(ibl.components[ImageBasedLightComponent.self]?.intensityExponent == 1)
+        let expected = simd_quatf(angle: .pi, axis: SIMD3<Float>(0, 1, 0))
+        #expect(dot(ibl.orientation, expected) > 0.999)
+    }
+
+    @MainActor
+    @Test func punctualOffDisablesLights() {
+        let root = Entity()
+        let light = Entity()
+        light.components.set(PointLightComponent())
+        root.addChild(light)
+
+        let session = ViewerSession(document: GLTFSessionDocument(), defaultExponent: -2)
+        session.punctualLights = false
+        session.apply(root: root, iblEntity: nil)
+        #expect(firstLightEnabled(root) == false)
+
+        session.punctualLights = true
+        session.apply(root: root, iblEntity: nil)
+        #expect(firstLightEnabled(root) == true)
+    }
+}
+
+private func makeDummyIBLEntity() -> Entity {
+    let ibl = Entity()
+    ibl.components.set(ImageBasedLightComponent(source: .none, intensityExponent: 0))
+    return ibl
+}
+
+private func hasPunctualLight(_ entity: Entity) -> Bool {
+    if entity.components.has(PointLightComponent.self)
+        || entity.components.has(SpotLightComponent.self)
+        || entity.components.has(DirectionalLightComponent.self)
+    {
+        return true
+    }
+    return entity.children.contains { hasPunctualLight($0) }
+}
+
+private func firstLightEnabled(_ entity: Entity) -> Bool? {
+    if entity.components.has(PointLightComponent.self)
+        || entity.components.has(SpotLightComponent.self)
+        || entity.components.has(DirectionalLightComponent.self)
+    {
+        return entity.isEnabled
+    }
+    for child in entity.children {
+        if let enabled = firstLightEnabled(child) {
+            return enabled
+        }
+    }
+    return nil
+}
+
+private func triangleBin() -> Data {
+    var bin = Data()
+    for value: Float in [0, 0, 0, 1, 0, 0, 0, 1, 0] {
+        var bits = value.bitPattern.littleEndian
+        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    }
+    return bin
+}
+
+private func writeTempOneNodeMeshGLB(nodeName: String) throws -> URL {
+    let bin = triangleBin()
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+        "accessors": [[
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": 3,
+            "type": "VEC3",
+        ]],
+        "meshes": [["name": "HelmetMesh", "primitives": [["attributes": ["POSITION": 0]]]]],
+        "nodes": [["name": nodeName, "mesh": 0]],
+        "scenes": [["name": "Default", "nodes": [0]]],
+        "scene": 0,
+    ]
+    let data = try GLBBox.serialize(json: json, bin: bin)
+    return try GLBBox.writePrepared(data, prefix: "viewer-session")
+}
