@@ -25,6 +25,7 @@ struct GLTFSessionDocument: Sendable, Equatable {
         var cameraIndex: Int?
         var lightIndex: Int?
         var translation: SIMD3<Float>
+        /// glTF quaternion xyzw (same as simd_quatf.vector); identity (0, 0, 0, 1).
         var rotation: SIMD4<Float>
         var scale: SIMD3<Float>
     }
