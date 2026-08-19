@@ -26,11 +26,15 @@ settings:
   base:
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 94A9N4B67S
+    ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "1.1"
     CURRENT_PROJECT_VERSION: "4"
     SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
 
 packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.9.6"
   GLTFKit2:
     url: https://github.com/warrenm/GLTFKit2
     from: "0.5.15"
@@ -107,6 +111,11 @@ targets:
         NSPrincipalClass: NSApplication
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        SUFeedURL: https://github.com/Hemmingsson/macos-gltf-preview/releases/latest/download/appcast.xml
+        SUPublicEDKey: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        SUEnableAutomaticChecks: true
+        SUAutomaticallyUpdate: false
+        SUAllowsAutomaticUpdates: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview
@@ -117,12 +126,17 @@ targets:
         Debug:
           ENABLE_TESTABILITY: YES
         Release:
+          ARCHS: arm64 x86_64
+          ONLY_ACTIVE_ARCH: NO
+          CODE_SIGN_IDENTITY: "Developer ID Application"
           ENABLE_TESTABILITY: NO
     dependencies:
       - target: PreviewExtension
         embed: true
       - target: ThumbnailExtension
         embed: true
+      - package: Sparkle
+        product: Sparkle
       - package: GLTFKit2
       - package: DracoSwift
 

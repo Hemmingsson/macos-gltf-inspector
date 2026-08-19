@@ -1,4 +1,5 @@
 import AppKit
+import Sparkle
 import SwiftUI
 
 final class GLBAppDelegate: NSObject, NSApplicationDelegate {
@@ -10,6 +11,15 @@ final class GLBAppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct GLBPreviewApp: App {
     @NSApplicationDelegateAdaptor(GLBAppDelegate.self) private var appDelegate
+    private let updaterController: SPUStandardUpdaterController
+
+    init() {
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: GLBUpdateConfig.shouldStartUpdater,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -17,5 +27,10 @@ struct GLBPreviewApp: App {
         }
         .defaultSize(width: 810, height: 600)
         .windowResizability(.contentMinSize)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(updater: updaterController.updater)
+            }
+        }
     }
 }

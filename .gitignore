@@ -16,6 +16,11 @@ Fixtures/
 .readme-preview.html
 scripts/.cache/
 
+# Sparkle release artifacts and local CLI cache
+dist/
+tools/sparkle/
+sparkle_private_key.txt
+
 # Generated plists (xcodegen recreates these)
 PreviewExtension/Info.plist
 ThumbnailExtension/Info.plist
