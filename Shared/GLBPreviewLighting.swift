@@ -27,6 +27,25 @@ enum GLBPreviewLighting {
         renderer.entities.append(key)
     }
 
+    /// Warm the Studio Neutral cache so `makeStudioIBLEntity` can attach it synchronously.
+    @MainActor
+    static func prefetchStudioIBL() async {
+        _ = await studioResource()
+    }
+
+    /// World-fixed Studio Neutral IBL. Does not change the RealityView background.
+    @MainActor
+    static func makeStudioIBLEntity(receiver: Entity, intensityExponent: Float = 0) -> Entity? {
+        guard let resource = cachedProbe else { return nil }
+        let ibl = Entity()
+        ibl.name = "studioIBL"
+        var light = ImageBasedLightComponent(source: .single(resource), intensityExponent: intensityExponent)
+        light.inheritsRotation = false
+        ibl.components.set(light)
+        applyReceivers(from: ibl, to: receiver)
+        return ibl
+    }
+
     @MainActor
     private static var cachedProbe: EnvironmentResource?
 
@@ -97,5 +116,13 @@ enum GLBPreviewLighting {
             kCGImageSourceShouldCache: true,
         ]
         return CGImageSourceCreateImageAtIndex(source, 0, options as CFDictionary)
+    }
+
+    @MainActor
+    private static func applyReceivers(from light: Entity, to entity: Entity) {
+        entity.components.set(ImageBasedLightReceiverComponent(imageBasedLight: light))
+        for child in entity.children {
+            applyReceivers(from: light, to: child)
+        }
     }
 }

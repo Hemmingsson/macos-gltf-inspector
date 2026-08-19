@@ -65,9 +65,11 @@ final class GLBHostSceneController {
 
     private func applySkybox(_ content: inout RealityViewCameraContent) {
         guard session?.showEnvironmentMap == true else {
+            // Non-skybox: RealityViewEnvironment.default uses the view backgroundStyle.
             content.environment = .default
             return
         }
+        // RealityViewEnvironment.skybox has no yaw; IBL entity orientation still applies.
         if session?.blurEnvironment == true, let blurredSkybox {
             content.environment = .skybox(blurredSkybox)
         } else if let resource {

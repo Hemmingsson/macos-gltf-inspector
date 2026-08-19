@@ -61,8 +61,10 @@ struct GLBPreviewView: View {
 
         /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
+            async let ibl: Void = GLBPreviewLighting.prefetchStudioIBL()
             do {
                 let model = try await GLBEntityLoader.load(from: url)
+                await ibl
                 return .ready(model)
             } catch {
                 GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
@@ -189,8 +191,10 @@ private struct GLBPreviewScene: View {
         }
     }
 
+    private var isHost: Bool { hostBridge != nil }
+
     private var tickWhileActive: Bool {
-        autoRotate || (chromeVisible && isPlaying && playback != nil)
+        autoRotate || (!isHost && chromeVisible && isPlaying && playback != nil)
     }
 
     var body: some View {
@@ -210,7 +214,17 @@ private struct GLBPreviewScene: View {
                         aspect: aspect(of: viewport)
                     )
                 )
-                hostBridge?.applyToContent?(&content, entity)
+                if hostBridge == nil {
+                    let exponent: Float = hasPunctualLight(entity) ? -2 : 0
+                    if let ibl = GLBPreviewLighting.makeStudioIBLEntity(
+                        receiver: assembled.pivot,
+                        intensityExponent: exponent
+                    ) {
+                        content.add(ibl)
+                    }
+                } else {
+                    hostBridge?.applyToContent?(&content, entity)
+                }
 
                 if let animation = entity.availableAnimations.first {
                     let probe = entity.playAnimation(animation, startsPaused: true)
@@ -228,6 +242,7 @@ private struct GLBPreviewScene: View {
                         simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
                     entity.scale = SIMD3<Float>(repeating: interaction.zoom)
                 }
+                hostBridge?.applyToContent?(&content, entity)
                 let viewAspect = aspect(of: viewport)
                 guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
                 frame.cameraAspect = viewAspect
@@ -240,8 +255,8 @@ private struct GLBPreviewScene: View {
                     )
                     entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
                 }
-                hostBridge?.applyToContent?(&content, entity)
             }
+            .backgroundStyle(hostBridge?.backgroundColor ?? GLBPreviewBackdrop.color(at: backdropIndex))
             .background {
                 GeometryReader { proxy in
                     (hostBridge?.backgroundColor ?? GLBPreviewBackdrop.color(at: backdropIndex))
@@ -256,10 +271,11 @@ private struct GLBPreviewScene: View {
                 .contentShape(Rectangle())
                 .gesture(orbitDragGesture)
                 .onTapGesture {
+                    guard !isHost else { return }
                     chromeVisible.toggle()
                 }
 
-            if chromeVisible {
+            if !isHost, chromeVisible {
                 HStack(alignment: .bottom, spacing: 12) {
                     GLBPreviewToolbar(
                         backdropIndex: $backdropIndex,
@@ -350,6 +366,16 @@ private struct GLBPreviewScene: View {
     private func aspect(of size: CGSize) -> Float {
         Float(size.width / max(size.height, 1))
     }
+}
+
+private func hasPunctualLight(_ entity: Entity) -> Bool {
+    if entity.components.has(PointLightComponent.self)
+        || entity.components.has(SpotLightComponent.self)
+        || entity.components.has(DirectionalLightComponent.self)
+    {
+        return true
+    }
+    return entity.children.contains { hasPunctualLight($0) }
 }
 
 private struct GLBPreviewToolbar: View {
