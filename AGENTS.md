@@ -1,6 +1,6 @@
 # GLB Preview
 
-macOS 15+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview` embeds `PreviewExtension` and `ThumbnailExtension`; shared code lives in `Shared/`.
+macOS 15+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/`; host outliner and settings live in `GLBPreview/`.
 
 ## Commands
 

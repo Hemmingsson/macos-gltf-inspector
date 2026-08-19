@@ -99,7 +99,6 @@ class GLBRealityKitResourceContext {
         case red
         case green
         case blue
-        case alpha
         case all
 
         var textureSwizzle: MTLTextureSwizzleChannels {
@@ -110,8 +109,6 @@ class GLBRealityKitResourceContext {
                 return MTLTextureSwizzleChannels(red: .green, green: .green, blue: .green, alpha: .alpha)
             case .blue:
                 return MTLTextureSwizzleChannels(red: .blue, green: .blue, blue: .blue, alpha: .alpha)
-            case .alpha:
-                return MTLTextureSwizzleChannels(red: .alpha, green: .alpha, blue: .alpha, alpha: .alpha)
             case .all:
                 return MTLTextureSwizzleChannels(red: .red, green: .green, blue: .blue, alpha: .alpha)
             }
@@ -133,6 +130,52 @@ class GLBRealityKitResourceContext {
         }
         self.device = metalDevice
         self.commandQueue = metalDevice.makeCommandQueue()!
+    }
+
+    @MainActor func alphaUsage(for gltfTextureParams: GLTFTextureParams) -> GLBTextureAlpha.Usage {
+        let gltfTexture = gltfTextureParams.texture
+        guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else {
+            return .unused
+        }
+        var cgImage = cgImagesForImageIdentifiers[image.identifier]
+        if cgImage == nil {
+            cgImage = image.newCGImage()?.takeRetainedValue()
+            if let cgImage {
+                cgImagesForImageIdentifiers[image.identifier] = cgImage
+            }
+        }
+        guard let cgImage, let range = GLBTextureAlpha.range(of: cgImage) else { return .unused }
+        return GLBTextureAlpha.usage(minAlpha: range.0, maxAlpha: range.1)
+    }
+
+    @MainActor func cachedCGImage(for gltfTextureParams: GLTFTextureParams) -> CGImage? {
+        let gltfTexture = gltfTextureParams.texture
+        guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else {
+            return nil
+        }
+        if let existing = cgImagesForImageIdentifiers[image.identifier] {
+            return existing
+        }
+        let cgImage = image.newCGImage()?.takeRetainedValue()
+        if let cgImage {
+            cgImagesForImageIdentifiers[image.identifier] = cgImage
+        }
+        return cgImage
+    }
+
+    @MainActor func opacityTexture(for gltfTextureParams: GLTFTextureParams)
+        -> RealityKit.PhysicallyBasedMaterial.Texture?
+    {
+        guard let cgImage = cachedCGImage(for: gltfTextureParams),
+              let gray = GLBTextureAlpha.opacityMap(of: cgImage)
+        else { return nil }
+        let options = TextureResource.CreateOptions(semantic: .raw)
+        guard let resource = try? TextureResource.generate(from: gray, options: options) else { return nil }
+        let descriptor = MTLSamplerDescriptor(from: gltfTextureParams.texture.sampler ?? GLTFTextureSampler())
+        return RealityKit.PhysicallyBasedMaterial.Texture(
+            resource,
+            sampler: MaterialParameters.Texture.Sampler(descriptor)
+        )
     }
 
     @MainActor func texture(for gltfTextureParams: GLTFTextureParams, channels: ColorMask,
@@ -228,19 +271,27 @@ class GLBRealityKitResourceContext {
             // Can't extract from a non-RGB[A] image with this method. Fall back to the input image hoping it's monochrome.
             return cgImage
         }
-        guard let inputFormat = vImage_CGImageFormat(cgImage: cgImage) else { return nil }
-        guard var inputBuffer = try? vImage_Buffer(cgImage: cgImage, format: inputFormat) else { return nil }
+        // PNG on macOS is usually BGRA. `vImageExtractChannel_ARGB8888` only
+        // matches after we convert; RealityKit then samples the gray as red.
+        guard let argbFormat = vImage_CGImageFormat(
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpace: cgImage.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.first.rawValue),
+            renderingIntent: .defaultIntent
+        ) else { return nil }
+        guard var inputBuffer = try? vImage_Buffer(cgImage: cgImage, format: argbFormat) else { return nil }
         defer { inputBuffer.free() }
         var outputBuffer = vImage_Buffer()
-        vImageBuffer_Init(&outputBuffer, inputBuffer.height, inputBuffer.width, inputFormat.bitsPerPixel, vImage_Flags())
+        vImageBuffer_Init(&outputBuffer, inputBuffer.height, inputBuffer.width, 8, vImage_Flags())
         defer { outputBuffer.data.deallocate() }
-        var channel = 0
+        // ARGB8888: 0=A, 1=R, 2=G, 3=B
+        let channel: Int
         switch channels {
-        case .red: channel = 0
-        case .green: channel = 1
-        case .blue: channel = 2
-        case .alpha: channel = 3
-        default: break
+        case .red: channel = 1
+        case .green: channel = 2
+        case .blue: channel = 3
+        case .all: return nil
         }
         let outputColorSpace = CGColorSpace(name: CGColorSpace.linearGray)!
         let outputFormat = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 8, colorSpace: outputColorSpace,
@@ -308,19 +359,24 @@ public class GLBRealityKitConvert {
     private var skeletonIDsByJointName: [String: [/*MeshResource.Skeleton.ID*/String]] = [:]
     private var skeletonTransformsByJointName : [String: Transform] = [:]
     private var sourceAsset: GLTFAsset?
-    private var ignoreBakedEmissive = false
 
-    @MainActor public static func convert(scene: GLTFScene, asset: GLTFAsset?) -> RealityKit.Entity {
+    @MainActor static func convert(
+        scene: GLTFScene,
+        asset: GLTFAsset?,
+        document: inout GLTFSessionDocument
+    ) -> RealityKit.Entity {
         let instance = GLBRealityKitConvert()
-        return instance.convert(scene: scene, asset: asset)
+        return instance.convert(scene: scene, asset: asset, document: &document)
     }
 
-    @MainActor func convert(scene: GLTFScene, asset: GLTFAsset? = nil) -> RealityKit.Entity {
+    @MainActor func convert(
+        scene: GLTFScene,
+        asset: GLTFAsset? = nil,
+        document: inout GLTFSessionDocument
+    ) -> RealityKit.Entity {
         sourceAsset = asset
-        let emissiveHints = (asset?.materials ?? []).map(GLBPreviewEmissive.hint(from:))
-        ignoreBakedEmissive = GLBPreviewEmissive.fileLooksBaked(emissiveHints)
-        if ignoreBakedEmissive {
-            GLBLog.info(GLBLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
+        if let asset {
+            document = Self.makeDocument(from: asset)
         }
         let context = GLBRealityKitResourceContext()
 
@@ -341,12 +397,8 @@ public class GLBRealityKitConvert {
 
         if #available(macOS 14.0, iOS 17.0, visionOS 2.0, *) {
             for animation in asset?.animations ?? [] {
-                do {
-                    let rkAnimation = try convert(animation: animation)
-                    rkAnimation.store(in: rootEntity)
-                } catch {
-                    GLBLog.error(GLBLog.load, "Error when converting animation: \(error)")
-                }
+                let rkAnimation = try? convert(animation: animation)
+                rkAnimation?.store(in: rootEntity)
             }
         }
 
@@ -358,6 +410,7 @@ public class GLBRealityKitConvert {
 
         // TODO: This only ensures uniqueness for unnamed nodes; the asset could still contain duplicate names.
         nodeEntity.name = gltfNode.name ?? nameGenerator.nextUniqueName(prefix: "Node")
+        nodeEntity.components.set(GLTFNodeIDComponent(nodeIndex: nodeIndex(of: gltfNode)))
 
         nodeEntity.transform = Transform(matrix: gltfNode.matrix)
 
@@ -390,14 +443,11 @@ public class GLBRealityKitConvert {
             nodeEntity.components.set(meshComponent)
         }
 
-        if #available(macOS 12.0, iOS 15.0, visionOS 2.0, *) {
+        if #available(visionOS 2.0, *) {
             if let gltfLight = gltfNode.light {
                 switch gltfLight.type {
                 case .directional:
                     nodeEntity.components.set(convert(directionalLight: gltfLight))
-                    #if os(macOS)
-                    nodeEntity.components.set(DirectionalLightComponent.Shadow())
-                    #endif
                 case .point:
                     nodeEntity.components.set(convert(pointLight: gltfLight))
                 case .spot:
@@ -409,14 +459,7 @@ public class GLBRealityKitConvert {
         }
 
         if let gltfCamera = gltfNode.camera, let cameraComponent = convert(camera: gltfCamera) {
-            switch cameraComponent {
-            case let perspective as PerspectiveCameraComponent:
-                nodeEntity.components.set(perspective)
-            case let orthographic as OrthographicCameraComponent:
-                nodeEntity.components.set(orthographic)
-            default:
-                break
-            }
+            nodeEntity.components.set(cameraComponent)
         }
 
         for childNode in gltfNode.childNodes {
@@ -573,7 +616,9 @@ public class GLBRealityKitConvert {
             part[MeshBuffers.tangents] = MeshBuffers.Tangents(tangentArray)
         }
 
-        if let texCoordsArray = bakedTextureCoordinates(for: gltfPrimitive) {
+        if let texCoords0Attribute = gltfPrimitive.attribute(forName: "TEXCOORD_0"),
+           let texCoordsArray = GLBPacked.float2Array(for: texCoords0Attribute.accessor, flipVertically: true)
+        {
             part[MeshBuffers.textureCoordinates] = MeshBuffers.TextureCoordinates(texCoordsArray)
         }
 
@@ -621,31 +666,21 @@ public class GLBRealityKitConvert {
     {
         guard let gltfMaterial = gltfMaterial else { return context.defaultMaterial }
 
-        let metallicRoughness = gltfMaterial.metallicRoughness
-        let baseColorFactor = metallicRoughness?.baseColorFactor ?? simd_make_float4(1, 1, 1, 1)
-        let baseColorTexture = metallicRoughness?.baseColorTexture
-
         if gltfMaterial.isUnlit {
             var material = UnlitMaterial()
-            material.color.tint = platformColor(for: baseColorFactor)
-            if let baseColorTexture {
-                material.color.texture = context.texture(for: baseColorTexture, channels: .all, semantic: .color)
+            if let metallicRoughness = gltfMaterial.metallicRoughness {
+                material.color.tint = platformColor(for: metallicRoughness.baseColorFactor)
+                if let baseColorTexture = metallicRoughness.baseColorTexture {
+                    material.color.texture = context.texture(for: baseColorTexture, channels: .all, semantic: .color)
+                }
             }
-            var opacityThreshold = material.opacityThreshold
-            var blending = material.blending
-            applyAlphaMode(gltfMaterial, baseColorFactor: baseColorFactor, baseColorTexture: baseColorTexture,
-                           context: context, opacityThreshold: &opacityThreshold, blending: &blending)
-            material.opacityThreshold = opacityThreshold
-            material.blending = blending
-            if #available(macOS 15.0, iOS 18.0, *) {
-                material.faceCulling = gltfMaterial.isDoubleSided ? .none : .back
-            }
+            applyBlendMode(toUnlit: &material, gltfMaterial: gltfMaterial, context: context)
             return material
         } else {
             var material = PhysicallyBasedMaterial()
-            if let metallicRoughness {
+            if let metallicRoughness = gltfMaterial.metallicRoughness {
                 material.baseColor.tint = platformColor(for: metallicRoughness.baseColorFactor)
-                if let baseColorTexture {
+                if let baseColorTexture = metallicRoughness.baseColorTexture {
                     material.baseColor.texture = context.texture(for: baseColorTexture,
                                                                  channels: .all,
                                                                  semantic: .color)
@@ -661,37 +696,15 @@ public class GLBRealityKitConvert {
                                                                 semantic: .scalar)
                 }
             }
-            if let specular = gltfMaterial.specular {
-                // three.js: specularIntensity = specularFactor (KHR_materials_specular).
-                // Texture is the A channel (Khronos spec). RealityKit has no specularColor.
-                var spec = PhysicallyBasedMaterial.Specular(scale: specular.specularFactor)
-                if let specularTexture = specular.specularTexture {
-                    spec.texture = context.texture(for: specularTexture, channels: .alpha, semantic: .scalar)
-                }
-                material.specular = spec
-            } else {
-                // Apple: this knob *augments* dielectric highlights (gems). Default is 0.5.
-                // glTF metal/rough already includes F0≈0.04 in the BRDF; there is no extra
-                // intensity unless KHR_materials_specular is present. Leave extra spec off.
-                material.specular = .init(floatLiteral: 0)
-            }
-            if let normal = gltfMaterial.normalTexture, abs(normal.scale) > 0.0001 {
+            if let normal = gltfMaterial.normalTexture {
                 material.normal.texture = context.texture(for: normal, channels: .all, semantic: .normal)
             }
             if let emissive = gltfMaterial.emissive {
-                let hint = GLBPreviewEmissive.hint(from: gltfMaterial)
-                if !GLBPreviewEmissive.shouldIgnore(hint, fileLooksBaked: ignoreBakedEmissive) {
-                    // glTF: emissive = emissiveFactor * sample(emissiveTexture). RealityKit
-                    // EmissiveColor.color defaults to black (no emission) — must pass the factor.
-                    var emissiveTexture: PhysicallyBasedMaterial.Texture?
-                    if let texture = emissive.emissiveTexture {
-                        emissiveTexture = context.texture(for: texture, channels: .all, semantic: .color)
-                    }
-                    material.emissiveColor = .init(
-                        color: platformColor(for: simd_make_float4(emissive.emissiveFactor, 1)),
-                        texture: emissiveTexture
-                    )
-                    material.emissiveIntensity = emissive.emissiveStrength
+                material.emissiveIntensity = emissive.emissiveStrength
+                if let emissiveTexture = emissive.emissiveTexture {
+                    material.emissiveColor.texture = context.texture(for: emissiveTexture,
+                                                                     channels: .all,
+                                                                     semantic: .color)
                 }
             }
             if let occlusion = gltfMaterial.occlusionTexture {
@@ -708,20 +721,8 @@ public class GLBRealityKitConvert {
                                                                           channels: .green,
                                                                           semantic: .raw)
                 }
-                if #available(macOS 15.0, iOS 18.0, *) {
-                    if let clearcoatNormalTexture = clearcoat.clearcoatNormalTexture {
-                        material.clearcoatNormal = .init(
-                            texture: context.texture(for: clearcoatNormalTexture, channels: .all, semantic: .normal)
-                        )
-                    }
-                }
             }
-            var opacityThreshold = material.opacityThreshold
-            var blending = material.blending
-            applyAlphaMode(gltfMaterial, baseColorFactor: baseColorFactor, baseColorTexture: baseColorTexture,
-                           context: context, opacityThreshold: &opacityThreshold, blending: &blending)
-            material.opacityThreshold = opacityThreshold
-            material.blending = blending
+            applyBlendMode(toPBR: &material, gltfMaterial: gltfMaterial, context: context)
             material.faceCulling = gltfMaterial.isDoubleSided ? .none : .back
 
             if let sheen = gltfMaterial.sheen {
@@ -742,70 +743,78 @@ public class GLBRealityKitConvert {
         }
     }
 
-    /// glTF `alphaMode: BLEND` takes opacity from base-color alpha (spec 3.9.4).
-    /// RealityKit opacity textures sample the red channel, so A is extracted first.
     @MainActor
-    private func applyAlphaMode(
-        _ gltfMaterial: GLTFMaterial,
-        baseColorFactor: simd_float4,
-        baseColorTexture: GLTFTextureParams?,
-        context: GLBRealityKitResourceContext,
-        opacityThreshold: inout Float?,
-        blending: inout PhysicallyBasedMaterial.Blending
+    func applyBlendMode(
+        toPBR material: inout PhysicallyBasedMaterial,
+        gltfMaterial: GLTFMaterial,
+        context: GLBRealityKitResourceContext
     ) {
         if gltfMaterial.alphaMode == .mask {
-            opacityThreshold = gltfMaterial.alphaCutoff
-        } else if gltfMaterial.alphaMode == .blend {
-            var opacity = PhysicallyBasedMaterial.Opacity(scale: baseColorFactor.w)
-            if let baseColorTexture {
-                opacity.texture = context.texture(for: baseColorTexture, channels: .alpha, semantic: .scalar)
-            }
-            blending = .transparent(opacity: opacity)
+            material.opacityThreshold = gltfMaterial.alphaCutoff
+            return
         }
+        guard gltfMaterial.alphaMode == .blend else { return }
+        let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
+        if alpha < 0.999 {
+            material.blending = .transparent(opacity: .init(scale: alpha))
+            return
+        }
+        // Factor 1 + BLEND + empty/zero texture alpha is Sketchfab car paint (invisible
+        // if blended). Factor 1 + BLEND + a real alpha span is foliage / decals.
+        if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
+           context.alphaUsage(for: texture) == .cutout
+        {
+            let opacity = context.opacityTexture(for: texture)
+            material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
+            material.opacityThreshold = 0.4
+            return
+        }
+        material.blending = .opaque
     }
 
-    /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), then flip V for RealityKit.
-    /// RealityKit's material UV transform does not match that compose order, so we never set it.
-    /// One UV set per part: prefer the base-color texCoord (then normal) when they differ.
-    private func bakedTextureCoordinates(for primitive: GLTFPrimitive) -> [SIMD2<Float>]? {
-        let params = primitive.material?.metallicRoughness?.baseColorTexture
-            ?? primitive.material?.normalTexture
-        let texCoord: Int
-        if let transform = params?.transform, transform.hasTexCoord {
-            texCoord = Int(transform.texCoord)
-        } else {
-            texCoord = params?.texCoord ?? 0
+    @MainActor
+    func applyBlendMode(
+        toUnlit material: inout UnlitMaterial,
+        gltfMaterial: GLTFMaterial,
+        context: GLBRealityKitResourceContext
+    ) {
+        if gltfMaterial.alphaMode == .mask {
+            material.opacityThreshold = gltfMaterial.alphaCutoff
+            return
         }
-        let attribute = primitive.attribute(forName: "TEXCOORD_\(texCoord)")
-            ?? primitive.attribute(forName: "TEXCOORD_0")
-        guard let attribute,
-              var uvs = GLBPacked.float2Array(for: attribute.accessor, flipVertically: false)
-        else { return nil }
-        if let transform = params?.transform {
-            let matrix = transform.matrix
-            uvs = uvs.map { uv in
-                let p = matrix * SIMD4(uv.x, uv.y, 0, 1)
-                return SIMD2(p.x, p.y)
+        guard gltfMaterial.alphaMode == .blend else { return }
+        let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
+        if alpha < 0.999 {
+            material.blending = .transparent(opacity: 1.0)
+            return
+        }
+        if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
+           context.alphaUsage(for: texture) == .cutout
+        {
+            if let opacity = context.opacityTexture(for: texture) {
+                material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
             }
+            material.opacityThreshold = 0.4
+            return
         }
-        return uvs.map { SIMD2($0.x, 1 - $0.y) }
+        material.blending = .opaque
     }
 
     @available(macOS 12.0, iOS 15.0, visionOS 2.0, *)
     func convert(spotLight gltfLight: GLTFLight) -> SpotLightComponent {
         let light = SpotLightComponent(color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-                                       intensity: gltfLight.intensity * 4 * .pi,
+                                       intensity: gltfLight.intensity,
                                        innerAngleInDegrees: GLTFDegFromRad(gltfLight.innerConeAngle),
                                        outerAngleInDegrees: GLTFDegFromRad(gltfLight.outerConeAngle),
-                                       attenuationRadius: punctualAttenuationRadius(gltfLight.range))
+                                       attenuationRadius: gltfLight.range)
         return light
     }
 
     @available(macOS 12.0, iOS 15.0, visionOS 2.0, *)
     func convert(pointLight gltfLight: GLTFLight) -> PointLightComponent {
         let light = PointLightComponent(color:platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-                                        intensity: gltfLight.intensity * 4 * .pi,
-                                        attenuationRadius: punctualAttenuationRadius(gltfLight.range))
+                                        intensity: gltfLight.intensity,
+                                        attenuationRadius:gltfLight.range)
         return light
     }
 
@@ -822,25 +831,12 @@ public class GLBRealityKitConvert {
         return light
     }
 
-    /// glTF `range <= 0` means infinite; RealityKit rejects a zero radius.
-    private func punctualAttenuationRadius(_ range: Float) -> Float {
-        range > 0 ? range : 1_000_000
-    }
-
-    func convert(camera: GLTFCamera) -> (any Component)? {
+    func convert(camera: GLTFCamera) -> PerspectiveCameraComponent? {
         if let perspectiveParams = camera.perspective {
-            return PerspectiveCameraComponent(near: camera.zNear,
-                                              far: camera.zFar,
-                                              fieldOfViewInDegrees: GLTFDegFromRad(perspectiveParams.yFOV))
-        }
-        if let orthographicParams = camera.orthographic {
-            if #available(macOS 15.0, iOS 18.0, visionOS 2.0, *) {
-                var orthographic = OrthographicCameraComponent()
-                orthographic.near = camera.zNear
-                orthographic.far = camera.zFar
-                orthographic.scale = orthographicParams.yMag
-                return orthographic
-            }
+            let camera = PerspectiveCameraComponent(near: camera.zNear,
+                                                    far: camera.zFar,
+                                                    fieldOfViewInDegrees: GLTFDegFromRad(perspectiveParams.yFOV))
+            return camera
         }
         return nil
     }
@@ -943,6 +939,249 @@ public class GLBRealityKitConvert {
 
         let groupAnimation = AnimationGroup(group: animations, name: name)
         return try AnimationResource.generate(with: groupAnimation)
+    }
+
+    func nodeIndex(of gltfNode: GLTFNode) -> Int {
+        guard let nodes = sourceAsset?.nodes else { return 0 }
+        return nodes.firstIndex(where: { $0 === gltfNode }) ?? 0
+    }
+
+    static func makeDocument(from asset: GLTFAsset) -> GLTFSessionDocument {
+        var document = GLTFSessionDocument()
+        document.defaultSceneIndex = asset.scenes.firstIndex(where: { $0 === asset.defaultScene }) ?? 0
+        document.scenes = asset.scenes.map { scene in
+            GLTFSessionDocument.Scene(
+                name: scene.name ?? "",
+                rootNodeIndices: scene.nodes.compactMap { node in
+                    asset.nodes.firstIndex(where: { $0 === node })
+                }
+            )
+        }
+        document.nodes = asset.nodes.enumerated().map { index, node in
+            makeNode(node, index: index, asset: asset)
+        }
+        document.meshes = asset.meshes.enumerated().map { _, mesh in
+            makeMesh(mesh, asset: asset)
+        }
+        document.materials = asset.materials.map(makeMaterial)
+        document.lights = asset.lights.map(makeLight)
+        document.cameras = asset.cameras.map(makeCamera)
+        document.animations = asset.animations.map(makeAnimation).filter { $0.duration > 0 }
+        document.variants = makeVariants(from: asset)
+        return document
+    }
+
+    static func makeNode(_ node: GLTFNode, index: Int, asset: GLTFAsset) -> GLTFSessionDocument.Node {
+        GLTFSessionDocument.Node(
+            index: index,
+            name: node.name ?? "",
+            children: node.childNodes.compactMap { child in
+                asset.nodes.firstIndex(where: { $0 === child })
+            },
+            meshIndex: node.mesh.flatMap { mesh in
+                asset.meshes.firstIndex(where: { $0 === mesh })
+            },
+            cameraIndex: node.camera.flatMap { camera in
+                asset.cameras.firstIndex(where: { $0 === camera })
+            },
+            lightIndex: node.light.flatMap { light in
+                asset.lights.firstIndex(where: { $0 === light })
+            },
+            translation: node.translation,
+            rotation: node.rotation.vector,
+            scale: node.scale
+        )
+    }
+
+    static func makeMesh(_ mesh: GLTFMesh, asset: GLTFAsset) -> GLTFSessionDocument.Mesh {
+        var triangleCount = 0
+        var vertexCount = 0
+        var materialIndices: [Int] = []
+        for primitive in mesh.primitives {
+            let verts = primitive.attribute(forName: "POSITION")?.accessor.count ?? 0
+            vertexCount += verts
+            if let indexCount = primitive.indices?.count {
+                triangleCount += primitive.primitiveType == .triangles ? indexCount / 3 : 0
+            } else if primitive.primitiveType == .triangles {
+                triangleCount += verts / 3
+            }
+            if let material = primitive.material,
+               let materialIndex = asset.materials.firstIndex(where: { $0 === material }) {
+                materialIndices.append(materialIndex)
+            }
+        }
+        return GLTFSessionDocument.Mesh(
+            name: mesh.name ?? "",
+            primitiveCount: mesh.primitives.count,
+            triangleCount: triangleCount,
+            vertexCount: vertexCount,
+            materialIndices: materialIndices
+        )
+    }
+
+    static func makeMaterial(_ material: GLTFMaterial) -> GLTFSessionDocument.Material {
+        let metallicRoughness = material.metallicRoughness
+        let alphaMode: String
+        switch material.alphaMode {
+        case .mask:
+            alphaMode = "MASK"
+        case .blend:
+            alphaMode = "BLEND"
+        default:
+            alphaMode = "OPAQUE"
+        }
+        return GLTFSessionDocument.Material(
+            name: material.name ?? "",
+            baseColorFactor: metallicRoughness?.baseColorFactor ?? SIMD4(1, 1, 1, 1),
+            metallicFactor: metallicRoughness?.metallicFactor ?? 1,
+            roughnessFactor: metallicRoughness?.roughnessFactor ?? 1,
+            emissiveFactor: material.emissive?.emissiveFactor ?? .zero,
+            alphaMode: alphaMode,
+            hasBaseColorTexture: metallicRoughness?.baseColorTexture != nil,
+            hasMetallicRoughnessTexture: metallicRoughness?.metallicRoughnessTexture != nil,
+            hasNormalTexture: material.normalTexture != nil,
+            hasOcclusionTexture: material.occlusionTexture != nil,
+            hasEmissiveTexture: material.emissive?.emissiveTexture != nil
+        )
+    }
+
+    static func makeLight(_ light: GLTFLight) -> GLTFSessionDocument.Light {
+        let type: String
+        switch light.type {
+        case .directional:
+            type = "directional"
+        case .point:
+            type = "point"
+        case .spot:
+            type = "spot"
+        default:
+            type = "unknown"
+        }
+        return GLTFSessionDocument.Light(
+            name: light.name ?? "",
+            type: type,
+            color: light.color,
+            intensity: light.intensity,
+            range: light.range > 0 ? light.range : nil,
+            innerCone: light.type == .spot ? light.innerConeAngle : nil,
+            outerCone: light.type == .spot ? light.outerConeAngle : nil
+        )
+    }
+
+    static func makeCamera(_ camera: GLTFCamera) -> GLTFSessionDocument.Camera {
+        let zfar = camera.zFar.isFinite ? camera.zFar : nil
+        if let perspective = camera.perspective {
+            return GLTFSessionDocument.Camera(
+                name: camera.name ?? "",
+                type: "perspective",
+                yfov: perspective.yFOV,
+                znear: camera.zNear,
+                zfar: zfar,
+                xmag: nil,
+                ymag: nil
+            )
+        }
+        return GLTFSessionDocument.Camera(
+            name: camera.name ?? "",
+            type: "orthographic",
+            yfov: nil,
+            znear: camera.zNear,
+            zfar: zfar,
+            xmag: camera.orthographic?.xMag,
+            ymag: camera.orthographic?.yMag
+        )
+    }
+
+    static func makeAnimation(_ animation: GLTFAnimation) -> GLTFSessionDocument.Animation {
+        var maxTime: Float = 0
+        for sampler in animation.samplers {
+            if let hi = sampler.input.maxValues.first?.floatValue {
+                maxTime = max(maxTime, hi)
+            }
+        }
+        return GLTFSessionDocument.Animation(
+            name: animation.name ?? "",
+            duration: Double(maxTime)
+        )
+    }
+
+    static func makeVariants(from asset: GLTFAsset) -> [GLTFSessionDocument.Variant] {
+        let fromKit = makeVariantsFromKit(asset)
+        if fromKit.contains(where: { !$0.mapping.isEmpty }) {
+            return fromKit
+        }
+        let fromJSON = makeVariantsFromJSON(sourceJSON(for: asset))
+        if !fromJSON.isEmpty {
+            return fromJSON
+        }
+        return fromKit
+    }
+
+    static func makeVariantsFromKit(_ asset: GLTFAsset) -> [GLTFSessionDocument.Variant] {
+        guard let variants = asset.materialVariants, !variants.isEmpty else { return [] }
+        return variants.map { variant in
+            var mapping: [String: Int] = [:]
+            for (meshIndex, mesh) in asset.meshes.enumerated() {
+                for (primitiveIndex, primitive) in mesh.primitives.enumerated() {
+                    let material = primitive.effectiveMaterial(for: variant)
+                    if let materialIndex = asset.materials.firstIndex(where: { $0 === material }) {
+                        mapping["\(meshIndex):\(primitiveIndex)"] = materialIndex
+                    }
+                }
+            }
+            return GLTFSessionDocument.Variant(name: variant.name ?? "", mapping: mapping)
+        }
+    }
+
+    static func sourceJSON(for asset: GLTFAsset) -> [String: Any] {
+        guard let url = asset.url else { return [:] }
+        if url.pathExtension.lowercased() == "glb" {
+            return (try? GLBBox.peekJSON(from: url)) ?? [:]
+        }
+        return (try? GLBBox.parseJSON(Data(contentsOf: url, options: [.mappedIfSafe]))) ?? [:]
+    }
+
+    static func makeVariantsFromJSON(_ json: [String: Any]) -> [GLTFSessionDocument.Variant] {
+        let rootExtensions = json["extensions"] as? [String: Any]
+        let variantsExtension = rootExtensions?["KHR_materials_variants"] as? [String: Any]
+        let variantList = variantsExtension?["variants"] as? [[String: Any]] ?? []
+        guard !variantList.isEmpty else { return [] }
+
+        var mappings = Array(repeating: [String: Int](), count: variantList.count)
+        let meshes = json["meshes"] as? [[String: Any]] ?? []
+        for (meshIndex, mesh) in meshes.enumerated() {
+            let primitives = mesh["primitives"] as? [[String: Any]] ?? []
+            for (primitiveIndex, primitive) in primitives.enumerated() {
+                let primitiveExtensions = primitive["extensions"] as? [String: Any]
+                let primitiveVariants = primitiveExtensions?["KHR_materials_variants"] as? [String: Any]
+                let maps = primitiveVariants?["mappings"] as? [[String: Any]] ?? []
+                for map in maps {
+                    guard let materialIndex = jsonInt(map["material"]) else { continue }
+                    for variantIndex in jsonInts(map["variants"]) where mappings.indices.contains(variantIndex) {
+                        mappings[variantIndex]["\(meshIndex):\(primitiveIndex)"] = materialIndex
+                    }
+                }
+            }
+        }
+        return variantList.enumerated().map { index, variant in
+            GLTFSessionDocument.Variant(
+                name: variant["name"] as? String ?? "",
+                mapping: mappings[index]
+            )
+        }
+    }
+
+    private static func jsonInt(_ value: Any?) -> Int? {
+        if let int = value as? Int { return int }
+        if let number = value as? NSNumber { return number.intValue }
+        return nil
+    }
+
+    private static func jsonInts(_ value: Any?) -> [Int] {
+        if let ints = value as? [Int] { return ints }
+        if let numbers = value as? [NSNumber] { return numbers.map(\.intValue) }
+        if let values = value as? [Any] { return values.compactMap(jsonInt) }
+        return []
     }
 
     func platformColor(for vector: simd_float4) -> PlatformColor {

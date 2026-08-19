@@ -56,11 +56,11 @@ RealityKit does not load glTF by default. The file is prepared, decoded with [GL
 
 ```mermaid
 flowchart LR
-  glb[".glb / .gltf"] --> prep["Prepare"]
-  prep --> kit["GLTFKit2"]
-  kit --> rk["RealityKit Entity"]
-  rk --> rv["RealityView"]
-  rk --> rr["RealityRenderer"]
+  file[".glb / .gltf"] --> prep["Prepare + GLTFKit2"]
+  prep --> rk["RealityKit Entity"]
+  rk --> host["Host app\nRealityView + outliner"]
+  rk --> ql["Quick Look\nRealityView"]
+  rk --> thumb["Finder thumbnail\nRealityRenderer"]
 ```
 
 Prepare rewrites materials and meshes RealityKit will not ingest, then the default scene is converted to a physically based entity on a turntable.

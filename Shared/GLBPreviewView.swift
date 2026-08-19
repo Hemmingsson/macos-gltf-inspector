@@ -2,6 +2,15 @@ import AppKit
 import RealityKit
 import SwiftUI
 
+/// Host-only overlay applied during RealityView updates. Quick Look and thumbnails pass `nil`.
+@MainActor
+protocol PreviewOverlay: AnyObject {
+    var overlayRevision: Int { get }
+    var selectedCameraIndex: Int? { get }
+    var document: GLTFSessionDocument { get }
+    func applyIfNeeded(to root: Entity)
+}
+
 @Observable
 final class GLBPreviewInteraction {
     var zoom: Float = 1
@@ -17,6 +26,13 @@ final class GLBPreviewInteraction {
         setZoom(zoom * Float(1 + event.magnification))
     }
 
+    var orbitResetNonce = 0
+
+    func resetFit() {
+        zoom = 1
+        orbitResetNonce += 1
+    }
+
     private func setZoom(_ value: Float) {
         let clamped = min(max(value, 0.12), 8)
         guard abs(clamped - zoom) > 0.0001 else { return }
@@ -29,6 +45,7 @@ final class GLBPreviewHostingView: NSHostingView<GLBPreviewView> {
     var interaction: GLBPreviewInteraction?
 
     override var isOpaque: Bool { false }
+    override var mouseDownCanMoveWindow: Bool { false }
     override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
     override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
     override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
@@ -61,13 +78,15 @@ struct GLBPreviewView: View {
 
         /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
-            async let ibl: Void = GLBPreviewLighting.prefetchStudioIBL()
+            async let ibl: Void = GLBPreviewLighting.prefetchLook(AppLook.current)
             do {
                 let model = try await GLBEntityLoader.load(from: url)
                 await ibl
                 return .ready(model)
             } catch {
-                GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
+                let message = String(describing: error)
+                GLBLoadFailure.lastMessage = message
+                GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(message)")
                 return .failed
             }
         }
@@ -76,26 +95,33 @@ struct GLBPreviewView: View {
     let state: State
     var interaction: GLBPreviewInteraction
     var isDark: Bool
+    var sidebar: (any PreviewOverlay)? = nil
 
     var body: some View {
         Group {
             switch state {
             case .loading:
                 ZStack {
-                    GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
+                    PreviewBackground.window.color.ignoresSafeArea()
                     ProgressView()
                         .controlSize(.regular)
                         .progressViewStyle(.circular)
                 }
             case .ready(let model):
-                GLBPreviewScene(model: model, interaction: interaction, isDark: isDark)
+                GLBPreviewScene(
+                    entity: model.entity,
+                    stats: model.stats,
+                    interaction: interaction,
+                    isDark: isDark,
+                    sidebar: sidebar
+                )
             case .failed:
                 ZStack {
-                    GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
+                    PreviewBackground.window.color.ignoresSafeArea()
                     Text("Failed to load model")
                         .font(.system(size: 13))
                         .foregroundStyle(
-                            GLBPreviewBackdrop.iconColor(at: 0, systemDark: isDark, active: true).opacity(0.5)
+                            PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true).opacity(0.5)
                         )
                         .multilineTextAlignment(.center)
                         .padding()
@@ -105,60 +131,24 @@ struct GLBPreviewView: View {
     }
 }
 
-enum GLBPreviewBackdrop {
-    static let darkRGB = (r: 38.0 / 255, g: 38.0 / 255, b: 38.0 / 255)
-    static let dark = Color(red: darkRGB.r, green: darkRGB.g, blue: darkRGB.b)
-    /// Lets the host window / Quick Look panel show through.
-    static let window = Color.clear
-    static let all = [window, Color.white, dark]
-
-    static func color(at index: Int) -> Color {
-        all[index % all.count]
-    }
-
-    /// White icons on dark surfaces; charcoal on light. Clear backdrop: OS setting first (QL `isDark` is flaky).
-    static func useLightIcons(at index: Int, systemDark: Bool) -> Bool {
-        switch index % all.count {
-        case 1: return false
-        case 2: return true
-        default:
-            if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
-                return true
-            }
-            return systemDark
-        }
-    }
-
-    static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
-        let base: Color = useLightIcons(at: index, systemDark: systemDark) ? .white : dark
-        return active ? base : base.opacity(0.4)
-    }
-}
-
-private enum PreviewCameraSelection: Equatable {
-    case fit
-    case file(Int)
-}
-
 /// Reference box so RealityView `make` can stash unscaled bounds while zoom scales the pivot.
 private final class PreviewFrame {
     var bounds = BoundingBox()
     var cameraAspect: Float = -1
-    var appliedCamera: PreviewCameraSelection?
-}
-
-private struct ChromeFrameKey: PreferenceKey {
-    static var defaultValue = CGRect.zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        let next = nextValue()
-        if next != .zero { value = next }
-    }
 }
 
 private struct GLBPreviewScene: View {
-    let model: GLBEntityLoader.LoadedModel
+    let entity: Entity
+    var stats: GLBPreviewStats?
     @Bindable var interaction: GLBPreviewInteraction
     var isDark: Bool
+    var sidebar: (any PreviewOverlay)?
+
+    @AppStorage(SettingsKeys.autoRotate) private var settingsAutoRotate = true
+    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = true
+    @AppStorage(SettingsKeys.showStats) private var showStats = true
+    @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
+    @AppStorage(SettingsKeys.background) private var backgroundRaw = PreviewBackground.window.rawValue
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var backdropIndex = 0
@@ -167,45 +157,51 @@ private struct GLBPreviewScene: View {
     @State private var orbitPitch: Float = 0
     @State private var dragOrigin: (yaw: Float, pitch: Float)?
     @State private var playback: AnimationPlaybackController?
-    @State private var selectedClipIndex = 0
     @State private var clipDuration: TimeInterval = 0
     @State private var currentTime: TimeInterval = 0
     @State private var isPlaying = true
-    @State private var isSeeking = false
-    @State private var wasPlayingBeforeSeek = false
-    @State private var selectedCamera: PreviewCameraSelection = .fit
     @State private var viewport = CGSize(width: 810, height: 600)
     @State private var chromeVisible = true
-    @State private var chromeFrame = CGRect.zero
     private let frame = PreviewFrame()
 
-    init(model: GLBEntityLoader.LoadedModel, interaction: GLBPreviewInteraction, isDark: Bool) {
-        self.model = model
+    init(
+        entity: Entity,
+        stats: GLBPreviewStats?,
+        interaction: GLBPreviewInteraction,
+        isDark: Bool,
+        sidebar: (any PreviewOverlay)? = nil
+    ) {
+        self.entity = entity
+        self.stats = stats
         self.interaction = interaction
         self.isDark = isDark
-        let bounds = GLBPreviewCamera.modelBounds(of: model.entity)
+        self.sidebar = sidebar
+        let bounds = GLBPreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
+        let settingsOn = UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
         if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
             _autoRotate = State(initialValue: false)
             GLBLog.info(GLBLog.preview, "autoRotate disabled for standing plane thinAxis=\(axis)")
         } else {
-            _autoRotate = State(initialValue: true)
+            _autoRotate = State(initialValue: settingsOn)
         }
     }
 
-    private var entity: Entity { model.entity }
-    private var fileCameras: [GLBPreviewScenery.FileCamera] { model.fileCameras }
-    private var usableAnimations: [AnimationResource] { model.usableAnimations }
-    private var isFitCamera: Bool {
-        if case .fit = selectedCamera { return true }
-        return false
+    private var isHost: Bool { sidebar != nil }
+
+    private var backdropColor: Color {
+        if isHost {
+            return PreviewBackground(rawValue: backgroundRaw)?.color ?? PreviewBackground.window.color
+        }
+        return PreviewBackground.color(at: backdropIndex)
     }
 
     private var tickWhileActive: Bool {
-        (autoRotate && isFitCamera) || (chromeVisible && isPlaying && playback != nil && !isSeeking)
+        return autoRotate || (!isHost && chromeVisible && isPlaying && playback != nil)
     }
 
     var body: some View {
+        let _ = sidebar?.overlayRevision
         ZStack {
             RealityView { content in
                 content.camera = .virtual
@@ -213,12 +209,6 @@ private struct GLBPreviewScene: View {
                 frame.bounds = assembled.bounds
 
                 content.add(assembled.pivot)
-                if let ibl = GLBPreviewLighting.makeStudioIBLEntity(
-                    receiver: assembled.pivot,
-                    intensityExponent: model.studioIBLExponent
-                ) {
-                    content.add(ibl)
-                }
                 content.add(
                     GLBPreviewCamera.makeFrontThreeQuarter(
                         minBound: assembled.bounds.min,
@@ -227,109 +217,102 @@ private struct GLBPreviewScene: View {
                         aspect: aspect(of: viewport)
                     )
                 )
+                let exponent: Float = hasPunctualLight(entity) ? -2 : 0
+                GLBPreviewLighting.applyLook(
+                    to: &content,
+                    pivot: assembled.pivot,
+                    look: AppLook.current,
+                    intensityExponent: exponent
+                )
+                sidebar?.applyIfNeeded(to: assembled.pivot)
 
-                if let animation = usableAnimations.first {
-                    selectedClipIndex = 0
-                    clipDuration = animation.definition.duration
-                    playback = entity.playAnimation(animation.repeat())
-                    currentTime = 0
-                }
-            } update: { content in
-                guard let turntable = content.entities.first(where: { $0.name == "turntable" }),
-                      let previewCamera = content.entities.first(where: { $0.name == "previewCamera" })
-                else { return }
-
-                if isFitCamera {
-                    turntable.orientation =
-                        simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
-                        simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
-                    turntable.scale = SIMD3<Float>(repeating: interaction.zoom)
-                } else {
-                    turntable.orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
-                    turntable.scale = .one
-                }
-
-                if frame.appliedCamera != selectedCamera {
-                    frame.appliedCamera = selectedCamera
-                    switch selectedCamera {
-                    case .fit:
-                        GLBPreviewCamera.activateCamera(
-                            previewCamera,
-                            disablingOthersIn: [turntable, previewCamera]
-                        )
-                    case .file(let index):
-                        if fileCameras.indices.contains(index) {
-                            GLBPreviewCamera.activateCamera(
-                                fileCameras[index].entity,
-                                disablingOthersIn: [turntable, previewCamera]
-                            )
-                        }
+                if playOnOpen, let animation = entity.availableAnimations.first {
+                    let probe = entity.playAnimation(animation, startsPaused: true)
+                    let duration = probe.duration
+                    probe.stop()
+                    clipDuration = duration.isFinite && duration > 0 ? duration : 0
+                    if clipDuration > 0 {
+                        playback = entity.playAnimation(animation.repeat())
                     }
                 }
-
+            } update: { content in
+                for entity in content.entities where entity.name == "turntable" {
+                    entity.orientation =
+                        simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
+                        simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
+                    entity.scale = SIMD3<Float>(repeating: interaction.zoom)
+                    sidebar?.applyIfNeeded(to: entity)
+                }
+                applyFileCamera(content)
                 let viewAspect = aspect(of: viewport)
+                guard sidebar?.selectedCameraIndex == nil else { return }
                 guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
                 frame.cameraAspect = viewAspect
-                let position = GLBPreviewCamera.cameraPosition(
-                    minBound: frame.bounds.min,
-                    maxBound: frame.bounds.max,
-                    padding: GLBPreviewCamera.previewFitPadding,
-                    aspect: viewAspect
-                )
-                previewCamera.look(at: frame.bounds.center, from: position, relativeTo: nil)
+                for entity in content.entities where entity.name == "previewCamera" {
+                    let position = GLBPreviewCamera.cameraPosition(
+                        minBound: frame.bounds.min,
+                        maxBound: frame.bounds.max,
+                        padding: GLBPreviewCamera.previewFitPadding,
+                        aspect: viewAspect
+                    )
+                    entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
+                    if var camera = entity.components[PerspectiveCameraComponent.self] {
+                        GLBPreviewCamera.applyFitClip(
+                            to: &camera,
+                            eye: position,
+                            target: frame.bounds.center
+                        )
+                        entity.components.set(camera)
+                    }
+                }
             }
+            .backgroundStyle(backdropColor)
             .background {
                 GeometryReader { proxy in
-                    GLBPreviewBackdrop.color(at: backdropIndex)
+                    backdropColor
                         .onAppear { applyViewport(proxy.size) }
                         .onChange(of: proxy.size) { _, size in
                             applyViewport(size)
                         }
                 }
             }
-
             // RealityView often eats SwiftUI taps in QL; drive orbit + chrome toggle from this layer.
-            // Bottom chrome is excluded so the clip slider cannot start an orbit.
             Color.clear
                 .contentShape(Rectangle())
-                .padding(.bottom, chromeVisible ? max(chromeFrame.height, 36) + 14 : 0)
                 .gesture(orbitDragGesture)
                 .onTapGesture {
+                    guard !isHost else { return }
                     chromeVisible.toggle()
                 }
 
-            if chromeVisible {
+            if !isHost, chromeVisible, showToolbar {
                 HStack(alignment: .bottom, spacing: 12) {
                     GLBPreviewToolbar(
                         backdropIndex: $backdropIndex,
                         autoRotate: $autoRotate,
-                        selectedCamera: $selectedCamera,
-                        fileCameras: fileCameras,
-                        usableAnimations: usableAnimations,
-                        selectedClipIndex: selectedClipIndex,
-                        showPlayback: !usableAnimations.isEmpty,
+                        showPlayback: playback != nil,
                         isPlaying: $isPlaying,
-                        currentTime: seekBinding,
-                        clipDuration: clipDuration,
-                        onSeekingChanged: handleSeekingChanged,
-                        onSelectClip: playClip,
+                        currentTime: currentTime,
                         systemDark: isDark
                     )
-                    .background {
-                        GeometryReader { proxy in
-                            Color.clear.preference(
-                                key: ChromeFrameKey.self,
-                                value: proxy.frame(in: .named("preview"))
-                            )
-                        }
-                    }
                     Spacer(minLength: 8)
                         .allowsHitTesting(false)
-                    GLBPreviewStatsTable(
-                        rows: model.stats.previewRows,
-                        backdropIndex: backdropIndex,
-                        systemDark: isDark
-                    )
+                    if showStats, let lines = stats?.previewLines, !lines.isEmpty {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            ForEach(lines, id: \.self) { line in
+                                Text(line)
+                                    .font(.system(size: 11, weight: .regular).monospacedDigit())
+                                    .foregroundStyle(
+                                        PreviewBackground.iconColor(
+                                            at: backdropIndex,
+                                            systemDark: isDark,
+                                            active: true
+                                        ).opacity(0.55)
+                                    )
+                            }
+                        }
+                        .allowsHitTesting(false)
+                    }
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 14)
@@ -337,21 +320,20 @@ private struct GLBPreviewScene: View {
                 .transition(.opacity)
             }
         }
-        .coordinateSpace(name: "preview")
-        .onPreferenceChange(ChromeFrameKey.self) { chromeFrame = $0 }
         .animation(.easeInOut(duration: 0.15), value: chromeVisible)
         .onAppear {
-            if reduceMotion {
-                autoRotate = false
-            }
+            applyAutoRotateSetting()
         }
-        .onChange(of: selectedCamera) { _, camera in
-            if case .file = camera {
-                autoRotate = false
-            }
+        .onChange(of: settingsAutoRotate) { _, _ in
+            applyAutoRotateSetting()
+        }
+        .onChange(of: interaction.orbitResetNonce) { _, _ in
+            orbitYaw = 0
+            orbitPitch = 0
+            autoRotate = false
         }
         .onChange(of: isPlaying) { _, playing in
-            guard let playback, !isSeeking else { return }
+            guard let playback else { return }
             if playing {
                 playback.resume()
             } else {
@@ -365,10 +347,10 @@ private struct GLBPreviewScene: View {
                 let now = Date()
                 let dt = now.timeIntervalSince(lastTick)
                 lastTick = now
-                if autoRotate, isFitCamera, dragOrigin == nil {
+                if autoRotate, dragOrigin == nil {
                     orbitYaw += Float(dt) * 20 * .pi / 180
                 }
-                if chromeVisible, isPlaying, !isSeeking, let playback, clipDuration > 0 {
+                if chromeVisible, isPlaying, let playback, clipDuration > 0 {
                     currentTime = playback.time.truncatingRemainder(dividingBy: clipDuration)
                     if currentTime < 0 { currentTime += clipDuration }
                 }
@@ -377,23 +359,9 @@ private struct GLBPreviewScene: View {
         }
     }
 
-    private var seekBinding: Binding<TimeInterval> {
-        Binding(
-            get: { currentTime },
-            set: { value in
-                currentTime = value
-                playback?.time = value
-            }
-        )
-    }
-
     private var orbitDragGesture: some Gesture {
         DragGesture(minimumDistance: 10)
             .onChanged { value in
-                guard isFitCamera else { return }
-                if chromeVisible, chromeFrame.insetBy(dx: -8, dy: -8).contains(value.startLocation) {
-                    return
-                }
                 let origin = dragOrigin ?? (orbitYaw, orbitPitch)
                 dragOrigin = origin
                 orbitYaw = origin.yaw + Float(value.translation.width) * 0.008
@@ -404,35 +372,37 @@ private struct GLBPreviewScene: View {
             }
     }
 
-    private func handleSeekingChanged(_ editing: Bool) {
-        if editing {
-            wasPlayingBeforeSeek = isPlaying
-            isSeeking = true
-            playback?.pause()
-        } else {
-            isSeeking = false
-            if wasPlayingBeforeSeek {
-                playback?.resume()
-                isPlaying = true
-            }
-        }
+    private func applyFileCamera(_ content: RealityViewCameraContent) {
+        guard let sidebar, let index = sidebar.selectedCameraIndex else { return }
+        let node = sidebar.document.nodes.first(where: { $0.cameraIndex == index })
+        guard let node,
+              let cameraNode = findEntity(nodeIndex: node.index, in: entity),
+              let preview = content.entities.first(where: { $0.name == "previewCamera" })
+        else { return }
+        let position = cameraNode.position(relativeTo: nil)
+        preview.look(at: frame.bounds.center, from: position, relativeTo: nil)
     }
 
-    private func playClip(_ index: Int) {
-        guard usableAnimations.indices.contains(index) else { return }
-        playback?.stop()
-        selectedClipIndex = index
-        let animation = usableAnimations[index]
-        let duration = animation.definition.duration
-        clipDuration = duration.isFinite && duration > 0 ? duration : 0
-        currentTime = 0
-        guard clipDuration > 0 else {
-            playback = nil
+    private func findEntity(nodeIndex: Int, in root: Entity) -> Entity? {
+        if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
+            return root
+        }
+        for child in root.children {
+            if let found = findEntity(nodeIndex: nodeIndex, in: child) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func applyAutoRotateSetting() {
+        let bounds = GLBPreviewCamera.modelBounds(of: entity, relativeTo: entity)
+        let extent = bounds.max - bounds.min
+        if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
+            autoRotate = false
             return
         }
-        let controller = entity.playAnimation(animation.repeat())
-        playback = controller
-        isPlaying = true
+        autoRotate = settingsAutoRotate && !reduceMotion
     }
 
     private func applyViewport(_ size: CGSize) {
@@ -447,171 +417,56 @@ private struct GLBPreviewScene: View {
     }
 }
 
-private struct GLBPreviewStatsTable: View {
-    var rows: [GLBPreviewStats.Row]
-    var backdropIndex: Int
-    var systemDark: Bool
-
-    var body: some View {
-        if !rows.isEmpty {
-            VStack(alignment: .leading, spacing: 3) {
-                ForEach(rows, id: \.label) { row in
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(row.label)
-                            .foregroundStyle(tint.opacity(0.42))
-                        Spacer(minLength: 16)
-                        Text(row.value)
-                            .font(.system(size: 11, weight: .regular).monospacedDigit())
-                            .foregroundStyle(tint.opacity(0.62))
-                    }
-                }
-            }
-            .font(.system(size: 11, weight: .regular))
-            .frame(minWidth: 188, maxWidth: 230)
-            .allowsHitTesting(false)
-        }
+private func hasPunctualLight(_ entity: Entity) -> Bool {
+    if entity.components.has(PointLightComponent.self)
+        || entity.components.has(SpotLightComponent.self)
+        || entity.components.has(DirectionalLightComponent.self)
+    {
+        return true
     }
-
-    private var tint: Color {
-        GLBPreviewBackdrop.iconColor(at: backdropIndex, systemDark: systemDark, active: true)
-    }
+    return entity.children.contains { hasPunctualLight($0) }
 }
 
 private struct GLBPreviewToolbar: View {
     @Binding var backdropIndex: Int
     @Binding var autoRotate: Bool
-    @Binding var selectedCamera: PreviewCameraSelection
-    var fileCameras: [GLBPreviewScenery.FileCamera]
-    var usableAnimations: [AnimationResource]
-    var selectedClipIndex: Int
     var showPlayback: Bool
     @Binding var isPlaying: Bool
-    @Binding var currentTime: TimeInterval
-    var clipDuration: TimeInterval
-    var onSeekingChanged: (Bool) -> Void
-    var onSelectClip: (Int) -> Void
+    var currentTime: TimeInterval
     var systemDark: Bool
 
     private func tint(active: Bool) -> Color {
-        GLBPreviewBackdrop.iconColor(at: backdropIndex, systemDark: systemDark, active: active)
+        PreviewBackground.iconColor(at: backdropIndex, systemDark: systemDark, active: active)
     }
 
     var body: some View {
-        glassWrapped {
-            HStack(spacing: 10) {
-                iconButton("circle.lefthalf.filled", active: true, help: "Toggle background") {
-                    backdropIndex = (backdropIndex + 1) % GLBPreviewBackdrop.all.count
-                }
+        HStack(spacing: 12) {
+            iconButton("circle.lefthalf.filled", active: true, help: "Toggle background") {
+                backdropIndex = (backdropIndex + 1) % PreviewBackground.allCases.count
+            }
+            iconButton(
+                "arrow.trianglehead.2.clockwise.rotate.90",
+                active: autoRotate,
+                help: "Auto-rotate"
+            ) {
+                autoRotate.toggle()
+            }
+            if showPlayback {
                 iconButton(
-                    "arrow.trianglehead.2.clockwise.rotate.90",
-                    active: autoRotate,
-                    help: "Auto-rotate"
+                    isPlaying ? "pause.fill" : "play.fill",
+                    active: isPlaying,
+                    help: "Play/Pause"
                 ) {
-                    autoRotate.toggle()
+                    isPlaying.toggle()
                 }
-                if !fileCameras.isEmpty {
-                    cameraMenu
-                }
-                if usableAnimations.count > 1 {
-                    clipMenu
-                }
-                if showPlayback {
-                    iconButton(
-                        isPlaying ? "pause.fill" : "play.fill",
-                        active: isPlaying,
-                        help: "Play/Pause"
-                    ) {
-                        isPlaying.toggle()
-                    }
-                    Slider(
-                        value: $currentTime,
-                        in: 0...max(clipDuration, 0.001)
-                    ) { editing in
-                        onSeekingChanged(editing)
-                    }
-                    .controlSize(.small)
-                    .frame(width: 72)
-                    Text(timeLabel)
-                        .font(.system(size: 11, weight: .regular).monospacedDigit())
-                        .foregroundStyle(tint(active: isPlaying))
-                        .lineLimit(1)
-                }
+                Text(String(format: "%.2f", currentTime))
+                    .font(.system(size: 11, weight: .regular).monospacedDigit())
+                    .foregroundStyle(tint(active: isPlaying))
+                    .frame(minWidth: 36, alignment: .leading)
             }
         }
-    }
-
-    private var timeLabel: String {
-        let duration = max(clipDuration, 0)
-        let shown = duration > 0 ? currentTime.truncatingRemainder(dividingBy: duration) : currentTime
-        let wrapped = shown < 0 ? shown + duration : shown
-        return String(format: "%.2f / %.2f", wrapped, duration)
-    }
-
-    private var cameraMenu: some View {
-        Menu {
-            Button("Fit") { selectedCamera = .fit }
-            ForEach(Array(fileCameras.enumerated()), id: \.offset) { index, camera in
-                Button(camera.displayName) { selectedCamera = .file(index) }
-            }
-        } label: {
-            Image(systemName: "video")
-                .font(.system(size: 14, weight: .regular))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(tint(active: !isFitSelected))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .help("Camera")
-        .modifier(GlassButtonStyleModifier())
-    }
-
-    private var clipMenu: some View {
-        Menu {
-            ForEach(Array(usableAnimations.enumerated()), id: \.offset) { index, animation in
-                Button(clipTitle(animation, index: index)) {
-                    onSelectClip(index)
-                }
-            }
-        } label: {
-            Image(systemName: "film")
-                .font(.system(size: 14, weight: .regular))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(tint(active: true))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .help("Clip")
-        .modifier(GlassButtonStyleModifier())
-    }
-
-    private var isFitSelected: Bool {
-        if case .fit = selectedCamera { return true }
-        return false
-    }
-
-    private func clipTitle(_ animation: AnimationResource, index: Int) -> String {
-        let trimmed = (animation.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Clip \(index + 1)" : trimmed
-    }
-
-    @ViewBuilder
-    private func glassWrapped<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        if #available(macOS 26, *) {
-            GlassEffectContainer {
-                content()
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content()
-                .padding(.horizontal, 2)
-                .padding(.vertical, 2)
-        }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 2)
     }
 
     private func iconButton(
@@ -628,17 +483,7 @@ private struct GLBPreviewToolbar: View {
                 .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
-        .modifier(GlassButtonStyleModifier())
+        .buttonStyle(.plain)
         .help(help)
-    }
-}
-
-private struct GlassButtonStyleModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(macOS 26, *) {
-            content.buttonStyle(.glass)
-        } else {
-            content.buttonStyle(.plain)
-        }
     }
 }

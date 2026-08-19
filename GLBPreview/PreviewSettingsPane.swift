@@ -1,35 +1,5 @@
 import SwiftUI
 
-enum PreviewBackground: String, CaseIterable, Identifiable {
-    case window
-    case white
-    case dark
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .window: "Window"
-        case .white: "White"
-        case .dark: "Dark"
-        }
-    }
-}
-
-enum PreviewDefaultCamera: String, CaseIterable, Identifiable {
-    case fit
-    case firstFile
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .fit: "Fit"
-        case .firstFile: "First file camera"
-        }
-    }
-}
-
 struct PreviewSettingsPane: View {
     @AppStorage(SettingsKeys.autoRotate) private var autoRotate = true
     @AppStorage(SettingsKeys.background) private var background = PreviewBackground.window.rawValue
@@ -78,7 +48,7 @@ struct PreviewSettingsPane: View {
                 .pickerStyle(.menu)
             }
 
-            Section("Chrome") {
+            Section("Quick Look") {
                 Toggle("Show file info", isOn: $showStats)
                     .toggleStyle(.switch)
                 Toggle("Show toolbar on open", isOn: $showToolbar)
@@ -86,6 +56,6 @@ struct PreviewSettingsPane: View {
             }
         }
         .settingsFormChrome()
-        .navigationTitle("Preview")
+        .navigationTitle(SettingsPane.preview.title)
     }
 }

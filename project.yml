@@ -51,7 +51,7 @@ targets:
       - path: assets/ICON.icon
         type: file
         buildPhase: resources
-      - path: assets/ibl/studio_small_09_1k.hdr
+      - path: assets/ibl/khronos
         type: file
         buildPhase: resources
       - path: Shared
@@ -147,7 +147,7 @@ targets:
       - path: PreviewExtension
         includes:
           - "*.swift"
-      - path: assets/ibl/studio_small_09_1k.hdr
+      - path: assets/ibl/khronos
         type: file
         buildPhase: resources
       - path: Shared
@@ -192,7 +192,7 @@ targets:
     platform: macOS
     sources:
       - ThumbnailExtension
-      - path: assets/ibl/studio_small_09_1k.hdr
+      - path: assets/ibl/khronos
         type: file
         buildPhase: resources
       - path: Shared
@@ -239,6 +239,9 @@ targets:
     platform: macOS
     sources:
       - GLBPreviewTests
+      - path: assets/ibl/khronos
+        type: file
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreviewTests

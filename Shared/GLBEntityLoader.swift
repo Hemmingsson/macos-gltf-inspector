@@ -3,19 +3,27 @@ import GLTFKit2
 import RealityKit
 
 enum GLBEntityLoader {
-    /// Converted entity plus scenery snapshotted at load (cameras still live).
+    /// A converted model plus the cheap glTF-header stats shown in the preview overlay.
     struct LoadedModel {
         let entity: Entity
         let stats: GLBPreviewStats
-        let usableAnimations: [AnimationResource]
-        let punctualLightCount: Int
-        let fileCameras: [GLBPreviewScenery.FileCamera]
-        let usesBakedEmissive: Bool
+        let document: GLTFSessionDocument
+        var usesBakedEmissive = false
+
+        var usableAnimations: [AnimationResource] {
+            GLBPreviewScenery.usableAnimations(in: entity)
+        }
+
+        var punctualLightCount: Int {
+            GLBPreviewScenery.punctualLightCount(in: entity)
+        }
+
+        var fileCameras: [GLBPreviewScenery.FileCamera] {
+            GLBPreviewScenery.fileCameras(in: entity)
+        }
+
         var studioIBLExponent: Float {
-            GLBPreviewEmissive.studioIBLExponent(
-                punctualLightCount: punctualLightCount,
-                fileLooksBaked: usesBakedEmissive
-            )
+            GLBPreviewEmissive.studioIBLExponent(punctualLightCount: punctualLightCount)
         }
     }
 
@@ -26,6 +34,64 @@ enum GLBEntityLoader {
     /// File IO and `GLTFAsset` stay off the main actor so Spacebar can show the loading
     /// view while the file is parsed; RealityKit convert hops to the main actor.
     static func load(from url: URL, includeAnimations: Bool = true) async throws -> LoadedModel {
+        try await withPreparedAsset(from: url) { loadURL, assetDirectory, sourceJSON, fileSize, originalURL, directoryURL in
+            do {
+                let (entity, document) = try await convertAsset(
+                    at: loadURL,
+                    assetDirectory: assetDirectory,
+                    includeAnimations: includeAnimations,
+                    name: url.lastPathComponent,
+                    sceneIndex: nil
+                )
+                return await loadedModel(entity: entity, document: document, json: sourceJSON, fileSizeBytes: fileSize)
+            } catch {
+                guard loadURL != originalURL else { throw error }
+                GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
+                let (entity, document) = try await convertAsset(
+                    at: originalURL,
+                    assetDirectory: directoryURL,
+                    includeAnimations: includeAnimations,
+                    name: url.lastPathComponent,
+                    sceneIndex: nil
+                )
+                return await loadedModel(entity: entity, document: document, json: sourceJSON, fileSizeBytes: fileSize)
+            }
+        }
+    }
+
+    /// Converts one scene from the same prepared asset path as `load`, without
+    /// rebuilding `LoadedModel`. Host scene switching uses this after listing
+    /// `document.scenes`; Quick Look keeps calling `load` only.
+    static func convertScene(index: Int, from url: URL, includeAnimations: Bool = true) async throws -> Entity {
+        try await withPreparedAsset(from: url) { loadURL, assetDirectory, _, _, originalURL, directoryURL in
+            do {
+                let (entity, _) = try await convertAsset(
+                    at: loadURL,
+                    assetDirectory: assetDirectory,
+                    includeAnimations: includeAnimations,
+                    name: url.lastPathComponent,
+                    sceneIndex: index
+                )
+                return entity
+            } catch {
+                guard loadURL != originalURL else { throw error }
+                GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
+                let (entity, _) = try await convertAsset(
+                    at: originalURL,
+                    assetDirectory: directoryURL,
+                    includeAnimations: includeAnimations,
+                    name: url.lastPathComponent,
+                    sceneIndex: index
+                )
+                return entity
+            }
+        }
+    }
+
+    private static func withPreparedAsset<T>(
+        from url: URL,
+        work: (URL, URL, [String: Any], Int64?, URL, URL) async throws -> T
+    ) async throws -> T {
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
 
         let directoryURL = URL(
@@ -52,6 +118,8 @@ enum GLBEntityLoader {
         } else {
             sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
         }
+        let fileSize = fileSizeBytes(of: url)
+
         let loadURL: URL
         let assetDirectory: URL
         if isGLB {
@@ -69,25 +137,31 @@ enum GLBEntityLoader {
             }
         }
 
-        do {
-            let entity = try await convertAsset(
-                at: loadURL,
-                assetDirectory: assetDirectory,
-                includeAnimations: includeAnimations,
-                name: url.lastPathComponent
-            )
-            return await attachScenery(entity, json: sourceJSON, fileSizeBytes: fileSizeBytes(of: url))
-        } catch {
-            guard loadURL != url else { throw error }
-            GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
-            let entity = try await convertAsset(
-                at: url,
-                assetDirectory: directoryURL,
-                includeAnimations: includeAnimations,
-                name: url.lastPathComponent
-            )
-            return await attachScenery(entity, json: sourceJSON, fileSizeBytes: fileSizeBytes(of: url))
-        }
+        return try await work(loadURL, assetDirectory, sourceJSON, fileSize, url, directoryURL)
+    }
+
+    private static func fileSizeBytes(of url: URL) -> Int64? {
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+        return size.map(Int64.init)
+    }
+
+    @MainActor
+    private static func loadedModel(
+        entity: Entity,
+        document: GLTFSessionDocument,
+        json: [String: Any],
+        fileSizeBytes: Int64?
+    ) -> LoadedModel {
+        LoadedModel(
+            entity: entity,
+            stats: GLBPreviewStats.from(
+                json: json,
+                usableAnimations: entity.availableAnimations,
+                fileSizeBytes: fileSizeBytes
+            ),
+            document: document,
+            usesBakedEmissive: GLBPreviewEmissive.fileLooksBaked(json: json)
+        )
     }
 
     /// Spec/gloss then RealityKit-safe rewrite, fused into one parse → serialize → write.
@@ -162,8 +236,9 @@ enum GLBEntityLoader {
         at loadURL: URL,
         assetDirectory: URL,
         includeAnimations: Bool,
-        name: String
-    ) async throws -> Entity {
+        name: String,
+        sceneIndex: Int?
+    ) async throws -> (Entity, GLTFSessionDocument) {
         let asset = try GLTFAsset(
             url: loadURL,
             options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
@@ -175,7 +250,16 @@ enum GLBEntityLoader {
         } else {
             asset.animations = []
         }
-        guard let scene = asset.defaultScene else {
+        let scene: GLTFScene
+        if let sceneIndex {
+            guard sceneIndex >= 0, sceneIndex < asset.scenes.count else {
+                GLBLog.error(GLBLog.load, "scene index \(sceneIndex) out of range for \(name)")
+                throw GLBPreviewError.make(1020, "The glTF asset does not contain scene index \(sceneIndex)")
+            }
+            scene = asset.scenes[sceneIndex]
+        } else if let defaultScene = asset.defaultScene {
+            scene = defaultScene
+        } else {
             GLBLog.error(GLBLog.load, "no default scene for \(name)")
             throw GLBPreviewError.make(1020, "The glTF asset did not specify a default scene")
         }
@@ -189,39 +273,6 @@ enum GLBEntityLoader {
         }
     }
 
-    private static func fileSizeBytes(of url: URL) -> Int64? {
-        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
-        return size.map(Int64.init)
-    }
-
-    /// Walk lights, live file cameras, and usable clips once. Does not disable cameras.
-    @MainActor
-    private static func attachScenery(
-        _ entity: Entity,
-        json: [String: Any],
-        fileSizeBytes: Int64?
-    ) -> LoadedModel {
-        if GLBPreviewScenery.hasUnsupportedFileIBL(json: json) {
-            GLBLog.info(GLBLog.lighting, "EXT_lights_image_based is present but not loaded; using studio IBL")
-        }
-        let usableAnimations = GLBPreviewScenery.usableAnimations(in: entity)
-        let punctualLightCount = GLBPreviewScenery.punctualLightCount(in: entity)
-        let fileCameras = GLBPreviewScenery.fileCameras(in: entity)
-        let usesBakedEmissive = GLBPreviewEmissive.fileLooksBaked(json: json)
-        return LoadedModel(
-            entity: entity,
-            stats: GLBPreviewStats.from(
-                json: json,
-                usableAnimations: usableAnimations,
-                fileSizeBytes: fileSizeBytes
-            ),
-            usableAnimations: usableAnimations,
-            punctualLightCount: punctualLightCount,
-            fileCameras: fileCameras,
-            usesBakedEmissive: usesBakedEmissive
-        )
-    }
-
     /// Empty results (zero `ModelComponent`s) retry once without animations when
     /// the first pass still had clips — some Draco + skin + animation assets trap
     /// or yield a blank entity otherwise. NSException is caught by `GLBTry`.
@@ -230,12 +281,11 @@ enum GLBEntityLoader {
         scene: GLTFScene,
         asset: GLTFAsset,
         retryWithoutAnimations: Bool
-    ) throws -> Entity {
+    ) throws -> (Entity, GLTFSessionDocument) {
         var lastError: Error?
         let attempts = retryWithoutAnimations ? 2 : 1
         for pass in 0..<attempts {
             if pass == 1 {
-                // Mesh-recovery retry: drop clips only. File lights stay on the asset.
                 asset.animations = []
             }
             do {
@@ -249,15 +299,30 @@ enum GLBEntityLoader {
     }
 
     @MainActor
-    private static func convertVisible(scene: GLTFScene, asset: GLTFAsset) throws -> Entity {
+    private static func convertVisible(scene: GLTFScene, asset: GLTFAsset) throws -> (Entity, GLTFSessionDocument) {
         var converted: Entity?
+        var document = GLTFSessionDocument()
         try GLBTry.run {
-            converted = GLBRealityKitConvert.convert(scene: scene, asset: asset)
+            converted = GLBRealityKitConvert.convert(scene: scene, asset: asset, document: &document)
         }
         guard let converted, modelComponentCount(in: converted) > 0 else {
             throw GLBPreviewError.make(1022, "The glTF asset has no visible mesh")
         }
-        return converted
+        if document.animations.isEmpty {
+            document.animations = usableClips(from: converted)
+        }
+        return (converted, document)
+    }
+
+    @MainActor
+    private static func usableClips(from entity: Entity) -> [GLTFSessionDocument.Animation] {
+        entity.availableAnimations.compactMap { resource in
+            let probe = entity.playAnimation(resource, startsPaused: true)
+            let duration = probe.duration
+            probe.stop()
+            guard duration.isFinite, duration > 0 else { return nil }
+            return GLTFSessionDocument.Animation(name: resource.name ?? "", duration: duration)
+        }
     }
 
     @MainActor
