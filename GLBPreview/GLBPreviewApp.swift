@@ -32,5 +32,9 @@ struct GLBPreviewApp: App {
                 CheckForUpdatesView(updater: updaterController.updater)
             }
         }
+
+        Settings {
+            SettingsRootView()
+        }
     }
 }
