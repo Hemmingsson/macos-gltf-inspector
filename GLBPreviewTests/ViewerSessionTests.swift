@@ -101,6 +101,17 @@ struct ViewerSessionTests {
         session.activeSceneIndex = 1
         #expect(session.layerRootIndices() == [1])
     }
+
+    @Test func selectedCameraIndexDefaultsToFit() {
+        var doc = GLTFSessionDocument()
+        doc.cameras = [
+            .init(name: "Front", type: "perspective", yfov: 0.7, znear: 0.1, zfar: 100, xmag: nil, ymag: nil),
+        ]
+        let session = ViewerSession(document: doc, defaultExponent: 0)
+        #expect(session.selectedCameraIndex == nil)
+        session.selectedCameraIndex = 0
+        #expect(session.selectedCameraIndex == 0)
+    }
 }
 
 private func makeDummyIBLEntity() -> Entity {

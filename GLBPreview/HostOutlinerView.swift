@@ -49,8 +49,11 @@ private struct OutlinerContent: View {
                     }
                 }
             }
-            Picker("Camera", selection: .constant("fit")) {
-                Text("Fit").tag("fit")
+            Picker("Camera", selection: $session.selectedCameraIndex) {
+                Text("Fit").tag(Optional<Int>.none)
+                ForEach(document.cameras.indices, id: \.self) { index in
+                    Text(cameraTitle(document.cameras[index], index: index)).tag(Optional(index))
+                }
             }
             Text("Layer List")
                 .font(.headline)
@@ -90,6 +93,10 @@ private struct OutlinerContent: View {
 
 private func sceneTitle(_ scene: GLTFSessionDocument.Scene, index: Int) -> String {
     scene.name.isEmpty ? "Scene \(index)" : scene.name
+}
+
+private func cameraTitle(_ camera: GLTFSessionDocument.Camera, index: Int) -> String {
+    camera.name.isEmpty ? "Camera \(index)" : camera.name
 }
 
 private func documentPreviewRows(_ document: GLTFSessionDocument) -> [String] {

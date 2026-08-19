@@ -13,6 +13,8 @@ final class ViewerSession {
     var soloRoot: Int?
     var debug: DebugMode = .none
     var activeSceneIndex: Int
+    /// `nil` is the Fit camera; otherwise an index into `document.cameras`.
+    var selectedCameraIndex: Int?
     var selected: Selection = .none
     let defaultExponent: Float
     let document: GLTFSessionDocument
