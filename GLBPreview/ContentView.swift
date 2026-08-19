@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var previewState: GLBPreviewView.State = .loading
     @State private var interaction = GLBPreviewInteraction()
     @State private var sidebar: HostSidebarModel?
+    @State private var loadGeneration = 0
 
     private var openedFileName: String? { openedURL?.lastPathComponent }
 
@@ -105,9 +106,12 @@ struct ContentView: View {
         previewState = .loading
         sidebar = nil
         interaction = GLBPreviewInteraction()
+        loadGeneration += 1
+        let generation = loadGeneration
         GLBLog.info(GLBLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
         Task {
             let state = await GLBPreviewView.State.loaded(from: url)
+            guard generation == loadGeneration else { return }
             previewState = state
             if case .ready(let model) = state {
                 let bounds = model.entity.visualBounds(relativeTo: nil)
@@ -126,9 +130,12 @@ struct ContentView: View {
 
     private func reloadScene(_ index: Int?) {
         guard let url = openedURL, let index, let sidebar, sidebar.document.scenes.count > 1 else { return }
+        loadGeneration += 1
+        let generation = loadGeneration
         Task {
             do {
                 let entity = try await GLBEntityLoader.convertScene(index: index, from: url)
+                guard generation == loadGeneration else { return }
                 if case .ready(let model) = previewState {
                     sidebar.showAll()
                     previewState = .ready(

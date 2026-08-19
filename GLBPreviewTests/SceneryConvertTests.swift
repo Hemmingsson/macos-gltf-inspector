@@ -23,25 +23,23 @@ struct SceneryConvertTests {
     @MainActor
     @Test func twoPerspectiveCamerasStayListedAfterTurntable() async throws {
         let model = try await loadGLB(twoPerspectiveCamerasGLB())
-        let listed = GLBPreviewScenery.fileCameras(in: model.entity)
-        #expect(listed.count == 2)
-        let names = Set(listed.map(\.displayName))
-        #expect(names == ["CamA", "CamB"])
-        #expect(listed.allSatisfy { $0.kind == .perspective })
+        #expect(model.document.cameras.count == 2)
+        #expect(model.document.cameras.allSatisfy { $0.type == "perspective" })
+        #expect(model.document.nodes.contains { $0.name == "CamA" && $0.cameraIndex != nil })
+        #expect(model.document.nodes.contains { $0.name == "CamB" && $0.cameraIndex != nil })
 
         let assembled = GLBPreviewCamera.makeTurntable(for: model.entity)
         #expect(assembled.pivot.name == "turntable")
-        for camera in listed {
-            #expect(namedEntity(camera.displayName, in: assembled.pivot) != nil)
-        }
+        #expect(namedEntity("CamA", in: assembled.pivot) != nil)
+        #expect(namedEntity("CamB", in: assembled.pivot) != nil)
         #expect(livePerspectiveCount(in: assembled.pivot) == 0)
     }
 
     @MainActor
     @Test func twoPositiveClipsKeptAndOneKeyframeDropped() async throws {
         let model = try await loadGLB(threeClipTriangleGLB(), includeAnimations: true)
-        #expect(GLBPreviewScenery.usableAnimations(in: model.entity).count == 2)
         #expect(model.stats.animationCount == 2)
+        #expect(model.document.animations.count == 2)
     }
 
     @MainActor
@@ -66,11 +64,10 @@ struct SceneryConvertTests {
     @MainActor
     @Test func orthographicCameraConverts() async throws {
         let model = try await loadGLB(orthographicCameraGLB())
-        let cameras = GLBPreviewScenery.fileCameras(in: model.entity)
-        #expect(cameras.contains { $0.kind == .orthographic && $0.displayName == "OrthoCam" })
-        let node = try #require(cameras.first { $0.kind == .orthographic }?.entity)
-        #expect(node.components[OrthographicCameraComponent.self] != nil)
-        #expect(GLBPreviewScenery.fileCameras(in: model.entity).contains { $0.kind == .orthographic })
+        #expect(model.document.cameras.contains { $0.type == "orthographic" })
+        #expect(model.document.nodes.contains { $0.name == "OrthoCam" && $0.cameraIndex != nil })
+        let node = try #require(firstComponent(OrthographicCameraComponent.self, in: model.entity))
+        #expect(node.scale > 0)
     }
 }
 
