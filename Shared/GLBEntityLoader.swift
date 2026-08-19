@@ -10,19 +10,19 @@ enum GLBEntityLoader {
         let document: GLTFSessionDocument
         var usesBakedEmissive = false
 
-        var usableAnimations: [AnimationResource] {
+        @MainActor var usableAnimations: [AnimationResource] {
             GLBPreviewScenery.usableAnimations(in: entity)
         }
 
-        var punctualLightCount: Int {
+        @MainActor var punctualLightCount: Int {
             GLBPreviewScenery.punctualLightCount(in: entity)
         }
 
-        var fileCameras: [GLBPreviewScenery.FileCamera] {
+        @MainActor var fileCameras: [GLBPreviewScenery.FileCamera] {
             GLBPreviewScenery.fileCameras(in: entity)
         }
 
-        var studioIBLExponent: Float {
+        @MainActor var studioIBLExponent: Float {
             GLBPreviewEmissive.studioIBLExponent(punctualLightCount: punctualLightCount)
         }
     }

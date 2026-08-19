@@ -16,15 +16,15 @@ enum GLBPreviewLighting {
         cameraPosition: SIMD3<Float>,
         intensityExponent: Float = 0
     ) async {
+        _ = cameraPosition
         let look = AppLook.current
-        addKeyLight(to: renderer, cameraPosition: cameraPosition, name: "thumbKey")
         guard look.useEnvironmentMap else { return }
         await prefetchLook(look)
         if let resource = cachedResource(for: look) ?? cachedProbe {
             renderer.lighting.resource = resource
             renderer.lighting.intensityExponent = intensityExponent
         } else {
-            GLBLog.error(GLBLog.lighting, "thumbnail IBL probe missing; key light only")
+            GLBLog.error(GLBLog.lighting, "thumbnail IBL probe missing")
         }
     }
 
@@ -126,15 +126,6 @@ enum GLBPreviewLighting {
         ibl.components.set(light)
         applyReceivers(from: ibl, to: receiver)
         return ibl
-    }
-
-    @MainActor
-    private static func addKeyLight(to renderer: RealityRenderer, cameraPosition: SIMD3<Float>, name: String) {
-        let key = DirectionalLight()
-        key.name = name
-        key.light.intensity = 2_500
-        key.look(at: .zero, from: cameraPosition, relativeTo: nil)
-        renderer.entities.append(key)
     }
 
     @MainActor

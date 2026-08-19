@@ -7,6 +7,7 @@ import RealityKit
 import Accelerate
 import ModelIO
 import GLTFKit2
+import simd
 #if os(macOS)
 import AppKit
 #endif
@@ -99,6 +100,7 @@ class GLBRealityKitResourceContext {
         case red
         case green
         case blue
+        case alpha
         case all
 
         var textureSwizzle: MTLTextureSwizzleChannels {
@@ -109,6 +111,8 @@ class GLBRealityKitResourceContext {
                 return MTLTextureSwizzleChannels(red: .green, green: .green, blue: .green, alpha: .alpha)
             case .blue:
                 return MTLTextureSwizzleChannels(red: .blue, green: .blue, blue: .blue, alpha: .alpha)
+            case .alpha:
+                return MTLTextureSwizzleChannels(red: .alpha, green: .alpha, blue: .alpha, alpha: .alpha)
             case .all:
                 return MTLTextureSwizzleChannels(red: .red, green: .green, blue: .blue, alpha: .alpha)
             }
@@ -291,6 +295,7 @@ class GLBRealityKitResourceContext {
         case .red: channel = 1
         case .green: channel = 2
         case .blue: channel = 3
+        case .alpha: channel = 0
         case .all: return nil
         }
         let outputColorSpace = CGColorSpace(name: CGColorSpace.linearGray)!
@@ -359,6 +364,7 @@ public class GLBRealityKitConvert {
     private var skeletonIDsByJointName: [String: [/*MeshResource.Skeleton.ID*/String]] = [:]
     private var skeletonTransformsByJointName : [String: Transform] = [:]
     private var sourceAsset: GLTFAsset?
+    private var ignoreBakedEmissive = false
 
     @MainActor static func convert(
         scene: GLTFScene,
@@ -377,6 +383,11 @@ public class GLBRealityKitConvert {
         sourceAsset = asset
         if let asset {
             document = Self.makeDocument(from: asset)
+        }
+        let emissiveHints = (asset?.materials ?? []).map(GLBPreviewEmissive.hint(from:))
+        ignoreBakedEmissive = GLBPreviewEmissive.fileLooksBaked(emissiveHints)
+        if ignoreBakedEmissive {
+            GLBLog.info(GLBLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
         let context = GLBRealityKitResourceContext()
 
@@ -616,9 +627,7 @@ public class GLBRealityKitConvert {
             part[MeshBuffers.tangents] = MeshBuffers.Tangents(tangentArray)
         }
 
-        if let texCoords0Attribute = gltfPrimitive.attribute(forName: "TEXCOORD_0"),
-           let texCoordsArray = GLBPacked.float2Array(for: texCoords0Attribute.accessor, flipVertically: true)
-        {
+        if let texCoordsArray = bakedTextureCoordinates(for: gltfPrimitive) {
             part[MeshBuffers.textureCoordinates] = MeshBuffers.TextureCoordinates(texCoordsArray)
         }
 
@@ -696,15 +705,30 @@ public class GLBRealityKitConvert {
                                                                 semantic: .scalar)
                 }
             }
-            if let normal = gltfMaterial.normalTexture {
+            if let specular = gltfMaterial.specular {
+                var spec = PhysicallyBasedMaterial.Specular(scale: specular.specularFactor)
+                if let specularTexture = specular.specularTexture {
+                    spec.texture = context.texture(for: specularTexture, channels: .alpha, semantic: .scalar)
+                }
+                material.specular = spec
+            } else {
+                material.specular = .init(floatLiteral: 0)
+            }
+            if let normal = gltfMaterial.normalTexture, abs(normal.scale) > 0.0001 {
                 material.normal.texture = context.texture(for: normal, channels: .all, semantic: .normal)
             }
             if let emissive = gltfMaterial.emissive {
-                material.emissiveIntensity = emissive.emissiveStrength
-                if let emissiveTexture = emissive.emissiveTexture {
-                    material.emissiveColor.texture = context.texture(for: emissiveTexture,
-                                                                     channels: .all,
-                                                                     semantic: .color)
+                let hint = GLBPreviewEmissive.hint(from: gltfMaterial)
+                if !GLBPreviewEmissive.shouldIgnore(hint, fileLooksBaked: ignoreBakedEmissive) {
+                    var emissiveTexture: PhysicallyBasedMaterial.Texture?
+                    if let texture = emissive.emissiveTexture {
+                        emissiveTexture = context.texture(for: texture, channels: .all, semantic: .color)
+                    }
+                    material.emissiveColor = .init(
+                        color: platformColor(for: simd_make_float4(emissive.emissiveFactor, 1)),
+                        texture: emissiveTexture
+                    )
+                    material.emissiveIntensity = emissive.emissiveStrength
                 }
             }
             if let occlusion = gltfMaterial.occlusionTexture {
@@ -720,6 +744,13 @@ public class GLBRealityKitConvert {
                     material.clearcoatRoughness.texture = context.texture(for: clearcoatRoughnessTexture,
                                                                           channels: .green,
                                                                           semantic: .raw)
+                }
+                if #available(macOS 15.0, iOS 18.0, *) {
+                    if let clearcoatNormalTexture = clearcoat.clearcoatNormalTexture {
+                        material.clearcoatNormal = .init(
+                            texture: context.texture(for: clearcoatNormalTexture, channels: .all, semantic: .normal)
+                        )
+                    }
                 }
             }
             applyBlendMode(toPBR: &material, gltfMaterial: gltfMaterial, context: context)
@@ -756,7 +787,11 @@ public class GLBRealityKitConvert {
         guard gltfMaterial.alphaMode == .blend else { return }
         let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
         if alpha < 0.999 {
-            material.blending = .transparent(opacity: .init(scale: alpha))
+            var opacity = PhysicallyBasedMaterial.Opacity(scale: alpha)
+            if let texture = gltfMaterial.metallicRoughness?.baseColorTexture {
+                opacity.texture = context.texture(for: texture, channels: .alpha, semantic: .scalar)
+            }
+            material.blending = .transparent(opacity: opacity)
             return
         }
         // Factor 1 + BLEND + empty/zero texture alpha is Sketchfab car paint (invisible
@@ -800,21 +835,46 @@ public class GLBRealityKitConvert {
         material.blending = .opaque
     }
 
+    /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), then flip V for RealityKit.
+    private func bakedTextureCoordinates(for primitive: GLTFPrimitive) -> [SIMD2<Float>]? {
+        let params = primitive.material?.metallicRoughness?.baseColorTexture
+            ?? primitive.material?.normalTexture
+        let texCoord: Int
+        if let transform = params?.transform, transform.hasTexCoord {
+            texCoord = Int(transform.texCoord)
+        } else {
+            texCoord = params?.texCoord ?? 0
+        }
+        let attribute = primitive.attribute(forName: "TEXCOORD_\(texCoord)")
+            ?? primitive.attribute(forName: "TEXCOORD_0")
+        guard let attribute,
+              var uvs = GLBPacked.float2Array(for: attribute.accessor, flipVertically: false)
+        else { return nil }
+        if let transform = params?.transform {
+            let matrix = transform.matrix
+            uvs = uvs.map { uv in
+                let p = matrix * SIMD4(uv.x, uv.y, 0, 1)
+                return SIMD2(p.x, p.y)
+            }
+        }
+        return uvs.map { SIMD2($0.x, 1 - $0.y) }
+    }
+
     @available(macOS 12.0, iOS 15.0, visionOS 2.0, *)
     func convert(spotLight gltfLight: GLTFLight) -> SpotLightComponent {
         let light = SpotLightComponent(color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-                                       intensity: gltfLight.intensity,
+                                       intensity: gltfLight.intensity * 4 * .pi,
                                        innerAngleInDegrees: GLTFDegFromRad(gltfLight.innerConeAngle),
                                        outerAngleInDegrees: GLTFDegFromRad(gltfLight.outerConeAngle),
-                                       attenuationRadius: gltfLight.range)
+                                       attenuationRadius: punctualAttenuationRadius(gltfLight.range))
         return light
     }
 
     @available(macOS 12.0, iOS 15.0, visionOS 2.0, *)
     func convert(pointLight gltfLight: GLTFLight) -> PointLightComponent {
         let light = PointLightComponent(color:platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-                                        intensity: gltfLight.intensity,
-                                        attenuationRadius:gltfLight.range)
+                                        intensity: gltfLight.intensity * 4 * .pi,
+                                        attenuationRadius: punctualAttenuationRadius(gltfLight.range))
         return light
     }
 
@@ -831,12 +891,25 @@ public class GLBRealityKitConvert {
         return light
     }
 
-    func convert(camera: GLTFCamera) -> PerspectiveCameraComponent? {
+    /// glTF `range <= 0` means infinite; RealityKit rejects a zero radius.
+    private func punctualAttenuationRadius(_ range: Float) -> Float {
+        range > 0 ? range : 1_000_000
+    }
+
+    func convert(camera: GLTFCamera) -> (any Component)? {
         if let perspectiveParams = camera.perspective {
-            let camera = PerspectiveCameraComponent(near: camera.zNear,
-                                                    far: camera.zFar,
-                                                    fieldOfViewInDegrees: GLTFDegFromRad(perspectiveParams.yFOV))
-            return camera
+            return PerspectiveCameraComponent(near: camera.zNear,
+                                              far: camera.zFar,
+                                              fieldOfViewInDegrees: GLTFDegFromRad(perspectiveParams.yFOV))
+        }
+        if let orthographicParams = camera.orthographic {
+            if #available(macOS 15.0, iOS 18.0, visionOS 2.0, *) {
+                var orthographic = OrthographicCameraComponent()
+                orthographic.near = camera.zNear
+                orthographic.far = camera.zFar
+                orthographic.scale = orthographicParams.yMag
+                return orthographic
+            }
         }
         return nil
     }
