@@ -21,7 +21,7 @@ struct ContentView: View {
                 emptyState
             }
         }
-        .frame(minWidth: QAShotLaunch.isActive ? 960 : 400, minHeight: QAShotLaunch.isActive ? 640 : 300)
+        .frame(minWidth: 400, minHeight: 300)
         .navigationTitle(openedFileName ?? "GLB Preview")
         .toolbarBackground(.hidden, for: .windowToolbar)
         .onAppear { showTrafficLights() }
@@ -103,7 +103,6 @@ struct ContentView: View {
         previewState = .loading
         sidebar = nil
         interaction = GLBPreviewInteraction()
-        GLBLoadFailure.reset()
         GLBLog.info(GLBLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
         Task {
             let state = await GLBPreviewView.State.loaded(from: url)

@@ -7,13 +7,6 @@ final class GLBAppDelegate: NSObject, NSApplicationDelegate {
         SettingsAppearance.apply(
             UserDefaults.standard.string(forKey: SettingsKeys.appearance) ?? SettingsAppearance.system.rawValue
         )
-        guard QAShotLaunch.isActive else { return }
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows {
-            window.makeKeyAndOrderFront(nil)
-        }
-        Task { await QAShotLaunch.runStandalone() }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -30,7 +23,6 @@ struct GLBPreviewApp: App {
     private let updaterController: SPUStandardUpdaterController
 
     init() {
-        QAShotLaunch.parseCommandLine()
         UserDefaults.standard.register(defaults: [
             SettingsKeys.background: PreviewBackground.window.rawValue,
         ])
@@ -45,10 +37,7 @@ struct GLBPreviewApp: App {
         WindowGroup {
             ContentView()
         }
-        .defaultSize(
-            width: QAShotLaunch.isActive ? 960 : 1200,
-            height: QAShotLaunch.isActive ? 640 : 740
-        )
+        .defaultSize(width: 1200, height: 740)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .appInfo) {

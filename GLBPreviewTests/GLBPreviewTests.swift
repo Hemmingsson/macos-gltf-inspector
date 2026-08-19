@@ -6,64 +6,6 @@ import Testing
 import simd
 @testable import GLBPreview
 
-struct QAShotLaunchTests {
-    @Test func parsesOutputAndFiles() throws {
-        let parsed = try #require(QAShotLaunch.parse([
-            "GLBPreview",
-            "--qa-shots",
-            "/tmp/qa-out",
-            "--settle-ms",
-            "1000",
-            "/tmp/a.glb",
-            "/tmp/b.gltf",
-        ]))
-        #expect(parsed.output.path == "/tmp/qa-out")
-        #expect(parsed.files.map(\.lastPathComponent) == ["a.glb", "b.gltf"])
-        #expect(parsed.settle == 1_000_000_000)
-    }
-
-    @Test func ignoresBareLaunch() {
-        #expect(QAShotLaunch.parse(["GLBPreview"]) == nil)
-    }
-
-    @Test func titleBarDoesNotSaveEmptyCanvas() throws {
-        let data = try #require(Self.png(width: 120, height: 80) { ctx in
-            ctx.setFillColor(CGColor(srgbRed: 38 / 255, green: 38 / 255, blue: 38 / 255, alpha: 1))
-            ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
-            ctx.setFillColor(CGColor(srgbRed: 1, green: 0.3, blue: 0.3, alpha: 1))
-            ctx.fill(CGRect(x: 4, y: 72, width: 8, height: 8))
-        })
-        #expect(QAShotLaunch.isEmptyCanvas(data))
-    }
-
-    @Test func paintedCenterIsNotEmptyCanvas() throws {
-        let data = try #require(Self.png(width: 120, height: 80) { ctx in
-            ctx.setFillColor(CGColor(srgbRed: 38 / 255, green: 38 / 255, blue: 38 / 255, alpha: 1))
-            ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
-            ctx.setFillColor(CGColor(srgbRed: 0.4, green: 0.35, blue: 0.3, alpha: 1))
-            ctx.fill(CGRect(x: 30, y: 20, width: 60, height: 40))
-        })
-        #expect(!QAShotLaunch.isEmptyCanvas(data))
-    }
-
-    private static func png(width: Int, height: Int, draw: (CGContext) -> Void) -> Data? {
-        let cs = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: cs,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-        draw(ctx)
-        guard let image = ctx.makeImage() else { return nil }
-        let rep = NSBitmapImageRep(cgImage: image)
-        return rep.representation(using: .png, properties: [:])
-    }
-}
-
 struct TextureAlphaUsageTests {
     @Test func constantZeroIsUnused() {
         #expect(GLBTextureAlpha.usage(minAlpha: 0, maxAlpha: 0) == .unused)

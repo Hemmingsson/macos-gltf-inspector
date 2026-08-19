@@ -84,9 +84,7 @@ struct GLBPreviewView: View {
                 await ibl
                 return .ready(model)
             } catch {
-                let message = String(describing: error)
-                GLBLoadFailure.lastMessage = message
-                GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(message)")
+                GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
                 return .failed
             }
         }
