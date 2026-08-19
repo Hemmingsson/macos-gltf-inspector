@@ -62,6 +62,7 @@ struct HostViewerView: View {
         hasher.combine(String(describing: session.backgroundColor))
         hasher.combine(session.hide)
         hasher.combine(session.soloRoot)
+        hasher.combine(session.variantIndex)
         hasher.combine(session.frameNonce)
         return hasher.finalize()
     }

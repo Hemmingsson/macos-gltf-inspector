@@ -29,11 +29,13 @@ final class ViewerSession {
     var isPlaying = true
     var currentTime: TimeInterval = 0
     var clipDuration: TimeInterval = 0
+    var variantIndex = 0
     let defaultExponent: Float
     let document: GLTFSessionDocument
     weak var boundRoot: Entity?
     weak var boundIBL: Entity?
     @ObservationIgnored private var playbackControllers: [AnimationPlaybackController] = []
+    @ObservationIgnored private var cachedOriginalMaterials: [ObjectIdentifier: [any RealityKit.Material]] = [:]
 
     enum Selection: Equatable, Hashable {
         case none
@@ -98,6 +100,7 @@ final class ViewerSession {
         boundRoot = root
         boundIBL = iblEntity
         if rebound {
+            cachedOriginalMaterials.removeAll()
             startPlayback()
         }
     }
@@ -205,6 +208,7 @@ final class ViewerSession {
         }
 
         applyVisibility(to: root)
+        applyVariant(to: root)
     }
 
     func showAll() {
@@ -259,6 +263,68 @@ final class ViewerSession {
         entity.components.remove(ImageBasedLightReceiverComponent.self)
         for child in entity.children {
             removeReceivers(from: child)
+        }
+    }
+
+    @MainActor
+    private func applyVariant(to root: Entity) {
+        guard !document.variants.isEmpty,
+              document.variants.indices.contains(variantIndex)
+        else { return }
+        cacheOriginalMaterials(from: root)
+        let mapping = document.variants[variantIndex].mapping
+        let table = materialTable(in: root)
+        applyVariantMapping(mapping, table: table, to: root)
+    }
+
+    @MainActor
+    private func cacheOriginalMaterials(from entity: Entity) {
+        let id = ObjectIdentifier(entity)
+        if let model = entity.components[ModelComponent.self], cachedOriginalMaterials[id] == nil {
+            cachedOriginalMaterials[id] = model.materials
+        }
+        for child in entity.children {
+            cacheOriginalMaterials(from: child)
+        }
+    }
+
+    @MainActor
+    private func materialTable(in entity: Entity) -> [any RealityKit.Material]? {
+        if let table = entity.components[GLTFMaterialTableComponent.self] {
+            return table.materials
+        }
+        for child in entity.children {
+            if let found = materialTable(in: child) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    @MainActor
+    private func applyVariantMapping(
+        _ mapping: [String: Int],
+        table: [any RealityKit.Material]?,
+        to entity: Entity
+    ) {
+        if var model = entity.components[ModelComponent.self] {
+            let id = ObjectIdentifier(entity)
+            var materials = cachedOriginalMaterials[id] ?? model.materials
+            if let nodeIndex = entity.components[GLTFNodeIDComponent.self]?.nodeIndex,
+               let meshIndex = node(at: nodeIndex)?.meshIndex {
+                for primitiveIndex in materials.indices {
+                    guard let materialIndex = mapping["\(meshIndex):\(primitiveIndex)"],
+                          let table,
+                          table.indices.contains(materialIndex)
+                    else { continue }
+                    materials[primitiveIndex] = table[materialIndex]
+                }
+            }
+            model.materials = materials
+            entity.components.set(model)
+        }
+        for child in entity.children {
+            applyVariantMapping(mapping, table: table, to: child)
         }
     }
 

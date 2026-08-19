@@ -55,6 +55,13 @@ private struct OutlinerContent: View {
                     Text(cameraTitle(document.cameras[index], index: index)).tag(Optional(index))
                 }
             }
+            if !document.variants.isEmpty {
+                Picker("Variant", selection: $session.variantIndex) {
+                    ForEach(document.variants.indices, id: \.self) { index in
+                        Text(variantTitle(document.variants[index], index: index)).tag(index)
+                    }
+                }
+            }
             if !document.animations.isEmpty {
                 animationTransport
             }
@@ -78,6 +85,9 @@ private struct OutlinerContent: View {
         }
         .onChange(of: session.activeSceneIndex) { _, _ in
             session.selected = .none
+        }
+        .onChange(of: session.variantIndex) { _, _ in
+            session.applyIfBound()
         }
         .task(id: session.isPlaying) {
             guard session.isPlaying else { return }
@@ -172,6 +182,10 @@ private func cameraTitle(_ camera: GLTFSessionDocument.Camera, index: Int) -> St
 
 private func animationTitle(_ animation: GLTFSessionDocument.Animation, index: Int) -> String {
     animation.name.isEmpty ? "Animation \(index)" : animation.name
+}
+
+private func variantTitle(_ variant: GLTFSessionDocument.Variant, index: Int) -> String {
+    variant.name.isEmpty ? "Variant \(index)" : variant.name
 }
 
 private func documentPreviewRows(_ document: GLTFSessionDocument) -> [String] {

@@ -203,6 +203,94 @@ struct ViewerSessionTests {
         #expect(node0.isEnabled == true)
         #expect(node1.isEnabled == false)
     }
+
+    @Test func variantIndexDefaultsToZero() {
+        let session = ViewerSession(document: GLTFSessionDocument(), defaultExponent: 0)
+        #expect(session.variantIndex == 0)
+    }
+
+    @MainActor
+    @Test func missingVariantTableIsEmpty() async throws {
+        let url = try writeTempOneNodeMeshGLB(nodeName: "Mesh")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        #expect(model.document.variants.isEmpty)
+    }
+
+    @MainActor
+    @Test func convertFillsTwoVariantsFromSyntheticGLB() async throws {
+        let url = try writeTempTwoVariantGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        #expect(model.document.variants.count == 2)
+        #expect(model.document.variants[0].name == "Yellow")
+        #expect(model.document.variants[1].name == "Red")
+        #expect(model.document.variants[0].mapping["0:0"] == 0)
+        #expect(model.document.variants[1].mapping["0:0"] == 1)
+    }
+
+    @MainActor
+    @Test func applySwapsMaterialsFromVariantTable() {
+        var doc = GLTFSessionDocument()
+        doc.nodes = [testNode(index: 0, name: "Mesh", children: [])]
+        doc.nodes[0].meshIndex = 0
+        doc.meshes = [
+            .init(
+                name: "Mesh",
+                primitiveCount: 1,
+                triangleCount: 1,
+                vertexCount: 3,
+                materialIndices: [0]
+            ),
+        ]
+        doc.variants = [
+            .init(name: "Smooth", mapping: ["0:0": 0]),
+            .init(name: "Rough", mapping: ["0:0": 1]),
+        ]
+
+        var smooth = PhysicallyBasedMaterial()
+        smooth.roughness.scale = 0.2
+        var rough = PhysicallyBasedMaterial()
+        rough.roughness.scale = 0.8
+
+        let entity = Entity()
+        entity.components.set(GLTFNodeIDComponent(nodeIndex: 0))
+        entity.components.set(ModelComponent(mesh: MeshResource.generateBox(size: 0.1), materials: [smooth]))
+        entity.components.set(GLTFMaterialTableComponent(materials: [smooth, rough]))
+
+        let session = ViewerSession(document: doc, defaultExponent: 0)
+        #expect(session.variantIndex == 0)
+        session.apply(root: entity, iblEntity: nil)
+        #expect(pbrRoughness(entity) == 0.2)
+
+        session.variantIndex = 1
+        session.apply(root: entity, iblEntity: nil)
+        #expect(pbrRoughness(entity) == 0.8)
+
+        session.variantIndex = 0
+        session.apply(root: entity, iblEntity: nil)
+        #expect(pbrRoughness(entity) == 0.2)
+    }
+
+    @MainActor
+    @Test func applySwapsConvertedVariantMaterials() async throws {
+        let url = try writeTempTwoVariantGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        #expect(model.document.variants.count == 2)
+
+        let session = ViewerSession(document: model.document, defaultExponent: 0)
+        session.apply(root: model.entity, iblEntity: nil)
+        let first = pbrRoughness(model.entity)
+        #expect(first == 0.2)
+
+        session.variantIndex = 1
+        session.apply(root: model.entity, iblEntity: nil)
+        #expect(pbrRoughness(model.entity) == 0.8)
+    }
 }
 
 private func testNode(index: Int, name: String, children: [Int]) -> GLTFSessionDocument.Node {
@@ -242,6 +330,19 @@ private func entity(nodeIndex: Int, in root: Entity) -> Entity? {
     for child in root.children {
         if let found = entity(nodeIndex: nodeIndex, in: child) {
             return found
+        }
+    }
+    return nil
+}
+
+private func pbrRoughness(_ entity: Entity) -> Float? {
+    if let model = entity.components[ModelComponent.self],
+       let material = model.materials.first as? PhysicallyBasedMaterial {
+        return material.roughness.scale
+    }
+    for child in entity.children {
+        if let roughness = pbrRoughness(child) {
+            return roughness
         }
     }
     return nil
@@ -290,4 +391,66 @@ private func writeTempOneNodeMeshGLB(nodeName: String) throws -> URL {
     ]
     let data = try GLBBox.serialize(json: json, bin: bin)
     return try GLBBox.writePrepared(data, prefix: "viewer-session")
+}
+
+private func writeTempTwoVariantGLB() throws -> URL {
+    let bin = triangleBin()
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "extensionsUsed": ["KHR_materials_variants"],
+        "extensions": [
+            "KHR_materials_variants": [
+                "variants": [
+                    ["name": "Yellow"],
+                    ["name": "Red"],
+                ],
+            ],
+        ],
+        "materials": [
+            [
+                "name": "Yellow",
+                "pbrMetallicRoughness": [
+                    "baseColorFactor": [1, 1, 0, 1],
+                    "metallicFactor": 0,
+                    "roughnessFactor": 0.2,
+                ],
+            ],
+            [
+                "name": "Red",
+                "pbrMetallicRoughness": [
+                    "baseColorFactor": [1, 0, 0, 1],
+                    "metallicFactor": 0,
+                    "roughnessFactor": 0.8,
+                ],
+            ],
+        ],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+        "accessors": [[
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": 3,
+            "type": "VEC3",
+        ]],
+        "meshes": [[
+            "name": "VariantMesh",
+            "primitives": [[
+                "attributes": ["POSITION": 0],
+                "material": 0,
+                "extensions": [
+                    "KHR_materials_variants": [
+                        "mappings": [
+                            ["material": 0, "variants": [0]],
+                            ["material": 1, "variants": [1]],
+                        ],
+                    ],
+                ],
+            ]],
+        ]],
+        "nodes": [["name": "Mesh", "mesh": 0]],
+        "scenes": [["name": "Default", "nodes": [0]]],
+        "scene": 0,
+    ]
+    let data = try GLBBox.serialize(json: json, bin: bin)
+    return try GLBBox.writePrepared(data, prefix: "viewer-variants")
 }
