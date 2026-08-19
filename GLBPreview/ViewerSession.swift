@@ -238,7 +238,8 @@ final class ViewerSession {
     func soloHides(_ id: Int) -> Bool {
         guard let soloRoot else { return false }
         if id == soloRoot { return false }
-        return !descendantIndices(of: soloRoot).contains(id)
+        if ancestorIndices(of: soloRoot).contains(id) { return false }
+        return layerRootIndices().contains(id)
     }
 
     func intensityExponent(forSlider value: Float) -> Float {
@@ -278,16 +279,13 @@ final class ViewerSession {
         }
     }
 
-    private func descendantIndices(of root: Int) -> Set<Int> {
+    private func ancestorIndices(of id: Int) -> Set<Int> {
         var found = Set<Int>()
-        func walk(_ id: Int) {
-            guard let node = node(at: id) else { return }
-            for child in node.children {
-                found.insert(child)
-                walk(child)
-            }
+        var current = id
+        while let parent = document.nodes.first(where: { $0.children.contains(current) })?.index {
+            found.insert(parent)
+            current = parent
         }
-        walk(root)
         return found
     }
 

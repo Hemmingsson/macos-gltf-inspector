@@ -168,6 +168,55 @@ struct ViewerSessionTests {
         #expect(session.hide.isEmpty)
         #expect(session.soloRoot == nil)
     }
+
+    @MainActor
+    @Test func soloDisablesOtherSceneRootsNotAncestors() {
+        var doc = GLTFSessionDocument()
+        doc.scenes = [.init(name: "A", rootNodeIndices: [0, 1])]
+        doc.nodes = [
+            testNode(index: 0, name: "RootA", children: [2]),
+            testNode(index: 1, name: "RootB", children: []),
+            testNode(index: 2, name: "Child", children: []),
+        ]
+        let session = ViewerSession(document: doc, defaultExponent: 0)
+
+        let root = Entity()
+        let node0 = Entity()
+        let node1 = Entity()
+        let node2 = Entity()
+        node0.components.set(GLTFNodeIDComponent(nodeIndex: 0))
+        node1.components.set(GLTFNodeIDComponent(nodeIndex: 1))
+        node2.components.set(GLTFNodeIDComponent(nodeIndex: 2))
+        node0.addChild(node2)
+        root.addChild(node0)
+        root.addChild(node1)
+
+        session.soloRoot = 0
+        session.apply(root: root, iblEntity: nil)
+        #expect(node0.isEnabled == true)
+        #expect(node1.isEnabled == false)
+        #expect(node2.isEnabled == true)
+
+        session.soloRoot = 2
+        session.apply(root: root, iblEntity: nil)
+        #expect(node2.isEnabled == true)
+        #expect(node0.isEnabled == true)
+        #expect(node1.isEnabled == false)
+    }
+}
+
+private func testNode(index: Int, name: String, children: [Int]) -> GLTFSessionDocument.Node {
+    .init(
+        index: index,
+        name: name,
+        children: children,
+        meshIndex: nil,
+        cameraIndex: nil,
+        lightIndex: nil,
+        translation: .zero,
+        rotation: SIMD4<Float>(0, 0, 0, 1),
+        scale: .one
+    )
 }
 
 private func makeDummyIBLEntity() -> Entity {
