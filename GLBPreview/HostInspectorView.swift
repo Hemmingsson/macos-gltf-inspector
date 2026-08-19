@@ -70,17 +70,15 @@ private struct InspectorForm: View {
                 .disabled(!toneMapEnabled)
             }
 
-            Section("Debug") {
-                ForEach(ViewerSession.DebugMode.allCases, id: \.self) { mode in
-                    Text(debugLabel(mode))
-                }
-            }
+            Section("Debug") {}
         }
         .formStyle(.grouped)
         .onChange(of: session.imageBased) { _, _ in session.applyIfBound() }
         .onChange(of: session.punctualLights) { _, _ in session.applyIfBound() }
         .onChange(of: session.iblIntensity) { _, _ in session.applyIfBound() }
+        .onChange(of: session.environment) { _, _ in session.applyIfBound() }
         .onChange(of: session.environmentRotation) { _, _ in session.applyIfBound() }
+        .onChange(of: session.selectedUserHDR) { _, _ in session.applyIfBound() }
     }
 
     private var exposureEnabled: Bool {
@@ -120,18 +118,6 @@ private struct InspectorForm: View {
                 }
             }
         )
-    }
-
-    private func debugLabel(_ mode: ViewerSession.DebugMode) -> String {
-        switch mode {
-        case .none: "None"
-        case .baseColor: "Base Color"
-        case .roughness: "Roughness"
-        case .metalness: "Metalness"
-        case .normals: "Normals"
-        case .emission: "Emission"
-        case .wireframe: "Wireframe"
-        }
     }
 
     private func addHDR() {

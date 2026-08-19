@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreImage
 import ImageIO
 import RealityKit
 import simd
@@ -61,17 +62,28 @@ enum GLBPreviewLighting {
     }
 
     @MainActor
-    static func loadEnvironmentResource(from url: URL) async -> EnvironmentResource? {
+    static func loadEnvironmentResource(from url: URL, blurSkybox: Bool = false) async -> EnvironmentResource? {
         guard let image = loadEquirectangular(from: url) else {
             GLBLog.error(GLBLog.lighting, "HDR decode failed \(url.lastPathComponent)")
             return nil
         }
+        let source = blurSkybox ? blurredEquirectangular(image) ?? image : image
         do {
-            return try await EnvironmentResource(equirectangular: image)
+            return try await EnvironmentResource(equirectangular: source)
         } catch {
             GLBLog.error(GLBLog.lighting, "EnvironmentResource failed: \(error)")
             return nil
         }
+    }
+
+    static func blurredEquirectangular(_ image: CGImage) -> CGImage? {
+        let ci = CIImage(cgImage: image)
+        let blurred = ci
+            .clampedToExtent()
+            .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 48])
+            .cropped(to: ci.extent)
+        let context = CIContext(options: [.useSoftwareRenderer: false])
+        return context.createCGImage(blurred, from: blurred.extent)
     }
 
     private static func hdrURL() -> URL? {

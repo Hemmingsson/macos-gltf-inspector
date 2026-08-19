@@ -106,6 +106,18 @@ struct ViewerSessionTests {
         let s = ViewerSession(document: .init(), defaultExponent: 0)
         #expect(s.environment == .studioNeutral)
         #expect(s.showEnvironmentMap == false)
+        #expect(s.blurEnvironment == false)
+        #expect(s.userHDRs.isEmpty)
+        #expect(s.inspectorError == nil)
+        #expect(s.exposure == 1)
+        #expect(s.toneMap == .khronosPBRNeutral)
+        #expect(ViewerSession.ToneMap.allCases.map(\.title) == [
+            "Khronos PBR Neutral",
+            "ACES Filmic Tone Mapping (Hill - Exposure Boost)",
+            "ACES Filmic Tone Mapping (Narkowicz)",
+            "ACES Filmic Tone Mapping (Hill)",
+            "None (Linear mapping, clamped at 1.0)",
+        ])
     }
 
     @Test func selectedCameraIndexDefaultsToFit() {

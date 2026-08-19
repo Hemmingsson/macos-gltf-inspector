@@ -8,8 +8,11 @@ final class GLBHostSceneController {
 
     private var session: ViewerSession?
     private var resource: EnvironmentResource?
+    private var blurredSkybox: EnvironmentResource?
     private var resourceKey: String?
+    private var blurKey: String?
     private var loadGeneration = 0
+    private var blurGeneration = 0
     private var lastGoodEnvironment: GLBKhronosEnvironments = .studioNeutral
     private var lastGoodUserHDR: URL?
 
@@ -22,12 +25,14 @@ final class GLBHostSceneController {
         }
         syncBackground()
         refreshResource()
+        refreshBlurredSkybox()
         bridge.bump()
     }
 
     func sessionDidChange() {
         syncBackground()
         refreshResource()
+        refreshBlurredSkybox()
         session?.applyIfBound()
         bridge.bump()
     }
@@ -59,7 +64,13 @@ final class GLBHostSceneController {
     }
 
     private func applySkybox(_ content: inout RealityViewCameraContent) {
-        if session?.showEnvironmentMap == true, let resource {
+        guard session?.showEnvironmentMap == true else {
+            content.environment = .default
+            return
+        }
+        if session?.blurEnvironment == true, let blurredSkybox {
+            content.environment = .skybox(blurredSkybox)
+        } else if let resource {
             content.environment = .skybox(resource)
         } else {
             content.environment = .default
@@ -87,6 +98,9 @@ final class GLBHostSceneController {
             return
         }
 
+        blurredSkybox = nil
+        blurKey = nil
+        blurGeneration += 1
         Task {
             if let loaded = await GLBPreviewLighting.loadEnvironmentResource(from: url) {
                 guard generation == loadGeneration else { return }
@@ -100,11 +114,38 @@ final class GLBHostSceneController {
                     ibl.components.set(ImageBasedLightComponent(source: .single(loaded), intensityExponent: exponent))
                 }
                 session.applyIfBound()
+                refreshBlurredSkybox()
                 bridge.bump()
             } else {
                 guard generation == loadGeneration else { return }
                 revertEnvironment()
                 session.inspectorError = "Could not load HDR"
+            }
+        }
+    }
+
+    private func refreshBlurredSkybox() {
+        guard let session, session.blurEnvironment, session.showEnvironmentMap else { return }
+        let key: String
+        let url: URL?
+        if let user = session.selectedUserHDR {
+            key = "user:" + user.absoluteString
+            url = user
+        } else {
+            key = "catalog:" + session.environment.rawValue
+            url = GLBPreviewLighting.catalogURL(session.environment)
+        }
+        guard key != blurKey else { return }
+        guard let url else { return }
+
+        blurGeneration += 1
+        let generation = blurGeneration
+        Task {
+            if let loaded = await GLBPreviewLighting.loadEnvironmentResource(from: url, blurSkybox: true) {
+                guard generation == blurGeneration else { return }
+                blurredSkybox = loaded
+                blurKey = key
+                bridge.bump()
             }
         }
     }
