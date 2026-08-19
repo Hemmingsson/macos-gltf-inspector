@@ -3,6 +3,9 @@ import SwiftUI
 
 final class GLBAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        SettingsAppearance.apply(
+            UserDefaults.standard.string(forKey: SettingsKeys.appearance) ?? SettingsAppearance.system.rawValue
+        )
         guard QAShotLaunch.isActive else { return }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
@@ -13,7 +16,10 @@ final class GLBAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        if UserDefaults.standard.object(forKey: SettingsKeys.quitWhenLastWindowCloses) == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: SettingsKeys.quitWhenLastWindowCloses)
     }
 }
 
@@ -23,6 +29,9 @@ struct GLBPreviewApp: App {
 
     init() {
         QAShotLaunch.parseCommandLine()
+        UserDefaults.standard.register(defaults: [
+            SettingsKeys.background: PreviewBackground.window.rawValue,
+        ])
     }
 
     var body: some Scene {
@@ -34,5 +43,9 @@ struct GLBPreviewApp: App {
             height: QAShotLaunch.isActive ? 640 : 740
         )
         .windowResizability(.contentMinSize)
+
+        Settings {
+            SettingsRootView()
+        }
     }
 }

@@ -8,7 +8,7 @@ enum QAShotDump {
         url: URL,
         status: String,
         model: GLBEntityLoader.LoadedModel?,
-        session: ViewerSession? = nil,
+        session: HostSidebarModel? = nil,
         loadError: String? = nil,
         logLines: [String] = [],
         shotName: String = "",
@@ -90,7 +90,7 @@ enum QAShotDump {
         document.json         what our session kept after convert
         entity-tree.txt/.json RealityKit graph + materials + IBL / lights
         camera-fit.txt        near/far we would pick from mesh bounds
-        host-look.json        IBL / tone map / hide / variant at capture time
+        host-look.json        IBL / hide / variant at capture time
         shot.png              copy of the QA PNG
         """
 
@@ -459,24 +459,19 @@ enum QAShotDump {
             """
     }
 
-    private static func sessionJSON(_ session: ViewerSession?) -> [String: Any] {
+    @MainActor
+    private static func sessionJSON(_ session: HostSidebarModel?) -> [String: Any] {
         guard let session else { return ["session": "nil"] }
         return [
-            "imageBased": session.imageBased,
-            "punctualLights": session.punctualLights,
-            "iblIntensity": session.iblIntensity,
-            "environment": session.environment.rawValue,
-            "environmentRotation": session.environmentRotation.rawValue,
-            "showEnvironmentMap": session.showEnvironmentMap,
-            "blurEnvironment": session.blurEnvironment,
-            "toneMap": session.toneMap.rawValue,
-            "exposure": session.exposure,
             "hide": Array(session.hide).sorted(),
             "soloRoot": session.soloRoot as Any,
-            "variantIndex": session.variantIndex,
             "debug": session.debug.rawValue,
-            "inspectorError": session.inspectorError as Any,
             "activeSceneIndex": session.activeSceneIndex,
+            "look": [
+                "useEnvironmentMap": AppLook.current.useEnvironmentMap,
+                "catalog": AppLook.current.catalogRaw,
+                "customFileName": AppLook.current.customFileName as Any,
+            ],
         ]
     }
 

@@ -15,14 +15,6 @@ enum GLBKhronosEnvironments: String, CaseIterable, Sendable {
 
     static var defaultLook: Self { .studioNeutral }
 
-    static var all: [Self] {
-        [
-            .cannonExterior, .footprintCourt, .pisa, .dogesPalace, .diningRoom,
-            .field, .helipadGoldenhour, .papermillRuins, .studioNeutral,
-            .colorfulStudio, .wideStreet,
-        ]
-    }
-
     var title: String {
         switch self {
         case .cannonExterior: "Cannon Exterior"

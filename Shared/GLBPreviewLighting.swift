@@ -1,58 +1,102 @@
 import CoreGraphics
-import CoreImage
 import ImageIO
 import RealityKit
-import simd
+import SwiftUI
 
 enum GLBPreviewLighting {
     private static var studioHDRName: String {
         GLBKhronosEnvironments.defaultLook.resourceName
     }
 
-    /// Finder icons: soft key plus Studio Neutral IBL.
+    /// Finder icons: key plus IBL when Settings uses an environment map.
     /// `intensityExponent` is power-of-two (0 ≈ 1×).
     @MainActor
     static func configureThumbnailLighting(on renderer: RealityRenderer, cameraPosition: SIMD3<Float>) async {
-        if let resource = await studioResource() {
+        let look = AppLook.current
+        addKeyLight(to: renderer, cameraPosition: cameraPosition, name: "thumbKey")
+        guard look.useEnvironmentMap else { return }
+        await prefetchLook(look)
+        if let resource = cachedResource(for: look) ?? cachedProbe {
             renderer.lighting.resource = resource
             renderer.lighting.intensityExponent = 0
         } else {
             GLBLog.error(GLBLog.lighting, "thumbnail IBL probe missing; key light only")
         }
-
-        let key = DirectionalLight()
-        key.name = "thumbKey"
-        key.light.intensity = 2_500
-        key.look(at: .zero, from: cameraPosition, relativeTo: nil)
-        renderer.entities.append(key)
     }
 
-    /// Warm the Studio Neutral cache so `makeStudioIBLEntity` can attach it synchronously.
+    /// Warm the look (or Studio Neutral) so `applyLook` can attach it synchronously.
     @MainActor
     static func prefetchStudioIBL() async {
-        _ = await studioResource()
+        await prefetchLook(.current)
+    }
+
+    @MainActor
+    static func prefetchLook(_ look: AppLook) async {
+        if look.useEnvironmentMap, let url = look.resolvedHDRURL() {
+            _ = await resource(for: url)
+        } else {
+            _ = await studioResource()
+        }
+    }
+
+    /// QL, host, and QA still-renderer. Skybox stays off.
+    @MainActor
+    static func applyLook(
+        to content: inout RealityViewCameraContent,
+        pivot: Entity,
+        look: AppLook = .current,
+        intensityExponent: Float
+    ) {
+        for entity in content.entities where lookEntityNames.contains(entity.name) {
+            content.remove(entity)
+        }
+        if look.useEnvironmentMap {
+            if let ibl = makeIBLEntity(receiver: pivot, resource: cachedResource(for: look) ?? cachedProbe, intensityExponent: intensityExponent) {
+                content.add(ibl)
+            }
+        } else {
+            removeReceivers(from: pivot)
+            content.add(makeDirectional(name: "lookKey", intensity: 2_500, from: [4, 7, 6]))
+            content.add(makeDirectional(name: "lookFill", intensity: 900, from: [-5, 3, 2]))
+        }
     }
 
     /// World-fixed Studio Neutral IBL. Does not change the RealityView background.
     @MainActor
     static func makeStudioIBLEntity(receiver: Entity, intensityExponent: Float = 0) -> Entity? {
-        guard let resource = cachedProbe else { return nil }
-        let ibl = Entity()
-        ibl.name = "studioIBL"
-        var light = ImageBasedLightComponent(source: .single(resource), intensityExponent: intensityExponent)
-        light.inheritsRotation = false
-        ibl.components.set(light)
-        applyReceivers(from: ibl, to: receiver)
-        return ibl
+        makeIBLEntity(receiver: receiver, resource: cachedProbe, intensityExponent: intensityExponent)
     }
 
-    /// Studio Neutral after `prefetchStudioIBL`. Host uses this so the first frame
-    /// matches Quick Look instead of binding receivers to `ImageBasedLightComponent.source.none`.
-    @MainActor
-    static var studioProbe: EnvironmentResource? { cachedProbe }
+    private static let lookEntityNames: Set<String> = ["lookIBL", "studioIBL", "lookKey", "lookFill"]
 
     @MainActor
     private static var cachedProbe: EnvironmentResource?
+
+    @MainActor
+    private static var cachedByURL: [String: EnvironmentResource] = [:]
+
+    @MainActor
+    private static func cachedResource(for look: AppLook) -> EnvironmentResource? {
+        guard let url = look.resolvedHDRURL() else { return cachedProbe }
+        return cachedByURL[url.path] ?? (url.path == hdrURL()?.path ? cachedProbe : nil)
+    }
+
+    @MainActor
+    private static func resource(for url: URL) async -> EnvironmentResource? {
+        if let cached = cachedByURL[url.path] { return cached }
+        if let loaded = await loadEnvironmentResource(from: url) {
+            cachedByURL[url.path] = loaded
+            if url.path == hdrURL()?.path {
+                cachedProbe = loaded
+            }
+            return loaded
+        }
+        if url.path != hdrURL()?.path {
+            GLBLog.error(GLBLog.lighting, "HDR failed \(url.lastPathComponent); using Studio Neutral")
+            return await studioResource()
+        }
+        return nil
+    }
 
     @MainActor
     private static func studioResource() async -> EnvironmentResource? {
@@ -61,17 +105,48 @@ enum GLBPreviewLighting {
             GLBLog.error(GLBLog.lighting, "studio HDR missing from bundle (\(studioHDRName).hdr)")
             return nil
         }
-        guard let image = loadEquirectangular(from: url) else {
-            GLBLog.error(GLBLog.lighting, "studio HDR decode failed \(url.lastPathComponent)")
-            return nil
-        }
-        do {
-            let resource = try await EnvironmentResource(equirectangular: image)
-            cachedProbe = resource
-            return resource
-        } catch {
-            GLBLog.error(GLBLog.lighting, "EnvironmentResource failed: \(error)")
-            return nil
+        return await resource(for: url)
+    }
+
+    @MainActor
+    private static func makeIBLEntity(
+        receiver: Entity,
+        resource: EnvironmentResource?,
+        intensityExponent: Float
+    ) -> Entity? {
+        guard let resource else { return nil }
+        let ibl = Entity()
+        ibl.name = "lookIBL"
+        var light = ImageBasedLightComponent(source: .single(resource), intensityExponent: intensityExponent)
+        light.inheritsRotation = false
+        ibl.components.set(light)
+        applyReceivers(from: ibl, to: receiver)
+        return ibl
+    }
+
+    @MainActor
+    private static func addKeyLight(to renderer: RealityRenderer, cameraPosition: SIMD3<Float>, name: String) {
+        let key = DirectionalLight()
+        key.name = name
+        key.light.intensity = 2_500
+        key.look(at: .zero, from: cameraPosition, relativeTo: nil)
+        renderer.entities.append(key)
+    }
+
+    @MainActor
+    private static func makeDirectional(name: String, intensity: Float, from: SIMD3<Float>) -> Entity {
+        let light = DirectionalLight()
+        light.name = name
+        light.light.intensity = intensity
+        light.look(at: .zero, from: from, relativeTo: nil)
+        return light
+    }
+
+    @MainActor
+    private static func removeReceivers(from entity: Entity) {
+        entity.components.remove(ImageBasedLightReceiverComponent.self)
+        for child in entity.children {
+            removeReceivers(from: child)
         }
     }
 
@@ -86,28 +161,17 @@ enum GLBPreviewLighting {
     }
 
     @MainActor
-    static func loadEnvironmentResource(from url: URL, blurSkybox: Bool = false) async -> EnvironmentResource? {
+    static func loadEnvironmentResource(from url: URL) async -> EnvironmentResource? {
         guard let image = loadEquirectangular(from: url) else {
             GLBLog.error(GLBLog.lighting, "HDR decode failed \(url.lastPathComponent)")
             return nil
         }
-        let source = blurSkybox ? blurredEquirectangular(image) ?? image : image
         do {
-            return try await EnvironmentResource(equirectangular: source)
+            return try await EnvironmentResource(equirectangular: image)
         } catch {
             GLBLog.error(GLBLog.lighting, "EnvironmentResource failed: \(error)")
             return nil
         }
-    }
-
-    static func blurredEquirectangular(_ image: CGImage) -> CGImage? {
-        let ci = CIImage(cgImage: image)
-        let blurred = ci
-            .clampedToExtent()
-            .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 48])
-            .cropped(to: ci.extent)
-        let context = CIContext(options: [.useSoftwareRenderer: false])
-        return context.createCGImage(blurred, from: blurred.extent)
     }
 
     private static func hdrURL() -> URL? {

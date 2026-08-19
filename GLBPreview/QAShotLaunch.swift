@@ -2,7 +2,6 @@ import AppKit
 import CoreGraphics
 import Foundation
 import RealityKit
-import ScreenCaptureKit
 import SwiftUI
 
 /// `GLBPreview --qa-shots OUT file.glb …` — sequential host-canvas PNGs, then quit.
@@ -57,6 +56,7 @@ enum QAShotLaunch {
         var rows: [[String: Any]] = []
         var failed = false
         note("qa start files=\(files.count) out=\(out.path)")
+        await GLBPreviewLighting.prefetchStudioIBL()
         for (index, url) in files.enumerated() {
             let name = url.lastPathComponent
             note("qa file \(index + 1)/\(files.count) \(name)")
@@ -78,21 +78,9 @@ enum QAShotLaunch {
             var shot = ""
             var shotSource = ""
             var shotBytes = 0
-            var session: ViewerSession?
             if let model = loaded {
-                let hasLights = !model.document.lights.isEmpty || entityHasPunctualLight(model.entity)
-                session = ViewerSession(document: model.document, defaultExponent: hasLights ? -2 : 0)
-                NSApp.windows.forEach { $0.makeKeyAndOrderFront(nil) }
-                try? await Task.sleep(nanoseconds: settleNanoseconds)
-                var data: Data?
-                var source = "window"
-                if let view = hostingView() {
-                    data = await pngData(of: view)
-                }
-                if data == nil {
-                    data = await stillPNG(entity: model.entity)
-                    source = "still-renderer"
-                }
+                let data = await stillPNG(entity: model.entity)
+                let source = "still-renderer"
                 if let data {
                     let dest = out.appendingPathComponent("\(index + 1)-\(name).png")
                     try? data.write(to: dest)
@@ -102,7 +90,7 @@ enum QAShotLaunch {
                     note("qa shot \(shot) bytes=\(data.count) source=\(source)")
                 } else {
                     shotSource = "failed"
-                    note("qa shot failed \(name) (empty window + still-renderer)")
+                    note("qa shot failed \(name) (still-renderer)")
                     failed = true
                 }
             } else {
@@ -114,7 +102,6 @@ enum QAShotLaunch {
                 url: url,
                 status: status,
                 model: loaded,
-                session: session,
                 loadError: GLBLoadFailure.lastMessage,
                 logLines: GLBLoadFailure.lines,
                 shotName: shot,
@@ -153,13 +140,8 @@ enum QAShotLaunch {
         try? handle.write(contentsOf: Data((message + "\n").utf8))
     }
 
-    static func pngData(of view: NSView) async -> Data? {
-        if let data = await screenCapturePNG(of: view), !isEmptyCanvas(data) { return data }
-        if let data = cacheDisplayPNG(of: view), !isEmptyCanvas(data) { return data }
-        return nil
-    }
-
-    /// Offscreen RealityRenderer with Studio IBL — used when the window bitmap is still `#262626`.
+    /// Offscreen RealityRenderer. Standalone QA never feeds ContentView, so the
+    /// window is a spinner and is not proof.
     @MainActor
     static func stillPNG(entity: Entity) async -> Data? {
         await GLBPreviewLighting.prefetchStudioIBL()
@@ -186,7 +168,11 @@ enum QAShotLaunch {
             try GLBStillRenderer.writePNG(image, to: dest)
             let data = try Data(contentsOf: dest)
             try? FileManager.default.removeItem(at: dest)
-            return isEmptyCanvas(data) ? nil : data
+            if isEmptyCanvas(data) {
+                note("qa still-renderer empty canvas")
+                return nil
+            }
+            return data
         } catch {
             note("qa still-renderer failed \(error.localizedDescription)")
             return nil
@@ -228,61 +214,5 @@ enum QAShotLaunch {
         let mean = Double(sum) / Double(n * 3)
         let variance = Double(sumSq) / Double(n * 3) - mean * mean
         return variance.squareRoot() < 2
-    }
-
-    private static func screenCapturePNG(of view: NSView) async -> Data? {
-        guard let window = view.window else { return nil }
-        let wanted = CGWindowID(window.windowNumber)
-        guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false),
-              let scWindow = content.windows.first(where: { $0.windowID == wanted })
-        else { return nil }
-        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-        let config = SCStreamConfiguration()
-        let scale = window.backingScaleFactor
-        config.width = max(Int(view.bounds.width * scale), 1)
-        config.height = max(Int(view.bounds.height * scale), 1)
-        config.showsCursor = false
-        guard let image = try? await SCScreenshotManager.captureImage(
-            contentFilter: filter,
-            configuration: config
-        ) else { return nil }
-        return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
-    }
-
-    private static func cacheDisplayPNG(of view: NSView) -> Data? {
-        let bounds = view.bounds
-        guard bounds.width > 1, bounds.height > 1,
-              let rep = view.bitmapImageRepForCachingDisplay(in: bounds)
-        else { return nil }
-        view.cacheDisplay(in: bounds, to: rep)
-        return rep.representation(using: .png, properties: [:])
-    }
-
-    private static func entityHasPunctualLight(_ entity: Entity) -> Bool {
-        if entity.components.has(PointLightComponent.self)
-            || entity.components.has(SpotLightComponent.self)
-            || entity.components.has(DirectionalLightComponent.self)
-        {
-            return true
-        }
-        return entity.children.contains { entityHasPunctualLight($0) }
-    }
-
-    static func hostingView() -> GLBPreviewHostingView? {
-        for window in NSApp.windows {
-            if let found = firstView(GLBPreviewHostingView.self, in: window.contentView) {
-                return found
-            }
-        }
-        return nil
-    }
-
-    private static func firstView<T: NSView>(_ type: T.Type, in root: NSView?) -> T? {
-        guard let root else { return nil }
-        if let match = root as? T { return match }
-        for child in root.subviews {
-            if let found = firstView(type, in: child) { return found }
-        }
-        return nil
     }
 }

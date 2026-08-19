@@ -2,89 +2,73 @@ import SwiftUI
 
 struct HostViewerView: View {
     var state: GLBPreviewView.State
-    var session: ViewerSession?
+    var sidebar: HostSidebarModel?
+    var fileName: String?
     var interaction: GLBPreviewInteraction
     var isDark: Bool
-    @State private var hostScene = GLBHostSceneController()
 
     var body: some View {
-        let _ = hostScene.installCallbacks()
-        NavigationSplitView {
-            HostOutlinerView(model: loadedModel, session: session)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 240)
-        } content: {
+        ZStack(alignment: .topLeading) {
             HostPreviewContainer(
                 state: state,
                 interaction: interaction,
                 isDark: isDark,
-                hostBridge: hostScene.bridge
+                sidebar: sidebar
             )
-        } detail: {
-            HostInspectorView(session: session)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
+
+            HostOutlinerView(model: loadedModel, sidebar: sidebar)
+                .frame(width: 252)
+                .frame(maxHeight: .infinity)
+                .padding(.leading, 10)
+                .padding(.trailing, 0)
+                .padding(.bottom, 10)
+                .padding(.top, 8)
         }
-        .modifier(HostSessionEnvironment(session: session))
-        .toolbar {
-            Button("Frame") {
-                hostScene.frameSelection()
-            }
-            .keyboardShortcut("f", modifiers: [])
-            .help("Frame selected (F). Nothing selected fits the active scene.")
-            .disabled(session == nil)
+        .overlay(alignment: .top) {
+            Text(windowTitle)
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.top, 8)
+                .allowsHitTesting(false)
         }
+        .navigationTitle(windowTitle)
+        .toolbarBackground(.hidden, for: .windowToolbar)
         .onAppear {
-            hostScene.bridge.freezeOrbit = QAShotLaunch.isActive
-            hostScene.bind(session: session)
-        }
-        .onChange(of: sessionIdentity) { _, _ in
-            hostScene.bind(session: session)
-        }
-        .onChange(of: lookFingerprint) { _, _ in
-            hostScene.sessionDidChange()
+            showTrafficLights()
+            applyDefaultCamera()
         }
     }
 
-    private var sessionIdentity: ObjectIdentifier? {
-        session.map { ObjectIdentifier($0) }
-    }
-
-    private var lookFingerprint: Int {
-        guard let session else { return 0 }
-        var hasher = Hasher()
-        hasher.combine(session.imageBased)
-        hasher.combine(session.punctualLights)
-        hasher.combine(session.iblIntensity)
-        hasher.combine(session.environment)
-        hasher.combine(session.environmentRotation)
-        hasher.combine(session.showEnvironmentMap)
-        hasher.combine(session.blurEnvironment)
-        hasher.combine(session.selectedUserHDR)
-        hasher.combine(session.userHDRs.count)
-        hasher.combine(session.toneMap)
-        hasher.combine(session.exposure)
-        hasher.combine(String(describing: session.backgroundColor))
-        hasher.combine(session.hide)
-        hasher.combine(session.soloRoot)
-        hasher.combine(session.variantIndex)
-        hasher.combine(session.debug)
-        hasher.combine(session.frameNonce)
-        return hasher.finalize()
+    private var windowTitle: String {
+        fileName ?? "GLB Preview"
     }
 
     private var loadedModel: GLBEntityLoader.LoadedModel? {
         if case .ready(let model) = state { return model }
         return nil
     }
-}
 
-private struct HostSessionEnvironment: ViewModifier {
-    var session: ViewerSession?
+    private func showTrafficLights() {
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
+            return
+        }
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.title = ""
+        window.backgroundColor = .windowBackgroundColor
+        window.isOpaque = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.isMovableByWindowBackground = false
+    }
 
-    func body(content: Content) -> some View {
-        if let session {
-            content.environment(session)
-        } else {
-            content
+    private func applyDefaultCamera() {
+        guard let sidebar, !sidebar.document.cameras.isEmpty else { return }
+        let raw = UserDefaults.standard.string(forKey: SettingsKeys.defaultCamera)
+            ?? PreviewDefaultCamera.fit.rawValue
+        if raw == PreviewDefaultCamera.firstFile.rawValue {
+            sidebar.selectedCameraIndex = 0
+            sidebar.overlayRevision += 1
         }
     }
 }
@@ -93,7 +77,7 @@ struct HostPreviewContainer: NSViewRepresentable {
     var state: GLBPreviewView.State
     var interaction: GLBPreviewInteraction
     var isDark: Bool
-    var hostBridge: GLBPreviewHostSceneBridge?
+    var sidebar: HostSidebarModel?
 
     func makeNSView(context: Context) -> GLBPreviewHostingView {
         let view = GLBPreviewHostingView(
@@ -101,7 +85,7 @@ struct HostPreviewContainer: NSViewRepresentable {
                 state: state,
                 interaction: interaction,
                 isDark: isDark,
-                hostBridge: hostBridge
+                sidebar: sidebar
             )
         )
         view.interaction = interaction
@@ -114,59 +98,8 @@ struct HostPreviewContainer: NSViewRepresentable {
             state: state,
             interaction: interaction,
             isDark: isDark,
-            hostBridge: hostBridge
+            sidebar: sidebar
         )
-    }
-}
-
-/// Canvas-only host path for `--qa-shots` (same IBL/tone-map as the inspector window).
-struct QAHostCanvas: View {
-    var state: GLBPreviewView.State
-    var session: ViewerSession?
-    var interaction: GLBPreviewInteraction
-    var isDark: Bool
-    @State private var hostScene = GLBHostSceneController()
-
-    var body: some View {
-        let _ = hostScene.installCallbacks()
-        HostPreviewContainer(
-            state: state,
-            interaction: interaction,
-            isDark: isDark,
-            hostBridge: hostScene.bridge
-        )
-        .background(hostScene.bridge.backgroundColor)
-        .onAppear {
-            hostScene.bridge.freezeOrbit = true
-            hostScene.bind(session: session)
-        }
-        .onChange(of: session.map { ObjectIdentifier($0) }) { _, _ in
-            hostScene.bind(session: session)
-        }
-        .onChange(of: lookFingerprint) { _, _ in
-            hostScene.sessionDidChange()
-        }
-    }
-
-    private var lookFingerprint: Int {
-        guard let session else { return 0 }
-        var hasher = Hasher()
-        hasher.combine(session.imageBased)
-        hasher.combine(session.punctualLights)
-        hasher.combine(session.iblIntensity)
-        hasher.combine(session.environment)
-        hasher.combine(session.environmentRotation)
-        hasher.combine(session.showEnvironmentMap)
-        hasher.combine(session.blurEnvironment)
-        hasher.combine(session.selectedUserHDR)
-        hasher.combine(session.toneMap)
-        hasher.combine(session.exposure)
-        hasher.combine(session.hide)
-        hasher.combine(session.soloRoot)
-        hasher.combine(session.variantIndex)
-        hasher.combine(session.debug)
-        hasher.combine(session.frameNonce)
-        return hasher.finalize()
     }
 }
 
@@ -175,10 +108,14 @@ struct HostColumnChrome: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 26, *) {
             content
-                .padding(8)
+                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
+                .frame(maxHeight: .infinity, alignment: .top)
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         } else {
             content
+                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 }

@@ -2,6 +2,15 @@ import AppKit
 import RealityKit
 import SwiftUI
 
+/// Host-only overlay applied during RealityView updates. Quick Look and thumbnails pass `nil`.
+@MainActor
+protocol PreviewOverlay: AnyObject {
+    var overlayRevision: Int { get }
+    var selectedCameraIndex: Int? { get }
+    var document: GLTFSessionDocument { get }
+    func applyIfNeeded(to root: Entity)
+}
+
 @Observable
 final class GLBPreviewInteraction {
     var zoom: Float = 1
@@ -36,6 +45,7 @@ final class GLBPreviewHostingView: NSHostingView<GLBPreviewView> {
     var interaction: GLBPreviewInteraction?
 
     override var isOpaque: Bool { false }
+    override var mouseDownCanMoveWindow: Bool { false }
     override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
     override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
     override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
@@ -68,7 +78,7 @@ struct GLBPreviewView: View {
 
         /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
-            async let ibl: Void = GLBPreviewLighting.prefetchStudioIBL()
+            async let ibl: Void = GLBPreviewLighting.prefetchLook(AppLook.current)
             do {
                 let model = try await GLBEntityLoader.load(from: url)
                 await ibl
@@ -85,14 +95,14 @@ struct GLBPreviewView: View {
     let state: State
     var interaction: GLBPreviewInteraction
     var isDark: Bool
-    var hostBridge: GLBPreviewHostSceneBridge? = nil
+    var sidebar: (any PreviewOverlay)? = nil
 
     var body: some View {
         Group {
             switch state {
             case .loading:
                 ZStack {
-                    GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
+                    PreviewBackground.window.color.ignoresSafeArea()
                     ProgressView()
                         .controlSize(.regular)
                         .progressViewStyle(.circular)
@@ -103,15 +113,15 @@ struct GLBPreviewView: View {
                     stats: model.stats,
                     interaction: interaction,
                     isDark: isDark,
-                    hostBridge: hostBridge
+                    sidebar: sidebar
                 )
             case .failed:
                 ZStack {
-                    GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
+                    PreviewBackground.window.color.ignoresSafeArea()
                     Text("Failed to load model")
                         .font(.system(size: 13))
                         .foregroundStyle(
-                            GLBPreviewBackdrop.iconColor(at: 0, systemDark: isDark, active: true).opacity(0.5)
+                            PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true).opacity(0.5)
                         )
                         .multilineTextAlignment(.center)
                         .padding()
@@ -121,41 +131,10 @@ struct GLBPreviewView: View {
     }
 }
 
-enum GLBPreviewBackdrop {
-    static let darkRGB = (r: 38.0 / 255, g: 38.0 / 255, b: 38.0 / 255)
-    static let dark = Color(red: darkRGB.r, green: darkRGB.g, blue: darkRGB.b)
-    /// Lets the host window / Quick Look panel show through.
-    static let window = Color.clear
-    static let all = [window, Color.white, dark]
-
-    static func color(at index: Int) -> Color {
-        all[index % all.count]
-    }
-
-    /// White icons on dark surfaces; charcoal on light. Clear backdrop: OS setting first (QL `isDark` is flaky).
-    static func useLightIcons(at index: Int, systemDark: Bool) -> Bool {
-        switch index % all.count {
-        case 1: return false
-        case 2: return true
-        default:
-            if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
-                return true
-            }
-            return systemDark
-        }
-    }
-
-    static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
-        let base: Color = useLightIcons(at: index, systemDark: systemDark) ? .white : dark
-        return active ? base : base.opacity(0.4)
-    }
-}
-
 /// Reference box so RealityView `make` can stash unscaled bounds while zoom scales the pivot.
 private final class PreviewFrame {
     var bounds = BoundingBox()
     var cameraAspect: Float = -1
-    var appliedFrameNonce = 0
 }
 
 private struct GLBPreviewScene: View {
@@ -163,7 +142,13 @@ private struct GLBPreviewScene: View {
     var stats: GLBPreviewStats?
     @Bindable var interaction: GLBPreviewInteraction
     var isDark: Bool
-    var hostBridge: GLBPreviewHostSceneBridge?
+    var sidebar: (any PreviewOverlay)?
+
+    @AppStorage(SettingsKeys.autoRotate) private var settingsAutoRotate = true
+    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = true
+    @AppStorage(SettingsKeys.showStats) private var showStats = true
+    @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
+    @AppStorage(SettingsKeys.background) private var backgroundRaw = PreviewBackground.window.rawValue
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var backdropIndex = 0
@@ -184,39 +169,42 @@ private struct GLBPreviewScene: View {
         stats: GLBPreviewStats?,
         interaction: GLBPreviewInteraction,
         isDark: Bool,
-        hostBridge: GLBPreviewHostSceneBridge? = nil
+        sidebar: (any PreviewOverlay)? = nil
     ) {
         self.entity = entity
         self.stats = stats
         self.interaction = interaction
         self.isDark = isDark
-        self.hostBridge = hostBridge
+        self.sidebar = sidebar
         let bounds = GLBPreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
+        let settingsOn = UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
         if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
             _autoRotate = State(initialValue: false)
             GLBLog.info(GLBLog.preview, "autoRotate disabled for standing plane thinAxis=\(axis)")
         } else {
-            _autoRotate = State(initialValue: true)
+            _autoRotate = State(initialValue: settingsOn)
         }
     }
 
-    private var isHost: Bool { hostBridge != nil }
+    private var isHost: Bool { sidebar != nil }
+
+    private var backdropColor: Color {
+        if isHost {
+            return PreviewBackground(rawValue: backgroundRaw)?.color ?? PreviewBackground.window.color
+        }
+        return PreviewBackground.color(at: backdropIndex)
+    }
 
     private var tickWhileActive: Bool {
-        if hostBridge?.freezeOrbit == true { return false }
         return autoRotate || (!isHost && chromeVisible && isPlaying && playback != nil)
     }
 
     var body: some View {
-        let _ = hostBridge?.lookRevision
-        let _ = hostBridge?.frameNonce
+        let _ = sidebar?.overlayRevision
         ZStack {
             RealityView { content in
                 content.camera = .virtual
-                // Post-process must be registered before the custom PerspectiveCamera.
-                // RealityKit traps in ARView.renderCallbacks.setter if assigned after.
-                hostBridge?.applyToneMap?(&content)
                 let assembled = GLBPreviewCamera.makeTurntable(for: entity)
                 frame.bounds = assembled.bounds
 
@@ -229,19 +217,16 @@ private struct GLBPreviewScene: View {
                         aspect: aspect(of: viewport)
                     )
                 )
-                if hostBridge == nil {
-                    let exponent: Float = hasPunctualLight(entity) ? -2 : 0
-                    if let ibl = GLBPreviewLighting.makeStudioIBLEntity(
-                        receiver: assembled.pivot,
-                        intensityExponent: exponent
-                    ) {
-                        content.add(ibl)
-                    }
-                } else {
-                    hostBridge?.applyToContent?(&content, entity)
-                }
+                let exponent: Float = hasPunctualLight(entity) ? -2 : 0
+                GLBPreviewLighting.applyLook(
+                    to: &content,
+                    pivot: assembled.pivot,
+                    look: AppLook.current,
+                    intensityExponent: exponent
+                )
+                sidebar?.applyIfNeeded(to: assembled.pivot)
 
-                if hostBridge == nil, let animation = entity.availableAnimations.first {
+                if playOnOpen, let animation = entity.availableAnimations.first {
                     let probe = entity.playAnimation(animation, startsPaused: true)
                     let duration = probe.duration
                     probe.stop()
@@ -256,10 +241,11 @@ private struct GLBPreviewScene: View {
                         simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
                         simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
                     entity.scale = SIMD3<Float>(repeating: interaction.zoom)
+                    sidebar?.applyIfNeeded(to: entity)
                 }
-                hostBridge?.applyToContent?(&content, entity)
-                applyPendingFrame(content)
+                applyFileCamera(content)
                 let viewAspect = aspect(of: viewport)
+                guard sidebar?.selectedCameraIndex == nil else { return }
                 guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
                 frame.cameraAspect = viewAspect
                 for entity in content.entities where entity.name == "previewCamera" {
@@ -280,10 +266,10 @@ private struct GLBPreviewScene: View {
                     }
                 }
             }
-            .backgroundStyle(hostBridge?.backgroundColor ?? GLBPreviewBackdrop.color(at: backdropIndex))
+            .backgroundStyle(backdropColor)
             .background {
                 GeometryReader { proxy in
-                    (hostBridge?.backgroundColor ?? GLBPreviewBackdrop.color(at: backdropIndex))
+                    backdropColor
                         .onAppear { applyViewport(proxy.size) }
                         .onChange(of: proxy.size) { _, size in
                             applyViewport(size)
@@ -299,7 +285,7 @@ private struct GLBPreviewScene: View {
                     chromeVisible.toggle()
                 }
 
-            if !isHost, chromeVisible {
+            if !isHost, chromeVisible, showToolbar {
                 HStack(alignment: .bottom, spacing: 12) {
                     GLBPreviewToolbar(
                         backdropIndex: $backdropIndex,
@@ -311,13 +297,13 @@ private struct GLBPreviewScene: View {
                     )
                     Spacer(minLength: 8)
                         .allowsHitTesting(false)
-                    if let lines = stats?.previewLines, !lines.isEmpty {
+                    if showStats, let lines = stats?.previewLines, !lines.isEmpty {
                         VStack(alignment: .trailing, spacing: 2) {
                             ForEach(lines, id: \.self) { line in
                                 Text(line)
                                     .font(.system(size: 11, weight: .regular).monospacedDigit())
                                     .foregroundStyle(
-                                        GLBPreviewBackdrop.iconColor(
+                                        PreviewBackground.iconColor(
                                             at: backdropIndex,
                                             systemDark: isDark,
                                             active: true
@@ -336,9 +322,10 @@ private struct GLBPreviewScene: View {
         }
         .animation(.easeInOut(duration: 0.15), value: chromeVisible)
         .onAppear {
-            if reduceMotion {
-                autoRotate = false
-            }
+            applyAutoRotateSetting()
+        }
+        .onChange(of: settingsAutoRotate) { _, _ in
+            applyAutoRotateSetting()
         }
         .onChange(of: interaction.orbitResetNonce) { _, _ in
             orbitYaw = 0
@@ -385,21 +372,15 @@ private struct GLBPreviewScene: View {
             }
     }
 
-    private func applyPendingFrame(_ content: RealityViewCameraContent) {
-        guard let hostBridge, hostBridge.frameNonce != frame.appliedFrameNonce else { return }
-        frame.appliedFrameNonce = hostBridge.frameNonce
-        let target: Entity
-        if let index = hostBridge.pendingFrameNodeIndex,
-           let match = findEntity(nodeIndex: index, in: entity)
-        {
-            target = match
-        } else {
-            target = entity
-        }
-        let reference = content.entities.first(where: { $0.name == "turntable" })
-        frame.bounds = GLBPreviewCamera.fit(entity: target, relativeTo: reference)
-        frame.cameraAspect = -1
-        interaction.resetFit()
+    private func applyFileCamera(_ content: RealityViewCameraContent) {
+        guard let sidebar, let index = sidebar.selectedCameraIndex else { return }
+        let node = sidebar.document.nodes.first(where: { $0.cameraIndex == index })
+        guard let node,
+              let cameraNode = findEntity(nodeIndex: node.index, in: entity),
+              let preview = content.entities.first(where: { $0.name == "previewCamera" })
+        else { return }
+        let position = cameraNode.position(relativeTo: nil)
+        preview.look(at: frame.bounds.center, from: position, relativeTo: nil)
     }
 
     private func findEntity(nodeIndex: Int, in root: Entity) -> Entity? {
@@ -412,6 +393,16 @@ private struct GLBPreviewScene: View {
             }
         }
         return nil
+    }
+
+    private func applyAutoRotateSetting() {
+        let bounds = GLBPreviewCamera.modelBounds(of: entity, relativeTo: entity)
+        let extent = bounds.max - bounds.min
+        if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
+            autoRotate = false
+            return
+        }
+        autoRotate = settingsAutoRotate && !reduceMotion
     }
 
     private func applyViewport(_ size: CGSize) {
@@ -445,13 +436,13 @@ private struct GLBPreviewToolbar: View {
     var systemDark: Bool
 
     private func tint(active: Bool) -> Color {
-        GLBPreviewBackdrop.iconColor(at: backdropIndex, systemDark: systemDark, active: active)
+        PreviewBackground.iconColor(at: backdropIndex, systemDark: systemDark, active: active)
     }
 
     var body: some View {
         HStack(spacing: 12) {
             iconButton("circle.lefthalf.filled", active: true, help: "Toggle background") {
-                backdropIndex = (backdropIndex + 1) % GLBPreviewBackdrop.all.count
+                backdropIndex = (backdropIndex + 1) % PreviewBackground.allCases.count
             }
             iconButton(
                 "arrow.trianglehead.2.clockwise.rotate.90",

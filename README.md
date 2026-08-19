@@ -58,6 +58,7 @@ This generates the Xcode project, builds, installs to `/Applications`, and check
 flowchart LR
   file[".glb / .gltf"] --> prep["Prepare + GLTFKit2"]
   prep --> rk["RealityKit Entity"]
+  rk --> host["Host app\nRealityView + outliner"]
   rk --> ql["Quick Look\nRealityView"]
   rk --> thumb["Finder thumbnail\nRealityRenderer"]
 ```

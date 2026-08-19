@@ -17,7 +17,7 @@ enum GLBEntityLoader {
     /// File IO and `GLTFAsset` stay off the main actor so Spacebar can show the loading
     /// view while the file is parsed; RealityKit convert hops to the main actor.
     static func load(from url: URL, includeAnimations: Bool = true) async throws -> LoadedModel {
-        try await withPreparedAsset(from: url) { loadURL, assetDirectory, stats, originalURL, directoryURL in
+        try await withPreparedAsset(from: url) { loadURL, assetDirectory, sourceJSON, fileSize, originalURL, directoryURL in
             do {
                 let (entity, document) = try await convertAsset(
                     at: loadURL,
@@ -26,7 +26,7 @@ enum GLBEntityLoader {
                     name: url.lastPathComponent,
                     sceneIndex: nil
                 )
-                return LoadedModel(entity: entity, stats: stats, document: document)
+                return await loadedModel(entity: entity, document: document, json: sourceJSON, fileSizeBytes: fileSize)
             } catch {
                 guard loadURL != originalURL else { throw error }
                 GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
@@ -37,7 +37,7 @@ enum GLBEntityLoader {
                     name: url.lastPathComponent,
                     sceneIndex: nil
                 )
-                return LoadedModel(entity: entity, stats: stats, document: document)
+                return await loadedModel(entity: entity, document: document, json: sourceJSON, fileSizeBytes: fileSize)
             }
         }
     }
@@ -46,7 +46,7 @@ enum GLBEntityLoader {
     /// rebuilding `LoadedModel`. Host scene switching uses this after listing
     /// `document.scenes`; Quick Look keeps calling `load` only.
     static func convertScene(index: Int, from url: URL, includeAnimations: Bool = true) async throws -> Entity {
-        try await withPreparedAsset(from: url) { loadURL, assetDirectory, _, originalURL, directoryURL in
+        try await withPreparedAsset(from: url) { loadURL, assetDirectory, _, _, originalURL, directoryURL in
             do {
                 let (entity, _) = try await convertAsset(
                     at: loadURL,
@@ -73,7 +73,7 @@ enum GLBEntityLoader {
 
     private static func withPreparedAsset<T>(
         from url: URL,
-        work: (URL, URL, GLBPreviewStats, URL, URL) async throws -> T
+        work: (URL, URL, [String: Any], Int64?, URL, URL) async throws -> T
     ) async throws -> T {
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
 
@@ -101,7 +101,7 @@ enum GLBEntityLoader {
         } else {
             sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
         }
-        let stats = GLBPreviewStats.from(json: sourceJSON)
+        let fileSize = fileSizeBytes(of: url)
 
         let loadURL: URL
         let assetDirectory: URL
@@ -120,7 +120,30 @@ enum GLBEntityLoader {
             }
         }
 
-        return try await work(loadURL, assetDirectory, stats, url, directoryURL)
+        return try await work(loadURL, assetDirectory, sourceJSON, fileSize, url, directoryURL)
+    }
+
+    private static func fileSizeBytes(of url: URL) -> Int64? {
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+        return size.map(Int64.init)
+    }
+
+    @MainActor
+    private static func loadedModel(
+        entity: Entity,
+        document: GLTFSessionDocument,
+        json: [String: Any],
+        fileSizeBytes: Int64?
+    ) -> LoadedModel {
+        LoadedModel(
+            entity: entity,
+            stats: GLBPreviewStats.from(
+                json: json,
+                usableAnimations: entity.availableAnimations,
+                fileSizeBytes: fileSizeBytes
+            ),
+            document: document
+        )
     }
 
     /// Spec/gloss then RealityKit-safe rewrite, fused into one parse → serialize → write.

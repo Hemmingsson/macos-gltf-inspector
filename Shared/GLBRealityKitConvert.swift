@@ -382,9 +382,6 @@ public class GLBRealityKitConvert {
 
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
-        if let table = try? convertMaterialTable(from: asset, context: context), !table.isEmpty {
-            rootEntity.components.set(GLTFMaterialTableComponent(materials: table))
-        }
 
         do {
             let rootNodes = try scene.nodes.compactMap { try self.convert(node: $0, context: context) }
@@ -1106,15 +1103,6 @@ public class GLBRealityKitConvert {
             name: animation.name ?? "",
             duration: Double(maxTime)
         )
-    }
-
-    @MainActor
-    func convertMaterialTable(
-        from asset: GLTFAsset?,
-        context: GLBRealityKitResourceContext
-    ) throws -> [any RealityKit.Material] {
-        guard let asset else { return [] }
-        return try asset.materials.map { try convert(material: $0, context: context) }
     }
 
     static func makeVariants(from asset: GLTFAsset) -> [GLTFSessionDocument.Variant] {

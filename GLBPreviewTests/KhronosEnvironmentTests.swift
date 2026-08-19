@@ -3,7 +3,7 @@ import Testing
 
 struct KhronosEnvironmentTests {
     @Test func catalogHasExactViewerTitles() {
-        let titles = GLBKhronosEnvironments.all.map(\.title)
+        let titles = GLBKhronosEnvironments.allCases.map(\.title)
         #expect(titles == [
             "Cannon Exterior",
             "Footprint Court",
