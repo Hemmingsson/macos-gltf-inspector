@@ -43,6 +43,47 @@ struct SessionDocumentTests {
         #expect(stamped.contains(0))
         #expect(!stamped.contains(1))
     }
+
+    @MainActor
+    @Test func documentListsBothScenesAndLoadsDefaultOnly() async throws {
+        let url = try writeTempTwoSceneGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        #expect(model.document.scenes.count == 2)
+        #expect(model.document.defaultSceneIndex == 0)
+        let stamped = stampedNodeIndices(in: model.entity)
+        #expect(stamped.contains(0))
+        #expect(!stamped.contains(1))
+    }
+
+    @MainActor
+    @Test func lazyConvertSecondSceneStampsItsRoot() async throws {
+        let twoSceneURL = try writeTempTwoSceneGLB()
+        defer { try? FileManager.default.removeItem(at: twoSceneURL) }
+
+        let other = try await GLBEntityLoader.convertScene(
+            index: 1,
+            from: twoSceneURL,
+            includeAnimations: true
+        )
+        #expect(stampedNodeIndices(in: other).contains(1))
+    }
+
+    @MainActor
+    @Test func convertSceneOutOfRangeThrows1020() async throws {
+        let url = try writeTempTwoSceneGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        do {
+            _ = try await GLBEntityLoader.convertScene(index: 99, from: url, includeAnimations: false)
+            Issue.record("expected GLBPreviewError 1020")
+        } catch {
+            let nsError = error as NSError
+            #expect(nsError.domain == GLBPreviewError.domain)
+            #expect(nsError.code == 1020)
+        }
+    }
 }
 
 private func stampedNodeIndices(in entity: Entity) -> Set<Int> {
