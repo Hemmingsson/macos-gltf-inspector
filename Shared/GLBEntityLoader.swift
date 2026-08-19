@@ -3,10 +3,20 @@ import GLTFKit2
 import RealityKit
 
 enum GLBEntityLoader {
-    /// A converted model plus the cheap glTF-header stats shown in the preview overlay.
+    /// Converted entity plus scenery snapshotted at load (cameras still live).
     struct LoadedModel {
         let entity: Entity
         let stats: GLBPreviewStats
+        let usableAnimations: [AnimationResource]
+        let punctualLightCount: Int
+        let fileCameras: [GLBPreviewScenery.FileCamera]
+        let usesBakedEmissive: Bool
+        var studioIBLExponent: Float {
+            GLBPreviewEmissive.studioIBLExponent(
+                punctualLightCount: punctualLightCount,
+                fileLooksBaked: usesBakedEmissive
+            )
+        }
     }
 
     /// Loads a self-contained `.glb` or a sidecar `.gltf` (buffers/textures next to the JSON).
@@ -42,8 +52,6 @@ enum GLBEntityLoader {
         } else {
             sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
         }
-        let stats = GLBPreviewStats.from(json: sourceJSON)
-
         let loadURL: URL
         let assetDirectory: URL
         if isGLB {
@@ -68,7 +76,7 @@ enum GLBEntityLoader {
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent
             )
-            return LoadedModel(entity: entity, stats: stats)
+            return await attachScenery(entity, json: sourceJSON, fileSizeBytes: fileSizeBytes(of: url))
         } catch {
             guard loadURL != url else { throw error }
             GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
@@ -78,7 +86,7 @@ enum GLBEntityLoader {
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent
             )
-            return LoadedModel(entity: entity, stats: stats)
+            return await attachScenery(entity, json: sourceJSON, fileSizeBytes: fileSizeBytes(of: url))
         }
     }
 
@@ -181,6 +189,39 @@ enum GLBEntityLoader {
         }
     }
 
+    private static func fileSizeBytes(of url: URL) -> Int64? {
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+        return size.map(Int64.init)
+    }
+
+    /// Walk lights, live file cameras, and usable clips once. Does not disable cameras.
+    @MainActor
+    private static func attachScenery(
+        _ entity: Entity,
+        json: [String: Any],
+        fileSizeBytes: Int64?
+    ) -> LoadedModel {
+        if GLBPreviewScenery.hasUnsupportedFileIBL(json: json) {
+            GLBLog.info(GLBLog.lighting, "EXT_lights_image_based is present but not loaded; using studio IBL")
+        }
+        let usableAnimations = GLBPreviewScenery.usableAnimations(in: entity)
+        let punctualLightCount = GLBPreviewScenery.punctualLightCount(in: entity)
+        let fileCameras = GLBPreviewScenery.fileCameras(in: entity)
+        let usesBakedEmissive = GLBPreviewEmissive.fileLooksBaked(json: json)
+        return LoadedModel(
+            entity: entity,
+            stats: GLBPreviewStats.from(
+                json: json,
+                usableAnimations: usableAnimations,
+                fileSizeBytes: fileSizeBytes
+            ),
+            usableAnimations: usableAnimations,
+            punctualLightCount: punctualLightCount,
+            fileCameras: fileCameras,
+            usesBakedEmissive: usesBakedEmissive
+        )
+    }
+
     /// Empty results (zero `ModelComponent`s) retry once without animations when
     /// the first pass still had clips — some Draco + skin + animation assets trap
     /// or yield a blank entity otherwise. NSException is caught by `GLBTry`.
@@ -194,6 +235,7 @@ enum GLBEntityLoader {
         let attempts = retryWithoutAnimations ? 2 : 1
         for pass in 0..<attempts {
             if pass == 1 {
+                // Mesh-recovery retry: drop clips only. File lights stay on the asset.
                 asset.animations = []
             }
             do {

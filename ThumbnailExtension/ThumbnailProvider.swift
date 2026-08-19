@@ -11,16 +11,17 @@ class ThumbnailProvider: QLThumbnailProvider {
 
         Task { @MainActor in
             do {
-                let entity = try await GLBEntityLoader.load(from: url, includeAnimations: false).entity
-                GLBThumbnailPrepare.apply(to: entity)
-                let assembled = GLBPreviewCamera.makeTurntable(for: entity)
+                let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+                GLBThumbnailPrepare.apply(to: model.entity)
+                let assembled = GLBPreviewCamera.makeTurntable(for: model.entity)
                 let still = try await GLBStillRenderer(
                     root: assembled.pivot,
                     bounds: assembled.bounds,
                     width: pixel,
                     height: pixel,
                     background: CGColor(gray: 0.94, alpha: 1),
-                    padding: GLBPreviewCamera.thumbnailFitPadding
+                    padding: GLBPreviewCamera.thumbnailFitPadding,
+                    intensityExponent: model.studioIBLExponent
                 )
                 let image = try await still.capture()
                 let fileURL = FileManager.default.temporaryDirectory

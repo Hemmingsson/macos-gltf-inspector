@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import RealityKit
 import Testing
@@ -289,6 +290,233 @@ struct LoaderHelpersTests {
         #expect(GLBEntityLoader.modelComponentCount(in: model.entity) > 0)
         #expect(model.stats.meshCount >= 1)
     }
+
+    /// glTF metal/rough has no extra gem specular. RealityKit defaults that
+    /// knob to 0.5, which makes dielectrics (paper, cloth) pick up IBL like metal.
+    @MainActor
+    @Test func metalRoughLeavesDielectricSpecularOff() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pbr-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("paper.glb")
+        try metalRoughTriangleGLB().write(to: url)
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        let pbr = pbrMaterials(in: model.entity)
+        try #require(!pbr.isEmpty)
+        for material in pbr {
+            #expect(material.specular.scale == 0)
+        }
+    }
+
+    @MainActor
+    @Test func skipsNormalMapWhenScaleIsZero() async throws {
+        let material = try await loadFirstPBR(try texturedPBRTriangleGLB(
+            material: [
+                "normalTexture": ["index": 0, "scale": 0],
+                "pbrMetallicRoughness": [
+                    "baseColorTexture": ["index": 0],
+                    "metallicFactor": 0,
+                    "roughnessFactor": 1,
+                ],
+            ]
+        ))
+        #expect(material.normal.texture == nil)
+    }
+
+    @MainActor
+    @Test func mapsKHRSpecularFactor() async throws {
+        let material = try await loadFirstPBR(try texturedPBRTriangleGLB(
+            extensionsUsed: ["KHR_materials_specular"],
+            material: [
+                "extensions": [
+                    "KHR_materials_specular": ["specularFactor": 0.4],
+                ],
+                "pbrMetallicRoughness": [
+                    "metallicFactor": 0,
+                    "roughnessFactor": 0.7,
+                ],
+            ]
+        ))
+        #expect(abs(material.specular.scale - 0.4) < 0.001)
+    }
+
+    @MainActor
+    @Test func bakesKHRTextureTransformIntoUVs() async throws {
+        let glb = try texturedPBRTriangleGLB(
+            extensionsUsed: ["KHR_texture_transform"],
+            material: [
+                "pbrMetallicRoughness": [
+                    "baseColorTexture": [
+                        "index": 0,
+                        "extensions": [
+                            "KHR_texture_transform": [
+                                "offset": [0.1, 0.2],
+                                "scale": [2.0, 3.0],
+                            ],
+                        ],
+                    ],
+                    "metallicFactor": 0,
+                    "roughnessFactor": 1,
+                ],
+            ],
+            uvs: [(0, 0), (1, 0), (0, 1)]
+        )
+        let loaded = try await loadModel(glb)
+        let pbr = pbrMaterials(in: loaded.entity)
+        try #require(!pbr.isEmpty)
+        let materialUV = pbr[0].textureCoordinateTransform
+        #expect(abs(materialUV.scale.x - 1) < 0.001)
+        #expect(abs(materialUV.scale.y - 1) < 0.001)
+        #expect(abs(materialUV.offset.x) < 0.001)
+        #expect(abs(materialUV.offset.y) < 0.001)
+
+        let uvs = try #require(firstMeshUVs(in: loaded.entity))
+        try #require(uvs.count >= 3)
+        // glTF: uv' = scale * uv + offset, then RealityKit v = 1 - v'
+        #expect(abs(uvs[0].x - 0.1) < 0.001)
+        #expect(abs(uvs[0].y - 0.8) < 0.001)
+        #expect(abs(uvs[1].x - 2.1) < 0.001)
+        #expect(abs(uvs[1].y - 0.8) < 0.001)
+        #expect(abs(uvs[2].x - 0.1) < 0.001)
+        #expect(abs(uvs[2].y - (-2.2)) < 0.001)
+    }
+
+    @MainActor
+    @Test func blendUsesBaseColorAlpha() async throws {
+        let material = try await loadFirstPBR(try texturedPBRTriangleGLB(
+            material: [
+                "alphaMode": "BLEND",
+                "pbrMetallicRoughness": [
+                    "baseColorFactor": [1, 1, 1, 0.25],
+                    "baseColorTexture": ["index": 0],
+                    "metallicFactor": 0,
+                    "roughnessFactor": 1,
+                ],
+            ]
+        ))
+        guard case .transparent(let opacity) = material.blending else {
+            Issue.record("expected transparent blending")
+            return
+        }
+        #expect(abs(opacity.scale - 0.25) < 0.001)
+        #expect(opacity.texture != nil)
+    }
+
+    @MainActor
+    @Test func mapsEmissiveFactor() async throws {
+        let material = try await loadFirstPBR(try texturedPBRTriangleGLB(
+            material: [
+                "emissiveFactor": [0.2, 0.4, 0.6],
+                "pbrMetallicRoughness": [
+                    "metallicFactor": 0,
+                    "roughnessFactor": 1,
+                ],
+            ]
+        ))
+        let linear = CGColorSpace(name: CGColorSpace.linearSRGB)!
+        let components = material.emissiveColor.color.cgColor
+            .converted(to: linear, intent: .defaultIntent, options: nil)?
+            .components
+        try #require(components != nil && components!.count >= 3)
+        #expect(abs(Float(components![0]) - 0.2) < 0.02)
+        #expect(abs(Float(components![1]) - 0.4) < 0.02)
+        #expect(abs(Float(components![2]) - 0.6) < 0.02)
+        #expect(abs(material.emissiveIntensity - 1) < 0.001)
+    }
+
+    @MainActor
+    @Test func ignoresAlbedoCopiedAsEmissive() async throws {
+        let material = try await loadFirstPBR(try texturedPBRTriangleGLB(
+            material: [
+                "emissiveFactor": [1, 1, 1],
+                "emissiveTexture": ["index": 0],
+                "pbrMetallicRoughness": [
+                    "baseColorTexture": ["index": 0],
+                    "metallicFactor": 0,
+                    "roughnessFactor": 0.6,
+                ],
+            ]
+        ))
+        #expect(!hasVisibleEmissive(material))
+    }
+
+    @MainActor
+    @Test func ignoresFileWideWhiteEmissiveBoost() async throws {
+        let materials: [[String: Any]] = [
+            [
+                "emissiveFactor": [1, 1, 1],
+                "pbrMetallicRoughness": ["metallicFactor": 1, "roughnessFactor": 1],
+            ],
+            [
+                "emissiveFactor": [1, 1, 1],
+                "pbrMetallicRoughness": ["metallicFactor": 1, "roughnessFactor": 1],
+            ],
+        ]
+        let pbr = try await loadAllPBR(try multiMaterialTriangleGLB(materials: materials))
+        #expect(pbr.count == 2)
+        for material in pbr {
+            #expect(!hasVisibleEmissive(material))
+        }
+    }
+
+    @MainActor
+    @Test func keepsHighStrengthEmissiveWhenFileLooksBaked() async throws {
+        let materials: [[String: Any]] = [
+            [
+                "emissiveFactor": [1, 1, 1],
+                "extensions": ["KHR_materials_emissive_strength": ["emissiveStrength": 4]],
+                "pbrMetallicRoughness": ["metallicFactor": 0, "roughnessFactor": 1],
+            ],
+            [
+                "emissiveFactor": [1, 1, 1],
+                "pbrMetallicRoughness": ["metallicFactor": 0, "roughnessFactor": 1],
+            ],
+        ]
+        let pbr = try await loadAllPBR(try multiMaterialTriangleGLB(
+            extensionsUsed: ["KHR_materials_emissive_strength"],
+            materials: materials
+        ))
+        try #require(pbr.count == 2)
+        #expect(abs(pbr[0].emissiveIntensity - 4) < 0.01)
+        #expect(!hasVisibleEmissive(pbr[1]))
+    }
+
+    @MainActor
+    @Test func mapsClearcoatNormal() async throws {
+        let material = try await loadFirstPBR(try texturedPBRTriangleGLB(
+            extensionsUsed: ["KHR_materials_clearcoat"],
+            material: [
+                "extensions": [
+                    "KHR_materials_clearcoat": [
+                        "clearcoatFactor": 1,
+                        "clearcoatNormalTexture": ["index": 0],
+                    ],
+                ],
+                "pbrMetallicRoughness": [
+                    "metallicFactor": 0,
+                    "roughnessFactor": 0.2,
+                ],
+            ]
+        ))
+        #expect(abs(material.clearcoat.scale - 1) < 0.001)
+        #expect(material.clearcoatNormal.texture != nil)
+    }
+}
+
+@MainActor
+private func pbrMaterials(in entity: Entity) -> [PhysicallyBasedMaterial] {
+    var out: [PhysicallyBasedMaterial] = []
+    if let model = entity.components[ModelComponent.self] {
+        for material in model.materials {
+            if let pbr = material as? PhysicallyBasedMaterial {
+                out.append(pbr)
+            }
+        }
+    }
+    for child in entity.children {
+        out.append(contentsOf: pbrMaterials(in: child))
+    }
+    return out
 }
 
 private func shortTriangleGLB() throws -> Data {
@@ -323,6 +551,229 @@ private func shortTriangleGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
+    return try GLBBox.serialize(json: json, bin: bin)
+}
+
+private func metalRoughTriangleGLB() throws -> Data {
+    var bin = Data()
+    for value in [Int16(0), 0, 0, Int16(100), 0, 0, Int16(0), 100, 0] {
+        var bits = value.littleEndian
+        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    }
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [[
+            "buffer": 0,
+            "byteOffset": 0,
+            "byteLength": bin.count,
+        ]],
+        "accessors": [[
+            "bufferView": 0,
+            "componentType": 5122,
+            "count": 3,
+            "type": "VEC3",
+            "max": [100, 100, 0],
+            "min": [0, 0, 0],
+        ]],
+        "materials": [[
+            "pbrMetallicRoughness": [
+                "baseColorFactor": [0.85, 0.8, 0.7, 1],
+                "metallicFactor": 0,
+                "roughnessFactor": 0.35,
+            ],
+        ]],
+        "meshes": [[
+            "primitives": [[
+                "attributes": ["POSITION": 0],
+                "material": 0,
+            ]],
+        ]],
+        "nodes": [["mesh": 0]],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try GLBBox.serialize(json: json, bin: bin)
+}
+
+private func tinyPNG() -> Data {
+    Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")!
+}
+
+private func texturedPBRTriangleGLB(
+    extensionsUsed: [String] = [],
+    material: [String: Any],
+    uvs: [(Float, Float)]? = nil
+) throws -> Data {
+    var bin = Data()
+    for value in [Int16(0), 0, 0, Int16(100), 0, 0, Int16(0), 100, 0] {
+        var bits = value.littleEndian
+        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    }
+    let positionsLength = bin.count
+    if let uvs {
+        for (u, v) in uvs {
+            for value in [u, v] {
+                var bits = value.bitPattern.littleEndian
+                Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+            }
+        }
+    }
+    let png = tinyPNG()
+    let pngStart = bin.count
+    bin.append(png)
+    var bufferViews: [[String: Any]] = [
+        ["buffer": 0, "byteOffset": 0, "byteLength": positionsLength],
+    ]
+    var accessors: [[String: Any]] = [[
+        "bufferView": 0,
+        "componentType": 5122,
+        "count": 3,
+        "type": "VEC3",
+        "max": [100, 100, 0],
+        "min": [0, 0, 0],
+    ]]
+    var attributes: [String: Any] = ["POSITION": 0]
+    if let uvs {
+        bufferViews.append([
+            "buffer": 0,
+            "byteOffset": positionsLength,
+            "byteLength": uvs.count * 8,
+        ])
+        accessors.append([
+            "bufferView": 1,
+            "componentType": 5126,
+            "count": uvs.count,
+            "type": "VEC2",
+        ])
+        attributes["TEXCOORD_0"] = 1
+        bufferViews.append([
+            "buffer": 0,
+            "byteOffset": pngStart,
+            "byteLength": png.count,
+        ])
+    } else {
+        bufferViews.append([
+            "buffer": 0,
+            "byteOffset": positionsLength,
+            "byteLength": png.count,
+        ])
+    }
+    let imageView = bufferViews.count - 1
+    var json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": bufferViews,
+        "accessors": accessors,
+        "images": [["mimeType": "image/png", "bufferView": imageView]],
+        "textures": [["source": 0]],
+        "materials": [material],
+        "meshes": [[
+            "primitives": [[
+                "attributes": attributes,
+                "material": 0,
+            ]],
+        ]],
+        "nodes": [["mesh": 0]],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    if !extensionsUsed.isEmpty {
+        json["extensionsUsed"] = extensionsUsed
+    }
+    return try GLBBox.serialize(json: json, bin: bin)
+}
+
+private func hasVisibleEmissive(_ material: PhysicallyBasedMaterial) -> Bool {
+    if material.emissiveColor.texture != nil { return true }
+    guard let components = material.emissiveColor.color.cgColor.components, components.count >= 3 else {
+        return false
+    }
+    return max(components[0], max(components[1], components[2])) > 0.05
+}
+
+@MainActor
+private func loadFirstPBR(_ glb: Data) async throws -> PhysicallyBasedMaterial {
+    let all = try await loadAllPBR(glb)
+    try #require(!all.isEmpty)
+    return all[0]
+}
+
+@MainActor
+private func loadModel(_ glb: Data) async throws -> GLBEntityLoader.LoadedModel {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pbr-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let url = dir.appendingPathComponent("m.glb")
+    try glb.write(to: url)
+    return try await GLBEntityLoader.load(from: url, includeAnimations: false)
+}
+
+@MainActor
+private func loadAllPBR(_ glb: Data) async throws -> [PhysicallyBasedMaterial] {
+    pbrMaterials(in: try await loadModel(glb).entity)
+}
+
+@MainActor
+private func firstMeshUVs(in entity: Entity) -> [SIMD2<Float>]? {
+    if let model = entity.components[ModelComponent.self] {
+        for meshModel in model.mesh.contents.models {
+            for part in meshModel.parts {
+                if let uvs = part[MeshBuffers.textureCoordinates] {
+                    return Array(uvs)
+                }
+            }
+        }
+    }
+    for child in entity.children {
+        if let uvs = firstMeshUVs(in: child) {
+            return uvs
+        }
+    }
+    return nil
+}
+
+private func multiMaterialTriangleGLB(
+    extensionsUsed: [String] = [],
+    materials: [[String: Any]]
+) throws -> Data {
+    var bin = Data()
+    for value in [Int16(0), 0, 0, Int16(100), 0, 0, Int16(0), 100, 0] {
+        var bits = value.littleEndian
+        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    }
+    var json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [[
+            "buffer": 0,
+            "byteOffset": 0,
+            "byteLength": bin.count,
+        ]],
+        "accessors": [[
+            "bufferView": 0,
+            "componentType": 5122,
+            "count": 3,
+            "type": "VEC3",
+            "max": [100, 100, 0],
+            "min": [0, 0, 0],
+        ]],
+        "materials": materials,
+        "meshes": [[
+            "primitives": materials.indices.map { index in
+                [
+                    "attributes": ["POSITION": 0],
+                    "material": index,
+                ]
+            },
+        ]],
+        "nodes": [["mesh": 0]],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    if !extensionsUsed.isEmpty {
+        json["extensionsUsed"] = extensionsUsed
+    }
     return try GLBBox.serialize(json: json, bin: bin)
 }
 
@@ -384,11 +835,92 @@ struct PreviewStatsTests {
         let stats = GLBPreviewStats.from(json: json)
         #expect(stats.meshCount == 2)
         #expect(stats.materialCount == 1)
-        #expect(stats.animationCount == 1)
+        #expect(stats.opaqueMaterialCount == 1)
+        #expect(stats.transparentMaterialCount == 0)
+        #expect(stats.animationCount == 0)
         #expect(stats.nodeCount == 3)
         #expect(stats.textureCount == 1)
-        #expect(stats.durationSeconds == 2.5)
-        #expect(stats.previewLines.contains("Meshes 2"))
+        #expect(stats.durationSeconds == nil)
+        #expect(stats.previewRows.contains { $0.label == "Materials" && $0.value == "1" })
+        #expect(stats.previewRows.contains { $0.label == "Textures" && $0.value == "1" })
+        #expect(!stats.previewRows.contains { $0.label == "PBR" })
+        #expect(!stats.previewRows.contains { $0.label == "Animations" })
+        #expect(!stats.previewRows.contains { $0.label == "Morph geometries" })
+        #expect(!stats.previewRows.contains { $0.label == "Rigged geometries" })
+    }
+
+    @Test func trianglesAndTransparentFromPrimitives() {
+        let json: [String: Any] = [
+            "accessors": [
+                ["count": 9],
+                ["count": 6],
+                ["count": 5],
+            ],
+            "meshes": [
+                ["primitives": [
+                    ["indices": 0],
+                    ["attributes": ["POSITION": 1], "mode": 4],
+                    ["indices": 2, "mode": 5],
+                    ["indices": 2, "mode": 1],
+                ]],
+            ],
+            "materials": [
+                [:],
+                ["alphaMode": "MASK"],
+                ["alphaMode": "BLEND"],
+                [
+                    "alphaMode": "OPAQUE",
+                    "extensions": ["KHR_materials_transmission": ["transmissionFactor": 1]],
+                ],
+            ],
+        ]
+        let stats = GLBPreviewStats.from(json: json, fileSizeBytes: 1_500_000)
+        #expect(stats.triangleCount == 8)
+        #expect(stats.vertexCount == 6)
+        #expect(stats.opaqueMaterialCount == 2)
+        #expect(stats.transparentMaterialCount == 2)
+        #expect(stats.previewRows.contains { $0.label == "Geometry" && $0.value == "Triangles 8" })
+        #expect(stats.previewRows.contains { $0.label == "Size" && ($0.value.contains("MB") || $0.value.contains("KB")) })
+    }
+
+    @Test func sketchfabStyleFlagsFromJSON() {
+        let json: [String: Any] = [
+            "accessors": [
+                ["count": 3],
+            ],
+            "meshes": [[
+                "primitives": [[
+                    "attributes": [
+                        "POSITION": 0,
+                        "TEXCOORD_0": 0,
+                        "COLOR_0": 0,
+                        "JOINTS_0": 0,
+                    ],
+                    "targets": [["POSITION": 0]],
+                ]],
+            ]],
+            "materials": [[
+                "extensions": ["KHR_materials_pbrSpecularGlossiness": [:]],
+            ]],
+            "textures": [[:], [:]],
+            "skins": [["joints": [0]]],
+            "nodes": [["scale": [2, 1, 1]]],
+        ]
+        let stats = GLBPreviewStats.from(json: json)
+        #expect(stats.hasUVLayers)
+        #expect(stats.hasVertexColors)
+        #expect(stats.isRigged)
+        #expect(stats.morphGeometryCount == 1)
+        #expect(stats.hasScaleTransforms)
+        #expect(stats.pbrLabel == "Specular")
+        #expect(stats.textureCount == 2)
+        #expect(!stats.previewRows.contains { $0.label == "UV Layers" })
+        #expect(stats.previewRows.contains { $0.label == "PBR" && $0.value == "Specular" })
+        #expect(stats.previewRows.contains { $0.label == "Vertex colors" && $0.value == "Yes" })
+        #expect(stats.previewRows.contains { $0.label == "Rigged geometries" && $0.value == "Yes" })
+        #expect(stats.previewRows.contains { $0.label == "Morph geometries" && $0.value == "1" })
+        #expect(stats.previewRows.contains { $0.label == "Scale transformations" && $0.value == "Yes" })
+        #expect(!stats.previewRows.contains { $0.label == "Animations" })
     }
 
     @Test func omitsDurationWithoutAccessorMax() {

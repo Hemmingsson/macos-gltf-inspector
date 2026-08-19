@@ -52,13 +52,18 @@ This generates the Xcode project, builds, installs to `/Applications`, and check
 
 ## How it works
 
-`.glb` / `.gltf` are loaded with [GLTFKit2](https://github.com/warrenm/GLTFKit2) (Draco via [DracoSwift](https://github.com/warrenm/DracoSwift)). Specular-glossiness materials are converted to metallic-roughness when needed, then the asset becomes a [RealityKit](https://developer.apple.com/documentation/realitykit) `Entity`. The Quick Look preview extension shows it in a `RealityView`; the thumbnail extension draws Finder icons with `RealityRenderer`.
+RealityKit does not load glTF by default. The file is prepared, decoded with [GLTFKit2](https://github.com/warrenm/GLTFKit2) (Draco via [DracoSwift](https://github.com/warrenm/DracoSwift)), and converted to a RealityKit `Entity`.
 
 ```mermaid
 flowchart LR
-  file[".glb / .gltf"] --> prep["Prepare + GLTFKit2"]
-  prep --> rk["RealityKit Entity"]
-  rk --> ql["Quick Look\nRealityView"]
-  rk --> thumb["Finder thumbnail\nRealityRenderer"]
+  glb[".glb / .gltf"] --> prep["Prepare"]
+  prep --> kit["GLTFKit2"]
+  kit --> rk["RealityKit Entity"]
+  rk --> rv["RealityView"]
+  rk --> rr["RealityRenderer"]
 ```
+
+Prepare rewrites materials and meshes RealityKit will not ingest, then the default scene is converted to a physically based entity on a turntable.
+
+App and Quick Look show that entity in a `RealityView` with studio IBL for light and reflections — not a skybox. Finder thumbnails are a still from `RealityRenderer`.
 

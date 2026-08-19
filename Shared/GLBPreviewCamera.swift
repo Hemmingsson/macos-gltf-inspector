@@ -15,10 +15,11 @@ enum GLBPreviewCamera {
 
     /// Pivot whose origin is the visual center, so yaw/orbit spin the mesh in place
     /// even when Sketchfab/FBX nodes sit meters away from the scene origin.
-    /// Also strips cameras embedded in the glTF so framing uses our turntable camera only.
+    /// File cameras stay on their nodes; live camera components are stored and
+    /// removed so the preview camera is the only active view.
     @MainActor
     static func makeTurntable(for entity: Entity) -> (pivot: Entity, bounds: BoundingBox) {
-        disableFileCameras(entity)
+        disableCameras(in: entity)
         let worldBounds = modelBounds(of: entity)
         let center = worldBounds.center
         let pivot = Entity()
@@ -57,11 +58,92 @@ enum GLBPreviewCamera {
         return entity.visualBounds(relativeTo: nil)
     }
 
+    /// Stores and removes `PerspectiveCameraComponent` / `OrthographicCameraComponent`
+    /// on `root` and descendants. Does not set `entity.isEnabled` (a mesh-bearing
+    /// camera node must stay visible) and does not reparent.
     @MainActor
-    private static func disableFileCameras(_ entity: Entity) {
-        entity.components.remove(PerspectiveCameraComponent.self)
+    static func disableCameras(in root: Entity) {
+        StoredCameraComponent.registerIfNeeded()
+        walk(root) { disableCameraComponents(on: $0) }
+    }
+
+    /// Reattaches every stored camera component under `root`. Does not enforce a
+    /// single active camera — use `activateCamera` for that.
+    @MainActor
+    static func restoreCameras(in root: Entity) {
+        StoredCameraComponent.registerIfNeeded()
+        walk(root) { restoreCamera(on: $0) }
+    }
+
+    /// Reattaches a stored perspective or orthographic camera on one entity.
+    @MainActor
+    static func restoreCamera(on entity: Entity) {
+        StoredCameraComponent.registerIfNeeded()
+        guard let store = entity.components[StoredCameraComponent.self] else { return }
+        if let perspective = store.perspective {
+            entity.components.set(perspective)
+        }
+        if let orthographic = store.orthographic {
+            entity.components.set(orthographic)
+        }
+    }
+
+    /// Disables every camera under `roots` (and `camera` if it is outside them),
+    /// then restores only `camera`. glTF ignores node scale on the view matrix,
+    /// so the active camera is given unit world scale.
+    @MainActor
+    static func activateCamera(_ camera: Entity, disablingOthersIn roots: [Entity]) {
+        StoredCameraComponent.registerIfNeeded()
+        var seen = Set<ObjectIdentifier>()
+        func disableTree(_ root: Entity) {
+            let id = ObjectIdentifier(root)
+            guard seen.insert(id).inserted else { return }
+            disableCameras(in: root)
+        }
+        for root in roots {
+            disableTree(root)
+        }
+        disableTree(camera)
+        restoreCamera(on: camera)
+        applyUnscaledCameraView(camera)
+    }
+
+    @MainActor
+    private static func disableCameraComponents(on entity: Entity) {
+        var store = entity.components[StoredCameraComponent.self] ?? StoredCameraComponent()
+        var changed = false
+        if let perspective = entity.components[PerspectiveCameraComponent.self] {
+            store.perspective = perspective
+            entity.components.remove(PerspectiveCameraComponent.self)
+            changed = true
+        }
+        if let orthographic = entity.components[OrthographicCameraComponent.self] {
+            store.orthographic = orthographic
+            entity.components.remove(OrthographicCameraComponent.self)
+            changed = true
+        }
+        guard store.perspective != nil || store.orthographic != nil else { return }
+        if store.localScale == nil {
+            store.localScale = entity.scale
+        } else {
+            entity.scale = store.localScale!
+        }
+        if changed || entity.components[StoredCameraComponent.self] == nil {
+            entity.components.set(store)
+        }
+    }
+
+    /// glTF cameras look −Z / +Y up and must not inherit node scale.
+    @MainActor
+    private static func applyUnscaledCameraView(_ entity: Entity) {
+        entity.setScale(.one, relativeTo: nil)
+    }
+
+    @MainActor
+    private static func walk(_ entity: Entity, _ visit: (Entity) -> Void) {
+        visit(entity)
         for child in entity.children {
-            disableFileCameras(child)
+            walk(child, visit)
         }
     }
 
@@ -152,4 +234,19 @@ enum GLBPreviewCamera {
     private static func allFinite(_ v: SIMD3<Float>) -> Bool {
         v.x.isFinite && v.y.isFinite && v.z.isFinite
     }
+}
+
+/// Holds camera components removed so a node can keep its mesh and clip path.
+private struct StoredCameraComponent: Component, Equatable {
+    var perspective: PerspectiveCameraComponent?
+    var orthographic: OrthographicCameraComponent?
+    var localScale: SIMD3<Float>?
+
+    static func registerIfNeeded() {
+        _ = registration
+    }
+
+    private static let registration: Void = {
+        StoredCameraComponent.registerComponent()
+    }()
 }
