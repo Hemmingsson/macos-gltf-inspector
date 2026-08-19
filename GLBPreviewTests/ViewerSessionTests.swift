@@ -64,6 +64,43 @@ struct ViewerSessionTests {
         session.apply(root: root, iblEntity: nil)
         #expect(firstLightEnabled(root) == true)
     }
+
+    @Test func layerRowsFollowActiveSceneRoots() {
+        var doc = GLTFSessionDocument()
+        doc.scenes = [
+            .init(name: "A", rootNodeIndices: [0]),
+            .init(name: "B", rootNodeIndices: [1]),
+        ]
+        doc.nodes = [
+            .init(
+                index: 0,
+                name: "RootA",
+                children: [],
+                meshIndex: 0,
+                cameraIndex: nil,
+                lightIndex: nil,
+                translation: .zero,
+                rotation: SIMD4<Float>(0, 0, 0, 1),
+                scale: .one
+            ),
+            .init(
+                index: 1,
+                name: "RootB",
+                children: [],
+                meshIndex: 1,
+                cameraIndex: nil,
+                lightIndex: nil,
+                translation: .zero,
+                rotation: SIMD4<Float>(0, 0, 0, 1),
+                scale: .one
+            ),
+        ]
+        let session = ViewerSession(document: doc, defaultExponent: 0)
+        session.activeSceneIndex = 0
+        #expect(session.layerRootIndices() == [0])
+        session.activeSceneIndex = 1
+        #expect(session.layerRootIndices() == [1])
+    }
 }
 
 private func makeDummyIBLEntity() -> Entity {

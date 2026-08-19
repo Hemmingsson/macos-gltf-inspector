@@ -24,6 +24,11 @@ struct GLBPreviewStats: Equatable {
 
     /// Non-zero counts only — for the preview corner list.
     var previewLines: [String] {
+        previewRows
+    }
+
+    /// Same rows as `previewLines`; host outliner Model block uses this name.
+    var previewRows: [String] {
         var lines: [String] = []
         if meshCount > 0 { lines.append("Meshes \(meshCount)") }
         if materialCount > 0 { lines.append("Materials \(materialCount)") }

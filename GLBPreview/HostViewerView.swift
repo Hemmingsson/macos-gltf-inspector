@@ -8,7 +8,7 @@ struct HostViewerView: View {
 
     var body: some View {
         NavigationSplitView {
-            HostOutlinerView()
+            HostOutlinerView(model: loadedModel, session: session)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240)
         } content: {
             HostPreviewContainer(state: state, interaction: interaction, isDark: isDark)
@@ -17,6 +17,11 @@ struct HostViewerView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         }
         .modifier(HostSessionEnvironment(session: session))
+    }
+
+    private var loadedModel: GLBEntityLoader.LoadedModel? {
+        if case .ready(let model) = state { return model }
+        return nil
     }
 }
 

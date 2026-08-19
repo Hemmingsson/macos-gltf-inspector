@@ -12,8 +12,16 @@ final class ViewerSession {
     var hide = Set<Int>()
     var soloRoot: Int?
     var debug: DebugMode = .none
+    var activeSceneIndex: Int
+    var selected: Selection = .none
     let defaultExponent: Float
     let document: GLTFSessionDocument
+
+    enum Selection: Equatable, Hashable {
+        case none
+        case node(Int)
+        case animation(Int)
+    }
 
     enum EnvironmentRotation: String, CaseIterable {
         case plusZ = "+Z"
@@ -38,6 +46,12 @@ final class ViewerSession {
     init(document: GLTFSessionDocument, defaultExponent: Float) {
         self.document = document
         self.defaultExponent = defaultExponent
+        self.activeSceneIndex = document.defaultSceneIndex
+    }
+
+    func layerRootIndices() -> [Int] {
+        guard document.scenes.indices.contains(activeSceneIndex) else { return [] }
+        return document.scenes[activeSceneIndex].rootNodeIndices
     }
 
     @MainActor
