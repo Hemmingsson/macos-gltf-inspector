@@ -1,4 +1,5 @@
 import AppKit
+import RealityKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -7,12 +8,14 @@ struct ContentView: View {
     @State private var openedFileName: String?
     @State private var previewState: GLBPreviewView.State = .loading
     @State private var interaction = GLBPreviewInteraction()
+    @State private var session: ViewerSession?
 
     var body: some View {
         Group {
             if openedFileName != nil {
-                HostPreviewContainer(
+                HostViewerView(
                     state: previewState,
+                    session: session,
                     interaction: interaction,
                     isDark: colorScheme == .dark
                 )
@@ -55,9 +58,19 @@ struct ContentView: View {
         guard ext == "glb" || ext == "gltf" else { return }
         openedFileName = url.lastPathComponent
         previewState = .loading
+        session = nil
         interaction = GLBPreviewInteraction()
         Task {
-            previewState = await GLBPreviewView.State.loaded(from: url)
+            let state = await GLBPreviewView.State.loaded(from: url)
+            previewState = state
+            if case .ready(let model) = state {
+                session = ViewerSession(
+                    document: model.document,
+                    defaultExponent: hasFileLights(model) ? -2 : 0
+                )
+            } else {
+                session = nil
+            }
         }
     }
 
@@ -78,21 +91,17 @@ struct ContentView: View {
     }
 }
 
-private struct HostPreviewContainer: NSViewRepresentable {
-    var state: GLBPreviewView.State
-    var interaction: GLBPreviewInteraction
-    var isDark: Bool
+private func hasFileLights(_ model: GLBEntityLoader.LoadedModel) -> Bool {
+    if !model.document.lights.isEmpty { return true }
+    return hasPunctualLight(model.entity)
+}
 
-    func makeNSView(context: Context) -> GLBPreviewHostingView {
-        let view = GLBPreviewHostingView(
-            rootView: GLBPreviewView(state: state, interaction: interaction, isDark: isDark)
-        )
-        view.interaction = interaction
-        return view
+private func hasPunctualLight(_ entity: Entity) -> Bool {
+    if entity.components.has(PointLightComponent.self)
+        || entity.components.has(SpotLightComponent.self)
+        || entity.components.has(DirectionalLightComponent.self)
+    {
+        return true
     }
-
-    func updateNSView(_ nsView: GLBPreviewHostingView, context: Context) {
-        nsView.interaction = interaction
-        nsView.rootView = GLBPreviewView(state: state, interaction: interaction, isDark: isDark)
-    }
+    return entity.children.contains { hasPunctualLight($0) }
 }

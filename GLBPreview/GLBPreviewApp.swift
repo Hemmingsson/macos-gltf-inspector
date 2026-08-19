@@ -15,7 +15,7 @@ struct GLBPreviewApp: App {
         WindowGroup {
             ContentView()
         }
-        .defaultSize(width: 810, height: 600)
+        .defaultSize(width: 1200, height: 740)
         .windowResizability(.contentMinSize)
     }
 }

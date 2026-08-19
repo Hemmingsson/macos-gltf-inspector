@@ -56,14 +56,14 @@ final class GLBPreviewEventView: NSView {
 struct GLBPreviewView: View {
     enum State {
         case loading
-        case ready(Entity, stats: GLBPreviewStats?)
+        case ready(GLBEntityLoader.LoadedModel)
         case failed
 
         /// File IO runs off the main actor (`GLBEntityLoader.load`).
         static func loaded(from url: URL) async -> State {
             do {
                 let model = try await GLBEntityLoader.load(from: url)
-                return .ready(model.entity, stats: model.stats)
+                return .ready(model)
             } catch {
                 GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
                 return .failed
@@ -85,8 +85,8 @@ struct GLBPreviewView: View {
                         .controlSize(.regular)
                         .progressViewStyle(.circular)
                 }
-            case .ready(let entity, let stats):
-                GLBPreviewScene(entity: entity, stats: stats, interaction: interaction, isDark: isDark)
+            case .ready(let model):
+                GLBPreviewScene(entity: model.entity, stats: model.stats, interaction: interaction, isDark: isDark)
             case .failed:
                 ZStack {
                     GLBPreviewBackdrop.color(at: 0).ignoresSafeArea()
