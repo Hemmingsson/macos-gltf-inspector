@@ -130,6 +130,27 @@ struct ViewerSessionTests {
         session.selectedCameraIndex = 0
         #expect(session.selectedCameraIndex == 0)
     }
+
+    @MainActor
+    @Test func hideDisablesMappedEntity() async throws {
+        let url = try writeTempOneNodeMeshGLB(nodeName: "Mesh")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        let session = ViewerSession(document: model.document, defaultExponent: 0)
+        session.hide.insert(0)
+        session.apply(root: model.entity, iblEntity: nil)
+        #expect(entity(nodeIndex: 0, in: model.entity)?.isEnabled == false)
+    }
+
+    @Test func showAllClearsHide() {
+        let session = ViewerSession(document: .init(), defaultExponent: 0)
+        session.hide = [0, 1]
+        session.soloRoot = 0
+        session.showAll()
+        #expect(session.hide.isEmpty)
+        #expect(session.soloRoot == nil)
+    }
 }
 
 private func makeDummyIBLEntity() -> Entity {
@@ -146,6 +167,18 @@ private func hasPunctualLight(_ entity: Entity) -> Bool {
         return true
     }
     return entity.children.contains { hasPunctualLight($0) }
+}
+
+private func entity(nodeIndex: Int, in root: Entity) -> Entity? {
+    if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
+        return root
+    }
+    for child in root.children {
+        if let found = entity(nodeIndex: nodeIndex, in: child) {
+            return found
+        }
+    }
+    return nil
 }
 
 private func firstLightEnabled(_ entity: Entity) -> Bool? {

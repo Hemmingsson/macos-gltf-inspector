@@ -17,6 +17,13 @@ final class GLBPreviewInteraction {
         setZoom(zoom * Float(1 + event.magnification))
     }
 
+    var orbitResetNonce = 0
+
+    func resetFit() {
+        zoom = 1
+        orbitResetNonce += 1
+    }
+
     private func setZoom(_ value: Float) {
         let clamped = min(max(value, 0.12), 8)
         guard abs(clamped - zoom) > 0.0001 else { return }
@@ -146,6 +153,7 @@ enum GLBPreviewBackdrop {
 private final class PreviewFrame {
     var bounds = BoundingBox()
     var cameraAspect: Float = -1
+    var appliedFrameNonce = 0
 }
 
 private struct GLBPreviewScene: View {
@@ -199,6 +207,7 @@ private struct GLBPreviewScene: View {
 
     var body: some View {
         let _ = hostBridge?.lookRevision
+        let _ = hostBridge?.frameNonce
         ZStack {
             RealityView { content in
                 content.camera = .virtual
@@ -243,6 +252,7 @@ private struct GLBPreviewScene: View {
                     entity.scale = SIMD3<Float>(repeating: interaction.zoom)
                 }
                 hostBridge?.applyToContent?(&content, entity)
+                applyPendingFrame(content)
                 let viewAspect = aspect(of: viewport)
                 guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
                 frame.cameraAspect = viewAspect
@@ -316,6 +326,11 @@ private struct GLBPreviewScene: View {
                 autoRotate = false
             }
         }
+        .onChange(of: interaction.orbitResetNonce) { _, _ in
+            orbitYaw = 0
+            orbitPitch = 0
+            autoRotate = false
+        }
         .onChange(of: isPlaying) { _, playing in
             guard let playback else { return }
             if playing {
@@ -354,6 +369,35 @@ private struct GLBPreviewScene: View {
             .onEnded { _ in
                 dragOrigin = nil
             }
+    }
+
+    private func applyPendingFrame(_ content: RealityViewCameraContent) {
+        guard let hostBridge, hostBridge.frameNonce != frame.appliedFrameNonce else { return }
+        frame.appliedFrameNonce = hostBridge.frameNonce
+        let target: Entity
+        if let index = hostBridge.pendingFrameNodeIndex,
+           let match = findEntity(nodeIndex: index, in: entity)
+        {
+            target = match
+        } else {
+            target = entity
+        }
+        let reference = content.entities.first(where: { $0.name == "turntable" })
+        frame.bounds = GLBPreviewCamera.fit(entity: target, relativeTo: reference)
+        frame.cameraAspect = -1
+        interaction.resetFit()
+    }
+
+    private func findEntity(nodeIndex: Int, in root: Entity) -> Entity? {
+        if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
+            return root
+        }
+        for child in root.children {
+            if let found = findEntity(nodeIndex: nodeIndex, in: child) {
+                return found
+            }
+        }
+        return nil
     }
 
     private func applyViewport(_ size: CGSize) {

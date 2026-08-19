@@ -24,6 +24,14 @@ struct HostViewerView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         }
         .modifier(HostSessionEnvironment(session: session))
+        .toolbar {
+            Button("Frame") {
+                hostScene.frameSelection()
+            }
+            .keyboardShortcut("f", modifiers: [])
+            .help("Frame selected (F). Nothing selected fits the active scene.")
+            .disabled(session == nil)
+        }
         .onAppear { hostScene.bind(session: session) }
         .onChange(of: sessionIdentity) { _, _ in
             hostScene.bind(session: session)
@@ -52,6 +60,9 @@ struct HostViewerView: View {
         hasher.combine(session.toneMap)
         hasher.combine(session.exposure)
         hasher.combine(String(describing: session.backgroundColor))
+        hasher.combine(session.hide)
+        hasher.combine(session.soloRoot)
+        hasher.combine(session.frameNonce)
         return hasher.finalize()
     }
 

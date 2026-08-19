@@ -1,4 +1,5 @@
 import AppKit
+import RealityKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -71,6 +72,10 @@ private struct InspectorForm: View {
             }
 
             Section("Debug") {}
+
+            if case .node(let index) = session.selected, let node = session.node(at: index) {
+                NodeDetailSection(session: session, node: node)
+            }
         }
         .formStyle(.grouped)
         .onChange(of: session.imageBased) { _, _ in session.applyIfBound() }
@@ -149,4 +154,91 @@ private struct InspectorForm: View {
             session.inspectorError = "Could not load HDR"
         }
     }
+}
+
+private struct NodeDetailSection: View {
+    var session: ViewerSession
+    var node: GLTFSessionDocument.Node
+
+    var body: some View {
+        Section("Node") {
+            LabeledContent("Name", value: node.name.isEmpty ? "Node \(node.index)" : node.name)
+            LabeledContent("Translation", value: format3(node.translation))
+            LabeledContent("Rotation", value: format4(node.rotation))
+            LabeledContent("Scale", value: format3(node.scale))
+            LabeledContent("Children", value: "\(node.children.count)")
+            if let meshIndex = node.meshIndex, session.document.meshes.indices.contains(meshIndex) {
+                let mesh = session.document.meshes[meshIndex]
+                LabeledContent("Triangles", value: "\(mesh.triangleCount)")
+                LabeledContent("Vertices", value: "\(mesh.vertexCount)")
+                if let aabb = worldAABB {
+                    LabeledContent("World AABB", value: "\(format3(aabb.min)) … \(format3(aabb.max))")
+                }
+                MaterialCard(material: resolvedMaterial(for: mesh))
+            }
+        }
+    }
+
+    private var worldAABB: BoundingBox? {
+        guard let root = session.boundRoot,
+              let entity = session.entity(nodeIndex: node.index, in: root)
+        else { return nil }
+        return GLBPreviewCamera.modelBounds(of: entity)
+    }
+
+    private func resolvedMaterial(for mesh: GLTFSessionDocument.Mesh) -> GLTFSessionDocument.Material {
+        let index = mesh.materialIndices.first ?? 0
+        if session.document.materials.indices.contains(index) {
+            return session.document.materials[index]
+        }
+        return .init(
+            name: "Default",
+            baseColorFactor: SIMD4<Float>(1, 1, 1, 1),
+            metallicFactor: 1,
+            roughnessFactor: 1,
+            emissiveFactor: .zero,
+            alphaMode: "OPAQUE",
+            hasBaseColorTexture: false,
+            hasMetallicRoughnessTexture: false,
+            hasNormalTexture: false,
+            hasOcclusionTexture: false,
+            hasEmissiveTexture: false
+        )
+    }
+}
+
+private struct MaterialCard: View {
+    var material: GLTFSessionDocument.Material
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(material.name.isEmpty ? "Default" : material.name)
+                .font(.headline)
+            LabeledContent("Metallic", value: format1(material.metallicFactor))
+            LabeledContent("Roughness", value: format1(material.roughnessFactor))
+            LabeledContent(
+                "Base Color",
+                value: String(
+                    format: "%.2f %.2f %.2f %.2f",
+                    material.baseColorFactor.x,
+                    material.baseColorFactor.y,
+                    material.baseColorFactor.z,
+                    material.baseColorFactor.w
+                )
+            )
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private func format1(_ value: Float) -> String {
+    String(format: "%.2f", value)
+}
+
+private func format3(_ value: SIMD3<Float>) -> String {
+    String(format: "%.3f %.3f %.3f", value.x, value.y, value.z)
+}
+
+private func format4(_ value: SIMD4<Float>) -> String {
+    String(format: "%.3f %.3f %.3f %.3f", value.x, value.y, value.z, value.w)
 }

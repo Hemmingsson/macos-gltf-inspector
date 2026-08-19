@@ -55,11 +55,19 @@ private struct OutlinerContent: View {
                     Text(cameraTitle(document.cameras[index], index: index)).tag(Optional(index))
                 }
             }
-            Text("Layer List")
-                .font(.headline)
+            HStack {
+                Text("Layer List")
+                    .font(.headline)
+                Spacer()
+                Button("Show all") {
+                    session.showAll()
+                    session.applyIfBound()
+                }
+                .disabled(session.hide.isEmpty && session.soloRoot == nil)
+            }
             List(selection: layerSelection) {
                 OutlineGroup(layerRoots, children: \.children) { row in
-                    Text(row.title)
+                    LayerRowView(row: row, session: session)
                         .tag(row.id)
                 }
             }
@@ -106,6 +114,48 @@ private func documentPreviewRows(_ document: GLTFSessionDocument) -> [String] {
     if !document.animations.isEmpty { rows.append("Animations \(document.animations.count)") }
     if !document.nodes.isEmpty { rows.append("Nodes \(document.nodes.count)") }
     return rows
+}
+
+private struct LayerRowView: View {
+    let row: LayerRow
+    @Bindable var session: ViewerSession
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button {
+                toggleHide()
+            } label: {
+                Image(systemName: session.hide.contains(row.id) ? "eye.slash" : "eye")
+            }
+            .buttonStyle(.borderless)
+            .help(session.hide.contains(row.id) ? "Show" : "Hide")
+
+            Button {
+                toggleSolo()
+            } label: {
+                Image(systemName: session.soloRoot == row.id ? "circle.inset.filled" : "circle")
+            }
+            .buttonStyle(.borderless)
+            .help(session.soloRoot == row.id ? "Clear solo" : "Solo")
+
+            Text(row.title)
+                .opacity(session.hide.contains(row.id) || session.soloHides(row.id) ? 0.45 : 1)
+        }
+    }
+
+    private func toggleHide() {
+        if session.hide.contains(row.id) {
+            session.hide.remove(row.id)
+        } else {
+            session.hide.insert(row.id)
+        }
+        session.applyIfBound()
+    }
+
+    private func toggleSolo() {
+        session.soloRoot = session.soloRoot == row.id ? nil : row.id
+        session.applyIfBound()
+    }
 }
 
 private struct LayerRow: Identifiable, Hashable {

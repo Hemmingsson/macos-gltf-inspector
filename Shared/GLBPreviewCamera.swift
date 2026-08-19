@@ -35,13 +35,13 @@ enum GLBPreviewCamera {
     /// collision boxes do not push the camera out. Falls back to the full entity
     /// if nothing has a mesh yet.
     @MainActor
-    static func modelBounds(of entity: Entity) -> BoundingBox {
+    static func modelBounds(of entity: Entity, relativeTo reference: Entity? = nil) -> BoundingBox {
         var found = false
         var minBound = SIMD3<Float>(repeating: Float.greatestFiniteMagnitude)
         var maxBound = SIMD3<Float>(repeating: -Float.greatestFiniteMagnitude)
         func walk(_ node: Entity) {
             if node.components[ModelComponent.self] != nil {
-                let box = node.visualBounds(relativeTo: nil)
+                let box = node.visualBounds(relativeTo: reference)
                 minBound = simd_min(minBound, box.min)
                 maxBound = simd_max(maxBound, box.max)
                 found = true
@@ -54,7 +54,13 @@ enum GLBPreviewCamera {
         if found, allFinite(minBound), allFinite(maxBound) {
             return BoundingBox(min: minBound, max: maxBound)
         }
-        return entity.visualBounds(relativeTo: nil)
+        return entity.visualBounds(relativeTo: reference)
+    }
+
+    /// Same Fit math used by the turntable camera, for a specific entity's mesh bounds.
+    @MainActor
+    static func fit(entity: Entity, relativeTo reference: Entity? = nil) -> BoundingBox {
+        modelBounds(of: entity, relativeTo: reference)
     }
 
     @MainActor

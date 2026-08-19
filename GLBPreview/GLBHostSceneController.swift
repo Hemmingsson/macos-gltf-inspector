@@ -37,6 +37,17 @@ final class GLBHostSceneController {
         bridge.bump()
     }
 
+    func frameSelection() {
+        if case .node(let index) = session?.selected {
+            bridge.pendingFrameNodeIndex = index
+        } else {
+            bridge.pendingFrameNodeIndex = nil
+        }
+        bridge.frameNonce += 1
+        session?.requestFrame()
+        bridge.bump()
+    }
+
     private func syncBackground() {
         bridge.backgroundColor = session?.backgroundColor ?? GLBPreviewBackdrop.dark
     }

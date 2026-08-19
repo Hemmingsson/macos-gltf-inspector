@@ -24,6 +24,7 @@ final class ViewerSession {
     /// `nil` is the Fit camera; otherwise an index into `document.cameras`.
     var selectedCameraIndex: Int?
     var selected: Selection = .none
+    var frameNonce = 0
     let defaultExponent: Float
     let document: GLTFSessionDocument
     weak var boundRoot: Entity?
@@ -112,7 +113,41 @@ final class ViewerSession {
             )
         }
 
-        applyPunctual(to: root)
+        applyVisibility(to: root)
+    }
+
+    func showAll() {
+        hide.removeAll()
+        soloRoot = nil
+    }
+
+    func requestFrame() {
+        frameNonce += 1
+    }
+
+    func entity(nodeIndex: Int, in root: Entity) -> Entity? {
+        if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
+            return root
+        }
+        for child in root.children {
+            if let found = entity(nodeIndex: nodeIndex, in: child) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    func frameTarget(in root: Entity) -> Entity {
+        if case .node(let index) = selected, let match = entity(nodeIndex: index, in: root) {
+            return match
+        }
+        return root
+    }
+
+    func soloHides(_ id: Int) -> Bool {
+        guard let soloRoot else { return false }
+        if id == soloRoot { return false }
+        return !descendantIndices(of: soloRoot).contains(id)
     }
 
     func intensityExponent(forSlider value: Float) -> Float {
@@ -136,13 +171,38 @@ final class ViewerSession {
     }
 
     @MainActor
-    private func applyPunctual(to entity: Entity) {
-        if hasLightComponent(entity) {
+    private func applyVisibility(to entity: Entity) {
+        if let id = entity.components[GLTFNodeIDComponent.self]?.nodeIndex {
+            let visible = !hide.contains(id) && !soloHides(id)
+            if hasLightComponent(entity) {
+                entity.isEnabled = visible && punctualLights
+            } else {
+                entity.isEnabled = visible
+            }
+        } else if hasLightComponent(entity) {
             entity.isEnabled = punctualLights
         }
         for child in entity.children {
-            applyPunctual(to: child)
+            applyVisibility(to: child)
         }
+    }
+
+    private func descendantIndices(of root: Int) -> Set<Int> {
+        var found = Set<Int>()
+        func walk(_ id: Int) {
+            guard let node = node(at: id) else { return }
+            for child in node.children {
+                found.insert(child)
+                walk(child)
+            }
+        }
+        walk(root)
+        return found
+    }
+
+    func node(at index: Int) -> GLTFSessionDocument.Node? {
+        document.nodes.first(where: { $0.index == index })
+            ?? (document.nodes.indices.contains(index) ? document.nodes[index] : nil)
     }
 
     @MainActor
