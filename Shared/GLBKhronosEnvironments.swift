@@ -1,7 +1,7 @@
 import Foundation
 
 enum GLBKhronosEnvironments: String, CaseIterable, Sendable {
-    case cannonExterior = "cannon_exterior"
+    case cannonExterior = "Cannon_Exterior"
     case footprintCourt = "footprint_court"
     case pisa = "pisa"
     case dogesPalace = "doge2"
@@ -10,8 +10,8 @@ enum GLBKhronosEnvironments: String, CaseIterable, Sendable {
     case helipadGoldenhour = "helipad"
     case papermillRuins = "papermill"
     case studioNeutral = "neutral"
-    case colorfulStudio = "chromatic"
-    case wideStreet = "wide_street"
+    case colorfulStudio = "Colorful_Studio"
+    case wideStreet = "Wide_Street"
 
     static var defaultLook: Self { .studioNeutral }
 

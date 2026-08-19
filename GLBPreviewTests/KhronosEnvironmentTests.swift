@@ -20,4 +20,10 @@ struct KhronosEnvironmentTests {
         #expect(GLBKhronosEnvironments.defaultLook == .studioNeutral)
         #expect(GLBKhronosEnvironments.defaultLook.title == "Studio Neutral")
     }
+
+    @Test func studioNeutralHDRIsInBundle() {
+        let url = Bundle.main.url(forResource: "neutral", withExtension: "hdr")
+            ?? Bundle.main.url(forResource: "neutral", withExtension: "hdr", subdirectory: "khronos")
+        #expect(url != nil)
+    }
 }
