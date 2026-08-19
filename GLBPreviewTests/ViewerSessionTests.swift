@@ -111,6 +111,9 @@ struct ViewerSessionTests {
         #expect(s.inspectorError == nil)
         #expect(s.exposure == 1)
         #expect(s.toneMap == .khronosPBRNeutral)
+    }
+
+    @Test func toneMapTitlesMatchSampleViewer() {
         #expect(ViewerSession.ToneMap.allCases.map(\.title) == [
             "Khronos PBR Neutral",
             "ACES Filmic Tone Mapping (Hill - Exposure Boost)",
@@ -118,6 +121,11 @@ struct ViewerSessionTests {
             "ACES Filmic Tone Mapping (Hill)",
             "None (Linear mapping, clamped at 1.0)",
         ])
+        #expect(ViewerSession.ToneMap.khronosPBRNeutral.shaderMode == 0)
+        #expect(ViewerSession.ToneMap.acesHillExposureBoost.shaderMode == 1)
+        #expect(ViewerSession.ToneMap.acesNarkowicz.shaderMode == 2)
+        #expect(ViewerSession.ToneMap.acesHill.shaderMode == 3)
+        #expect(ViewerSession.ToneMap.noneLinear.shaderMode == 4)
     }
 
     @Test func selectedCameraIndexDefaultsToFit() {

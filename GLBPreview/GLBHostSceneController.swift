@@ -15,6 +15,7 @@ final class GLBHostSceneController {
     private var blurGeneration = 0
     private var lastGoodEnvironment: GLBKhronosEnvironments = .studioNeutral
     private var lastGoodUserHDR: URL?
+    private var storedToneMapEffect: AnyObject?
 
     func bind(session: ViewerSession?) {
         self.session = session
@@ -61,6 +62,21 @@ final class GLBHostSceneController {
         }
         session?.apply(root: root, iblEntity: ibl)
         applySkybox(&content)
+        applyToneMap(to: &content)
+    }
+
+    private func applyToneMap(to content: inout RealityViewCameraContent) {
+        guard #available(macOS 26, *) else { return }
+        let effect: ToneMapEffect
+        if let existing = storedToneMapEffect as? ToneMapEffect {
+            effect = existing
+        } else {
+            effect = ToneMapEffect()
+            storedToneMapEffect = effect
+        }
+        effect.exposure = session?.exposure ?? 1
+        effect.toneMap = session?.toneMap ?? .khronosPBRNeutral
+        content.renderingEffects.customPostProcessing = .effect(effect)
     }
 
     private func ensureIBL(in content: inout RealityViewCameraContent) -> Entity {
