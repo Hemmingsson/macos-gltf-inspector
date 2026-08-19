@@ -217,7 +217,7 @@ final class ViewerSession {
 
     @MainActor
     func apply(root: Entity, iblEntity: Entity?) {
-        if imageBased, let iblEntity {
+        if imageBased, let iblEntity, hasIBLProbe(iblEntity) {
             applyReceivers(from: iblEntity, to: root)
         } else if !imageBased {
             removeReceivers(from: root)
@@ -279,8 +279,24 @@ final class ViewerSession {
     }
 
     @MainActor
+    private func hasIBLProbe(_ iblEntity: Entity) -> Bool {
+        guard let light = iblEntity.components[ImageBasedLightComponent.self] else { return false }
+        if case .none = light.source { return false }
+        return true
+    }
+
+    @MainActor
     private func applyReceivers(from light: Entity, to entity: Entity) {
-        entity.components.set(ImageBasedLightReceiverComponent(imageBasedLight: light))
+        if let model = entity.components[ModelComponent.self] {
+            let unlit = model.materials.allSatisfy { $0 is UnlitMaterial }
+            if unlit {
+                entity.components.remove(ImageBasedLightReceiverComponent.self)
+            } else {
+                entity.components.set(ImageBasedLightReceiverComponent(imageBasedLight: light))
+            }
+        } else {
+            entity.components.remove(ImageBasedLightReceiverComponent.self)
+        }
         for child in entity.children {
             applyReceivers(from: light, to: child)
         }

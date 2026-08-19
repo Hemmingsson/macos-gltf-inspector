@@ -62,6 +62,7 @@ private struct InspectorForm: View {
                 Slider(value: $session.exposure, in: 0...64) {
                     Text("Exposure")
                 }
+                .accessibilityLabel("Exposure")
                 .disabled(!exposureEnabled)
                 Picker("Tone Map", selection: $session.toneMap) {
                     ForEach(ViewerSession.ToneMap.allCases, id: \.self) { toneMap in
@@ -97,6 +98,12 @@ private struct InspectorForm: View {
         .onChange(of: session.environmentRotation) { _, _ in session.applyIfBound() }
         .onChange(of: session.selectedUserHDR) { _, _ in session.applyIfBound() }
         .onChange(of: session.debug) { _, _ in session.applyIfBound() }
+        .onChange(of: session.exposure) { _, value in
+            GLBLog.info(GLBLog.host, "inspector exposure=\(value)")
+        }
+        .onChange(of: session.toneMap) { _, value in
+            GLBLog.info(GLBLog.host, "inspector toneMap=\(value.title)")
+        }
     }
 
     private var exposureEnabled: Bool {

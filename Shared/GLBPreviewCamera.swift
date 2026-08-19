@@ -19,42 +19,90 @@ enum GLBPreviewCamera {
     @MainActor
     static func makeTurntable(for entity: Entity) -> (pivot: Entity, bounds: BoundingBox) {
         disableFileCameras(entity)
-        let worldBounds = modelBounds(of: entity)
-        let center = worldBounds.center
+        // `relativeTo: nil` is world space, but an unattached tree treats each
+        // mesh's own origin as world — parent translation (Sketchfab/FBX offsets)
+        // is dropped. Measure in the root's space, then pull that center to the pivot.
+        let localBounds = modelBounds(of: entity, relativeTo: entity)
+        let center = localBounds.center
         let pivot = Entity()
         pivot.name = "turntable"
-        pivot.position = center
-        pivot.addChild(entity, preservingWorldTransform: true)
-        // Reparenting preserves world transform, so shift by `-center` instead of walking bounds again.
-        pivot.position -= center
-        let centered = BoundingBox(min: worldBounds.min - center, max: worldBounds.max - center)
+        pivot.addChild(entity)
+        let centerInPivot = entity.convert(position: center, to: pivot)
+        entity.position -= centerInPivot
+        let centered = BoundingBox(min: localBounds.min - center, max: localBounds.max - center)
         return (pivot, centered)
     }
+
+    /// A leftover mesh this many times larger than the median mesh is ignored
+    /// for Fit. Typical case: Blender cm-scale helper beside a `0.01` asset.
+    /// Equal-sized city tiles stay; they share one scale.
+    static let outlierExtentRatio: Float = 32
 
     /// Union of `ModelComponent` visual bounds. Helper/empty nodes are ignored so
     /// collision boxes do not push the camera out. Falls back to the full entity
     /// if nothing has a mesh yet.
     @MainActor
     static func modelBounds(of entity: Entity, relativeTo reference: Entity? = nil) -> BoundingBox {
-        var found = false
-        var minBound = SIMD3<Float>(repeating: Float.greatestFiniteMagnitude)
-        var maxBound = SIMD3<Float>(repeating: -Float.greatestFiniteMagnitude)
+        var boxes: [BoundingBox] = []
         func walk(_ node: Entity) {
             if node.components[ModelComponent.self] != nil {
-                let box = node.visualBounds(relativeTo: reference)
-                minBound = simd_min(minBound, box.min)
-                maxBound = simd_max(maxBound, box.max)
-                found = true
+                let box = node.visualBounds(recursive: false, relativeTo: reference)
+                if !box.isEmpty, allFinite(box.min), allFinite(box.max) {
+                    boxes.append(box)
+                }
             }
             for child in node.children {
                 walk(child)
             }
         }
         walk(entity)
-        if found, allFinite(minBound), allFinite(maxBound) {
-            return BoundingBox(min: minBound, max: maxBound)
+        if let union = unionModelBoxes(boxes) {
+            return union
         }
         return entity.visualBounds(relativeTo: reference)
+    }
+
+    /// Keep the cluster of typical mesh sizes; drop a single km-scale leftover.
+    static func unionModelBoxes(_ boxes: [BoundingBox]) -> BoundingBox? {
+        let finite = boxes.filter { !$0.isEmpty && allFinite($0.min) && allFinite($0.max) }
+        guard !finite.isEmpty else { return nil }
+        let extents = finite.map { longest($0.max - $0.min) }
+        let kept: [BoundingBox]
+        if finite.count >= 3 {
+            let mid = median(extents)
+            if mid > 0 {
+                let limit = mid * outlierExtentRatio
+                let filtered = zip(finite, extents).compactMap { box, ext in
+                    ext <= limit ? box : nil
+                }
+                kept = filtered.isEmpty ? finite : filtered
+            } else {
+                kept = finite
+            }
+        } else {
+            kept = finite
+        }
+        var minBound = SIMD3<Float>(repeating: Float.greatestFiniteMagnitude)
+        var maxBound = SIMD3<Float>(repeating: -Float.greatestFiniteMagnitude)
+        for box in kept {
+            minBound = simd_min(minBound, box.min)
+            maxBound = simd_max(maxBound, box.max)
+        }
+        return BoundingBox(min: minBound, max: maxBound)
+    }
+
+    static func longest(_ extent: SIMD3<Float>) -> Float {
+        max(extent.x, max(extent.y, extent.z))
+    }
+
+    static func median(_ values: [Float]) -> Float {
+        guard !values.isEmpty else { return 0 }
+        let sorted = values.sorted()
+        let mid = sorted.count / 2
+        if sorted.count.isMultiple(of: 2) {
+            return (sorted[mid - 1] + sorted[mid]) * 0.5
+        }
+        return sorted[mid]
     }
 
     /// Same Fit math used by the turntable camera, for a specific entity's mesh bounds.
@@ -152,7 +200,15 @@ enum GLBPreviewCamera {
         camera.camera.fieldOfViewInDegrees = fieldOfViewDegrees
         camera.camera.fieldOfViewOrientation = .vertical
         camera.look(at: center, from: position, relativeTo: nil)
+        applyFitClip(to: &camera.camera, eye: position, target: center)
         return camera
+    }
+
+    /// Default RealityKit far/near clips a 3 km tile or a 12 cm ashtray.
+    static func applyFitClip(to camera: inout PerspectiveCameraComponent, eye: SIMD3<Float>, target: SIMD3<Float>) {
+        let distance = max(length(eye - target), 0.001)
+        camera.near = max(0.0005, distance * 0.0008)
+        camera.far = max(200, distance * 40)
     }
 
     private static func allFinite(_ v: SIMD3<Float>) -> Bool {

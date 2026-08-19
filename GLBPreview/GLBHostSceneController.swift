@@ -16,18 +16,33 @@ final class GLBHostSceneController {
     private var lastGoodEnvironment: GLBKhronosEnvironments = .studioNeutral
     private var lastGoodUserHDR: URL?
     private var storedToneMapEffect: AnyObject?
+    /// `ARView.renderCallbacks.setter` traps if post-process is assigned twice
+    /// or after a custom `PerspectiveCamera` is in the scene.
+    private var didAssignToneMap = false
+
+    init() {
+        installCallbacks()
+    }
 
     func bind(session: ViewerSession?) {
         self.session = session
         lastGoodEnvironment = session?.environment ?? .studioNeutral
         lastGoodUserHDR = session?.selectedUserHDR
-        bridge.applyToContent = { [weak self] content, root in
-            self?.attach(content: &content, root: root)
-        }
+        installCallbacks()
         syncBackground()
         refreshResource()
         refreshBlurredSkybox()
         bridge.bump()
+    }
+
+    /// RealityView `make` can run before `onAppear` bind; callbacks must already exist.
+    func installCallbacks() {
+        bridge.applyToneMap = { [weak self] content in
+            self?.applyToneMap(to: &content)
+        }
+        bridge.applyToContent = { [weak self] content, root in
+            self?.attach(content: &content, root: root)
+        }
     }
 
     func sessionDidChange() {
@@ -56,27 +71,52 @@ final class GLBHostSceneController {
     private func attach(content: inout RealityViewCameraContent, root: Entity) {
         let ibl = ensureIBL(in: &content)
         session?.bind(root: root, iblEntity: ibl)
-        if let resource {
+        let probe = resource ?? GLBPreviewLighting.studioProbe
+        if let probe {
             let exponent = session?.intensityExponent(forSlider: session?.iblIntensity ?? 1) ?? 0
-            ibl.components.set(ImageBasedLightComponent(source: .single(resource), intensityExponent: exponent))
+            var light = ImageBasedLightComponent(source: .single(probe), intensityExponent: exponent)
+            light.inheritsRotation = false
+            ibl.components.set(light)
         }
         session?.apply(root: root, iblEntity: ibl)
         applySkybox(&content)
-        applyToneMap(to: &content)
+        syncToneMapParameters()
     }
 
+    /// Assign `customPostProcessing` only once, from RealityView `make`, before the custom camera exists.
     private func applyToneMap(to content: inout RealityViewCameraContent) {
         guard #available(macOS 26, *) else { return }
-        let effect: ToneMapEffect
-        if let existing = storedToneMapEffect as? ToneMapEffect {
-            effect = existing
-        } else {
-            effect = ToneMapEffect()
-            storedToneMapEffect = effect
+        let effect = toneMapEffect()
+        effect.exposure = session?.exposure ?? 1
+        effect.toneMap = session?.toneMap ?? .khronosPBRNeutral
+        guard !didAssignToneMap else {
+            GLBLog.info(GLBLog.host, "toneMap skip-assign (already attached) exposure=\(effect.exposure) map=\(effect.toneMap.title)")
+            return
+        }
+        content.renderingEffects.customPostProcessing = .effect(effect)
+        didAssignToneMap = true
+        GLBLog.info(GLBLog.host, "toneMap assigned exposure=\(effect.exposure) map=\(effect.toneMap.title)")
+    }
+
+    private func syncToneMapParameters() {
+        guard #available(macOS 26, *) else { return }
+        guard let effect = storedToneMapEffect as? ToneMapEffect else {
+            GLBLog.info(GLBLog.host, "toneMap sync skipped (effect not created)")
+            return
         }
         effect.exposure = session?.exposure ?? 1
         effect.toneMap = session?.toneMap ?? .khronosPBRNeutral
-        content.renderingEffects.customPostProcessing = .effect(effect)
+        GLBLog.info(GLBLog.host, "toneMap sync exposure=\(effect.exposure) map=\(effect.toneMap.title)")
+    }
+
+    @available(macOS 26, *)
+    private func toneMapEffect() -> ToneMapEffect {
+        if let existing = storedToneMapEffect as? ToneMapEffect {
+            return existing
+        }
+        let effect = ToneMapEffect()
+        storedToneMapEffect = effect
+        return effect
     }
 
     private func ensureIBL(in content: inout RealityViewCameraContent) -> Entity {
@@ -85,7 +125,13 @@ final class GLBHostSceneController {
         }
         let ibl = Entity()
         ibl.name = "hostIBL"
-        ibl.components.set(ImageBasedLightComponent(source: .none, intensityExponent: 0))
+        if let probe = resource ?? GLBPreviewLighting.studioProbe {
+            var light = ImageBasedLightComponent(source: .single(probe), intensityExponent: 0)
+            light.inheritsRotation = false
+            ibl.components.set(light)
+        } else {
+            ibl.components.set(ImageBasedLightComponent(source: .none, intensityExponent: 0))
+        }
         content.add(ibl)
         return ibl
     }

@@ -12,7 +12,14 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if openedFileName != nil {
+            if QAShotLaunch.isActive {
+                QAHostCanvas(
+                    state: previewState,
+                    session: session,
+                    interaction: interaction,
+                    isDark: colorScheme == .dark
+                )
+            } else if openedFileName != nil {
                 HostViewerView(
                     state: previewState,
                     session: session,
@@ -23,9 +30,11 @@ struct ContentView: View {
                 emptyState
             }
         }
-        .frame(minWidth: 400, minHeight: 300)
+        .frame(minWidth: QAShotLaunch.isActive ? 960 : 400, minHeight: QAShotLaunch.isActive ? 640 : 300)
         .navigationTitle(openedFileName ?? "GLB Preview")
-        .onAppear(perform: applyWindowTitle)
+        .onAppear {
+            applyWindowTitle()
+        }
         .onChange(of: openedFileName) { _, _ in applyWindowTitle() }
         .onOpenURL(perform: openIfGLB)
         .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
@@ -60,16 +69,25 @@ struct ContentView: View {
         previewState = .loading
         session = nil
         interaction = GLBPreviewInteraction()
+        GLBLoadFailure.reset()
+        GLBLog.info(GLBLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
         Task {
             let state = await GLBPreviewView.State.loaded(from: url)
             previewState = state
             if case .ready(let model) = state {
+                let bounds = model.entity.visualBounds(relativeTo: nil)
+                let extent = bounds.max - bounds.min
+                GLBLog.info(
+                    GLBLog.host,
+                    "open ready \(url.lastPathComponent) meshes=\(model.document.meshes.count) nodes=\(model.document.nodes.count) lights=\(model.document.lights.count) cameras=\(model.document.cameras.count) extent=\(extent.x)x\(extent.y)x\(extent.z) emptyBounds=\(bounds.isEmpty)"
+                )
                 session = ViewerSession(
                     document: model.document,
                     defaultExponent: hasFileLights(model) ? -2 : 0
                 )
             } else {
                 session = nil
+                GLBLog.error(GLBLog.host, "open failed \(url.lastPathComponent)")
             }
         }
     }
@@ -89,6 +107,11 @@ struct ContentView: View {
         }
         return true
     }
+
+}
+
+private func fileSize(_ url: URL) -> Int64 {
+    (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? -1
 }
 
 private func hasFileLights(_ model: GLBEntityLoader.LoadedModel) -> Bool {

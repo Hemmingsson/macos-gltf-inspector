@@ -1,8 +1,82 @@
+import AppKit
+import CoreGraphics
 import Foundation
 import RealityKit
 import Testing
 import simd
 @testable import GLBPreview
+
+struct QAShotLaunchTests {
+    @Test func parsesOutputAndFiles() throws {
+        let parsed = try #require(QAShotLaunch.parse([
+            "GLBPreview",
+            "--qa-shots",
+            "/tmp/qa-out",
+            "--settle-ms",
+            "1000",
+            "/tmp/a.glb",
+            "/tmp/b.gltf",
+        ]))
+        #expect(parsed.output.path == "/tmp/qa-out")
+        #expect(parsed.files.map(\.lastPathComponent) == ["a.glb", "b.gltf"])
+        #expect(parsed.settle == 1_000_000_000)
+    }
+
+    @Test func ignoresBareLaunch() {
+        #expect(QAShotLaunch.parse(["GLBPreview"]) == nil)
+    }
+
+    @Test func titleBarDoesNotSaveEmptyCanvas() throws {
+        let data = try #require(Self.png(width: 120, height: 80) { ctx in
+            ctx.setFillColor(CGColor(srgbRed: 38 / 255, green: 38 / 255, blue: 38 / 255, alpha: 1))
+            ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+            ctx.setFillColor(CGColor(srgbRed: 1, green: 0.3, blue: 0.3, alpha: 1))
+            ctx.fill(CGRect(x: 4, y: 72, width: 8, height: 8))
+        })
+        #expect(QAShotLaunch.isEmptyCanvas(data))
+    }
+
+    @Test func paintedCenterIsNotEmptyCanvas() throws {
+        let data = try #require(Self.png(width: 120, height: 80) { ctx in
+            ctx.setFillColor(CGColor(srgbRed: 38 / 255, green: 38 / 255, blue: 38 / 255, alpha: 1))
+            ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+            ctx.setFillColor(CGColor(srgbRed: 0.4, green: 0.35, blue: 0.3, alpha: 1))
+            ctx.fill(CGRect(x: 30, y: 20, width: 60, height: 40))
+        })
+        #expect(!QAShotLaunch.isEmptyCanvas(data))
+    }
+
+    private static func png(width: Int, height: Int, draw: (CGContext) -> Void) -> Data? {
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: cs,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        draw(ctx)
+        guard let image = ctx.makeImage() else { return nil }
+        let rep = NSBitmapImageRep(cgImage: image)
+        return rep.representation(using: .png, properties: [:])
+    }
+}
+
+struct TextureAlphaUsageTests {
+    @Test func constantZeroIsUnused() {
+        #expect(GLBTextureAlpha.usage(minAlpha: 0, maxAlpha: 0) == .unused)
+    }
+
+    @Test func constantOneIsUnused() {
+        #expect(GLBTextureAlpha.usage(minAlpha: 1, maxAlpha: 1) == .unused)
+    }
+
+    @Test func foliageSpanIsCutout() {
+        #expect(GLBTextureAlpha.usage(minAlpha: 0, maxAlpha: 1) == .cutout)
+    }
+}
 
 struct ThinAxisTests {
     @Test func doorLikeThinX() {
@@ -40,6 +114,44 @@ struct ModelBoundsTests {
         #expect(extent.x < 2)
         #expect(extent.y < 2)
         #expect(extent.z < 2)
+    }
+
+    @Test func unionDropsCmScaleLeftover() throws {
+        var boxes: [BoundingBox] = (0..<8).map { i in
+            let o = Float(i) * 0.2
+            return BoundingBox(min: SIMD3(o, 0, 0), max: SIMD3(o + 1, 1, 1))
+        }
+        boxes.append(BoundingBox(min: SIMD3(-400, -700, -50), max: SIMD3(400, 700, 50)))
+        let union = try #require(GLBPreviewCamera.unionModelBoxes(boxes))
+        let extent = union.max - union.min
+        #expect(extent.x < 4)
+        #expect(extent.y < 2)
+        #expect(extent.z < 2)
+    }
+
+    @MainActor
+    @Test func turntableCentersOffsetSketchfabRoot() {
+        let root = Entity()
+        root.position = SIMD3(409, -17, -36)
+        let model = ModelEntity(mesh: .generateBox(size: 2), materials: [SimpleMaterial()])
+        root.addChild(model)
+        let assembled = GLBPreviewCamera.makeTurntable(for: root)
+        let bounds = GLBPreviewCamera.modelBounds(of: assembled.pivot, relativeTo: assembled.pivot)
+        #expect(abs(bounds.center.x) < 0.15)
+        #expect(abs(bounds.center.y) < 0.15)
+        #expect(abs(bounds.center.z) < 0.15)
+        let extent = bounds.max - bounds.min
+        #expect(extent.x > 1.5 && extent.x < 2.5)
+    }
+
+    @Test func unionKeepsEqualSizedTiles() throws {
+        let boxes = (0..<6).map { i in
+            let o = Float(i) * 200
+            return BoundingBox(min: SIMD3(o, 0, 0), max: SIMD3(o + 180, 10, 180))
+        }
+        let union = try #require(GLBPreviewCamera.unionModelBoxes(boxes))
+        let extent = union.max - union.min
+        #expect(extent.x > 1000)
     }
 }
 
@@ -267,6 +379,35 @@ struct SidecarPackTests {
 
 }
 
+struct PipelineHoleTests {
+    /// `convert(primitive:)` returns nil for anything except TRIANGLES and POINTS.
+    @MainActor
+    @Test func linesOnlyAssetHasNoVisibleMesh() async throws {
+        let url = try GLBBox.writePrepared(try primitiveModeGLB(mode: 1), prefix: "lines-only")
+        defer { try? FileManager.default.removeItem(at: url) }
+        await #expect(throws: Error.self) {
+            _ = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        }
+    }
+
+    @MainActor
+    @Test func triangleStripOnlyAssetHasNoVisibleMesh() async throws {
+        let url = try GLBBox.writePrepared(try primitiveModeGLB(mode: 5), prefix: "tristrip-only")
+        defer { try? FileManager.default.removeItem(at: url) }
+        await #expect(throws: Error.self) {
+            _ = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        }
+    }
+
+    @MainActor
+    @Test func trianglesOnlyAssetLoads() async throws {
+        let url = try GLBBox.writePrepared(try primitiveModeGLB(mode: 4), prefix: "tris-only")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        #expect(GLBEntityLoader.modelComponentCount(in: model.entity) > 0)
+    }
+}
+
 struct LoaderHelpersTests {
     @MainActor
     @Test func modelComponentCountWalksTree() {
@@ -289,6 +430,36 @@ struct LoaderHelpersTests {
         #expect(GLBEntityLoader.modelComponentCount(in: model.entity) > 0)
         #expect(model.stats.meshCount >= 1)
     }
+}
+
+/// Three vertices. Mode 4 = TRIANGLES (legal). Mode 1 = LINES, 5 = TRIANGLE_STRIP.
+private func primitiveModeGLB(mode: Int) throws -> Data {
+    var bin = Data()
+    for value: Float in [0, 0, 0, 1, 0, 0, 0, 1, 0] {
+        var bits = value.bitPattern.littleEndian
+        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    }
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+        "accessors": [[
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": 3,
+            "type": "VEC3",
+            "min": [0, 0, 0],
+            "max": [1, 1, 0],
+        ]],
+        "meshes": [["primitives": [[
+            "attributes": ["POSITION": 0],
+            "mode": mode,
+        ]]]],
+        "nodes": [["mesh": 0]],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try GLBBox.serialize(json: json, bin: bin)
 }
 
 private func shortTriangleGLB() throws -> Data {
@@ -397,5 +568,43 @@ struct PreviewStatsTests {
             "accessors": [["count": 10]],
         ]
         #expect(GLBPreviewStats.from(json: json).durationSeconds == nil)
+    }
+}
+
+struct TextureChannelExtractTests {
+    /// macOS PNG decode is typically BGRA. glTF metal lives in B; RealityKit reads R.
+    @Test func extractsBlueFromBGRA() throws {
+        let image = try #require(Self.bgraImage(red: 255, green: 128, blue: 0))
+        let context = GLBRealityKitResourceContext()
+        let extracted = try #require(context.singleChannelImage(from: image, channels: .blue))
+        #expect(Self.grayPixel(extracted) == 0)
+    }
+
+    @Test func extractsGreenFromBGRA() throws {
+        let image = try #require(Self.bgraImage(red: 255, green: 128, blue: 0))
+        let context = GLBRealityKitResourceContext()
+        let extracted = try #require(context.singleChannelImage(from: image, channels: .green))
+        #expect(Self.grayPixel(extracted) == 128)
+    }
+
+    private static func bgraImage(red: UInt8, green: UInt8, blue: UInt8) -> CGImage? {
+        var pixel: [UInt8] = [blue, green, red, 255]
+        let space = CGColorSpaceCreateDeviceRGB()
+        let info = CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        guard let ctx = CGContext(
+            data: &pixel,
+            width: 1,
+            height: 1,
+            bitsPerComponent: 8,
+            bytesPerRow: 4,
+            space: space,
+            bitmapInfo: info
+        ) else { return nil }
+        return ctx.makeImage()
+    }
+
+    private static func grayPixel(_ image: CGImage) -> UInt8 {
+        let data = image.dataProvider!.data!
+        return CFDataGetBytePtr(data)[0]
     }
 }

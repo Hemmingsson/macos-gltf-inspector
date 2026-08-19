@@ -132,6 +132,52 @@ class GLBRealityKitResourceContext {
         self.commandQueue = metalDevice.makeCommandQueue()!
     }
 
+    @MainActor func alphaUsage(for gltfTextureParams: GLTFTextureParams) -> GLBTextureAlpha.Usage {
+        let gltfTexture = gltfTextureParams.texture
+        guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else {
+            return .unused
+        }
+        var cgImage = cgImagesForImageIdentifiers[image.identifier]
+        if cgImage == nil {
+            cgImage = image.newCGImage()?.takeRetainedValue()
+            if let cgImage {
+                cgImagesForImageIdentifiers[image.identifier] = cgImage
+            }
+        }
+        guard let cgImage, let range = GLBTextureAlpha.range(of: cgImage) else { return .unused }
+        return GLBTextureAlpha.usage(minAlpha: range.0, maxAlpha: range.1)
+    }
+
+    @MainActor func cachedCGImage(for gltfTextureParams: GLTFTextureParams) -> CGImage? {
+        let gltfTexture = gltfTextureParams.texture
+        guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else {
+            return nil
+        }
+        if let existing = cgImagesForImageIdentifiers[image.identifier] {
+            return existing
+        }
+        let cgImage = image.newCGImage()?.takeRetainedValue()
+        if let cgImage {
+            cgImagesForImageIdentifiers[image.identifier] = cgImage
+        }
+        return cgImage
+    }
+
+    @MainActor func opacityTexture(for gltfTextureParams: GLTFTextureParams)
+        -> RealityKit.PhysicallyBasedMaterial.Texture?
+    {
+        guard let cgImage = cachedCGImage(for: gltfTextureParams),
+              let gray = GLBTextureAlpha.opacityMap(of: cgImage)
+        else { return nil }
+        let options = TextureResource.CreateOptions(semantic: .raw)
+        guard let resource = try? TextureResource.generate(from: gray, options: options) else { return nil }
+        let descriptor = MTLSamplerDescriptor(from: gltfTextureParams.texture.sampler ?? GLTFTextureSampler())
+        return RealityKit.PhysicallyBasedMaterial.Texture(
+            resource,
+            sampler: MaterialParameters.Texture.Sampler(descriptor)
+        )
+    }
+
     @MainActor func texture(for gltfTextureParams: GLTFTextureParams, channels: ColorMask,
                             semantic: RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
     {
@@ -225,14 +271,28 @@ class GLBRealityKitResourceContext {
             // Can't extract from a non-RGB[A] image with this method. Fall back to the input image hoping it's monochrome.
             return cgImage
         }
-        guard let inputFormat = vImage_CGImageFormat(cgImage: cgImage) else { return nil }
-        guard var inputBuffer = try? vImage_Buffer(cgImage: cgImage, format: inputFormat) else { return nil }
+        // PNG on macOS is usually BGRA. `vImageExtractChannel_ARGB8888` only
+        // matches after we convert; RealityKit then samples the gray as red.
+        guard let argbFormat = vImage_CGImageFormat(
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpace: cgImage.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.first.rawValue),
+            renderingIntent: .defaultIntent
+        ) else { return nil }
+        guard var inputBuffer = try? vImage_Buffer(cgImage: cgImage, format: argbFormat) else { return nil }
         defer { inputBuffer.free() }
         var outputBuffer = vImage_Buffer()
-        vImageBuffer_Init(&outputBuffer, inputBuffer.height, inputBuffer.width, inputFormat.bitsPerPixel, vImage_Flags())
+        vImageBuffer_Init(&outputBuffer, inputBuffer.height, inputBuffer.width, 8, vImage_Flags())
         defer { outputBuffer.data.deallocate() }
-        var channel = 0
-        switch (channels) { case .red: channel = 0; case .green: channel = 1; case .blue: channel = 2; default: break }
+        // ARGB8888: 0=A, 1=R, 2=G, 3=B
+        let channel: Int
+        switch channels {
+        case .red: channel = 1
+        case .green: channel = 2
+        case .blue: channel = 3
+        case .all: return nil
+        }
         let outputColorSpace = CGColorSpace(name: CGColorSpace.linearGray)!
         let outputFormat = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 8, colorSpace: outputColorSpace,
                                                 bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
@@ -617,12 +677,7 @@ public class GLBRealityKitConvert {
                     material.color.texture = context.texture(for: baseColorTexture, channels: .all, semantic: .color)
                 }
             }
-            if gltfMaterial.alphaMode == .mask {
-                material.opacityThreshold = gltfMaterial.alphaCutoff
-            } else if gltfMaterial.alphaMode == .blend {
-                // TODO: Convert base color alpha channel into opacity map?
-                material.blending = .transparent(opacity: 1.0)
-            }
+            applyBlendMode(toUnlit: &material, gltfMaterial: gltfMaterial, context: context)
             return material
         } else {
             var material = PhysicallyBasedMaterial()
@@ -670,11 +725,7 @@ public class GLBRealityKitConvert {
                                                                           semantic: .raw)
                 }
             }
-            if gltfMaterial.alphaMode == .mask {
-                material.opacityThreshold = gltfMaterial.alphaCutoff
-            } else if gltfMaterial.alphaMode == .blend {
-                material.blending = .transparent(opacity: 1.0)
-            }
+            applyBlendMode(toPBR: &material, gltfMaterial: gltfMaterial, context: context)
             material.faceCulling = gltfMaterial.isDoubleSided ? .none : .back
 
             if let sheen = gltfMaterial.sheen {
@@ -693,6 +744,63 @@ public class GLBRealityKitConvert {
             }
             return material
         }
+    }
+
+    @MainActor
+    func applyBlendMode(
+        toPBR material: inout PhysicallyBasedMaterial,
+        gltfMaterial: GLTFMaterial,
+        context: GLBRealityKitResourceContext
+    ) {
+        if gltfMaterial.alphaMode == .mask {
+            material.opacityThreshold = gltfMaterial.alphaCutoff
+            return
+        }
+        guard gltfMaterial.alphaMode == .blend else { return }
+        let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
+        if alpha < 0.999 {
+            material.blending = .transparent(opacity: .init(scale: alpha))
+            return
+        }
+        // Factor 1 + BLEND + empty/zero texture alpha is Sketchfab car paint (invisible
+        // if blended). Factor 1 + BLEND + a real alpha span is foliage / decals.
+        if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
+           context.alphaUsage(for: texture) == .cutout
+        {
+            let opacity = context.opacityTexture(for: texture)
+            material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
+            material.opacityThreshold = 0.4
+            return
+        }
+        material.blending = .opaque
+    }
+
+    @MainActor
+    func applyBlendMode(
+        toUnlit material: inout UnlitMaterial,
+        gltfMaterial: GLTFMaterial,
+        context: GLBRealityKitResourceContext
+    ) {
+        if gltfMaterial.alphaMode == .mask {
+            material.opacityThreshold = gltfMaterial.alphaCutoff
+            return
+        }
+        guard gltfMaterial.alphaMode == .blend else { return }
+        let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
+        if alpha < 0.999 {
+            material.blending = .transparent(opacity: 1.0)
+            return
+        }
+        if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
+           context.alphaUsage(for: texture) == .cutout
+        {
+            if let opacity = context.opacityTexture(for: texture) {
+                material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
+            }
+            material.opacityThreshold = 0.4
+            return
+        }
+        material.blending = .opaque
     }
 
     @available(macOS 12.0, iOS 15.0, visionOS 2.0, *)

@@ -19,5 +19,23 @@ enum GLBLog {
 
     static func error(_ logger: Logger, _ message: String) {
         logger.error("\(message, privacy: .public)")
+        GLBLoadFailure.append("error \(message)")
+    }
+}
+
+enum GLBLoadFailure {
+    static var lastMessage: String?
+    static var lines: [String] = []
+
+    static func append(_ line: String) {
+        lines.append(line)
+        if lines.count > 120 {
+            lines.removeFirst(lines.count - 120)
+        }
+    }
+
+    static func reset() {
+        lastMessage = nil
+        lines = []
     }
 }

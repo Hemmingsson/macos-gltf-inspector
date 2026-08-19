@@ -8,6 +8,7 @@ struct HostViewerView: View {
     @State private var hostScene = GLBHostSceneController()
 
     var body: some View {
+        let _ = hostScene.installCallbacks()
         NavigationSplitView {
             HostOutlinerView(model: loadedModel, session: session)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240)
@@ -16,8 +17,7 @@ struct HostViewerView: View {
                 state: state,
                 interaction: interaction,
                 isDark: isDark,
-                hostBridge: hostScene.bridge,
-                lookRevision: hostScene.bridge.lookRevision
+                hostBridge: hostScene.bridge
             )
         } detail: {
             HostInspectorView(session: session)
@@ -32,7 +32,10 @@ struct HostViewerView: View {
             .help("Frame selected (F). Nothing selected fits the active scene.")
             .disabled(session == nil)
         }
-        .onAppear { hostScene.bind(session: session) }
+        .onAppear {
+            hostScene.bridge.freezeOrbit = QAShotLaunch.isActive
+            hostScene.bind(session: session)
+        }
         .onChange(of: sessionIdentity) { _, _ in
             hostScene.bind(session: session)
         }
@@ -91,7 +94,6 @@ struct HostPreviewContainer: NSViewRepresentable {
     var interaction: GLBPreviewInteraction
     var isDark: Bool
     var hostBridge: GLBPreviewHostSceneBridge?
-    var lookRevision: Int
 
     func makeNSView(context: Context) -> GLBPreviewHostingView {
         let view = GLBPreviewHostingView(
@@ -114,6 +116,57 @@ struct HostPreviewContainer: NSViewRepresentable {
             isDark: isDark,
             hostBridge: hostBridge
         )
+    }
+}
+
+/// Canvas-only host path for `--qa-shots` (same IBL/tone-map as the inspector window).
+struct QAHostCanvas: View {
+    var state: GLBPreviewView.State
+    var session: ViewerSession?
+    var interaction: GLBPreviewInteraction
+    var isDark: Bool
+    @State private var hostScene = GLBHostSceneController()
+
+    var body: some View {
+        let _ = hostScene.installCallbacks()
+        HostPreviewContainer(
+            state: state,
+            interaction: interaction,
+            isDark: isDark,
+            hostBridge: hostScene.bridge
+        )
+        .background(hostScene.bridge.backgroundColor)
+        .onAppear {
+            hostScene.bridge.freezeOrbit = true
+            hostScene.bind(session: session)
+        }
+        .onChange(of: session.map { ObjectIdentifier($0) }) { _, _ in
+            hostScene.bind(session: session)
+        }
+        .onChange(of: lookFingerprint) { _, _ in
+            hostScene.sessionDidChange()
+        }
+    }
+
+    private var lookFingerprint: Int {
+        guard let session else { return 0 }
+        var hasher = Hasher()
+        hasher.combine(session.imageBased)
+        hasher.combine(session.punctualLights)
+        hasher.combine(session.iblIntensity)
+        hasher.combine(session.environment)
+        hasher.combine(session.environmentRotation)
+        hasher.combine(session.showEnvironmentMap)
+        hasher.combine(session.blurEnvironment)
+        hasher.combine(session.selectedUserHDR)
+        hasher.combine(session.toneMap)
+        hasher.combine(session.exposure)
+        hasher.combine(session.hide)
+        hasher.combine(session.soloRoot)
+        hasher.combine(session.variantIndex)
+        hasher.combine(session.debug)
+        hasher.combine(session.frameNonce)
+        return hasher.finalize()
     }
 }
 

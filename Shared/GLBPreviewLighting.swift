@@ -46,6 +46,11 @@ enum GLBPreviewLighting {
         return ibl
     }
 
+    /// Studio Neutral after `prefetchStudioIBL`. Host uses this so the first frame
+    /// matches Quick Look instead of binding receivers to `ImageBasedLightComponent.source.none`.
+    @MainActor
+    static var studioProbe: EnvironmentResource? { cachedProbe }
+
     @MainActor
     private static var cachedProbe: EnvironmentResource?
 

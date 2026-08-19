@@ -27,8 +27,10 @@ struct ViewerSessionTests {
         )
         let ibl = makeDummyIBLEntity()
         session.apply(root: model.entity, iblEntity: ibl)
-        #expect(model.entity.components[ImageBasedLightReceiverComponent.self] != nil)
+        // Dummy IBL is `.none`; receivers on that light make the host canvas black.
+        #expect(model.entity.components[ImageBasedLightReceiverComponent.self] == nil)
 
+        model.entity.components.set(ImageBasedLightReceiverComponent(imageBasedLight: ibl))
         session.imageBased = false
         session.apply(root: model.entity, iblEntity: ibl)
         #expect(model.entity.components[ImageBasedLightReceiverComponent.self] == nil)

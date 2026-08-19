@@ -74,7 +74,9 @@ struct GLBPreviewView: View {
                 await ibl
                 return .ready(model)
             } catch {
-                GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
+                let message = String(describing: error)
+                GLBLoadFailure.lastMessage = message
+                GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(message)")
                 return .failed
             }
         }
@@ -189,7 +191,7 @@ private struct GLBPreviewScene: View {
         self.interaction = interaction
         self.isDark = isDark
         self.hostBridge = hostBridge
-        let bounds = GLBPreviewCamera.modelBounds(of: entity)
+        let bounds = GLBPreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
         if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
             _autoRotate = State(initialValue: false)
@@ -202,7 +204,8 @@ private struct GLBPreviewScene: View {
     private var isHost: Bool { hostBridge != nil }
 
     private var tickWhileActive: Bool {
-        autoRotate || (!isHost && chromeVisible && isPlaying && playback != nil)
+        if hostBridge?.freezeOrbit == true { return false }
+        return autoRotate || (!isHost && chromeVisible && isPlaying && playback != nil)
     }
 
     var body: some View {
@@ -211,6 +214,9 @@ private struct GLBPreviewScene: View {
         ZStack {
             RealityView { content in
                 content.camera = .virtual
+                // Post-process must be registered before the custom PerspectiveCamera.
+                // RealityKit traps in ARView.renderCallbacks.setter if assigned after.
+                hostBridge?.applyToneMap?(&content)
                 let assembled = GLBPreviewCamera.makeTurntable(for: entity)
                 frame.bounds = assembled.bounds
 
@@ -264,6 +270,14 @@ private struct GLBPreviewScene: View {
                         aspect: viewAspect
                     )
                     entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
+                    if var camera = entity.components[PerspectiveCameraComponent.self] {
+                        GLBPreviewCamera.applyFitClip(
+                            to: &camera,
+                            eye: position,
+                            target: frame.bounds.center
+                        )
+                        entity.components.set(camera)
+                    }
                 }
             }
             .backgroundStyle(hostBridge?.backgroundColor ?? GLBPreviewBackdrop.color(at: backdropIndex))
