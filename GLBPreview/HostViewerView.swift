@@ -26,12 +26,6 @@ struct HostViewerView: View {
                 .padding(.bottom, 10)
                 .padding(.top, 8)
         }
-        .overlay(alignment: .top) {
-            Text(windowTitle)
-                .font(.system(size: 13, weight: .semibold))
-                .padding(.top, 8)
-                .allowsHitTesting(false)
-        }
         .navigationTitle(windowTitle)
         .toolbarBackground(.hidden, for: .windowToolbar)
         .onAppear {
@@ -53,9 +47,8 @@ struct HostViewerView: View {
         guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
             return
         }
-        window.titleVisibility = .hidden
+        window.titleVisibility = .visible
         window.titlebarAppearsTransparent = true
-        window.title = ""
         window.backgroundColor = .windowBackgroundColor
         window.isOpaque = true
         window.styleMask.insert(.fullSizeContentView)

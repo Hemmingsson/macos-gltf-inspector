@@ -2,11 +2,11 @@
   <img src="assets/icon.png" width="175" alt="GLB Preview">
 </p>
 
-<h1 align="center">macOS glTF Preview</h1>
+<h1 align="center">macOS glTF Inspector</h1>
 
 <p align="center">
   <strong>Native App and Finder Support for <code>.glb</code> and <code>.gltf</code> Using <a href="https://developer.apple.com/documentation/realitykit">RealityKit</a></strong><br>
-  Viewer App, Thumbnails, Quick Look and Preview Pane
+  Inspector App, Thumbnails, Quick Look and Preview Pane
 </p>
 
 <table>
