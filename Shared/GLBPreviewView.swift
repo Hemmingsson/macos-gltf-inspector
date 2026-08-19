@@ -215,7 +215,9 @@ private struct GLBPreviewScene: View {
                         aspect: aspect(of: viewport)
                     )
                 )
-                let exponent: Float = GLBPreviewScenery.hasPunctualLights(entity) ? -2 : 0
+                let exponent = GLBPreviewEmissive.studioIBLExponent(
+                    punctualLightCount: GLBPreviewScenery.punctualLightCount(in: entity)
+                )
                 GLBPreviewLighting.applyLook(
                     to: &content,
                     pivot: assembled.pivot,

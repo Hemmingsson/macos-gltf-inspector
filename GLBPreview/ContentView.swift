@@ -58,13 +58,15 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()
 
-            HostOutlinerView(model: loadedModel, sidebar: sidebar)
-                .frame(width: 252)
-                .frame(maxHeight: .infinity)
-                .padding(.leading, 10)
-                .padding(.trailing, 0)
-                .padding(.bottom, 10)
-                .padding(.top, 8)
+            if let sidebar {
+                HostOutlinerView(model: loadedModel, sidebar: sidebar)
+                    .frame(width: 252)
+                    .frame(maxHeight: .infinity)
+                    .padding(.leading, 10)
+                    .padding(.trailing, 0)
+                    .padding(.bottom, 10)
+                    .padding(.top, 8)
+            }
         }
         .onAppear { applyDefaultCamera() }
     }

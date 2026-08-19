@@ -9,7 +9,7 @@ struct SceneryConvertTests {
     @Test func punctualLightUsesEngineUnitsAndNonZeroRange() async throws {
         let model = try await loadGLB(punctualLightsGLB())
         #expect(model.punctualLightCount == 2)
-        #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
+        #expect(model.punctualLightCount > 0)
 
         let point = try #require(firstComponent(PointLightComponent.self, in: model.entity))
         #expect(abs(point.intensity - 10 * 4 * .pi) < 0.01)
@@ -21,7 +21,7 @@ struct SceneryConvertTests {
     }
 
     @MainActor
-    @Test func twoPerspectiveCamerasStayListedAndActivateOne() async throws {
+    @Test func twoPerspectiveCamerasStayListedAfterTurntable() async throws {
         let model = try await loadGLB(twoPerspectiveCamerasGLB())
         let listed = GLBPreviewScenery.fileCameras(in: model.entity)
         #expect(listed.count == 2)
@@ -34,16 +34,7 @@ struct SceneryConvertTests {
         for camera in listed {
             #expect(namedEntity(camera.displayName, in: assembled.pivot) != nil)
         }
-
-        GLBPreviewCamera.restoreCameras(in: assembled.pivot)
-        #expect(livePerspectiveCount(in: assembled.pivot) == 2)
-
-        let first = listed[0].entity
-        let second = listed[1].entity
-        GLBPreviewCamera.activateCamera(first, disablingOthersIn: [assembled.pivot])
-        #expect(first.components[PerspectiveCameraComponent.self] != nil)
-        #expect(second.components[PerspectiveCameraComponent.self] == nil)
-        #expect(first.components[OrthographicCameraComponent.self] == nil)
+        #expect(livePerspectiveCount(in: assembled.pivot) == 0)
     }
 
     @MainActor
@@ -61,14 +52,12 @@ struct SceneryConvertTests {
         let roughness = before.roughness.scale
         #expect(abs(metallic - 1) < 0.001)
         #expect(abs(roughness - 0.2) < 0.001)
-        #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
+        #expect(model.punctualLightCount > 0)
         let after = try #require(pbrMaterials(in: model.entity).first)
         #expect(abs(after.metallic.scale - metallic) < 0.001)
         #expect(abs(after.roughness.scale - roughness) < 0.001)
 
-        await GLBPreviewLighting.prefetchStudioIBL()
-        try #require(GLBPreviewLighting.makeStudioIBLEntity(receiver: Entity()) != nil)
-
+        await GLBPreviewLighting.prefetchLook(.current)
         let renderer = try RealityRenderer()
         await GLBPreviewLighting.configureThumbnailLighting(on: renderer)
         #expect(renderer.lighting.resource != nil)

@@ -26,12 +26,6 @@ enum GLBPreviewLighting {
         }
     }
 
-    /// Warm the look (or Studio Neutral) so `applyLook` can attach it synchronously.
-    @MainActor
-    static func prefetchStudioIBL() async {
-        await prefetchLook(.current)
-    }
-
     @MainActor
     static func prefetchLook(_ look: AppLook) async {
         if look.useEnvironmentMap, let url = look.resolvedHDRURL() {
@@ -41,7 +35,7 @@ enum GLBPreviewLighting {
         }
     }
 
-    /// QL, host, and QA still-renderer. Skybox stays off.
+    /// QL, host, and thumbnail still-renderer. Skybox stays off.
     @MainActor
     static func applyLook(
         to content: inout RealityViewCameraContent,
@@ -63,13 +57,7 @@ enum GLBPreviewLighting {
         }
     }
 
-    /// World-fixed Studio Neutral IBL. Does not change the RealityView background.
-    @MainActor
-    static func makeStudioIBLEntity(receiver: Entity, intensityExponent: Float = 0) -> Entity? {
-        makeIBLEntity(receiver: receiver, resource: cachedProbe, intensityExponent: intensityExponent)
-    }
-
-    private static let lookEntityNames: Set<String> = ["lookIBL", "studioIBL", "lookKey", "lookFill"]
+    private static let lookEntityNames: Set<String> = ["lookIBL", "lookKey", "lookFill"]
 
     @MainActor
     private static var cachedProbe: EnvironmentResource?

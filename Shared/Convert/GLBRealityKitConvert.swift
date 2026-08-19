@@ -160,4 +160,53 @@ public class GLBRealityKitConvert {
         return NSColor(colorSpace: colorSpace, components: components, count: components.count)
     }
 
+    func convert(camera: GLTFCamera) -> (any Component)? {
+        if let perspectiveParams = camera.perspective {
+            return PerspectiveCameraComponent(
+                near: camera.zNear,
+                far: camera.zFar,
+                fieldOfViewInDegrees: GLTFDegFromRad(perspectiveParams.yFOV)
+            )
+        }
+        if let orthographicParams = camera.orthographic {
+            var orthographic = OrthographicCameraComponent()
+            orthographic.near = camera.zNear
+            orthographic.far = camera.zFar
+            orthographic.scale = orthographicParams.yMag
+            return orthographic
+        }
+        return nil
+    }
+
+    func convert(spotLight gltfLight: GLTFLight) -> SpotLightComponent {
+        SpotLightComponent(
+            color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
+            intensity: gltfLight.intensity * 4 * .pi,
+            innerAngleInDegrees: GLTFDegFromRad(gltfLight.innerConeAngle),
+            outerAngleInDegrees: GLTFDegFromRad(gltfLight.outerConeAngle),
+            attenuationRadius: punctualAttenuationRadius(gltfLight.range)
+        )
+    }
+
+    func convert(pointLight gltfLight: GLTFLight) -> PointLightComponent {
+        PointLightComponent(
+            color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
+            intensity: gltfLight.intensity * 4 * .pi,
+            attenuationRadius: punctualAttenuationRadius(gltfLight.range)
+        )
+    }
+
+    func convert(directionalLight gltfLight: GLTFLight) -> DirectionalLightComponent {
+        DirectionalLightComponent(
+            color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
+            intensity: gltfLight.intensity,
+            isRealWorldProxy: false
+        )
+    }
+
+    /// glTF `range <= 0` means infinite; RealityKit rejects a zero radius.
+    private func punctualAttenuationRadius(_ range: Float) -> Float {
+        range > 0 ? range : 1_000_000
+    }
+
 }

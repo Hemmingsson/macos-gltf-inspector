@@ -2,19 +2,12 @@ import SwiftUI
 
 struct HostOutlinerView: View {
     var model: GLBEntityLoader.LoadedModel?
-    var sidebar: HostSidebarModel?
+    var sidebar: HostSidebarModel
 
     var body: some View {
-        Group {
-            if let sidebar {
-                OutlinerContent(model: model, sidebar: sidebar)
-            } else {
-                Text("No file")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .modifier(HostColumnChrome())
+        OutlinerContent(model: model, sidebar: sidebar)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .modifier(HostColumnChrome())
     }
 }
 
@@ -212,7 +205,7 @@ private func cameraTitle(_ camera: GLTFSessionDocument.Camera, index: Int) -> St
 }
 
 /// Liquid glass on macOS 26; plain column on 15.
-struct HostColumnChrome: ViewModifier {
+private struct HostColumnChrome: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 26, *) {
             content

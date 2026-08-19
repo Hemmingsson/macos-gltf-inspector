@@ -2,8 +2,8 @@ import Foundation
 import RealityKit
 
 /// One walk of a converted entity for file lights, cameras, and usable clips.
-/// Snapshot cameras here **before** `GLBPreviewCamera.makeTurntable` / `disableCameras`
-/// — those store and remove live camera components. This type does not disable cameras.
+/// Snapshot cameras before `GLBPreviewCamera.makeTurntable` — that removes live
+/// camera components so the preview camera is the only view.
 enum GLBPreviewScenery {
     enum FileCameraKind: Equatable, Sendable {
         case perspective
@@ -14,11 +14,6 @@ enum GLBPreviewScenery {
         let entity: Entity
         let displayName: String
         let kind: FileCameraKind
-    }
-
-    @MainActor
-    static func hasPunctualLights(_ entity: Entity) -> Bool {
-        punctualLightCount(in: entity) > 0
     }
 
     /// Point / spot / directional components only — not `DirectionalLightComponent.Shadow()`.
