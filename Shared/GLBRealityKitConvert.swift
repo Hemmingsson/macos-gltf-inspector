@@ -5,7 +5,6 @@
 
 import RealityKit
 import Accelerate
-import ModelIO
 import GLTFKit2
 import simd
 #if os(macOS)

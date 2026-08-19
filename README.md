@@ -50,6 +50,13 @@ Requires Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Set `DEVEL
 
 This generates the Xcode project, builds, installs to `/Applications`, and checks that the Quick Look extensions registered.
 
+```bash
+xcodegen generate
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
+  -derivedDataPath /tmp/GLBPreview-dd test
+```
+
 ## How it works
 
 RealityKit does not load glTF by default. The file is prepared, decoded with [GLTFKit2](https://github.com/warrenm/GLTFKit2) (Draco via [DracoSwift](https://github.com/warrenm/DracoSwift)), and converted to a RealityKit `Entity`.

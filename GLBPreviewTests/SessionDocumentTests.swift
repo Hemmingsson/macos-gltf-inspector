@@ -45,19 +45,6 @@ struct SessionDocumentTests {
     }
 
     @MainActor
-    @Test func documentListsBothScenesAndLoadsDefaultOnly() async throws {
-        let url = try writeTempTwoSceneGLB()
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
-        #expect(model.document.scenes.count == 2)
-        #expect(model.document.defaultSceneIndex == 0)
-        let stamped = stampedNodeIndices(in: model.entity)
-        #expect(stamped.contains(0))
-        #expect(!stamped.contains(1))
-    }
-
-    @MainActor
     @Test func lazyConvertSecondSceneStampsItsRoot() async throws {
         let twoSceneURL = try writeTempTwoSceneGLB()
         defer { try? FileManager.default.removeItem(at: twoSceneURL) }

@@ -134,8 +134,7 @@ struct ContentView: View {
                         GLBEntityLoader.LoadedModel(
                             entity: entity,
                             stats: model.stats,
-                            document: model.document,
-                            usesBakedEmissive: model.usesBakedEmissive
+                            document: model.document
                         )
                     )
                     sidebar.overlayRevision += 1

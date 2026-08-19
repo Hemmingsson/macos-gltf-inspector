@@ -25,22 +25,21 @@ struct SceneryConvertTests {
         let model = try await loadGLB(twoPerspectiveCamerasGLB())
         let listed = GLBPreviewScenery.fileCameras(in: model.entity)
         #expect(listed.count == 2)
-        #expect(model.fileCameras.count == 2)
-        let names = Set(model.fileCameras.map(\.displayName))
+        let names = Set(listed.map(\.displayName))
         #expect(names == ["CamA", "CamB"])
-        #expect(model.fileCameras.allSatisfy { $0.kind == .perspective })
+        #expect(listed.allSatisfy { $0.kind == .perspective })
 
         let assembled = GLBPreviewCamera.makeTurntable(for: model.entity)
         #expect(assembled.pivot.name == "turntable")
-        for camera in model.fileCameras {
+        for camera in listed {
             #expect(namedEntity(camera.displayName, in: assembled.pivot) != nil)
         }
 
         GLBPreviewCamera.restoreCameras(in: assembled.pivot)
         #expect(livePerspectiveCount(in: assembled.pivot) == 2)
 
-        let first = model.fileCameras[0].entity
-        let second = model.fileCameras[1].entity
+        let first = listed[0].entity
+        let second = listed[1].entity
         GLBPreviewCamera.activateCamera(first, disablingOthersIn: [assembled.pivot])
         #expect(first.components[PerspectiveCameraComponent.self] != nil)
         #expect(second.components[PerspectiveCameraComponent.self] == nil)
@@ -50,7 +49,6 @@ struct SceneryConvertTests {
     @MainActor
     @Test func twoPositiveClipsKeptAndOneKeyframeDropped() async throws {
         let model = try await loadGLB(threeClipTriangleGLB(), includeAnimations: true)
-        #expect(model.usableAnimations.count == 2)
         #expect(GLBPreviewScenery.usableAnimations(in: model.entity).count == 2)
         #expect(model.stats.animationCount == 2)
     }
@@ -63,8 +61,6 @@ struct SceneryConvertTests {
         let roughness = before.roughness.scale
         #expect(abs(metallic - 1) < 0.001)
         #expect(abs(roughness - 0.2) < 0.001)
-        #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
-
         #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
         let after = try #require(pbrMaterials(in: model.entity).first)
         #expect(abs(after.metallic.scale - metallic) < 0.001)
@@ -81,7 +77,7 @@ struct SceneryConvertTests {
     @MainActor
     @Test func orthographicCameraConverts() async throws {
         let model = try await loadGLB(orthographicCameraGLB())
-        let cameras = model.fileCameras
+        let cameras = GLBPreviewScenery.fileCameras(in: model.entity)
         #expect(cameras.contains { $0.kind == .orthographic && $0.displayName == "OrthoCam" })
         let node = try #require(cameras.first { $0.kind == .orthographic }?.entity)
         #expect(node.components[OrthographicCameraComponent.self] != nil)

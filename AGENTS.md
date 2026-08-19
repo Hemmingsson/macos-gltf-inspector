@@ -15,6 +15,7 @@ qlmanage -t path/to/file.glb  # thumbnail proof
 Signing team: `project.yml` (`DEVELOPMENT_TEAM`). Proof is `qlmanage`, not a browser.
 
 ```bash
+xcodegen generate   # required: GLBPreview.xcodeproj is gitignored
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
   -derivedDataPath /tmp/GLBPreview-dd test
