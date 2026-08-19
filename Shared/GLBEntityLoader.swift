@@ -7,6 +7,7 @@ enum GLBEntityLoader {
     struct LoadedModel {
         let entity: Entity
         let stats: GLBPreviewStats
+        let document: GLTFSessionDocument
     }
 
     /// Loads a self-contained `.glb` or a sidecar `.gltf` (buffers/textures next to the JSON).
@@ -62,23 +63,23 @@ enum GLBEntityLoader {
         }
 
         do {
-            let entity = try await convertAsset(
+            let (entity, document) = try await convertAsset(
                 at: loadURL,
                 assetDirectory: assetDirectory,
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent
             )
-            return LoadedModel(entity: entity, stats: stats)
+            return LoadedModel(entity: entity, stats: stats, document: document)
         } catch {
             guard loadURL != url else { throw error }
             GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
-            let entity = try await convertAsset(
+            let (entity, document) = try await convertAsset(
                 at: url,
                 assetDirectory: directoryURL,
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent
             )
-            return LoadedModel(entity: entity, stats: stats)
+            return LoadedModel(entity: entity, stats: stats, document: document)
         }
     }
 
@@ -155,7 +156,7 @@ enum GLBEntityLoader {
         assetDirectory: URL,
         includeAnimations: Bool,
         name: String
-    ) async throws -> Entity {
+    ) async throws -> (Entity, GLTFSessionDocument) {
         let asset = try GLTFAsset(
             url: loadURL,
             options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
@@ -189,7 +190,7 @@ enum GLBEntityLoader {
         scene: GLTFScene,
         asset: GLTFAsset,
         retryWithoutAnimations: Bool
-    ) throws -> Entity {
+    ) throws -> (Entity, GLTFSessionDocument) {
         var lastError: Error?
         let attempts = retryWithoutAnimations ? 2 : 1
         for pass in 0..<attempts {
@@ -207,15 +208,16 @@ enum GLBEntityLoader {
     }
 
     @MainActor
-    private static func convertVisible(scene: GLTFScene, asset: GLTFAsset) throws -> Entity {
+    private static func convertVisible(scene: GLTFScene, asset: GLTFAsset) throws -> (Entity, GLTFSessionDocument) {
         var converted: Entity?
+        var document = GLTFSessionDocument()
         try GLBTry.run {
-            converted = GLBRealityKitConvert.convert(scene: scene, asset: asset)
+            converted = GLBRealityKitConvert.convert(scene: scene, asset: asset, document: &document)
         }
         guard let converted, modelComponentCount(in: converted) > 0 else {
             throw GLBPreviewError.make(1022, "The glTF asset has no visible mesh")
         }
-        return converted
+        return (converted, document)
     }
 
     @MainActor
