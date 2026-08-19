@@ -131,6 +131,23 @@ struct ViewerSessionTests {
         #expect(session.selectedCameraIndex == 0)
     }
 
+    @Test func selectingAnimationUpdatesSelection() {
+        var doc = GLTFSessionDocument()
+        doc.animations = [
+            .init(name: "ClipA", duration: 1),
+            .init(name: "ClipB", duration: 2),
+        ]
+        let session = ViewerSession(document: doc, defaultExponent: 0)
+        #expect(session.selected == .none)
+        #expect(session.enabledClipIndices == [0, 1])
+        session.selected = .animation(1)
+        #expect(session.selected == .animation(1))
+        if case .animation(let index) = session.selected {
+            #expect(session.document.animations[index].name == "ClipB")
+            #expect(session.document.animations[index].duration == 2)
+        }
+    }
+
     @MainActor
     @Test func hideDisablesMappedEntity() async throws {
         let url = try writeTempOneNodeMeshGLB(nodeName: "Mesh")

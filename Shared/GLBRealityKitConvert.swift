@@ -858,7 +858,7 @@ public class GLBRealityKitConvert {
         document.materials = asset.materials.map(makeMaterial)
         document.lights = asset.lights.map(makeLight)
         document.cameras = asset.cameras.map(makeCamera)
-        document.animations = asset.animations.map(makeAnimation)
+        document.animations = asset.animations.map(makeAnimation).filter { $0.duration > 0 }
         document.variants = makeVariants(from: asset)
         return document
     }

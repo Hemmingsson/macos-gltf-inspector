@@ -76,6 +76,12 @@ private struct InspectorForm: View {
             if case .node(let index) = session.selected, let node = session.node(at: index) {
                 NodeDetailSection(session: session, node: node)
             }
+
+            if case .animation(let index) = session.selected,
+               session.document.animations.indices.contains(index)
+            {
+                AnimationDetailSection(animation: session.document.animations[index], index: index)
+            }
         }
         .formStyle(.grouped)
         .onChange(of: session.imageBased) { _, _ in session.applyIfBound() }
@@ -204,6 +210,18 @@ private struct NodeDetailSection: View {
             hasOcclusionTexture: false,
             hasEmissiveTexture: false
         )
+    }
+}
+
+private struct AnimationDetailSection: View {
+    var animation: GLTFSessionDocument.Animation
+    var index: Int
+
+    var body: some View {
+        Section("Animation") {
+            LabeledContent("Name", value: animation.name.isEmpty ? "Animation \(index)" : animation.name)
+            LabeledContent("Duration", value: String(format: "%.3f s", animation.duration))
+        }
     }
 }
 

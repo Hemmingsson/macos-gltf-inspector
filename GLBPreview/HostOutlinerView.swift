@@ -55,6 +55,9 @@ private struct OutlinerContent: View {
                     Text(cameraTitle(document.cameras[index], index: index)).tag(Optional(index))
                 }
             }
+            if !document.animations.isEmpty {
+                animationTransport
+            }
             HStack {
                 Text("Layer List")
                     .font(.headline)
@@ -76,6 +79,66 @@ private struct OutlinerContent: View {
         .onChange(of: session.activeSceneIndex) { _, _ in
             session.selected = .none
         }
+        .task(id: session.isPlaying) {
+            guard session.isPlaying else { return }
+            while !Task.isCancelled {
+                session.syncPlaybackTime()
+                try? await Task.sleep(for: .milliseconds(16))
+            }
+        }
+    }
+
+    private var animationTransport: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button {
+                    session.togglePlay()
+                } label: {
+                    Image(systemName: session.isPlaying ? "pause.fill" : "play.fill")
+                }
+                .help(session.isPlaying ? "Pause" : "Play")
+                Slider(
+                    value: playbackTime,
+                    in: 0...max(session.clipDuration, 0.001)
+                )
+                .disabled(session.clipDuration <= 0)
+            }
+            ForEach(document.animations.indices, id: \.self) { index in
+                HStack {
+                    Toggle(isOn: clipEnabled(index)) {
+                        EmptyView()
+                    }
+                    .labelsHidden()
+                    .help("Enable clip")
+                    Button(animationTitle(document.animations[index], index: index)) {
+                        session.selected = .animation(index)
+                    }
+                    .buttonStyle(.plain)
+                    .fontWeight(isSelectedAnimation(index) ? .semibold : .regular)
+                }
+            }
+        }
+    }
+
+    private var playbackTime: Binding<TimeInterval> {
+        Binding(
+            get: { session.currentTime },
+            set: { session.seek(to: $0) }
+        )
+    }
+
+    private func clipEnabled(_ index: Int) -> Binding<Bool> {
+        Binding(
+            get: { session.enabledClipIndices.contains(index) },
+            set: { session.setClipEnabled(index, enabled: $0) }
+        )
+    }
+
+    private func isSelectedAnimation(_ index: Int) -> Bool {
+        if case .animation(let selected) = session.selected {
+            return selected == index
+        }
+        return false
     }
 
     private var layerSelection: Binding<Int?> {
@@ -87,7 +150,7 @@ private struct OutlinerContent: View {
             set: { newValue in
                 if let newValue {
                     session.selected = .node(newValue)
-                } else {
+                } else if case .node = session.selected {
                     session.selected = .none
                 }
             }
@@ -105,6 +168,10 @@ private func sceneTitle(_ scene: GLTFSessionDocument.Scene, index: Int) -> Strin
 
 private func cameraTitle(_ camera: GLTFSessionDocument.Camera, index: Int) -> String {
     camera.name.isEmpty ? "Camera \(index)" : camera.name
+}
+
+private func animationTitle(_ animation: GLTFSessionDocument.Animation, index: Int) -> String {
+    animation.name.isEmpty ? "Animation \(index)" : animation.name
 }
 
 private func documentPreviewRows(_ document: GLTFSessionDocument) -> [String] {

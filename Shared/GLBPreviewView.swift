@@ -235,7 +235,7 @@ private struct GLBPreviewScene: View {
                     hostBridge?.applyToContent?(&content, entity)
                 }
 
-                if let animation = entity.availableAnimations.first {
+                if hostBridge == nil, let animation = entity.availableAnimations.first {
                     let probe = entity.playAnimation(animation, startsPaused: true)
                     let duration = probe.duration
                     probe.stop()

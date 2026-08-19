@@ -267,7 +267,21 @@ enum GLBEntityLoader {
         guard let converted, modelComponentCount(in: converted) > 0 else {
             throw GLBPreviewError.make(1022, "The glTF asset has no visible mesh")
         }
+        if document.animations.isEmpty {
+            document.animations = usableClips(from: converted)
+        }
         return (converted, document)
+    }
+
+    @MainActor
+    private static func usableClips(from entity: Entity) -> [GLTFSessionDocument.Animation] {
+        entity.availableAnimations.compactMap { resource in
+            let probe = entity.playAnimation(resource, startsPaused: true)
+            let duration = probe.duration
+            probe.stop()
+            guard duration.isFinite, duration > 0 else { return nil }
+            return GLTFSessionDocument.Animation(name: resource.name ?? "", duration: duration)
+        }
     }
 
     @MainActor

@@ -25,10 +25,15 @@ final class ViewerSession {
     var selectedCameraIndex: Int?
     var selected: Selection = .none
     var frameNonce = 0
+    var enabledClipIndices: Set<Int>
+    var isPlaying = true
+    var currentTime: TimeInterval = 0
+    var clipDuration: TimeInterval = 0
     let defaultExponent: Float
     let document: GLTFSessionDocument
     weak var boundRoot: Entity?
     weak var boundIBL: Entity?
+    @ObservationIgnored private var playbackControllers: [AnimationPlaybackController] = []
 
     enum Selection: Equatable, Hashable {
         case none
@@ -78,6 +83,8 @@ final class ViewerSession {
         self.document = document
         self.defaultExponent = defaultExponent
         self.activeSceneIndex = document.defaultSceneIndex
+        self.enabledClipIndices = Set(document.animations.indices)
+        self.clipDuration = document.animations.map(\.duration).max() ?? 0
     }
 
     func layerRootIndices() -> [Int] {
@@ -85,9 +92,93 @@ final class ViewerSession {
         return document.scenes[activeSceneIndex].rootNodeIndices
     }
 
+    @MainActor
     func bind(root: Entity, iblEntity: Entity?) {
+        let rebound = boundRoot !== root
         boundRoot = root
         boundIBL = iblEntity
+        if rebound {
+            startPlayback()
+        }
+    }
+
+    @MainActor
+    func togglePlay() {
+        isPlaying.toggle()
+        if isPlaying {
+            if playbackControllers.isEmpty {
+                startPlayback()
+            } else {
+                playbackControllers.forEach { $0.resume() }
+            }
+        } else {
+            playbackControllers.forEach { $0.pause() }
+        }
+    }
+
+    @MainActor
+    func setClipEnabled(_ index: Int, enabled: Bool) {
+        if enabled {
+            enabledClipIndices.insert(index)
+        } else {
+            enabledClipIndices.remove(index)
+        }
+        startPlayback()
+    }
+
+    @MainActor
+    func seek(to time: TimeInterval) {
+        let duration = max(clipDuration, 0)
+        let clamped = duration > 0 ? min(max(time, 0), duration) : 0
+        currentTime = clamped
+        for controller in playbackControllers {
+            controller.time = clamped
+        }
+    }
+
+    @MainActor
+    func syncPlaybackTime() {
+        guard let first = playbackControllers.first, clipDuration > 0 else { return }
+        var time = first.time.truncatingRemainder(dividingBy: clipDuration)
+        if time < 0 { time += clipDuration }
+        currentTime = time
+    }
+
+    @MainActor
+    func startPlayback() {
+        guard let root = boundRoot else { return }
+        stopPlayback()
+        let clips = root.availableAnimations
+        var maxDuration: TimeInterval = 0
+        for index in enabledClipIndices.sorted() {
+            guard clips.indices.contains(index) else { continue }
+            let clip = clips[index]
+            let controller: AnimationPlaybackController
+            if isPlaying {
+                controller = root.playAnimation(clip.repeat())
+            } else {
+                controller = root.playAnimation(clip, startsPaused: true)
+            }
+            let duration = controller.duration
+            if duration.isFinite, duration > 0 {
+                maxDuration = max(maxDuration, duration)
+            }
+            playbackControllers.append(controller)
+        }
+        if maxDuration > 0 {
+            clipDuration = maxDuration
+        } else {
+            clipDuration = document.animations.enumerated()
+                .filter { enabledClipIndices.contains($0.offset) }
+                .map(\.element.duration)
+                .max() ?? 0
+        }
+    }
+
+    @MainActor
+    private func stopPlayback() {
+        playbackControllers.forEach { $0.stop() }
+        playbackControllers.removeAll()
     }
 
     @MainActor
