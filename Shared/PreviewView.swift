@@ -10,7 +10,8 @@ struct PreviewView: View {
 
         /// File IO runs off the main actor (`EntityLoader.load`).
         static func loaded(from url: URL) async -> State {
-            async let ibl: Void = PreviewLighting.prefetchLook(AppLook.current)
+            let look = await MainActor.run { AppLookStore.shared.look }
+            async let ibl: Void = PreviewLighting.prefetchLook(look)
             do {
                 let model = try await EntityLoader.load(from: url)
                 await ibl

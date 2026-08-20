@@ -130,18 +130,19 @@ enum EntityLoader {
         // actually gets converted so overlay stats match RealityKit.
         let isGLB = url.pathExtension.lowercased() == "glb"
         let (fileSize, loadURL, assetDirectory, statsJSON) = try LoadPhaseTimer.measure(.fileRead) {
-            let sourceJSON: [String: Any]
-            if isGLB {
-                sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
-            } else {
-                sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
-            }
             let fileSize = fileSizeBytes(of: url)
             if isGLB {
+                let sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
                 let prepared = prepareGLB(url, json: sourceJSON)
                 return (fileSize, prepared.url, directoryURL, prepared.json)
             } else {
-                let prepared = try packAndPrepareGLTF(from: url, directoryURL: directoryURL)
+                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                let sourceJSON = try GLBBox.parseJSON(data)
+                let prepared = try packAndPrepareGLTF(
+                    from: url,
+                    directoryURL: directoryURL,
+                    json: sourceJSON
+                )
                 return (
                     fileSize,
                     prepared.url,
@@ -233,9 +234,11 @@ enum EntityLoader {
 
     /// Sidecar `.gltf` is JSON, not a GLB. Pack buffers/images into a GLB in memory,
     /// run the same prepares, and write one temp file.
-    private static func packAndPrepareGLTF(from url: URL, directoryURL: URL) throws -> (url: URL, json: [String: Any]) {
-        let data = try Data(contentsOf: url)
-        let json = try GLBBox.parseJSON(data)
+    private static func packAndPrepareGLTF(
+        from url: URL,
+        directoryURL: URL,
+        json: [String: Any]
+    ) throws -> (url: URL, json: [String: Any]) {
         let packed = try GLBBox.packSidecar(json) { uri in
             guard isAllowedSidecarURI(uri, assetDirectory: directoryURL) else {
                 throw GLBPreviewError.make(1021, "glTF sidecar URI is not a safe relative path")

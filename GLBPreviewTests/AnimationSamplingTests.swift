@@ -21,7 +21,6 @@ struct AnimationSamplingTests {
             maximum: AnimationSampling.defaultInterval
         )
         #expect(interval == AnimationSampling.defaultInterval)
-        #expect(interval == AnimationSampling.minimumInterval)
         let merged = AnimationSampling.mergeSampleInterval(
             AnimationSampling.defaultInterval,
             denserThanThirty

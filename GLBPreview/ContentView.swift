@@ -38,43 +38,46 @@ struct ContentView: View {
     }
 
     var body: some View {
-        Group {
-            if documentURL != nil {
-                hostViewer
-                    .id(documentURL)
-            } else {
-                missingDocumentState
+        documentRoot
+            .frame(minWidth: 560, minHeight: 360)
+            .alert(
+                "Couldn’t open in Blender",
+                isPresented: Binding(
+                    get: { blenderLaunchError != nil },
+                    set: { if !$0 { blenderLaunchError = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(blenderLaunchError ?? "")
             }
-        }
-        .frame(minWidth: 560, minHeight: 360)
-        .alert(
-            "Couldn’t open in Blender",
-            isPresented: Binding(
-                get: { blenderLaunchError != nil },
-                set: { if !$0 { blenderLaunchError = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(blenderLaunchError ?? "")
-        }
-        .onAppear {
-            dismissWindow(id: WelcomeWindow.id)
-            GLBDocumentOpening.closeWelcomeWindows()
-            if let documentURL {
-                loadDocument(documentURL)
+            .onAppear {
+                dismissWindow(id: WelcomeWindow.id)
+                GLBDocumentOpening.closeWelcomeWindows()
+                if let documentURL {
+                    loadDocument(documentURL)
+                }
             }
-        }
-        .background(DocumentWindowTabbing())
-        .onChange(of: documentURL) { _, url in
-            if let url {
-                loadDocument(url)
+            .background(DocumentWindowTabbing())
+            .onChange(of: documentURL) { _, url in
+                if let url {
+                    loadDocument(url)
+                }
             }
+            .onChange(of: sidebar?.activeSceneIndex) { _, index in
+                reloadScene(index)
+            }
+            .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
+    }
+
+    @ViewBuilder
+    private var documentRoot: some View {
+        if documentURL != nil {
+            hostViewer
+                .id(documentURL)
+        } else {
+            missingDocumentState
         }
-        .onChange(of: sidebar?.activeSceneIndex) { _, index in
-            reloadScene(index)
-        }
-        .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
     }
 
     private var missingDocumentState: some View {
@@ -122,7 +125,6 @@ struct ContentView: View {
             sidebar: sidebar
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .modifier(DetailBackgroundExtension())
         .ignoresSafeArea(edges: .bottom)
         .navigationTitle(documentURL?.lastPathComponent ?? "GLB Preview")
         .toolbar {
@@ -227,17 +229,6 @@ struct ContentView: View {
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         GLBDocumentOpening.handleDrop(providers) { url in
             try await openDocument(at: url)
-        }
-    }
-}
-
-/// Extends detail content under the Liquid Glass sidebar on macOS 26+.
-private struct DetailBackgroundExtension: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(macOS 26, *) {
-            content.backgroundExtensionEffect()
-        } else {
-            content
         }
     }
 }

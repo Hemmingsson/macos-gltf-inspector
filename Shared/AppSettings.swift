@@ -61,11 +61,14 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Dim strength for inactive chrome icons (cycle menus, auto-rotate off).
+    static let inactiveIconOpacity = 0.55
+
     static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
         let base: Color = useLightIcons(at: index, systemDark: systemDark)
             ? .white
             : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
-        return active ? base : base.opacity(0.55)
+        return active ? base : base.opacity(inactiveIconOpacity)
     }
 }
 

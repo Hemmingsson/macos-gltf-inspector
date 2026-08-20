@@ -32,7 +32,7 @@ struct PreviewCycleMenu<Icon: View>: View {
             } label: {
                 icon()
                     .frame(width: 24, height: 24)
-                    .opacity(isNoneSelected ? 0.55 : 1)
+                    .opacity(isNoneSelected ? PreviewBackground.inactiveIconOpacity : 1)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

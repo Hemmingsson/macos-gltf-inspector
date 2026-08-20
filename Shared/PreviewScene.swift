@@ -1,3 +1,4 @@
+import AppKit
 import RealityKit
 import SwiftUI
 
@@ -28,6 +29,8 @@ struct PreviewScene: View {
     @State private var orbitPitch: Float = 0
     @State private var dragOrigin: (yaw: Float, pitch: Float)?
     @State private var playback: AnimationPlaybackController?
+    @State private var clips: [PreviewClip] = []
+    @State private var clipIndex = 0
     @State private var clipDuration: TimeInterval = 0
     @State private var currentTime: TimeInterval = 0
     @State private var isPlaying = false
@@ -35,6 +38,10 @@ struct PreviewScene: View {
     @State private var viewport = CGSize(width: 810, height: 600)
     @State private var chromeVisible = true
     @State private var debugModeIndex = 0
+    @State private var pendingReady: AppLook?
+    @State private var appliedLook: AppLook?
+    @State private var prefetchGeneration = 0
+    private let lookStore = AppLookStore.shared
     private let frame = PreviewFrame()
     private let debugStore = DebugMaterialStore()
     private let debugApplied = DebugAppliedIndex()
@@ -87,6 +94,7 @@ struct PreviewScene: View {
 
     var body: some View {
         let _ = sidebar?.overlayRevision
+        let _ = lookStore.look
         ZStack {
             RealityView { content in
                 content.camera = .virtual
@@ -102,28 +110,34 @@ struct PreviewScene: View {
                         aspect: aspect(of: viewport)
                     )
                 )
-                let exponent = PreviewEmissive.studioIBLExponent(
-                    punctualLightCount: EntityLoader.punctualLightCount(in: entity)
-                )
                 PreviewLighting.applyLook(
                     to: &content,
                     pivot: assembled.pivot,
-                    look: AppLook.current,
-                    intensityExponent: exponent
+                    look: lookStore.look,
+                    intensityExponent: studioIBLExponent
                 )
+                appliedLook = lookStore.look
                 sidebar?.applyIfNeeded(to: assembled.pivot)
 
-                if let animation = entity.availableAnimations.first,
-                   let duration = EntityLoader.clipDuration(animation, on: entity)
-                {
-                    clipDuration = duration
-                    playback = entity.playAnimation(animation.repeat())
-                    if !playOnOpen {
-                        playback?.pause()
-                    }
+                let usable = Self.usableClips(on: entity)
+                clips = usable
+                if !usable.isEmpty {
+                    clipIndex = 0
                     isPlaying = playOnOpen
+                    startClip(at: 0, playing: playOnOpen)
                 }
             } update: { content in
+                if let pending = pendingReady, pending != appliedLook,
+                   let pivot = content.entities.first(where: { $0.name == "turntable" })
+                {
+                    PreviewLighting.applyLook(
+                        to: &content,
+                        pivot: pivot,
+                        look: pending,
+                        intensityExponent: studioIBLExponent
+                    )
+                    appliedLook = pending
+                }
                 for entity in content.entities where entity.name == "turntable" {
                     entity.orientation =
                         simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
@@ -232,40 +246,28 @@ struct PreviewScene: View {
             }
 
             if !isHost, chromeVisible, showStats, let facts = stats?.overlayFacts, !facts.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(facts, id: \.label) { fact in
-                        HStack(spacing: 4) {
-                            if !fact.value.isEmpty {
-                                Text(fact.value)
-                                    .foregroundStyle(chromeTint(active: true).opacity(0.85))
-                            }
-                            if !fact.label.isEmpty {
-                                Text(fact.label)
-                                    .foregroundStyle(chromeTint(active: true).opacity(0.4))
-                            }
-                        }
-                    }
-                }
-                .font(.system(size: 11, weight: .regular).monospacedDigit())
-                .allowsHitTesting(false)
-                .padding(.leading, 14)
-                .padding(.bottom, 14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .transition(.opacity)
+                PreviewOverlayFacts(facts: facts, tint: chromeTint(active: true))
+                    .allowsHitTesting(false)
+                    .padding(.leading, 14)
+                    .padding(.bottom, 14)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .transition(.opacity)
             }
 
-            if showToolbar, playback != nil, clipDuration > 0, isHost || chromeVisible {
+            if showToolbar, !clips.isEmpty, clipDuration > 0, isHost || chromeVisible {
                 PreviewPlaybackBar(
                     isPlaying: $isPlaying,
                     isSeeking: $isSeeking,
                     currentTime: $currentTime,
+                    clipIndex: $clipIndex,
+                    clipTitles: clips.map(\.title),
                     clipDuration: clipDuration,
                     tint: chromeTint(active: true),
                     onSeek: seek(to:)
                 )
                 .padding(.horizontal, 24)
                 .padding(.bottom, 16)
-                .frame(maxWidth: 420)
+                .frame(maxWidth: clips.count > 1 ? 520 : 420)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .transition(.opacity)
             }
@@ -296,6 +298,20 @@ struct PreviewScene: View {
             } else {
                 playback.pause()
             }
+        }
+        .onChange(of: isSeeking) { _, seeking in
+            guard let playback else { return }
+            if seeking {
+                playback.pause()
+            } else if isPlaying {
+                playback.resume()
+            }
+        }
+        .onChange(of: clipIndex) { _, index in
+            startClip(at: index, playing: isPlaying)
+        }
+        .onChange(of: lookStore.look) { _, look in
+            prefetchLook(look)
         }
         .task(id: tickWhileActive) {
             guard tickWhileActive else { return }
@@ -357,6 +373,26 @@ struct PreviewScene: View {
         return nil
     }
 
+    private var studioIBLExponent: Float {
+        PreviewEmissive.studioIBLExponent(
+            punctualLightCount: EntityLoader.punctualLightCount(in: entity)
+        )
+    }
+
+    private func prefetchLook(_ look: AppLook) {
+        guard look.useEnvironmentMap else {
+            pendingReady = look
+            return
+        }
+        prefetchGeneration += 1
+        let generation = prefetchGeneration
+        Task {
+            await PreviewLighting.prefetchLook(look)
+            guard generation == prefetchGeneration else { return }
+            pendingReady = look
+        }
+    }
+
     private func applyAutoRotateSetting() {
         let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
@@ -376,6 +412,31 @@ struct PreviewScene: View {
         let clamped = min(max(time, 0), duration)
         currentTime = clamped
         playback?.time = clamped
+    }
+
+    private func startClip(at index: Int, playing: Bool) {
+        guard clips.indices.contains(index) else { return }
+        let clip = clips[index]
+        playback?.stop()
+        clipDuration = clip.duration
+        currentTime = 0
+        playback = entity.playAnimation(clip.resource.repeat())
+        if playing {
+            playback?.resume()
+        } else {
+            playback?.pause()
+        }
+    }
+
+    private static func usableClips(on entity: Entity) -> [PreviewClip] {
+        var result: [PreviewClip] = []
+        for (offset, resource) in entity.availableAnimations.enumerated() {
+            guard let duration = EntityLoader.clipDuration(resource, on: entity) else { continue }
+            let name = resource.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let title = name.isEmpty ? "Clip \(result.count + 1)" : name
+            result.append(PreviewClip(id: offset, resource: resource, title: title, duration: duration))
+        }
+        return result
     }
 
     private func applyDebugIfNeeded(to root: Entity) {
@@ -401,16 +462,34 @@ private final class DebugAppliedIndex {
     var index: Int?
 }
 
+private struct PreviewClip {
+    let id: Int
+    let resource: AnimationResource
+    let title: String
+    let duration: TimeInterval
+}
+
 private struct PreviewPlaybackBar: View {
     @Binding var isPlaying: Bool
     @Binding var isSeeking: Bool
     @Binding var currentTime: TimeInterval
+    @Binding var clipIndex: Int
+    var clipTitles: [String]
     var clipDuration: TimeInterval
     var tint: Color
     var onSeek: (TimeInterval) -> Void
 
     var body: some View {
         HStack(spacing: 10) {
+            if clipTitles.count > 1 {
+                ClipMenu(
+                    titles: clipTitles,
+                    selection: $clipIndex,
+                    tint: tint
+                )
+                .help("Animation clip")
+            }
+
             Button {
                 isPlaying.toggle()
             } label: {
@@ -443,6 +522,71 @@ private struct PreviewPlaybackBar: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .previewLiquidGlass(in: Capsule(style: .continuous))
+    }
+}
+
+private struct ClipMenu: NSViewRepresentable {
+    var titles: [String]
+    @Binding var selection: Int
+    var tint: Color
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(selection: $selection)
+    }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let button = NSPopUpButton(frame: .zero, pullsDown: false)
+        button.controlSize = .small
+        button.font = .systemFont(ofSize: 11)
+        button.isBordered = false
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.changed(_:))
+        context.coordinator.button = button
+        rebuild(button)
+        applyTint(button)
+        return button
+    }
+
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        context.coordinator.selection = $selection
+        if button.itemTitles != titles {
+            rebuild(button)
+        }
+        if button.indexOfSelectedItem != selection,
+           titles.indices.contains(selection)
+        {
+            button.selectItem(at: selection)
+        }
+        applyTint(button)
+        button.sizeToFit()
+        button.invalidateIntrinsicContentSize()
+    }
+
+    private func rebuild(_ button: NSPopUpButton) {
+        button.removeAllItems()
+        button.addItems(withTitles: titles)
+        if titles.indices.contains(selection) {
+            button.selectItem(at: selection)
+        }
+    }
+
+    private func applyTint(_ button: NSPopUpButton) {
+        button.contentTintColor = NSColor(tint)
+    }
+
+    final class Coordinator: NSObject {
+        var selection: Binding<Int>
+        weak var button: NSPopUpButton?
+
+        init(selection: Binding<Int>) {
+            self.selection = selection
+        }
+
+        @objc func changed(_ sender: NSPopUpButton) {
+            let index = sender.indexOfSelectedItem
+            guard index >= 0, index != selection.wrappedValue else { return }
+            selection.wrappedValue = index
+        }
     }
 }
 

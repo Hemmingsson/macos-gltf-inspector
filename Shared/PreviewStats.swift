@@ -114,13 +114,6 @@ struct PreviewStats: Equatable {
         if pbrLabel != "Metalness" {
             lines.append(Row(label: pbrLabel, value: ""))
         }
-        if animationCount > 0 {
-            if let durationSeconds, durationSeconds > 0 {
-                lines.append(Row(label: "clips", value: "\(animationCount) · \(String(format: "%.1fs", durationSeconds))"))
-            } else {
-                lines.append(Row(label: "clips", value: "\(animationCount)"))
-            }
-        }
         if hasVertexColors {
             lines.append(Row(label: "vertex colors", value: ""))
         }

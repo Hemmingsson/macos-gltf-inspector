@@ -38,16 +38,14 @@ extension RealityKitConvert {
         context: RealityKitResourceContext
     ) throws -> RealityKit.ModelComponent?
     {
-        // Packed float3 LowLevelMesh path: skip MeshBuffers SIMD3 expand for
-        // non-skinned / non-morph triangle primitives with tight float accessors.
         return try LoadPhaseTimer.measure(.decode) {
         if skeleton == nil {
             do {
-                if let packed = try convertPackedFloat3Mesh(gltfMesh, context: context) {
+                if let packed = try convertTightFloatMesh(gltfMesh, context: context) {
                     return packed
                 }
             } catch {
-                // Fall through to MeshResource.Part path.
+                AppLog.error(AppLog.load, "tight float mesh convert failed: \(error)")
             }
         }
 
@@ -99,7 +97,7 @@ extension RealityKitConvert {
 
     /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts and
     /// memcpy tight glTF bufferViews (no `[SIMD3<Float>]` expansion).
-    @MainActor private func convertPackedFloat3Mesh(
+    @MainActor private func convertTightFloatMesh(
         _ gltfMesh: GLTFMesh,
         context: RealityKitResourceContext
     ) throws -> ModelComponent? {
@@ -129,13 +127,13 @@ extension RealityKitConvert {
                   primitive.targets.isEmpty,
                   primitive.attribute(forName: "JOINTS_0") == nil,
                   let positionAttr = primitive.attribute(forName: "POSITION"),
-                  isTightPackedFloatAccessor(positionAttr.accessor, dimension: .vector3),
+                  Packed.isTightFloat(positionAttr.accessor, dimension: .vector3),
                   let bounds = boundingBox(for: positionAttr.accessor)
             else { return nil }
 
             let normalsAccessor: GLTFAccessor?
             if let normalAttr = primitive.attribute(forName: "NORMAL") {
-                guard isTightPackedFloatAccessor(normalAttr.accessor, dimension: .vector3),
+                guard Packed.isTightFloat(normalAttr.accessor, dimension: .vector3),
                       normalAttr.accessor.count == positionAttr.accessor.count
                 else { return nil }
                 normalsAccessor = normalAttr.accessor
@@ -147,7 +145,7 @@ extension RealityKitConvert {
             let tangentsAccessor: GLTFAccessor?
             if let tangentAttr = primitive.attribute(forName: "TANGENT") {
                 // glTF tangents are VEC4 (xyz + handedness); keep packed float4 as-is.
-                guard isTightPackedFloatAccessor(tangentAttr.accessor, dimension: .vector4),
+                guard Packed.isTightFloat(tangentAttr.accessor, dimension: .vector4),
                       tangentAttr.accessor.count == positionAttr.accessor.count
                 else { return nil }
                 tangentsAccessor = tangentAttr.accessor
@@ -230,7 +228,7 @@ extension RealityKitConvert {
             var byteOffset = 0
             for plan in plans {
                 let nbytes = plan.vertexCount * 12
-                copyTightPackedFloatAccessor(plan.positions, elementFloats: 3, to: dest.baseAddress! + byteOffset)
+                Packed.copyTight(plan.positions, elementFloats: 3, to: dest.baseAddress! + byteOffset)
                 byteOffset += nbytes
             }
         }
@@ -241,7 +239,7 @@ extension RealityKitConvert {
                 for plan in plans {
                     let nbytes = plan.vertexCount * 12
                     if let normals = plan.normals {
-                        copyTightPackedFloatAccessor(normals, elementFloats: 3, to: dest.baseAddress! + byteOffset)
+                        Packed.copyTight(normals, elementFloats: 3, to: dest.baseAddress! + byteOffset)
                     } else {
                         memset(dest.baseAddress! + byteOffset, 0, nbytes)
                     }
@@ -256,7 +254,7 @@ extension RealityKitConvert {
                 for plan in plans {
                     let nbytes = plan.vertexCount * 16
                     if let tangents = plan.tangents {
-                        copyTightPackedFloatAccessor(tangents, elementFloats: 4, to: dest.baseAddress! + byteOffset)
+                        Packed.copyTight(tangents, elementFloats: 4, to: dest.baseAddress! + byteOffset)
                     } else {
                         memset(dest.baseAddress! + byteOffset, 0, nbytes)
                     }
@@ -325,44 +323,6 @@ extension RealityKitConvert {
             try convert(material: plan.primitive.material, context: context)
         }
         return ModelComponent(mesh: meshResource, materials: materials)
-    }
-
-    private func isTightPackedFloatAccessor(_ accessor: GLTFAccessor, dimension: GLTFValueDimension) -> Bool {
-        guard accessor.sparse == nil,
-              accessor.componentType == .float,
-              !accessor.isNormalized,
-              accessor.dimension == dimension,
-              let bufferView = accessor.bufferView,
-              bufferView.meshoptCompression == nil,
-              bufferView.buffer.data != nil
-        else { return false }
-        let elementSize = MemoryLayout<Float>.size * {
-            switch dimension {
-            case .vector2: return 2
-            case .vector3: return 3
-            case .vector4: return 4
-            default: return 0
-            }
-        }()
-        guard elementSize > 0 else { return false }
-        let stride = bufferView.stride
-        return stride == 0 || stride == elementSize
-    }
-
-    private func copyTightPackedFloatAccessor(
-        _ accessor: GLTFAccessor,
-        elementFloats: Int,
-        to dest: UnsafeMutableRawPointer
-    ) {
-        guard let bufferView = accessor.bufferView,
-              let data = bufferView.buffer.data
-        else { return }
-        let byteCount = accessor.count * elementFloats * MemoryLayout<Float>.size
-        let offset = bufferView.offset + accessor.offset
-        data.withUnsafeBytes { raw in
-            guard let base = raw.baseAddress, offset + byteCount <= raw.count else { return }
-            memcpy(dest, base + offset, byteCount)
-        }
     }
 
     private func boundingBox(for positionAccessor: GLTFAccessor) -> BoundingBox? {

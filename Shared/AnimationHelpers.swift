@@ -6,9 +6,8 @@ import RealityKit
 import simd
 
 enum AnimationSampling {
+    /// Densify floor: never sample finer than 30 fps.
     static let defaultInterval: Float = 1 / 30
-    /// Floor for densify: never sample finer than 30 fps (was 1/120).
-    static let minimumInterval: Float = defaultInterval
     static let minimumDuration: Float = 1e-4
 
     static func sampleInterval(averageKeyDuration: Float, maximum: Float) -> Float {
@@ -16,7 +15,7 @@ enum AnimationSampling {
         if !averageKeyDuration.isFinite || averageKeyDuration <= 0 {
             return min(cap, defaultInterval)
         }
-        return min(max(averageKeyDuration, minimumInterval), cap)
+        return min(max(averageKeyDuration, defaultInterval), cap)
     }
 
     static func mergeSampleInterval(_ current: Float, _ candidate: Float) -> Float {

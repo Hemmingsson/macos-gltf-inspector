@@ -22,7 +22,6 @@ private struct OutlinerContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            statsBlock
             if document.scenes.count > 1 {
                 Picker("Scene", selection: $sidebar.activeSceneIndex) {
                     ForEach(document.scenes.indices, id: \.self) { index in
@@ -44,7 +43,6 @@ private struct OutlinerContent: View {
             Text("Layers")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .padding(.top, 4)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(layerRoots) { row in
@@ -53,6 +51,9 @@ private struct OutlinerContent: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .frame(maxHeight: .infinity, alignment: .top)
+
+            statsBlock
         }
         .onAppear {
             expandDefaultLevels()
@@ -65,27 +66,13 @@ private struct OutlinerContent: View {
     @ViewBuilder
     private var statsBlock: some View {
         if let facts = model?.stats.overlayFacts, !facts.isEmpty {
-            VStack(spacing: 2) {
-                ForEach(facts, id: \.label) { fact in
-                    HStack(spacing: 8) {
-                        if !fact.value.isEmpty {
-                            Text(fact.value)
-                                .foregroundStyle(.primary.opacity(0.85))
-                        }
-                        Spacer(minLength: 8)
-                        if !fact.label.isEmpty {
-                            Text(fact.label)
-                                .foregroundStyle(.primary.opacity(0.4))
-                        }
-                    }
-                }
-            }
-            .font(.system(size: 11, weight: .regular).monospacedDigit())
+            PreviewOverlayFacts(facts: facts, tint: .primary, spread: true)
         }
     }
 
     private var layerRoots: [LayerRow] {
-        sidebar.layerRootIndices().compactMap { LayerRow(index: $0, nodes: document.nodes) }
+        let nodesByIndex = Dictionary(uniqueKeysWithValues: document.nodes.map { ($0.index, $0) })
+        return sidebar.layerRootIndices().compactMap { LayerRow(index: $0, nodesByIndex: nodesByIndex) }
     }
 
     private func expandDefaultLevels() {
@@ -99,7 +86,7 @@ private struct LayerBranch: View {
     @Binding var expanded: Set<Int>
     @Bindable var sidebar: HostSidebarModel
 
-    private var children: [LayerRow] { row.children ?? [] }
+    private var children: [LayerRow] { row.children }
     private var hasChildren: Bool { !children.isEmpty }
     private var isExpanded: Bool { expanded.contains(row.id) }
 
@@ -161,7 +148,8 @@ private struct LayerRowView: View {
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
-            } else {
+            } else if depth > 0 {
+                // Align nested leaves under siblings that have chevrons; keep roots flush.
                 Color.clear.frame(width: 12, height: 12)
             }
 
@@ -200,16 +188,13 @@ private struct LayerRowView: View {
 private struct LayerRow: Identifiable, Hashable {
     let id: Int
     let title: String
-    let children: [LayerRow]?
+    let children: [LayerRow]
 
-    init?(index: Int, nodes: [GLTFSessionDocument.Node]) {
-        guard let node = nodes.first(where: { $0.index == index }) else {
-            return nil
-        }
+    init?(index: Int, nodesByIndex: [Int: GLTFSessionDocument.Node]) {
+        guard let node = nodesByIndex[index] else { return nil }
         id = node.index
         title = node.name.isEmpty ? "Node \(node.index)" : node.name
-        let childRows = node.children.compactMap { LayerRow(index: $0, nodes: nodes) }
-        children = childRows.isEmpty ? nil : childRows
+        children = node.children.compactMap { LayerRow(index: $0, nodesByIndex: nodesByIndex) }
     }
 }
 
@@ -219,7 +204,7 @@ private func defaultExpandedIDs(roots: [LayerRow], maxDepth: Int) -> Set<Int> {
         if depth < maxDepth {
             ids.insert(row.id)
         }
-        for child in row.children ?? [] {
+        for child in row.children {
             walk(child, depth: depth + 1)
         }
     }

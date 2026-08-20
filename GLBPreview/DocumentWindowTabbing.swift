@@ -14,8 +14,10 @@ struct DocumentWindowTabbing: NSViewRepresentable {
             super.viewDidMoveToWindow()
             guard let window else { return }
             HostWindowChrome.applySplitChrome(to: window)
-            // DocumentGroup often orders a new window before preferred tabbing applies.
+            // DocumentGroup often orders a new window before preferred tabbing applies;
+            // split controller may also attach a turn later.
             DispatchQueue.main.async {
+                HostWindowChrome.applySplitChrome(to: window)
                 Self.mergeIntoPreferredTabGroupIfNeeded(window)
             }
         }

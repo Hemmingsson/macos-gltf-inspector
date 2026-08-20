@@ -45,11 +45,4 @@ enum LoadPhaseTimer {
         defer { sink.add(phase, ms: milliseconds(from: start)) }
         return try body()
     }
-
-    static func measure<T>(_ phase: Phase, _ body: () -> T) -> T {
-        guard let sink else { return body() }
-        let start = ContinuousClock.now
-        defer { sink.add(phase, ms: milliseconds(from: start)) }
-        return body()
-    }
 }

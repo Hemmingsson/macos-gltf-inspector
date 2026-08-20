@@ -13,7 +13,43 @@ enum Packed {
     }
 
     static func floatArray(for accessor: GLTFAccessor) -> [Float]? {
-        floats(accessor, dimension: 1, allowed: { $0 == .scalar })
+        packedFloats(accessor, dimension: 1, allowed: { $0 == .scalar }) { src, count in
+            Array(src.prefix(count))
+        }
+    }
+
+    static func isTightFloat(_ accessor: GLTFAccessor, dimension: GLTFValueDimension) -> Bool {
+        guard accessor.sparse == nil,
+              accessor.componentType == .float,
+              !accessor.isNormalized,
+              accessor.dimension == dimension,
+              let bufferView = accessor.bufferView,
+              bufferView.meshoptCompression == nil,
+              bufferView.buffer.data != nil
+        else { return false }
+        let elementSize = MemoryLayout<Float>.size * {
+            switch dimension {
+            case .vector2: return 2
+            case .vector3: return 3
+            case .vector4: return 4
+            default: return 0
+            }
+        }()
+        guard elementSize > 0 else { return false }
+        let stride = bufferView.stride
+        return stride == 0 || stride == elementSize
+    }
+
+    static func copyTight(_ accessor: GLTFAccessor, elementFloats: Int, to dest: UnsafeMutableRawPointer) {
+        guard let bufferView = accessor.bufferView,
+              let data = bufferView.buffer.data
+        else { return }
+        let byteCount = accessor.count * elementFloats * MemoryLayout<Float>.size
+        let offset = bufferView.offset + accessor.offset
+        data.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress, offset + byteCount <= raw.count else { return }
+            memcpy(dest, base + offset, byteCount)
+        }
     }
 
     static func float2Array(for accessor: GLTFAccessor, flipVertically: Bool = false) -> [SIMD2<Float>]? {
@@ -152,16 +188,6 @@ enum Packed {
                 }
                 initializedCount = accessor.count
             }
-        }
-    }
-
-    private static func floats(
-        _ accessor: GLTFAccessor,
-        dimension: Int,
-        allowed: (GLTFValueDimension) -> Bool
-    ) -> [Float]? {
-        packedFloats(accessor, dimension: dimension, allowed: allowed) { src, count in
-            Array(src.prefix(count * dimension))
         }
     }
 

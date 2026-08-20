@@ -12,9 +12,6 @@ struct WelcomeView: View {
                 .interpolation(.high)
                 .frame(width: 96, height: 96)
 
-            Text("GLB Preview")
-                .font(.title)
-
             Text("Drop a .glb or .gltf file here to view it")
                 .font(.title3)
                 .multilineTextAlignment(.center)

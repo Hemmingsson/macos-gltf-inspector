@@ -75,4 +75,19 @@ struct AppLookTests {
         #expect(resolved.deletingLastPathComponent().lastPathComponent == "ibl")
         #expect(resolved.path == dest.path)
     }
+
+    @Test @MainActor func storeApplyPersistsToInjectedDirectory() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("applook-store-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let store = AppLookStore(directory: dir)
+        var look = AppLook.default
+        look.useEnvironmentMap = false
+        look.catalogRaw = KhronosEnvironments.field.rawValue
+        store.apply(look)
+
+        #expect(store.look == look)
+        #expect(AppLook.load(from: dir) == look)
+    }
 }

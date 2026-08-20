@@ -46,7 +46,10 @@ struct GLBPreviewApp: App {
             SettingsKeys.background: PreviewBackground.window.rawValue,
             SettingsKeys.playOnOpen: false,
             "NSQuitAlwaysKeepsWindows": false,
+            // macOS 26 Liquid Glass defaults to a floating inset sidebar; Finder uses tiled full-height.
+            "NSSplitViewItemSidebarDefaultsToFloatingAppearance": false,
         ])
+        UserDefaults.standard.set(false, forKey: "NSSplitViewItemSidebarDefaultsToFloatingAppearance")
         updaterController = SPUStandardUpdaterController(
             startingUpdater: GLBUpdateConfig.shouldStartUpdater,
             updaterDelegate: nil,
@@ -60,7 +63,7 @@ struct GLBPreviewApp: App {
         }
         .defaultSize(width: 1200, height: 740)
         .windowResizability(.contentMinSize)
-        .windowToolbarStyle(.unifiedCompact)
+        .windowToolbarStyle(.unified)
         .restorationBehavior(.disabled)
         .commands {
             CommandGroup(after: .appInfo) {
