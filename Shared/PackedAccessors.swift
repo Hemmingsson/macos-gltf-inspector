@@ -18,8 +18,8 @@ enum Packed {
 
     static func float2Array(for accessor: GLTFAccessor, flipVertically: Bool = false) -> [SIMD2<Float>]? {
         guard let values = floats(accessor, dimension: 2, allowed: { $0 == .vector2 }) else { return nil }
-        return Swift.stride(from: 0, to: values.count, by: 2).map { i in
-            SIMD2(values[i], flipVertically ? 1 - values[i + 1] : values[i + 1])
+        return grouped(values, size: 2).map { pair in
+            SIMD2(pair[0], flipVertically ? 1 - pair[1] : pair[1])
         }
     }
 
@@ -30,16 +30,12 @@ enum Packed {
         guard let values = floats(accessor, dimension: 3, allowed: { $0 == .vector3 }) else {
             return nil
         }
-        return Swift.stride(from: 0, to: values.count, by: 3).map { i in
-            SIMD3(values[i], values[i + 1], values[i + 2])
-        }
+        return grouped(values, size: 3).map { SIMD3($0[0], $0[1], $0[2]) }
     }
 
     static func float4Array(for accessor: GLTFAccessor) -> [SIMD4<Float>]? {
         guard let values = floats(accessor, dimension: 4, allowed: { $0 == .vector4 }) else { return nil }
-        return Swift.stride(from: 0, to: values.count, by: 4).map { i in
-            SIMD4(values[i], values[i + 1], values[i + 2], values[i + 3])
-        }
+        return grouped(values, size: 4).map { SIMD4($0[0], $0[1], $0[2], $0[3]) }
     }
 
     static func quatfArray(for accessor: GLTFAccessor) -> [simd_quatf]? {
@@ -142,6 +138,17 @@ enum Packed {
                 initializedCount = accessor.count
             }
         }
+    }
+
+    private static func grouped(_ values: [Float], size: Int) -> [[Float]] {
+        guard size > 0 else { return [] }
+        var groups: [[Float]] = []
+        var index = 0
+        while index + size <= values.count {
+            groups.append(Array(values[index..<(index + size)]))
+            index += size
+        }
+        return groups
     }
 
     private static func floats(

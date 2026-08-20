@@ -272,10 +272,10 @@ enum EntityLoader {
             url: loadURL,
             options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
         )
-        // Sketchfab/FBX often embeds a 1-keyframe "Default Take". GLTFKit2 then
-        // calls stride(from:through:by: 0) and traps.
+        // Drop 1-keyframe "Default Take" clips. Convert also rejects a zero stride,
+        // but empty takes are still useless to play.
         if includeAnimations {
-            asset.animations = asset.animations.filter { hasPositiveDuration($0) }
+            asset.animations = asset.animations.filter { AnimationSampling.hasPositiveDuration($0) }
         } else {
             asset.animations = []
         }
@@ -402,19 +402,4 @@ enum EntityLoader {
         return resolved.path.hasPrefix(rootPath)
     }
 
-    private static func hasPositiveDuration(_ animation: GLTFAnimation) -> Bool {
-        var minTime = Float.infinity
-        var maxTime = -Float.infinity
-        var sampleCount = 0
-        for sampler in animation.samplers {
-            sampleCount = max(sampleCount, sampler.input.count)
-            if let lo = sampler.input.minValues.first?.floatValue {
-                minTime = min(minTime, lo)
-            }
-            if let hi = sampler.input.maxValues.first?.floatValue {
-                maxTime = max(maxTime, hi)
-            }
-        }
-        return sampleCount > 1 && maxTime - minTime > 1e-4
-    }
 }

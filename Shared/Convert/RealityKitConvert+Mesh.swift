@@ -17,12 +17,15 @@ extension RealityKitConvert {
             }
         }
 
-        let ibmMatrices: [simd_float4x4]
-        if let ibmAccessor = gltfSkin.inverseBindMatrices, let matrices = Packed.float4x4(for: ibmAccessor) {
-            ibmMatrices = matrices
-        } else {
-            ibmMatrices = [simd_float4x4](repeating: matrix_identity_float4x4, count: jointNames.count)
-        }
+        let ibmMatrices: [simd_float4x4] = {
+            let identity = [simd_float4x4](repeating: matrix_identity_float4x4, count: jointNames.count)
+            guard let ibmAccessor = gltfSkin.inverseBindMatrices, let matrices = Packed.float4x4(for: ibmAccessor) else {
+                return identity
+            }
+            if matrices.count == jointNames.count { return matrices }
+            if matrices.count > jointNames.count { return Array(matrices.prefix(jointNames.count)) }
+            return matrices + identity.dropFirst(matrices.count)
+        }()
 
         return MeshResource.Skeleton(id: skeletonName, jointNames: jointNames,
                                      inverseBindPoseMatrices: ibmMatrices, parentIndices: jointParents)

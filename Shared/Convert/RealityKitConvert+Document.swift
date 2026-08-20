@@ -148,15 +148,9 @@ extension RealityKitConvert {
     }
 
     static func makeAnimation(_ animation: GLTFAnimation) -> GLTFSessionDocument.Animation {
-        var maxTime: Float = 0
-        for sampler in animation.samplers {
-            if let hi = sampler.input.maxValues.first?.floatValue {
-                maxTime = max(maxTime, hi)
-            }
-        }
-        return GLTFSessionDocument.Animation(
+        GLTFSessionDocument.Animation(
             name: animation.name ?? "",
-            duration: Double(maxTime)
+            duration: AnimationSampling.documentedDuration(animation)
         )
     }
 }

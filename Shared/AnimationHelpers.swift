@@ -5,6 +5,83 @@ import GLTFKit2
 import RealityKit
 import simd
 
+enum AnimationSampling {
+    static let defaultInterval: Float = 1 / 30
+    static let minimumInterval: Float = 1 / 120
+    static let minimumDuration: Float = 1e-4
+
+    static func sampleInterval(averageKeyDuration: Float, maximum: Float) -> Float {
+        let cap = maximum.isFinite && maximum > 0 ? maximum : defaultInterval
+        if !averageKeyDuration.isFinite || averageKeyDuration <= 0 {
+            return min(cap, defaultInterval)
+        }
+        return min(max(averageKeyDuration, minimumInterval), cap)
+    }
+
+    static func mergeSampleInterval(_ current: Float, _ candidate: Float) -> Float {
+        let safeCurrent = sampleInterval(averageKeyDuration: current, maximum: defaultInterval)
+        guard candidate.isFinite, candidate > 0 else { return safeCurrent }
+        return min(safeCurrent, sampleInterval(averageKeyDuration: candidate, maximum: defaultInterval))
+    }
+
+    static func sampleTimes(from start: Float, through end: Float, by interval: Float) -> [Float] {
+        let step = sampleInterval(averageKeyDuration: interval, maximum: defaultInterval)
+        let lo = start.isFinite ? start : 0
+        let hi = end.isFinite ? max(end, lo) : lo
+        return Array(stride(from: lo, through: hi, by: step))
+    }
+
+    static func frameInterval(_ interval: Float) -> Float {
+        sampleInterval(averageKeyDuration: interval, maximum: defaultInterval)
+    }
+
+    static func inputRange(of sampler: GLTFAnimationSampler) -> (count: Int, minTime: Float, maxTime: Float) {
+        var minTime = Float.infinity
+        var maxTime = -Float.infinity
+        if let lo = sampler.input.minValues.first?.floatValue, lo.isFinite {
+            minTime = min(minTime, lo)
+        }
+        if let hi = sampler.input.maxValues.first?.floatValue, hi.isFinite {
+            maxTime = max(maxTime, hi)
+        }
+        if let times = Packed.floatArray(for: sampler.input) {
+            if let first = times.first, first.isFinite { minTime = min(minTime, first) }
+            if let last = times.last, last.isFinite { maxTime = max(maxTime, last) }
+            return (max(times.count, sampler.input.count), minTime, maxTime)
+        }
+        return (sampler.input.count, minTime, maxTime)
+    }
+
+    static func hasPositiveDuration(_ animation: GLTFAnimation) -> Bool {
+        var minTime = Float.infinity
+        var maxTime = -Float.infinity
+        var sampleCount = 0
+        for sampler in animation.samplers {
+            let range = inputRange(of: sampler)
+            sampleCount = max(sampleCount, range.count)
+            if range.minTime.isFinite { minTime = min(minTime, range.minTime) }
+            if range.maxTime.isFinite { maxTime = max(maxTime, range.maxTime) }
+        }
+        guard minTime.isFinite, maxTime.isFinite else { return false }
+        return sampleCount > 1 && maxTime - minTime > minimumDuration
+    }
+
+    static func documentedDuration(_ animation: GLTFAnimation) -> Double {
+        var maxTime: Float = 0
+        for sampler in animation.samplers {
+            let hi = inputRange(of: sampler).maxTime
+            if hi.isFinite { maxTime = max(maxTime, hi) }
+        }
+        return Double(max(maxTime, 0))
+    }
+}
+
+private extension Array {
+    subscript(checked index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+
 func glbLerp(_ a: simd_float3, _ b: simd_float3, _ t: Float) -> simd_float3 {
     a + t * (b - a)
 }
@@ -78,31 +155,26 @@ final class AnimatedVector3: AnimatedValue {
     }
 
     func value(at time: Float) -> SIMD3<Float> {
-        guard !values.isEmpty else { return .zero }
         guard let (index, nextIndex) = keyTimeIndicesForTime(time) else {
-            return values[0]
+            return values.first ?? .zero
         }
-        if index == nextIndex {
-            return values[index]
+        if index == nextIndex || interpolation == .step {
+            return values[checked: index] ?? values.first ?? .zero
         }
         let t0 = keyTimes[index]
         let t1 = keyTimes[nextIndex]
         let factor = glbUnlerp(t0, t1, time)
-        switch interpolation {
-        case .step:
-            return values[index]
-        case .cubic:
-            return glbCubicInterp(
-                values[index * 3 + 1],
-                values[nextIndex * 3 + 1],
-                values[index * 3 + 2],
-                values[nextIndex * 3 + 0],
-                factor,
-                t1 - t0
-            )
-        default:
-            return glbLerp(values[index], values[nextIndex], factor)
+        if interpolation == .cubic,
+           let a = values[checked: index * 3 + 1],
+           let b = values[checked: nextIndex * 3 + 1],
+           let outTangent = values[checked: index * 3 + 2],
+           let inTangent = values[checked: nextIndex * 3]
+        {
+            return glbCubicInterp(a, b, inTangent, outTangent, factor, t1 - t0)
         }
+        let a = values[checked: index] ?? values.first ?? .zero
+        let b = values[checked: nextIndex] ?? a
+        return glbLerp(a, b, factor)
     }
 }
 
@@ -118,24 +190,25 @@ final class AnimatedQuaternion: AnimatedValue {
     }
 
     func value(at time: Float) -> simd_quatf {
-        guard !values.isEmpty else { return simd_quatf() }
+        let identity = simd_quatf()
         guard let (index, nextIndex) = keyTimeIndicesForTime(time) else {
-            return values[0]
+            return values.first ?? identity
         }
-        if index == nextIndex {
-            return values[index]
+        if index == nextIndex || interpolation == .step {
+            return values[checked: index] ?? values.first ?? identity
         }
         let t0 = keyTimes[index]
         let t1 = keyTimes[nextIndex]
         let factor = glbUnlerp(t0, t1, time)
-        switch interpolation {
-        case .step:
-            return values[index]
-        case .cubic:
-            return simd_slerp(values[index * 3 + 1], values[nextIndex * 3 + 1], factor)
-        default:
-            return simd_slerp(values[index], values[nextIndex], factor)
+        if interpolation == .cubic,
+           let a = values[checked: index * 3 + 1],
+           let b = values[checked: nextIndex * 3 + 1]
+        {
+            return simd_slerp(a, b, factor)
         }
+        let a = values[checked: index] ?? values.first ?? identity
+        let b = values[checked: nextIndex] ?? a
+        return simd_slerp(a, b, factor)
     }
 }
 
@@ -153,10 +226,9 @@ final class AnimatedWeights: AnimatedValue {
     }
 
     var recommendedSampleInterval: Float {
-        let duration = maximumTime - minimumTime
+        let duration = max((maximumTime.isFinite ? maximumTime : 0) - (minimumTime.isFinite ? minimumTime : 0), 0)
         let average = duration / Float(max(keyTimes.count, 1))
-        if average <= 0 { return 1 / 30 }
-        return min(max(average, 1 / 120), 1 / 30)
+        return AnimationSampling.sampleInterval(averageKeyDuration: average, maximum: AnimationSampling.defaultInterval)
     }
 
     func value(at time: Float) -> [Float] {
@@ -205,15 +277,14 @@ final class TransformSampler {
         var minTime: Float = .infinity
         var maxTime: Float = -.infinity
         for channel in [translationChannel, rotationChannel, scaleChannel] {
-            if let input = channel?.sampler.input {
-                let channelMinTime = input.minValues.first?.floatValue ?? .infinity
-                let channelMaxTime = input.maxValues.first?.floatValue ?? -.infinity
-                minTime = min(minTime, channelMinTime)
-                maxTime = max(maxTime, channelMaxTime)
-            }
+            guard let sampler = channel?.sampler else { continue }
+            let range = AnimationSampling.inputRange(of: sampler)
+            if range.minTime.isFinite { minTime = min(minTime, range.minTime) }
+            if range.maxTime.isFinite { maxTime = max(maxTime, range.maxTime) }
         }
+        let seedTime = minTime.isFinite ? minTime : 0
 
-        var translationTimes = [minTime]
+        var translationTimes = [seedTime]
         var translationValues = [target.translation]
         var translationInterp = GLTFInterpolationMode.linear
         if let sampler = translationChannel?.sampler,
@@ -223,9 +294,11 @@ final class TransformSampler {
             translationTimes = times
             translationValues = values
             translationInterp = sampler.interpolationMode
+            if let first = times.first { minTime = min(minTime, first) }
+            if let last = times.last { maxTime = max(maxTime, last) }
         }
 
-        var rotationTimes = [minTime]
+        var rotationTimes = [seedTime]
         var rotationValues = [target.rotation]
         var rotationInterp = GLTFInterpolationMode.linear
         if let sampler = rotationChannel?.sampler,
@@ -235,9 +308,11 @@ final class TransformSampler {
             rotationTimes = times
             rotationValues = values
             rotationInterp = sampler.interpolationMode
+            if let first = times.first { minTime = min(minTime, first) }
+            if let last = times.last { maxTime = max(maxTime, last) }
         }
 
-        var scaleTimes = [minTime]
+        var scaleTimes = [seedTime]
         var scaleValues = [target.scale]
         var scaleInterp = GLTFInterpolationMode.linear
         if let sampler = scaleChannel?.sampler,
@@ -247,7 +322,13 @@ final class TransformSampler {
             scaleTimes = times
             scaleValues = values
             scaleInterp = sampler.interpolationMode
+            if let first = times.first { minTime = min(minTime, first) }
+            if let last = times.last { maxTime = max(maxTime, last) }
         }
+
+        if !minTime.isFinite { minTime = 0 }
+        if !maxTime.isFinite { maxTime = minTime }
+        if maxTime < minTime { maxTime = minTime }
 
         startTime = minTime
         endTime = maxTime
@@ -267,12 +348,13 @@ final class TransformSampler {
             values: scaleValues,
             interpolation: scaleInterp
         )
-        let duration = maxTime - minTime
+        let duration = max(maxTime - minTime, 0)
         let keyCount = max(translationTimes.count, max(rotationTimes.count, scaleTimes.count))
         let averageKeyDuration = duration / Float(max(keyCount, 1))
-        recommendedSampleInterval = averageKeyDuration > maximumSampleInterval
-            ? maximumSampleInterval
-            : averageKeyDuration
+        recommendedSampleInterval = AnimationSampling.sampleInterval(
+            averageKeyDuration: averageKeyDuration,
+            maximum: maximumSampleInterval
+        )
     }
 
     func transform(at time: Float) -> Transform {
