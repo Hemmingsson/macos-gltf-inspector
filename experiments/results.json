@@ -233,7 +233,7 @@
       "complexity_assessment": "tiny",
       "decision": "keep",
       "rejection_reason": null,
-      "commit": "pending",
+      "commit": "c29a04d",
       "branch": "exp/006-packed-simd@13c1c62"
     }
   ],
