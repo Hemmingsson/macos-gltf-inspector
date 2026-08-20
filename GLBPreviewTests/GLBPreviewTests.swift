@@ -65,6 +65,66 @@ struct FitCameraTests {
     }
 }
 
+@MainActor
+struct FileCameraViewTests {
+    @Test func copiesWorldPoseAndPerspectiveFOV() throws {
+        let node = Entity()
+        node.setPosition(SIMD3<Float>(1, 2, 3), relativeTo: nil)
+        node.orientation = simd_quatf(angle: .pi / 2, axis: [0, 1, 0])
+        let preview = PerspectiveCamera()
+        GLBPreviewCamera.applyFileView(
+            to: preview,
+            cameraNode: node,
+            spec: .init(
+                name: "Front",
+                type: "perspective",
+                yfov: 0.7,
+                znear: 0.1,
+                zfar: 100,
+                xmag: nil,
+                ymag: nil
+            )
+        )
+        let position = preview.position(relativeTo: nil)
+        #expect(abs(position.x - 1) < 0.001)
+        #expect(abs(position.y - 2) < 0.001)
+        #expect(abs(position.z - 3) < 0.001)
+        let camera = try #require(preview.components[PerspectiveCameraComponent.self])
+        #expect(abs(camera.fieldOfViewInDegrees - 0.7 * 180 / .pi) < 0.01)
+        #expect(preview.components[OrthographicCameraComponent.self] == nil)
+    }
+
+    @Test func appliesOrthographicScaleFromDocument() throws {
+        let node = Entity()
+        let preview = PerspectiveCamera()
+        GLBPreviewCamera.applyFileView(
+            to: preview,
+            cameraNode: node,
+            spec: .init(
+                name: "Ortho",
+                type: "orthographic",
+                yfov: nil,
+                znear: 0.2,
+                zfar: 50,
+                xmag: 2,
+                ymag: 1.5
+            )
+        )
+        let camera = try #require(preview.components[OrthographicCameraComponent.self])
+        #expect(abs(camera.scale - 1.5) < 0.0001)
+        #expect(preview.components[PerspectiveCameraComponent.self] == nil)
+    }
+
+    @Test func fitRestoresPerspectiveAfterOrtho() throws {
+        let preview = Entity()
+        preview.components.set(OrthographicCameraComponent())
+        GLBPreviewCamera.restoreFitPerspective(on: preview)
+        let camera = try #require(preview.components[PerspectiveCameraComponent.self])
+        #expect(abs(camera.fieldOfViewInDegrees - 35) < 0.001)
+        #expect(preview.components[OrthographicCameraComponent.self] == nil)
+    }
+}
+
 struct ModelBoundsTests {
     @MainActor
     @Test func ignoresHelperWithoutMesh() async throws {

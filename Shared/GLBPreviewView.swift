@@ -216,7 +216,7 @@ private struct GLBPreviewScene: View {
                     )
                 )
                 let exponent = GLBPreviewEmissive.studioIBLExponent(
-                    punctualLightCount: GLBPreviewScenery.punctualLightCount(in: entity)
+                    punctualLightCount: GLBEntityLoader.punctualLightCount(in: entity)
                 )
                 GLBPreviewLighting.applyLook(
                     to: &content,
@@ -243,26 +243,28 @@ private struct GLBPreviewScene: View {
                     entity.scale = SIMD3<Float>(repeating: interaction.zoom)
                     sidebar?.applyIfNeeded(to: entity)
                 }
-                applyFileCamera(content)
                 let viewAspect = aspect(of: viewport)
-                guard sidebar?.selectedCameraIndex == nil else { return }
-                guard abs(viewAspect - frame.cameraAspect) > 0.001 else { return }
-                frame.cameraAspect = viewAspect
-                for entity in content.entities where entity.name == "previewCamera" {
-                    let position = GLBPreviewCamera.cameraPosition(
-                        minBound: frame.bounds.min,
-                        maxBound: frame.bounds.max,
-                        padding: GLBPreviewCamera.previewFitPadding,
-                        aspect: viewAspect
-                    )
-                    entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
-                    if var camera = entity.components[PerspectiveCameraComponent.self] {
-                        GLBPreviewCamera.applyFitClip(
-                            to: &camera,
-                            eye: position,
-                            target: frame.bounds.center
+                if sidebar?.selectedCameraIndex != nil {
+                    applyFileCamera(content)
+                } else {
+                    frame.cameraAspect = viewAspect
+                    for entity in content.entities where entity.name == "previewCamera" {
+                        GLBPreviewCamera.restoreFitPerspective(on: entity)
+                        let position = GLBPreviewCamera.cameraPosition(
+                            minBound: frame.bounds.min,
+                            maxBound: frame.bounds.max,
+                            padding: GLBPreviewCamera.previewFitPadding,
+                            aspect: viewAspect
                         )
-                        entity.components.set(camera)
+                        entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
+                        if var camera = entity.components[PerspectiveCameraComponent.self] {
+                            GLBPreviewCamera.applyFitClip(
+                                to: &camera,
+                                eye: position,
+                                target: frame.bounds.center
+                            )
+                            entity.components.set(camera)
+                        }
                     }
                 }
             }
@@ -373,14 +375,19 @@ private struct GLBPreviewScene: View {
     }
 
     private func applyFileCamera(_ content: RealityViewCameraContent) {
-        guard let sidebar, let index = sidebar.selectedCameraIndex else { return }
+        guard let sidebar, let index = sidebar.selectedCameraIndex,
+              sidebar.document.cameras.indices.contains(index)
+        else { return }
         let node = sidebar.document.nodes.first(where: { $0.cameraIndex == index })
         guard let node,
               let cameraNode = findEntity(nodeIndex: node.index, in: entity),
               let preview = content.entities.first(where: { $0.name == "previewCamera" })
         else { return }
-        let position = cameraNode.position(relativeTo: nil)
-        preview.look(at: frame.bounds.center, from: position, relativeTo: nil)
+        GLBPreviewCamera.applyFileView(
+            to: preview,
+            cameraNode: cameraNode,
+            spec: sidebar.document.cameras[index]
+        )
     }
 
     private func findEntity(nodeIndex: Int, in root: Entity) -> Entity? {

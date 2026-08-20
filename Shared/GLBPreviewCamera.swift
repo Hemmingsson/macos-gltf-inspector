@@ -212,6 +212,48 @@ enum GLBPreviewCamera {
         camera.far = max(200, distance * 40)
     }
 
+    /// World pose from the glTF camera node plus projection from the session document.
+    @MainActor
+    static func applyFileView(
+        to preview: Entity,
+        cameraNode: Entity,
+        spec: GLTFSessionDocument.Camera
+    ) {
+        preview.setPosition(cameraNode.position(relativeTo: nil), relativeTo: nil)
+        preview.orientation = cameraNode.orientation(relativeTo: nil)
+        if spec.type == "orthographic" {
+            preview.components.remove(PerspectiveCameraComponent.self)
+            var orthographic = OrthographicCameraComponent()
+            orthographic.near = spec.znear
+            if let far = spec.zfar, far.isFinite, far > spec.znear {
+                orthographic.far = far
+            }
+            orthographic.scale = spec.ymag ?? spec.xmag ?? 1
+            preview.components.set(orthographic)
+            return
+        }
+        preview.components.remove(OrthographicCameraComponent.self)
+        var perspective = preview.components[PerspectiveCameraComponent.self] ?? PerspectiveCameraComponent()
+        if let yfov = spec.yfov, yfov > 0 {
+            perspective.fieldOfViewInDegrees = yfov * 180 / .pi
+        }
+        perspective.fieldOfViewOrientation = .vertical
+        perspective.near = spec.znear
+        if let far = spec.zfar, far.isFinite, far > spec.znear {
+            perspective.far = far
+        }
+        preview.components.set(perspective)
+    }
+
+    @MainActor
+    static func restoreFitPerspective(on preview: Entity) {
+        preview.components.remove(OrthographicCameraComponent.self)
+        var camera = preview.components[PerspectiveCameraComponent.self] ?? PerspectiveCameraComponent()
+        camera.fieldOfViewInDegrees = fieldOfViewDegrees
+        camera.fieldOfViewOrientation = .vertical
+        preview.components.set(camera)
+    }
+
     private static func allFinite(_ v: SIMD3<Float>) -> Bool {
         v.x.isFinite && v.y.isFinite && v.z.isFinite
     }
