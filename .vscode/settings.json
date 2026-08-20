@@ -1,0 +1,39 @@
+{
+  "betterStatusBar.defaultColor": "statusBar.foreground",
+  "betterStatusBar.loadNpmCommands": false,
+  "betterStatusBar.reloadButton": null,
+  "betterStatusBar.commands": [
+    {
+      "id": "glb.debug",
+      "label": "$(play) Debug",
+      "command": "workbench.action.debug.start",
+      "tooltip": "Launch selected debug config",
+      "color": "#3fb950",
+      "useVsCodeApi": true
+    },
+    {
+      "id": "glb.debugPick",
+      "label": "$(debug-alt) Debug…",
+      "command": "workbench.action.debug.selectandstart",
+      "tooltip": "Pick a launch config (Debug+tiny.glb opens scripts/tiny.glb — not the editor file)",
+      "color": "#58a6ff",
+      "useVsCodeApi": true
+    },
+    {
+      "id": "glb.build",
+      "label": "$(tools) Build",
+      "command": "workbench.action.tasks.build",
+      "tooltip": "xcodegen + xcodebuild Debug",
+      "color": "#d29922",
+      "useVsCodeApi": true
+    },
+    {
+      "id": "glb.stop",
+      "label": "$(debug-disconnect) Stop",
+      "command": "workbench.action.debug.stop",
+      "tooltip": "Stop debugging",
+      "color": "#f85149",
+      "useVsCodeApi": true
+    }
+  ]
+}

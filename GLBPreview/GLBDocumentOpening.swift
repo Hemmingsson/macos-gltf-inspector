@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import UniformTypeIdentifiers
 
 enum GLBDocumentOpening {
@@ -32,6 +33,16 @@ enum GLBDocumentOpening {
             }
         }
         return true
+    }
+
+    @discardableResult
+    static func handleDrop(
+        _ providers: [NSItemProvider],
+        openDocument: OpenDocumentAction
+    ) -> Bool {
+        handleDrop(providers) { url in
+            try await openDocument(at: url)
+        }
     }
 
     static func closeWelcomeWindows() {

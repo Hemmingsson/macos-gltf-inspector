@@ -6,8 +6,15 @@ import SwiftUI
 final class HostSidebarModel: PreviewOverlay {
     var hide = Set<Int>()
     var soloRoot: Int?
-    var activeSceneIndex: Int
+    var activeSceneIndex: Int {
+        didSet {
+            guard activeSceneIndex != oldValue else { return }
+            selectedNodeIndex = nil
+            overlayRevision += 1
+        }
+    }
     var selectedCameraIndex: Int?
+    var selectedNodeIndex: Int?
     var overlayRevision = 0
     let document: GLTFSessionDocument
 
@@ -21,6 +28,11 @@ final class HostSidebarModel: PreviewOverlay {
     func layerRootIndices() -> [Int] {
         guard document.scenes.indices.contains(activeSceneIndex) else { return [] }
         return document.scenes[activeSceneIndex].rootNodeIndices
+    }
+
+    func selectNode(_ id: Int) {
+        selectedNodeIndex = selectedNodeIndex == id ? nil : id
+        overlayRevision += 1
     }
 
     func showAll() {
@@ -40,6 +52,7 @@ final class HostSidebarModel: PreviewOverlay {
         guard overlayRevision != appliedRevision else { return }
         appliedRevision = overlayRevision
         applyVisibility(to: root)
+        PreviewSelectionVisuals.apply(selectedNodeIndex: selectedNodeIndex, to: root)
     }
 
     private func ancestorIndices(of id: Int) -> Set<Int> {

@@ -1,11 +1,22 @@
-import AppKit
 import RealityKit
 import SwiftUI
 
 
-/// Reference box so RealityView `make` can stash unscaled bounds while zoom scales the pivot.
+/// Persisted across SwiftUI `PreviewScene` re-inits (must be `@State`, not `let`).
+/// RealityView `make` runs once; update must keep using the same entity refs.
 private final class PreviewFrame {
     var bounds = BoundingBox()
+    var autoRotateYaw: Float = 0
+    /// Set when the real pane size is known so `update` can refit once.
+    var needsLayoutFit = false
+    var didLayoutFit = false
+    weak var pivot: Entity?
+    weak var spin: Entity?
+    weak var floor: Entity?
+    weak var camera: Entity?
+    weak var lookRoot: Entity?
+    let debugStore = DebugMaterialStore()
+    let debugApplied = DebugAppliedIndex()
 }
 
 struct PreviewScene: View {
@@ -19,14 +30,13 @@ struct PreviewScene: View {
 
     @AppStorage(SettingsKeys.autoRotate) private var settingsAutoRotate = true
     @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
+    @AppStorage(SettingsKeys.showFloor) private var settingsShowFloor = true
     @AppStorage(SettingsKeys.background) private var backgroundRaw = PreviewBackground.window.rawValue
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var backdropIndex: Int
     @State private var autoRotate: Bool
-    @State private var orbitYaw: Float = 0
-    @State private var orbitPitch: Float = 0
-    @State private var dragOrigin: (yaw: Float, pitch: Float)?
+    @State private var showFloor: Bool
     @State private var playback: AnimationPlaybackController?
     @State private var clips: [PreviewClip] = []
     @State private var clipIndex = 0
@@ -39,11 +49,11 @@ struct PreviewScene: View {
     @State private var debugModeIndex = 0
     @State private var pendingReady: AppLook?
     @State private var appliedLook: AppLook?
+    @State private var appliedFloorLineIndex = -1
     @State private var prefetchGeneration = 0
+    /// Must be `@State` — parent `updateNSView` recreates the view struct.
+    @State private var frame = PreviewFrame()
     private let lookStore = AppLookStore.shared
-    private let frame = PreviewFrame()
-    private let debugStore = DebugMaterialStore()
-    private let debugApplied = DebugAppliedIndex()
 
     init(
         entity: Entity,
@@ -64,29 +74,22 @@ struct PreviewScene: View {
         let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
         let settingsOn = UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
-        if PreviewCamera.disablesAutoRotate(extent) {
-            _autoRotate = State(initialValue: false)
-            AppLog.info(AppLog.preview, "autoRotate disabled for standing plane")
-        } else {
-            _autoRotate = State(initialValue: settingsOn)
-        }
-        let storedBackground = UserDefaults.standard.string(forKey: SettingsKeys.background)
-            ?? PreviewBackground.window.rawValue
-        if let background = PreviewBackground(rawValue: storedBackground),
-           let index = PreviewBackground.allCases.firstIndex(of: background) {
-            _backdropIndex = State(initialValue: index)
-        } else {
-            _backdropIndex = State(initialValue: 0)
-        }
+        _autoRotate = State(
+            initialValue: PreviewCamera.disablesAutoRotate(extent) ? false : settingsOn
+        )
+        let floorOn = UserDefaults.standard.object(forKey: SettingsKeys.showFloor) as? Bool ?? true
+        _showFloor = State(initialValue: floorOn)
+        _backdropIndex = State(initialValue: PreviewBackground.storedIndex)
     }
 
     private var isHost: Bool { sidebar != nil }
 
+    private var useSystemOrbit: Bool {
+        sidebar?.selectedCameraIndex == nil
+    }
+
     private var backdropColor: Color {
-        if isHost {
-            return PreviewBackground(rawValue: backgroundRaw)?.color ?? PreviewBackground.window.color
-        }
-        return PreviewBackground.color(at: backdropIndex)
+        PreviewBackground.at(backdropIndex).color
     }
 
     private var tickWhileActive: Bool {
@@ -101,80 +104,115 @@ struct PreviewScene: View {
                 content.camera = .virtual
                 let assembled = PreviewCamera.makeTurntable(for: entity)
                 frame.bounds = assembled.bounds
+                frame.pivot = assembled.pivot
+                frame.spin = assembled.spin
+                let floor = PreviewFloor.make(
+                    bounds: assembled.bounds,
+                    lineColor: PreviewBackground.at(backdropIndex).gridLineNSColor(systemDark: isDark)
+                )
+                frame.floor = floor
+                assembled.pivot.addChild(floor)
+                PreviewFloor.enableCastingShadows(on: entity)
+
+                let camera = PreviewCamera.makeFrontThreeQuarter(
+                    minBound: assembled.bounds.min,
+                    maxBound: assembled.bounds.max,
+                    padding: PreviewCamera.previewFitPadding,
+                    aspect: aspect(of: viewport)
+                )
+                frame.camera = camera
+                // Pivot carries the model (real bounds) — system `.orbit` frames from it.
+                // A separate empty focus entity was nose-diving the camera on open.
+                content.cameraTarget = assembled.pivot
+
+                let lookRoot = Entity()
+                lookRoot.name = PreviewLighting.lookRootName
+                frame.lookRoot = lookRoot
 
                 content.add(assembled.pivot)
-                content.add(
-                    PreviewCamera.makeFrontThreeQuarter(
-                        minBound: assembled.bounds.min,
-                        maxBound: assembled.bounds.max,
-                        padding: PreviewCamera.previewFitPadding,
-                        aspect: aspect(of: viewport)
-                    )
-                )
+                content.add(camera)
+                content.add(lookRoot)
                 PreviewLighting.applyLook(
-                    to: &content,
+                    lookRoot: lookRoot,
                     pivot: assembled.pivot,
                     look: lookStore.look,
                     intensityExponent: studioIBLExponent
                 )
-                appliedLook = lookStore.look
                 sidebar?.applyIfNeeded(to: assembled.pivot)
-
+                frame.needsLayoutFit = true
                 let usable = Self.usableClips(on: entity)
-                clips = usable
-                if !usable.isEmpty {
-                    clipIndex = 0
-                    isPlaying = false
-                    startClip(at: 0, playing: false)
+                let look = lookStore.look
+                Task { @MainActor in
+                    interaction.bind(camera: camera, orbitFocus: assembled.pivot)
+                    appliedLook = look
+                    clips = usable
+                    if !usable.isEmpty {
+                        clipIndex = 0
+                        isPlaying = false
+                        startClip(at: 0, playing: false)
+                    }
                 }
             } update: { content in
+                if content.cameraTarget == nil, let pivot = frame.pivot {
+                    content.cameraTarget = pivot
+                }
+                if frame.needsLayoutFit, let camera = frame.camera, let pivot = frame.pivot {
+                    // Undo any Shift-pan offset so Fit framing is around the model center.
+                    pivot.setPosition(.zero, relativeTo: nil)
+                    PreviewCamera.applyFit(
+                        to: camera,
+                        bounds: frame.bounds,
+                        aspect: aspect(of: viewport),
+                        orbitFocus: pivot
+                    )
+                    frame.needsLayoutFit = false
+                    frame.didLayoutFit = true
+                    Task { @MainActor in interaction.markFitted() }
+                }
+                var lookToMarkApplied: AppLook?
                 if let pending = pendingReady, pending != appliedLook,
-                   let pivot = content.entities.first(where: { $0.name == "turntable" })
+                   let lookRoot = frame.lookRoot, let pivot = frame.pivot
                 {
                     PreviewLighting.applyLook(
-                        to: &content,
+                        lookRoot: lookRoot,
                         pivot: pivot,
                         look: pending,
                         intensityExponent: studioIBLExponent
                     )
-                    appliedLook = pending
+                    lookToMarkApplied = pending
                 }
-                for entity in content.entities where entity.name == "turntable" {
-                    entity.orientation =
-                        simd_quatf(angle: orbitYaw, axis: [0, 1, 0]) *
-                        simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
-                    entity.scale = SIMD3<Float>(repeating: interaction.zoom)
-                    sidebar?.applyIfNeeded(to: entity)
-                    applyDebugIfNeeded(to: entity)
-                }
-                let viewAspect = aspect(of: viewport)
-                if sidebar?.selectedCameraIndex != nil {
-                    applyFileCamera(content)
-                } else {
-                    for entity in content.entities where entity.name == "previewCamera" {
-                        PreviewCamera.restoreFitPerspective(on: entity)
-                        let position = PreviewCamera.cameraPosition(
-                            minBound: frame.bounds.min,
-                            maxBound: frame.bounds.max,
-                            padding: PreviewCamera.previewFitPadding,
-                            aspect: viewAspect
-                        )
-                        entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
-                        if var camera = entity.components[PerspectiveCameraComponent.self] {
-                            PreviewCamera.applyFitClip(
-                                to: &camera,
-                                eye: position,
-                                target: frame.bounds.center
+                var floorIndexToMarkApplied: Int?
+                if let pivot = frame.pivot {
+                    if let floor = frame.floor {
+                        floor.isEnabled = showFloor
+                        if appliedFloorLineIndex != backdropIndex {
+                            PreviewFloor.applyLineColor(
+                                PreviewBackground.at(backdropIndex).gridLineNSColor(systemDark: isDark),
+                                to: floor
                             )
-                            entity.components.set(camera)
+                            floorIndexToMarkApplied = backdropIndex
                         }
                     }
+                    sidebar?.applyIfNeeded(to: pivot)
+                    applyDebugIfNeeded(to: pivot)
+                }
+                if lookToMarkApplied != nil || floorIndexToMarkApplied != nil {
+                    let look = lookToMarkApplied
+                    let floorIndex = floorIndexToMarkApplied
+                    Task { @MainActor in
+                        if let look { appliedLook = look }
+                        if let floorIndex { appliedFloorLineIndex = floorIndex }
+                    }
+                }
+                if sidebar?.selectedCameraIndex != nil {
+                    applyFileCamera()
                 }
             } placeholder: {
                 // RealityView's default ProgressView is unframed and sits at the
                 // AppKit origin — a sliver in the window's bottom-left corner.
                 Color.clear
             }
+            .realityViewCameraControls(useSystemOrbit ? .orbit : .none)
             .backgroundStyle(backdropColor)
             .background {
                 GeometryReader { proxy in
@@ -185,64 +223,27 @@ struct PreviewScene: View {
                         }
                 }
             }
-            // RealityView often eats SwiftUI taps in QL; drive orbit + chrome toggle from this layer.
-            Color.clear
-                .contentShape(Rectangle())
-                .gesture(orbitDragGesture)
-                .onTapGesture {
-                    guard !isHost else { return }
-                    chromeVisible.toggle()
-                }
+            .ignoresSafeArea()
+            .onTapGesture {
+                guard !isHost else { return }
+                chromeVisible.toggle()
+            }
 
             if showToolbar, isHost || chromeVisible {
-                VStack(alignment: .trailing, spacing: 10) {
-                    PreviewCycleMenu(
-                        options: PreviewBackground.allCases.map(\.shortTitle),
-                        index: $backdropIndex,
-                        tint: { active in
-                            PreviewBackground.iconColor(
-                                at: backdropIndex,
-                                systemDark: isDark,
-                                active: active
-                            )
-                        }
-                    ) {
-                        Image(systemName: "circle.lefthalf.filled")
-                            .font(.system(size: 14, weight: .regular))
-                            .symbolRenderingMode(.monochrome)
-                            .foregroundStyle(chromeTint(active: backdropIndex != 0))
-                    }
-                    PreviewCycleMenu(
-                        options: debugModes.map(\.shortTitle),
-                        index: $debugModeIndex,
-                        tint: { active in
-                            chromeTint(active: active)
-                        }
-                    ) {
-                        Image(systemName: "square.3.layers.3d", variableValue: 1)
-                            .font(.system(size: 14, weight: .regular))
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(chromeTint(active: debugModeIndex != 0), .yellow)
-                    }
-                    Button {
-                        autoRotate.toggle()
+                PreviewChromeBar(
+                    backdropIndex: $backdropIndex,
+                    debugModeIndex: $debugModeIndex,
+                    autoRotate: $autoRotate,
+                    showFloor: $showFloor,
+                    debugModes: debugModes,
+                    isDark: isDark,
+                    isHost: isHost,
+                    onAutoRotateChanged: { enabled in
                         if isHost {
-                            settingsAutoRotate = autoRotate
+                            settingsAutoRotate = enabled
                         }
-                    } label: {
-                        Image(systemName: "arrow.trianglehead.counterclockwise.rotate.90")
-                            .font(.system(size: 14, weight: .regular))
-                            .symbolRenderingMode(.monochrome)
-                            .foregroundStyle(chromeTint(active: autoRotate))
-                            .frame(width: 24, height: 24)
-                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                    .help("Auto-rotate")
-                }
-                .padding(.top, isHost ? 12 : 14)
-                .padding(.trailing, 14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                )
                 .transition(.opacity)
             }
 
@@ -276,9 +277,19 @@ struct PreviewScene: View {
         .animation(.easeInOut(duration: 0.15), value: chromeVisible)
         .onAppear {
             applyAutoRotateSetting()
+            // Lighting is never part of open — warm HDR after the model is on screen.
+            prefetchLook(lookStore.look)
         }
         .onChange(of: settingsAutoRotate) { _, _ in
             applyAutoRotateSetting()
+        }
+        .onChange(of: settingsShowFloor) { _, value in
+            guard isHost else { return }
+            showFloor = value
+        }
+        .onChange(of: showFloor) { _, value in
+            guard isHost else { return }
+            settingsShowFloor = value
         }
         .onChange(of: backdropIndex) { _, index in
             guard isHost else { return }
@@ -291,6 +302,9 @@ struct PreviewScene: View {
                   let index = PreviewBackground.allCases.firstIndex(of: background)
             else { return }
             backdropIndex = index
+        }
+        .onChange(of: isDark) { _, _ in
+            appliedFloorLineIndex = -1
         }
         .onChange(of: isPlaying) { _, playing in
             guard let playback else { return }
@@ -321,8 +335,17 @@ struct PreviewScene: View {
                 let now = Date()
                 let dt = now.timeIntervalSince(lastTick)
                 lastTick = now
-                if autoRotate, dragOrigin == nil {
-                    orbitYaw += Float(dt) * 20 * .pi / 180
+                if autoRotate, useSystemOrbit {
+                    interaction.refreshPointerTimeout()
+                    if !interaction.suppressesAutoRotate {
+                        // Keep yaw on `frame` (not `@State`) so the tick does not
+                        // invalidate SwiftUI every 16ms — only the entity updates.
+                        frame.autoRotateYaw += Float(dt) * 20 * .pi / 180
+                        frame.spin?.orientation = simd_quatf(
+                            angle: frame.autoRotateYaw,
+                            axis: [0, 1, 0]
+                        )
+                    }
                 }
                 if !isSeeking, isPlaying, let playback, clipDuration > 0 {
                     currentTime = playback.time.truncatingRemainder(dividingBy: clipDuration)
@@ -333,45 +356,20 @@ struct PreviewScene: View {
         }
     }
 
-    private var orbitDragGesture: some Gesture {
-        DragGesture(minimumDistance: 10)
-            .onChanged { value in
-                let origin = dragOrigin ?? (orbitYaw, orbitPitch)
-                dragOrigin = origin
-                orbitYaw = origin.yaw + Float(value.translation.width) * 0.008
-                orbitPitch = origin.pitch + Float(value.translation.height) * 0.008
-            }
-            .onEnded { _ in
-                dragOrigin = nil
-            }
-    }
-
-    private func applyFileCamera(_ content: RealityViewCameraContent) {
+    private func applyFileCamera() {
         guard let sidebar, let index = sidebar.selectedCameraIndex,
-              sidebar.document.cameras.indices.contains(index)
+              sidebar.document.cameras.indices.contains(index),
+              let preview = frame.camera
         else { return }
         let node = sidebar.document.nodes.first(where: { $0.cameraIndex == index })
         guard let node,
-              let cameraNode = findEntity(nodeIndex: node.index, in: entity),
-              let preview = content.entities.first(where: { $0.name == "previewCamera" })
+              let cameraNode = GLTFNodeLookup.entity(nodeIndex: node.index, in: entity)
         else { return }
         PreviewCamera.applyFileView(
             to: preview,
             cameraNode: cameraNode,
             spec: sidebar.document.cameras[index]
         )
-    }
-
-    private func findEntity(nodeIndex: Int, in root: Entity) -> Entity? {
-        if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
-            return root
-        }
-        for child in root.children {
-            if let found = findEntity(nodeIndex: nodeIndex, in: child) {
-                return found
-            }
-        }
-        return nil
     }
 
     private func prefetchLook(_ look: AppLook) {
@@ -436,15 +434,21 @@ struct PreviewScene: View {
 
     private func applyDebugIfNeeded(to root: Entity) {
         let index = debugModes.indices.contains(debugModeIndex) ? debugModeIndex : 0
-        guard debugApplied.index != index else { return }
-        PreviewDebugMode.apply(debugModes[index], to: root, store: debugStore)
-        debugApplied.index = index
+        guard frame.debugApplied.index != index else { return }
+        PreviewDebugMode.apply(debugModes[index], to: root, store: frame.debugStore)
+        frame.debugApplied.index = index
     }
 
     private func applyViewport(_ size: CGSize) {
         guard size.width > 1, size.height > 1 else { return }
-        if abs(size.width - viewport.width) > 0.5 || abs(size.height - viewport.height) > 0.5 {
+        let sizeChanged =
+            abs(size.width - viewport.width) > 0.5 || abs(size.height - viewport.height) > 0.5
+        if sizeChanged {
             viewport = size
+        }
+        // Refit once after the real pane size is known (make used a placeholder aspect).
+        if frame.camera != nil, !frame.didLayoutFit {
+            frame.needsLayoutFit = true
         }
     }
 
@@ -462,136 +466,4 @@ private struct PreviewClip {
     let resource: AnimationResource
     let title: String
     let duration: TimeInterval
-}
-
-private struct PreviewPlaybackBar: View {
-    @Binding var isPlaying: Bool
-    @Binding var isSeeking: Bool
-    @Binding var currentTime: TimeInterval
-    @Binding var clipIndex: Int
-    var clipTitles: [String]
-    var clipDuration: TimeInterval
-    var tint: Color
-    var onSeek: (TimeInterval) -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            if clipTitles.count > 1 {
-                ClipMenu(
-                    titles: clipTitles,
-                    selection: $clipIndex,
-                    tint: tint
-                )
-                .help("Animation clip")
-            }
-
-            Button {
-                isPlaying.toggle()
-            } label: {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help(isPlaying ? "Pause" : "Play")
-
-            Slider(
-                value: Binding(
-                    get: { currentTime },
-                    set: { onSeek($0) }
-                ),
-                in: 0...max(clipDuration, 0.001)
-            ) { editing in
-                isSeeking = editing
-            }
-            .controlSize(.small)
-            .tint(tint)
-
-            Text(String(format: "%.2f", currentTime))
-                .font(.system(size: 11, weight: .regular).monospacedDigit())
-                .foregroundStyle(tint)
-                .frame(minWidth: 36, alignment: .trailing)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .previewLiquidGlass(in: Capsule(style: .continuous))
-    }
-}
-
-private struct ClipMenu: NSViewRepresentable {
-    var titles: [String]
-    @Binding var selection: Int
-    var tint: Color
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(selection: $selection)
-    }
-
-    func makeNSView(context: Context) -> NSPopUpButton {
-        let button = NSPopUpButton(frame: .zero, pullsDown: false)
-        button.controlSize = .small
-        button.font = .systemFont(ofSize: 11)
-        button.isBordered = false
-        button.target = context.coordinator
-        button.action = #selector(Coordinator.changed(_:))
-        context.coordinator.button = button
-        rebuild(button)
-        applyTint(button)
-        return button
-    }
-
-    func updateNSView(_ button: NSPopUpButton, context: Context) {
-        context.coordinator.selection = $selection
-        if button.itemTitles != titles {
-            rebuild(button)
-        }
-        if button.indexOfSelectedItem != selection,
-           titles.indices.contains(selection)
-        {
-            button.selectItem(at: selection)
-        }
-        applyTint(button)
-        button.sizeToFit()
-        button.invalidateIntrinsicContentSize()
-    }
-
-    private func rebuild(_ button: NSPopUpButton) {
-        button.removeAllItems()
-        button.addItems(withTitles: titles)
-        if titles.indices.contains(selection) {
-            button.selectItem(at: selection)
-        }
-    }
-
-    private func applyTint(_ button: NSPopUpButton) {
-        button.contentTintColor = NSColor(tint)
-    }
-
-    final class Coordinator: NSObject {
-        var selection: Binding<Int>
-        weak var button: NSPopUpButton?
-
-        init(selection: Binding<Int>) {
-            self.selection = selection
-        }
-
-        @objc func changed(_ sender: NSPopUpButton) {
-            let index = sender.indexOfSelectedItem
-            guard index >= 0, index != selection.wrappedValue else { return }
-            selection.wrappedValue = index
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func previewLiquidGlass<S: Shape>(in shape: S) -> some View {
-        if #available(macOS 26, *) {
-            self.glassEffect(.regular, in: shape)
-        } else {
-            self.background(.regularMaterial, in: shape)
-        }
-    }
 }

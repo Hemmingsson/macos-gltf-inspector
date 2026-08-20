@@ -300,15 +300,7 @@ func writeTempOneNodeMeshGLB(nodeName: String, prefix: String = "one-node") thro
 
 @MainActor
 func entity(nodeIndex: Int, in root: Entity) -> Entity? {
-    if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
-        return root
-    }
-    for child in root.children {
-        if let found = entity(nodeIndex: nodeIndex, in: child) {
-            return found
-        }
-    }
-    return nil
+    GLTFNodeLookup.entity(nodeIndex: nodeIndex, in: root)
 }
 
 @MainActor

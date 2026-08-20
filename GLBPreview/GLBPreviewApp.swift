@@ -2,13 +2,15 @@ import AppKit
 import Sparkle
 import SwiftUI
 
+private let staleWelcomeFrameAutosaveKey = "NSWindow Frame welcome-AppWindow-1"
+
 final class GLBAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         SettingsAppearance.apply(
             UserDefaults.standard.string(forKey: SettingsKeys.appearance) ?? SettingsAppearance.system.rawValue
         )
-        // Prefer document tabs on open; users can still tear a tab out into its own window.
-        UserDefaults.standard.set("always", forKey: "AppleWindowTabbingMode")
+        UserDefaults.standard.set("preferred", forKey: "AppleWindowTabbingMode")
+        UserDefaults.standard.removeObject(forKey: staleWelcomeFrameAutosaveKey)
         if wasLaunchedToOpenDocuments() {
             // Welcome uses defaultLaunchBehavior(.presented); dismiss once the run loop settles.
             DispatchQueue.main.async {
@@ -36,16 +38,17 @@ final class GLBAppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct GLBPreviewApp: App {
     @NSApplicationDelegateAdaptor(GLBAppDelegate.self) private var appDelegate
+    @AppStorage(SettingsKeys.autoRotate) private var autoRotate = true
+    @AppStorage(SettingsKeys.showFloor) private var showFloor = true
+    @FocusedValue(\.previewCommands) private var previewCommands
     private let updaterController: SPUStandardUpdaterController
 
     init() {
         UserDefaults.standard.register(defaults: [
             SettingsKeys.background: PreviewBackground.window.rawValue,
+            SettingsKeys.showFloor: true,
             "NSQuitAlwaysKeepsWindows": false,
-            // macOS 26 Liquid Glass defaults to a floating inset sidebar; Finder uses tiled full-height.
-            "NSSplitViewItemSidebarDefaultsToFloatingAppearance": false,
         ])
-        UserDefaults.standard.set(false, forKey: "NSSplitViewItemSidebarDefaultsToFloatingAppearance")
         updaterController = SPUStandardUpdaterController(
             startingUpdater: GLBUpdateConfig.shouldStartUpdater,
             updaterDelegate: nil,
@@ -59,9 +62,19 @@ struct GLBPreviewApp: App {
         }
         .defaultSize(width: 1200, height: 740)
         .windowResizability(.contentMinSize)
-        .windowToolbarStyle(.unified)
+        .windowToolbarStyle(.unifiedCompact)
         .restorationBehavior(.disabled)
         .commands {
+            SidebarCommands()
+            CommandGroup(after: .sidebar) {
+                Toggle("Show Floor", isOn: $showFloor)
+                Toggle("Auto-Rotate", isOn: $autoRotate)
+                Divider()
+                Button("Fit") {
+                    previewCommands?.fit()
+                }
+                .disabled(previewCommands == nil)
+            }
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)
             }
@@ -71,8 +84,9 @@ struct GLBPreviewApp: App {
         WindowGroup(id: WelcomeWindow.id) {
             WelcomeView()
         }
-        .defaultSize(width: 1200, height: 740)
-        .windowResizability(.contentMinSize)
+        .defaultSize(width: 520, height: 420)
+        .defaultPosition(.center)
+        .windowResizability(.contentSize)
         .defaultLaunchBehavior(.presented)
         .restorationBehavior(.disabled)
 

@@ -35,32 +35,39 @@ enum PreviewLighting {
         }
     }
 
+    /// Parent for IBL / key+fill. Kept off `content.entities` iteration — walking
+    /// `RealityViewEntityCollection` during update traps (`EXC_BREAKPOINT`).
+    static let lookRootName = "lookRoot"
+
     /// QL, host, and thumbnail still-renderer. Skybox stays off.
+    /// Lights are children of `lookRoot` (created once in `PreviewScene.make`).
     @MainActor
     static func applyLook(
-        to content: inout RealityViewCameraContent,
+        lookRoot: Entity,
         pivot: Entity,
         look: AppLook = .current,
         intensityExponent: Float
     ) {
-        // Snapshot first — removing during `for entity in content.entities` traps in
-        // Entity.ChildCollection (EXC_BREAKPOINT) when Settings changes the look.
-        let stale = content.entities.filter { lookEntityNames.contains($0.name) }
+        // Drop receivers before removing IBL entities — leaving receivers aimed at
+        // torn-down lights traps RealityKit (`EXC_BREAKPOINT` during updates).
+        removeReceivers(from: pivot)
+        let stale = Array(lookRoot.children)
         for entity in stale {
-            content.remove(entity)
+            entity.removeFromParent()
         }
         if look.useEnvironmentMap {
             if let ibl = makeIBLEntity(receiver: pivot, resource: cachedResource(for: look) ?? cachedProbe, intensityExponent: intensityExponent) {
-                content.add(ibl)
+                lookRoot.addChild(ibl)
+            } else {
+                // HDR still loading — temporary key+fill so first paint isn't black.
+                lookRoot.addChild(makeDirectional(name: "lookKey", intensity: 2_500, from: [4, 7, 6], castsShadow: true))
+                lookRoot.addChild(makeDirectional(name: "lookFill", intensity: 900, from: [-5, 3, 2], castsShadow: false))
             }
         } else {
-            removeReceivers(from: pivot)
-            content.add(makeDirectional(name: "lookKey", intensity: 2_500, from: [4, 7, 6]))
-            content.add(makeDirectional(name: "lookFill", intensity: 900, from: [-5, 3, 2]))
+            lookRoot.addChild(makeDirectional(name: "lookKey", intensity: 2_500, from: [4, 7, 6], castsShadow: true))
+            lookRoot.addChild(makeDirectional(name: "lookFill", intensity: 900, from: [-5, 3, 2], castsShadow: false))
         }
     }
-
-    private static let lookEntityNames: Set<String> = ["lookIBL", "lookKey", "lookFill"]
 
     @MainActor
     private static var cachedProbe: EnvironmentResource?
@@ -118,11 +125,20 @@ enum PreviewLighting {
     }
 
     @MainActor
-    private static func makeDirectional(name: String, intensity: Float, from: SIMD3<Float>) -> Entity {
+    private static func makeDirectional(
+        name: String,
+        intensity: Float,
+        from: SIMD3<Float>,
+        castsShadow: Bool
+    ) -> Entity {
         let light = DirectionalLight()
         light.name = name
         light.light.intensity = intensity
-        light.look(at: .zero, from: from, relativeTo: nil)
+        if castsShadow {
+            light.shadow = DirectionalLightComponent.Shadow()
+        }
+        // Same safe basis as the orbit camera — avoid Entity.look(at:from:).
+        PreviewOrbit.applyView(to: light, eye: from, target: .zero)
         return light
     }
 

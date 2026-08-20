@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Sparkle
 import SwiftUI
@@ -6,6 +7,7 @@ enum GLBUpdateConfig {
     static let githubRepo = "Hemmingsson/macos-gltf-preview"
     static let placeholderPublicEdKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
+    static let githubURL = URL(string: "https://github.com/\(githubRepo)")!
     static let feedURL = URL(
         string: "https://github.com/\(githubRepo)/releases/latest/download/appcast.xml"
     )!
@@ -20,26 +22,31 @@ enum GLBUpdateConfig {
 #endif
 }
 
-final class CheckForUpdatesViewModel: ObservableObject {
-    @Published var canCheckForUpdates = false
+@Observable
+final class CheckForUpdatesViewModel {
+    var canCheckForUpdates = false
+    private var cancellable: AnyCancellable?
 
     init(updater: SPUUpdater) {
-        updater.publisher(for: \.canCheckForUpdates)
-            .assign(to: &$canCheckForUpdates)
+        cancellable = updater.publisher(for: \.canCheckForUpdates)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] value in
+                self?.canCheckForUpdates = value
+            }
     }
 }
 
 struct CheckForUpdatesView: View {
-    @ObservedObject private var checkForUpdatesViewModel: CheckForUpdatesViewModel
+    @State private var viewModel: CheckForUpdatesViewModel
     private let updater: SPUUpdater
 
     init(updater: SPUUpdater) {
         self.updater = updater
-        self.checkForUpdatesViewModel = CheckForUpdatesViewModel(updater: updater)
+        _viewModel = State(initialValue: CheckForUpdatesViewModel(updater: updater))
     }
 
     var body: some View {
         Button("Check for Updates…", action: updater.checkForUpdates)
-            .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
+            .disabled(!viewModel.canCheckForUpdates)
     }
 }

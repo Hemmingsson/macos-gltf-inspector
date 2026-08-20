@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "GLBPreview (Debug)",
+      "program": "/tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "xcodebuild: GLBPreview"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "GLBPreview (Debug) + tiny.glb",
+      "program": "/tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app",
+      "cwd": "${workspaceFolder}",
+      "args": ["${workspaceFolder}/scripts/tiny.glb"],
+      "preLaunchTask": "xcodebuild: GLBPreview"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "GLBPreview (/Applications)",
+      "program": "/Applications/GLBPreview.app",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Attach GLBPreview",
+      "program": "/tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app"
+    }
+  ]
+}

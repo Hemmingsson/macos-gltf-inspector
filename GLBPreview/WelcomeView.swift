@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct WelcomeView: View {
     @Environment(\.openDocument) private var openDocument
@@ -27,24 +26,9 @@ struct WelcomeView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(40)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle("GLB Preview")
-        .toolbarBackground(.hidden, for: .windowToolbar)
-        .onAppear { configureWelcomeWindow() }
-        .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
-    }
-
-    private func configureWelcomeWindow() {
-        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
-            return
-        }
-        window.identifier = NSUserInterfaceItemIdentifier(WelcomeWindow.id)
-        HostWindowChrome.apply(to: window)
-    }
-
-    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        GLBDocumentOpening.handleDrop(providers) { url in
-            try await openDocument(at: url)
+        .onDrop(of: [.fileURL], isTargeted: nil) {
+            GLBDocumentOpening.handleDrop($0, openDocument: openDocument)
         }
     }
 }

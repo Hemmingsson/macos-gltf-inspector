@@ -159,6 +159,28 @@ struct ModelBoundsTests {
         #expect(extent.x > 1.5 && extent.x < 2.5)
     }
 
+    @MainActor
+    @Test func previewFloorMeshDoesNotInflateModelBounds() {
+        let root = Entity()
+        let model = ModelEntity(mesh: .generateBox(size: 1), materials: [SimpleMaterial()])
+        root.addChild(model)
+        let assembled = PreviewCamera.makeTurntable(for: root)
+        let before = PreviewCamera.modelBounds(of: assembled.pivot, relativeTo: assembled.pivot)
+
+        let floor = Entity()
+        floor.name = PreviewFloor.entityName
+        let huge = ModelEntity(mesh: .generateBox(size: 80), materials: [SimpleMaterial()])
+        floor.addChild(huge)
+        assembled.pivot.addChild(floor)
+
+        let after = PreviewCamera.modelBounds(of: assembled.pivot, relativeTo: assembled.pivot)
+        let beforeExtent = before.max - before.min
+        let afterExtent = after.max - after.min
+        #expect(abs(afterExtent.x - beforeExtent.x) < 0.01)
+        #expect(abs(afterExtent.y - beforeExtent.y) < 0.01)
+        #expect(abs(afterExtent.z - beforeExtent.z) < 0.01)
+    }
+
     @Test func unionKeepsEqualSizedTiles() throws {
         let boxes = (0..<6).map { i in
             let o = Float(i) * 200

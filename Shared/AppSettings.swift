@@ -1,9 +1,11 @@
+import AppKit
 import SwiftUI
 
 enum SettingsKeys {
     static let autoRotate = "settings.preview.autoRotate"
     static let background = "settings.preview.background"
     static let showToolbar = "settings.preview.showToolbar"
+    static let showFloor = "settings.preview.showFloor"
     static let appearance = "settings.general.appearance"
 }
 
@@ -13,6 +15,8 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
     case dark
 
     var id: Self { self }
+
+    private static let charcoal = (r: 38.0 / 255, g: 38.0 / 255, b: 38.0 / 255)
 
     var title: String {
         switch self {
@@ -34,36 +38,59 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         switch self {
         case .window: .clear
         case .white: .white
-        case .dark: Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
+        case .dark: Color(red: Self.charcoal.r, green: Self.charcoal.g, blue: Self.charcoal.b)
         }
     }
 
-    static func color(at index: Int) -> Color {
-        allCases[index % allCases.count].color
-    }
-
-    /// White icons on dark surfaces; charcoal on light. Clear backdrop: OS setting first (QL `isDark` is flaky).
-    static func useLightIcons(at index: Int, systemDark: Bool) -> Bool {
-        switch allCases[index % allCases.count] {
+    /// Polar grid hairlines — contrast against this backdrop (no filled disc).
+    func gridLineNSColor(systemDark: Bool) -> NSColor {
+        switch self {
         case .white:
-            return false
+            return NSColor(srgbRed: 0.42, green: 0.42, blue: 0.42, alpha: 1)
         case .dark:
-            return true
+            return NSColor(srgbRed: 0.62, green: 0.62, blue: 0.62, alpha: 1)
         case .window:
-            if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
-                return true
+            if Self.windowUsesLightIcons(systemDark: systemDark) {
+                return NSColor(srgbRed: 0.58, green: 0.58, blue: 0.58, alpha: 1)
             }
-            return systemDark
+            return NSColor(srgbRed: 0.42, green: 0.42, blue: 0.42, alpha: 1)
         }
     }
 
-    /// Dim strength for inactive chrome icons (cycle menus, auto-rotate off).
+    static func at(_ index: Int) -> PreviewBackground {
+        allCases[index % allCases.count]
+    }
+
+    static var stored: PreviewBackground {
+        let raw = UserDefaults.standard.string(forKey: SettingsKeys.background) ?? window.rawValue
+        return PreviewBackground(rawValue: raw) ?? .window
+    }
+
+    static var storedIndex: Int {
+        allCases.firstIndex(of: stored) ?? 0
+    }
+
+    static func useLightIcons(at index: Int, systemDark: Bool) -> Bool {
+        switch at(index) {
+        case .white: return false
+        case .dark: return true
+        case .window: return windowUsesLightIcons(systemDark: systemDark)
+        }
+    }
+
+    private static func windowUsesLightIcons(systemDark: Bool) -> Bool {
+        if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
+            return true
+        }
+        return systemDark
+    }
+
     static let inactiveIconOpacity = 0.55
 
     static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
         let base: Color = useLightIcons(at: index, systemDark: systemDark)
             ? .white
-            : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
+            : Color(red: charcoal.r, green: charcoal.g, blue: charcoal.b)
         return active ? base : base.opacity(inactiveIconOpacity)
     }
 }

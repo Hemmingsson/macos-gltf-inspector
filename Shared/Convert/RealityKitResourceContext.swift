@@ -172,7 +172,7 @@ class RealityKitResourceContext {
                 singleChannelImage(from: originalImage, channels: channels) else { return nil }
 
         let options = TextureResource.CreateOptions(semantic: semantic)
-        guard let resource = try? TextureResource.generate(from: sourceImage, options: options) else { return nil }
+        guard let resource = try? TextureResource(image: sourceImage, withName: nil, options: options) else { return nil }
         storeTextureResource(resource, for: gltfImage, channels: channels)
         return resource
         }

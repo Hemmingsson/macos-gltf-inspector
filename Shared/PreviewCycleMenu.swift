@@ -13,16 +13,18 @@ struct PreviewCycleMenu<Icon: View>: View {
     var body: some View {
         HStack(spacing: 8) {
             if hovering, !visibleOptions.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(visibleOptions, id: \.offset) { item in
-                        Button {
-                            select(item.offset)
-                        } label: {
-                            Text(item.element)
-                                .font(.system(size: 11, weight: item.offset == index ? .semibold : .regular))
-                                .foregroundStyle(tint(item.offset == index))
+                GlassEffectContainer(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(visibleOptions, id: \.offset) { item in
+                            Button {
+                                select(item.offset)
+                            } label: {
+                                Text(item.element)
+                                    .font(.system(size: 11, weight: item.offset == index ? .semibold : .regular))
+                                    .foregroundStyle(tint(item.offset == index))
+                            }
+                            .previewGlassButtonStyle(prominent: item.offset == index)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .transition(.opacity)
@@ -35,7 +37,7 @@ struct PreviewCycleMenu<Icon: View>: View {
                     .opacity(isNoneSelected ? PreviewBackground.inactiveIconOpacity : 1)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .previewGlassButtonStyle(prominent: !isNoneSelected)
             .help(currentTitle)
         }
         .onHover { hovering = $0 }

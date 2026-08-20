@@ -2,8 +2,7 @@ name: GLBPreview
 options:
   bundleIdPrefix: com.laurie
   deploymentTarget:
-    macOS: "15.0"
-  xcodeVersion: "15.0"
+    macOS: "26.0"
   fileTypes:
     icon:
       file: true
@@ -211,6 +210,7 @@ targets:
           - PreviewView.swift
           - PreviewScene.swift
           - PreviewChrome.swift
+          - PreviewChromeBar.swift
           - PreviewCycleMenu.swift
           - PreviewOverlayFacts.swift
           - AppSettings.swift

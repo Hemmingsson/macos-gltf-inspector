@@ -1,4 +1,3 @@
-import AppKit
 import RealityKit
 import SwiftUI
 
@@ -6,19 +5,18 @@ struct PreviewView: View {
     enum State {
         case loading
         case ready(EntityLoader.LoadedModel)
-        case failed
+        /// User-visible reason. Open never waits on IBL — lighting is applied later by `PreviewScene`.
+        case failed(String)
 
-        /// File IO runs off the main actor (`EntityLoader.load`).
+        /// Model bytes → RealityKit only. No HDR / EnvironmentResource on this path.
         static func loaded(from url: URL) async -> State {
-            let look = await MainActor.run { AppLookStore.shared.look }
-            async let ibl: Void = PreviewLighting.prefetchLook(look)
             do {
                 let model = try await EntityLoader.load(from: url)
-                await ibl
                 return .ready(model)
             } catch {
-                AppLog.error(AppLog.preview, "State.failed \(url.path) \(error)")
-                return .failed
+                let message = error.localizedDescription
+                AppLog.error(AppLog.preview, "open failed \(url.lastPathComponent): \(message)")
+                return .failed(message)
             }
         }
     }
@@ -48,16 +46,22 @@ struct PreviewView: View {
                     isDark: isDark,
                     sidebar: sidebar
                 )
-            case .failed:
+                .id(ObjectIdentifier(model.entity))
+            case .failed(let message):
                 ZStack {
                     PreviewBackground.window.color.ignoresSafeArea()
-                    Text("Failed to load model")
-                        .font(.system(size: 13))
-                        .foregroundStyle(
-                            PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true).opacity(0.5)
-                        )
-                        .multilineTextAlignment(.center)
-                        .padding()
+                    VStack(spacing: 8) {
+                        Text("Failed to load model")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(message)
+                            .font(.system(size: 12))
+                            .multilineTextAlignment(.center)
+                            .opacity(0.7)
+                    }
+                    .foregroundStyle(
+                        PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
+                    )
+                    .padding()
                 }
             }
         }

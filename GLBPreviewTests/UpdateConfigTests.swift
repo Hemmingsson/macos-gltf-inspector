@@ -8,6 +8,7 @@ struct UpdateConfigTests {
             GLBUpdateConfig.feedURL.absoluteString
                 == "https://github.com/\(GLBUpdateConfig.githubRepo)/releases/latest/download/appcast.xml"
         )
+        #expect(GLBUpdateConfig.githubURL.absoluteString == "https://github.com/\(GLBUpdateConfig.githubRepo)")
         #expect(GLBUpdateConfig.feedURL.scheme == "https")
     }
 

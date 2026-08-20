@@ -8,7 +8,9 @@ build/
 
 # Local research / agent scratch (not the product)
 .worktrees/
-.cursor/
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 .conductor/
 .dex/
 .superpowers/

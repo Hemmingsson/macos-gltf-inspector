@@ -289,7 +289,7 @@ extension RealityKitConvert {
                 let out = (dest.baseAddress! + byteOffset).assumingMemoryBound(to: UInt32.self)
                 if vertexBase == 0 {
                     plan.indices.withUnsafeBufferPointer { src in
-                        memcpy(out, src.baseAddress!, indexBytes)
+                        _ = memcpy(out, src.baseAddress!, indexBytes)
                     }
                 } else {
                     for i in 0..<plan.indexCount {

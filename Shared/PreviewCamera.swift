@@ -2,7 +2,8 @@ import RealityKit
 import simd
 
 enum PreviewCamera {
-    private static let fieldOfViewDegrees: Float = 35
+    static let defaultFieldOfViewDegrees: Float = 35
+    private static let fieldOfViewDegrees: Float = defaultFieldOfViewDegrees
     private static let yawDegrees: Float = 35
     private static let pitchDegrees: Float = 18
     static let previewFitPadding: Float = 1.02
@@ -13,25 +14,55 @@ enum PreviewCamera {
     /// Flat ground tiles: Y vs longest.
     private static let groundThinRatio: Float = 0.02
 
-    /// Pivot whose origin is the visual center, so yaw/orbit spin the mesh in place
-    /// even when Sketchfab/FBX nodes sit meters away from the scene origin.
-    /// File cameras stay on their nodes; live camera components are removed so
-    /// the preview camera is the only active view.
+    static let autoRotateSpinName = "autoRotateSpin"
+
+    /// Pivot origin = visual center. Spin child holds the model so auto-rotate
+    /// does not yaw `cameraTarget`. File cameras stay on nodes; live camera
+    /// components are stripped so the preview camera is the only active view.
     @MainActor
-    static func makeTurntable(for entity: Entity) -> (pivot: Entity, bounds: BoundingBox) {
+    static func makeTurntable(for entity: Entity) -> (pivot: Entity, spin: Entity, bounds: BoundingBox) {
         disableCameras(in: entity)
-        // `relativeTo: nil` is world space, but an unattached tree treats each
-        // mesh's own origin as world — parent translation (Sketchfab/FBX offsets)
-        // is dropped. Measure in the root's space, then pull that center to the pivot.
+        // Unattached trees treat each mesh origin as world — measure in root
+        // space, then pull that center to the pivot.
         let localBounds = modelBounds(of: entity, relativeTo: entity)
         let center = localBounds.center
         let pivot = Entity()
         pivot.name = "turntable"
-        pivot.addChild(entity)
+        let spin = Entity()
+        spin.name = autoRotateSpinName
+        pivot.addChild(spin)
+        spin.addChild(entity)
         let centerInPivot = entity.convert(position: center, to: pivot)
         entity.position -= centerInPivot
         let centered = BoundingBox(min: localBounds.min - center, max: localBounds.max - center)
-        return (pivot, centered)
+        return (pivot, spin, centered)
+    }
+
+    /// Pose the live preview camera to a front-three-quarter fit of `bounds`.
+    @MainActor
+    static func applyFit(
+        to camera: Entity,
+        bounds: BoundingBox,
+        padding: Float = previewFitPadding,
+        aspect: Float = 1,
+        orbitFocus: Entity? = nil
+    ) {
+        guard !bounds.isEmpty else { return }
+        let center = (bounds.min + bounds.max) * 0.5
+        // Pivot stays at the visual center (usually world origin after turntable).
+        orbitFocus?.setPosition(.zero, relativeTo: nil)
+        let fitted = makeFrontThreeQuarter(
+            minBound: bounds.min,
+            maxBound: bounds.max,
+            padding: padding,
+            aspect: aspect
+        )
+        let eye = fitted.position(relativeTo: nil)
+        PreviewOrbit.applyView(to: camera, eye: eye, target: center)
+        if var perspective = camera.components[PerspectiveCameraComponent.self] {
+            applyFitClip(to: &perspective, eye: eye, target: center)
+            camera.components.set(perspective)
+        }
     }
 
     /// A leftover mesh this many times larger than the median mesh is ignored
@@ -46,6 +77,9 @@ enum PreviewCamera {
     static func modelBounds(of entity: Entity, relativeTo reference: Entity? = nil) -> BoundingBox {
         var boxes: [BoundingBox] = []
         func walk(_ node: Entity) {
+            // Floor / selection helpers carry ModelComponents; skip their subtrees
+            // so Fit framing stays on the glTF mesh only.
+            if PreviewFloor.isHelperName(node.name) { return }
             if node.components[ModelComponent.self] != nil {
                 let box = node.visualBounds(recursive: false, relativeTo: reference)
                 if !box.isEmpty, allFinite(box.min), allFinite(box.max) {
@@ -206,7 +240,8 @@ enum PreviewCamera {
         camera.name = "previewCamera"
         camera.camera.fieldOfViewInDegrees = fieldOfViewDegrees
         camera.camera.fieldOfViewOrientation = .vertical
-        camera.look(at: center, from: position, relativeTo: nil)
+        // Avoid `Entity.look(at:from:)` — traps when the view axis ‖ world +Y.
+        PreviewOrbit.applyView(to: camera, eye: position, target: center)
         applyFitClip(to: &camera.camera, eye: position, target: center)
         return camera
     }

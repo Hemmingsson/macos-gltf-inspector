@@ -1,0 +1,11 @@
+schemaVersion: 1
+enabledWorkflows:
+  - macos
+  - project-discovery
+  - xcode-ide
+sessionDefaults:
+  scheme: GLBPreview
+  projectPath: /Users/mattias/dev/glb-preview/GLBPreview.xcodeproj
+  configuration: Debug
+  arch: arm64
+  derivedDataPath: /tmp/GLBPreview-dd
