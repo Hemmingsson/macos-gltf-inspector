@@ -127,11 +127,10 @@ extension RealityKitConvert {
         }
         // Factor 1 + BLEND + empty/zero texture alpha is Sketchfab car paint (invisible
         // if blended). Factor 1 + BLEND + a real alpha span is foliage / decals.
+        // Detected cutout: treat like native MASK (threshold only, no opacity texture).
         if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
            context.alphaUsage(for: texture) == .cutout
         {
-            let opacity = context.opacityTexture(for: texture)
-            material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
             material.opacityThreshold = 0.4
             return
         }
@@ -154,12 +153,10 @@ extension RealityKitConvert {
             material.blending = .transparent(opacity: 1.0)
             return
         }
+        // Detected cutout: treat like native MASK (threshold only, no opacity texture).
         if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
            context.alphaUsage(for: texture) == .cutout
         {
-            if let opacity = context.opacityTexture(for: texture) {
-                material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
-            }
             material.opacityThreshold = 0.4
             return
         }
