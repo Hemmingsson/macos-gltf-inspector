@@ -221,6 +221,9 @@ private struct PreviewSettingsPane: View {
                     }
                 }
                 .pickerStyle(.menu)
+                Text("Used by the app and as the initial Quick Look backdrop. Quick Look can still cycle colors from the toolbar.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 Picker("Default camera", selection: $defaultCamera) {
                     ForEach(PreviewDefaultCamera.allCases) { option in

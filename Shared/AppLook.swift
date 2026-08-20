@@ -31,9 +31,13 @@ struct AppLook: Codable, Equatable, Sendable {
     static func load(from directory: URL) -> AppLook {
         let url = lookURL(in: directory)
         guard let data = try? Data(contentsOf: url),
-              let look = try? JSONDecoder().decode(AppLook.self, from: data)
+              var look = try? JSONDecoder().decode(AppLook.self, from: data)
         else {
             return .default
+        }
+        if KhronosEnvironments(rawValue: look.catalogRaw) == nil {
+            look.catalogRaw = KhronosEnvironments.studioNeutral.rawValue
+            look.save(to: directory)
         }
         return look
     }

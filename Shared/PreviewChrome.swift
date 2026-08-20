@@ -26,13 +26,6 @@ final class PreviewInteraction {
         setZoom(zoom * Float(1 + event.magnification))
     }
 
-    var orbitResetNonce = 0
-
-    func resetFit() {
-        zoom = 1
-        orbitResetNonce += 1
-    }
-
     private func setZoom(_ value: Float) {
         let clamped = min(max(value, 0.12), 8)
         guard abs(clamped - zoom) > 0.0001 else { return }

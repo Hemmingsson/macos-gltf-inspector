@@ -1,33 +1,17 @@
 import Foundation
 
 enum KhronosEnvironments: String, CaseIterable, Sendable {
-    case cannonExterior = "Cannon_Exterior"
-    case footprintCourt = "footprint_court"
-    case pisa = "pisa"
-    case dogesPalace = "doge2"
-    case diningRoom = "ennis"
     case field = "field"
-    case helipadGoldenhour = "helipad"
-    case papermillRuins = "papermill"
     case studioNeutral = "neutral"
     case colorfulStudio = "Colorful_Studio"
-    case wideStreet = "Wide_Street"
 
     static var defaultLook: Self { .studioNeutral }
 
     var title: String {
         switch self {
-        case .cannonExterior: "Cannon Exterior"
-        case .footprintCourt: "Footprint Court"
-        case .pisa: "Pisa"
-        case .dogesPalace: "Doge's palace"
-        case .diningRoom: "Dining room"
         case .field: "Field"
-        case .helipadGoldenhour: "Helipad Goldenhour"
-        case .papermillRuins: "Papermill Ruins"
         case .studioNeutral: "Studio Neutral"
         case .colorfulStudio: "Colorful Studio"
-        case .wideStreet: "Wide Street"
         }
     }
 

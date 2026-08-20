@@ -258,6 +258,71 @@ func appendFloats(_ values: [Float], to data: inout Data) {
     }
 }
 
+func floatTrianglePositions() -> [Float] {
+    [0, 0, 0, 1, 0, 0, 0, 1, 0]
+}
+
+func floatTriangleBin() -> Data {
+    var bin = Data()
+    appendFloats(floatTrianglePositions(), to: &bin)
+    return bin
+}
+
+func writeTempOneNodeMeshGLB(nodeName: String, prefix: String = "one-node") throws -> URL {
+    let bin = floatTriangleBin()
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+        "accessors": [[
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": 3,
+            "type": "VEC3",
+        ]],
+        "meshes": [["name": "HelmetMesh", "primitives": [["attributes": ["POSITION": 0]]]]],
+        "nodes": [["name": nodeName, "mesh": 0]],
+        "scenes": [["name": "Default", "nodes": [0]]],
+        "scene": 0,
+    ]
+    return try GLBBox.writePrepared(try GLBBox.serialize(json: json, bin: bin), prefix: prefix)
+}
+
+@MainActor
+func entity(nodeIndex: Int, in root: Entity) -> Entity? {
+    if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
+        return root
+    }
+    for child in root.children {
+        if let found = entity(nodeIndex: nodeIndex, in: child) {
+            return found
+        }
+    }
+    return nil
+}
+
+@MainActor
+func namedEntity(_ name: String, in entity: Entity) -> Entity? {
+    if entity.name == name { return entity }
+    for child in entity.children {
+        if let found = namedEntity(name, in: child) { return found }
+    }
+    return nil
+}
+
+@MainActor
+func stampedNodeIndices(in entity: Entity) -> Set<Int> {
+    var found = Set<Int>()
+    func walk(_ node: Entity) {
+        if let id = node.components[GLTFNodeIDComponent.self]?.nodeIndex {
+            found.insert(id)
+        }
+        node.children.forEach(walk)
+    }
+    walk(entity)
+    return found
+}
+
 @MainActor
 func loadAllPBR(_ glb: Data) async throws -> [PhysicallyBasedMaterial] {
     pbrMaterials(in: try await loadModel(glb).entity)

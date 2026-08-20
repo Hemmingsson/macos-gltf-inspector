@@ -53,14 +53,6 @@ private struct OutlinerContent: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            Picker("Debug", selection: $sidebar.debug) {
-                ForEach(HostSidebarModel.DebugMode.allCases, id: \.self) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .onChange(of: sidebar.debug) { _, _ in
-                sidebar.overlayRevision += 1
-            }
         }
         .onAppear {
             expandDefaultLevels()

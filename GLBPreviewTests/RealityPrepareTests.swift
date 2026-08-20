@@ -38,15 +38,6 @@ struct RealityPrepareTests {
         #expect(!RealityPrepare.needsPrepare(json))
     }
 
-    @Test func dequantizesShortPositions() throws {
-        let glb = try GLBBox.parse(try shortTriangleGLB())
-        let converted = try RealityPrepare.convert(glb)
-        let prepared = try GLBBox.parse(converted)
-        let accessors = prepared.json["accessors"] as? [[String: Any]] ?? []
-        let position = accessors.first { ($0["type"] as? String) == "VEC3" }
-        #expect(GLBBox.intValue(position?["componentType"]) == 5126)
-    }
-
     @Test func dequantizesShortPositionsToRawValues() throws {
         let glb = try GLBBox.parse(try shortTriangleGLB())
         let converted = try RealityPrepare.convert(glb)

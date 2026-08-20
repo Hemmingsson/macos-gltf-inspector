@@ -18,13 +18,13 @@ struct AppLookTests {
 
         var look = AppLook.default
         look.useEnvironmentMap = false
-        look.catalogRaw = KhronosEnvironments.pisa.rawValue
+        look.catalogRaw = KhronosEnvironments.field.rawValue
         look.customFileName = "studio.hdr"
         look.save(to: dir)
 
         let loaded = AppLook.load(from: dir)
         #expect(loaded == look)
-        #expect(loaded.catalog == .pisa)
+        #expect(loaded.catalog == .field)
         #expect(FileManager.default.fileExists(atPath: AppLook.lookURL(in: dir).path))
     }
 
@@ -35,6 +35,27 @@ struct AppLookTests {
 
         try Data("{not-json".utf8).write(to: AppLook.lookURL(in: dir))
         #expect(AppLook.load(from: dir) == .default)
+    }
+
+    @Test func unknownCatalogFallsBackToStudioNeutral() {
+        var look = AppLook.default
+        look.catalogRaw = "pisa"
+        #expect(look.catalog == .studioNeutral)
+    }
+
+    @Test func unknownCatalogMigratesOnLoad() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("applook-migrate-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        var look = AppLook.default
+        look.catalogRaw = "pisa"
+        look.save(to: dir)
+
+        let loaded = AppLook.load(from: dir)
+        #expect(loaded.catalogRaw == KhronosEnvironments.studioNeutral.rawValue)
+        #expect(loaded.catalog == .studioNeutral)
+        #expect(AppLook.load(from: dir).catalogRaw == KhronosEnvironments.studioNeutral.rawValue)
     }
 
     @Test func customFileNameResolvesUnderIBL() throws {

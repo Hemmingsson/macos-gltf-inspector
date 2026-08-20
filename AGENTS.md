@@ -9,6 +9,7 @@ macOS 15+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview`
 ./scripts/verify.sh           # check installed app + pluginkit
 ./scripts/proof.sh            # still-renderer PNG; qlmanage with timeout
 ./scripts/release.sh          # Developer ID + notary + Sparkle appcast + gh release
+./scripts/vendor-khronos-environments.sh  # refresh bundled IBL HDRs
 ```
 
 Signing team: `project.yml` (`DEVELOPMENT_TEAM`). Proof is `qlmanage`, not a browser.

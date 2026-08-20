@@ -26,7 +26,7 @@ struct LoaderHelpersTests {
         try #require(FileManager.default.fileExists(atPath: url.path))
         let model = try await EntityLoader.load(from: url, includeAnimations: false)
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)
-        #expect(model.stats.meshCount >= 1)
+        #expect(model.stats.triangleCount > 0)
     }
 
     /// glTF metal/rough has no extra gem specular. RealityKit defaults that
