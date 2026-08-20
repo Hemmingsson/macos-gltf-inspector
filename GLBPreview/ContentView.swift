@@ -10,8 +10,27 @@ struct ContentView: View {
     @State private var interaction = PreviewInteraction()
     @State private var sidebar: HostSidebarModel?
     @State private var loadGeneration = 0
+    @State private var blenderLaunchError: String?
 
     private var openedFileName: String? { openedURL?.lastPathComponent }
+
+    private static let finderMenuIcon: NSImage = {
+        let url =
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder")
+            ?? URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
+        return BlenderLauncher.menuIcon(for: url)
+    }()
+
+    @ViewBuilder
+    private func openInMenuRow(title: String, icon: NSImage) -> some View {
+        HStack(spacing: 6) {
+            Image(nsImage: icon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 16, height: 16)
+            Text(title)
+        }
+    }
 
     var body: some View {
         Group {
@@ -25,6 +44,46 @@ struct ContentView: View {
         .frame(minWidth: 400, minHeight: 300)
         .navigationTitle(openedFileName ?? "GLB Preview")
         .toolbarBackground(.hidden, for: .windowToolbar)
+        .toolbar {
+            if let openedURL {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button {
+                            NSWorkspace.shared.activateFileViewerSelecting([openedURL])
+                        } label: {
+                            openInMenuRow(title: "Finder", icon: Self.finderMenuIcon)
+                        }
+                        if BlenderLauncher.isInstalled, let blenderIcon = BlenderLauncher.applicationIcon {
+                            Button {
+                                do {
+                                    try BlenderLauncher.openInNewBlenderInstance(openedURL)
+                                } catch {
+                                    AppLog.error(AppLog.host, "blender open failed \(error.localizedDescription)")
+                                    blenderLaunchError = error.localizedDescription
+                                }
+                            } label: {
+                                openInMenuRow(title: "Blender", icon: blenderIcon)
+                            }
+                        }
+                    } label: {
+                        Label("Open in…", systemImage: "arrow.up.forward.app")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("Open in…")
+                }
+            }
+        }
+        .alert(
+            "Couldn’t open in Blender",
+            isPresented: Binding(
+                get: { blenderLaunchError != nil },
+                set: { if !$0 { blenderLaunchError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(blenderLaunchError ?? "")
+        }
         .onAppear { showTrafficLights() }
         .onChange(of: sidebar?.activeSceneIndex) { _, index in
             reloadScene(index)
