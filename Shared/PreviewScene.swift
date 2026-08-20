@@ -12,6 +12,7 @@ struct PreviewScene: View {
     let entity: Entity
     var stats: PreviewStats?
     var debugModes: [PreviewDebugMode]
+    var studioIBLExponent: Float
     @Bindable var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)?
@@ -50,6 +51,7 @@ struct PreviewScene: View {
         entity: Entity,
         stats: PreviewStats?,
         debugModes: [PreviewDebugMode] = [.none],
+        studioIBLExponent: Float = 0,
         interaction: PreviewInteraction,
         isDark: Bool,
         sidebar: (any PreviewOverlay)? = nil
@@ -57,6 +59,7 @@ struct PreviewScene: View {
         self.entity = entity
         self.stats = stats
         self.debugModes = debugModes.isEmpty ? [.none] : debugModes
+        self.studioIBLExponent = studioIBLExponent
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
@@ -371,12 +374,6 @@ struct PreviewScene: View {
             }
         }
         return nil
-    }
-
-    private var studioIBLExponent: Float {
-        PreviewEmissive.studioIBLExponent(
-            punctualLightCount: EntityLoader.punctualLightCount(in: entity)
-        )
     }
 
     private func prefetchLook(_ look: AppLook) {

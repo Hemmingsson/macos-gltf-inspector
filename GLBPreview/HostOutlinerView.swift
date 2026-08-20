@@ -2,17 +2,6 @@ import SwiftUI
 
 struct HostOutlinerView: View {
     var model: EntityLoader.LoadedModel?
-    var sidebar: HostSidebarModel
-
-    var body: some View {
-        OutlinerContent(model: model, sidebar: sidebar)
-            .padding(EdgeInsets(top: 8, leading: 12, bottom: 12, trailing: 12))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-}
-
-private struct OutlinerContent: View {
-    var model: EntityLoader.LoadedModel?
     @Bindable var sidebar: HostSidebarModel
     @State private var expanded = Set<Int>()
 
@@ -53,20 +42,17 @@ private struct OutlinerContent: View {
             .scrollContentBackground(.hidden)
             .frame(maxHeight: .infinity, alignment: .top)
 
-            statsBlock
+            if let facts = model?.stats.overlayFacts, !facts.isEmpty {
+                PreviewOverlayFacts(facts: facts, tint: .primary, spread: true)
+            }
         }
+        .padding(EdgeInsets(top: 8, leading: 12, bottom: 12, trailing: 12))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             expandDefaultLevels()
         }
         .onChange(of: sidebar.activeSceneIndex) { _, _ in
             expandDefaultLevels()
-        }
-    }
-
-    @ViewBuilder
-    private var statsBlock: some View {
-        if let facts = model?.stats.overlayFacts, !facts.isEmpty {
-            PreviewOverlayFacts(facts: facts, tint: .primary, spread: true)
         }
     }
 

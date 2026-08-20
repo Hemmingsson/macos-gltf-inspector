@@ -211,6 +211,9 @@ targets:
           - PreviewView.swift
           - PreviewScene.swift
           - PreviewChrome.swift
+          - PreviewCycleMenu.swift
+          - PreviewOverlayFacts.swift
+          - AppSettings.swift
       - path: Shared/Convert
         includes:
           - "*.swift"

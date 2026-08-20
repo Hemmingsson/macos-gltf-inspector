@@ -4,7 +4,7 @@ import Testing
 @testable import GLBPreview
 
 /// Timed `EntityLoader.load` for the Quick Look convert path.
-/// Skips unless `GLB_LOAD_BENCH=1`. Writes JSON to `GLB_LOAD_BENCH_OUT`.
+/// Opt in by writing `/tmp/glb-preview-load-bench/config.json` (see `scripts/load-bench.sh`).
 struct LoadTimeBenchTests {
     @Test(.timeLimit(.minutes(15)))
     @MainActor
@@ -12,8 +12,11 @@ struct LoadTimeBenchTests {
         let configURL = URL(fileURLWithPath: "/tmp/glb-preview-load-bench/config.json")
         guard FileManager.default.fileExists(atPath: configURL.path) else { return }
         let config = (try JSONSerialization.jsonObject(with: Data(contentsOf: configURL)) as? [String: Any]) ?? [:]
-        let manifestPath = config["manifest"] as? String
-            ?? "/Users/mattias/dev/glb-preview/docs/superpowers/reviews/load-time-opt/manifest.json"
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let defaultManifest = repoRoot.appendingPathComponent("experiments/manifest.json").path
+        let manifestPath = config["manifest"] as? String ?? defaultManifest
         let outPath = config["out"] as? String ?? "/tmp/glb-preview-load-bench/latest.json"
         let label = config["label"] as? String ?? "unlabeled"
 

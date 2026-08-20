@@ -76,6 +76,23 @@ struct AppLookTests {
         #expect(resolved.path == dest.path)
     }
 
+    @Test func catalogHasExactViewerTitles() {
+        let titles = KhronosEnvironments.allCases.map(\.title)
+        #expect(titles == [
+            "Field",
+            "Studio Neutral",
+            "Colorful Studio",
+        ])
+        #expect(KhronosEnvironments.defaultLook == .studioNeutral)
+        #expect(KhronosEnvironments.defaultLook.title == "Studio Neutral")
+    }
+
+    @Test func studioNeutralHDRIsInBundle() {
+        let url = Bundle.main.url(forResource: "neutral", withExtension: "hdr")
+            ?? Bundle.main.url(forResource: "neutral", withExtension: "hdr", subdirectory: "khronos")
+        #expect(url != nil)
+    }
+
     @Test @MainActor func storeApplyPersistsToInjectedDirectory() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("applook-store-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

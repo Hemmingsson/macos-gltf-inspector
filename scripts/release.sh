@@ -133,6 +133,12 @@ if [[ "$PREFLIGHT" -eq 1 ]]; then
     echo
   fi
 
+  if [[ -x "$SCRIPT_DIR/rewrite-appcast-urls-test.sh" ]]; then
+    echo "rewrite-appcast-urls-test.sh:"
+    "$SCRIPT_DIR/rewrite-appcast-urls-test.sh"
+    echo
+  fi
+
   print_pipeline
   echo
 

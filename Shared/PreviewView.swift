@@ -43,6 +43,7 @@ struct PreviewView: View {
                     entity: model.entity,
                     stats: model.stats,
                     debugModes: model.debugModes,
+                    studioIBLExponent: model.studioIBLExponent,
                     interaction: interaction,
                     isDark: isDark,
                     sidebar: sidebar
