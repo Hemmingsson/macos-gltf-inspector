@@ -83,4 +83,70 @@ struct SidecarPackTests {
         #expect(box.bin.count == bin.count)
     }
 
+    /// Float-position sidecar with no prepare triggers should load the original `.gltf`
+    /// (no temp pack). SHORT positions still pack+prepare so RealityKit can convert.
+    @MainActor
+    @Test func loadsPlainSidecarGLTFWithoutTempPack() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("gltf-skip-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let positions: [Float] = [0, 0, 0, 1, 0, 0, 0, 1, 0]
+        var bin = Data()
+        for value in positions {
+            var bits = value.bitPattern.littleEndian
+            Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+        }
+        try bin.write(to: dir.appendingPathComponent("tri.bin"))
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count, "uri": "tri.bin"]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+            "accessors": [[
+                "bufferView": 0,
+                "componentType": 5126,
+                "count": 3,
+                "type": "VEC3",
+                "max": [1, 1, 0],
+                "min": [0, 0, 0],
+            ]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+            "nodes": [["mesh": 0]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+        ]
+        let gltfURL = dir.appendingPathComponent("tri.gltf")
+        try JSONSerialization.data(withJSONObject: json).write(to: gltfURL)
+
+        #expect(!MetalRoughPrepare.needsConversion(json))
+        #expect(!RealityPrepare.needsPrepare(json))
+
+        let model = try await EntityLoader.load(from: gltfURL, includeAnimations: false)
+        #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)
+
+        let thumb = try await EntityLoader.loadThumbnail(from: gltfURL)
+        #expect(EntityLoader.modelComponentCount(in: thumb.entity) > 0)
+    }
+
+    @MainActor
+    @Test func packsSidecarGLTFWhenRealityPrepareNeeded() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("gltf-pack-load-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let glb = try shortTriangleGLB()
+        let parsed = try GLBBox.parse(glb)
+        try parsed.bin.write(to: dir.appendingPathComponent("tri.bin"))
+        var json = parsed.json
+        var buffers = json["buffers"] as? [[String: Any]] ?? []
+        buffers[0]["uri"] = "tri.bin"
+        json["buffers"] = buffers
+        let gltfURL = dir.appendingPathComponent("tri.gltf")
+        try JSONSerialization.data(withJSONObject: json).write(to: gltfURL)
+
+        #expect(RealityPrepare.needsPrepare(json))
+        let model = try await EntityLoader.load(from: gltfURL, includeAnimations: false)
+        #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)
+    }
+
 }

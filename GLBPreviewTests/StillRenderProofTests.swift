@@ -14,7 +14,7 @@ struct StillRenderProofTests {
         let url = repoRoot.appendingPathComponent("scripts/tiny.glb")
         try #require(FileManager.default.fileExists(atPath: url.path))
 
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
+        let model = try await EntityLoader.loadThumbnail(from: url)
         let assembled = PreviewCamera.makeTurntable(for: model.entity)
         let still = try await StillRenderer(
             root: assembled.pivot,

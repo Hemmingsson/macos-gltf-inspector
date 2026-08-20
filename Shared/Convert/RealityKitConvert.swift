@@ -49,19 +49,26 @@ public class RealityKitConvert {
     @MainActor static func convert(
         scene: GLTFScene,
         asset: GLTFAsset?,
-        document: inout GLTFSessionDocument
+        document: inout GLTFSessionDocument,
+        buildDocument: Bool = true
     ) -> RealityKit.Entity {
         let instance = RealityKitConvert()
-        return instance.convert(scene: scene, asset: asset, document: &document)
+        return instance.convert(
+            scene: scene,
+            asset: asset,
+            document: &document,
+            buildDocument: buildDocument
+        )
     }
 
     @MainActor func convert(
         scene: GLTFScene,
         asset: GLTFAsset? = nil,
-        document: inout GLTFSessionDocument
+        document: inout GLTFSessionDocument,
+        buildDocument: Bool = true
     ) -> RealityKit.Entity {
         sourceAsset = asset
-        if let asset {
+        if buildDocument, let asset {
             document = Self.makeDocument(from: asset)
         }
         let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))

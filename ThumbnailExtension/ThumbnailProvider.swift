@@ -9,10 +9,12 @@ class ThumbnailProvider: QLThumbnailProvider {
         let pixel = max(64, Int(max(request.maximumSize.width, request.maximumSize.height) * scale))
         let url = request.fileURL
 
-        Task { @MainActor in
+        // Detached like Quick Look: prepare/parse off the main actor; RealityKit
+        // convert and StillRenderer hop to MainActor inside EntityLoader / capture.
+        Task.detached {
             do {
-                let model = try await EntityLoader.load(from: url, includeAnimations: false)
-                let assembled = PreviewCamera.makeTurntable(for: model.entity)
+                let model = try await EntityLoader.loadThumbnail(from: url)
+                let assembled = await PreviewCamera.makeTurntable(for: model.entity)
                 let still = try await StillRenderer(
                     root: assembled.pivot,
                     bounds: assembled.bounds,
@@ -25,7 +27,9 @@ class ThumbnailProvider: QLThumbnailProvider {
                 let image = try await still.capture()
                 let fileURL = FileManager.default.temporaryDirectory
                     .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
-                try StillRenderer.writePNG(image, to: fileURL)
+                try await MainActor.run {
+                    try StillRenderer.writePNG(image, to: fileURL)
+                }
                 // Finder / QLThumbnailGenerator reliably consumes imageFileURL.
                 // The CGContext drawing reply works in `qlmanage -x` but fails with
                 // QLThumbnailError 102 for the generator path Finder uses.
