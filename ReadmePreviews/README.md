@@ -1,16 +1,17 @@
-# Mockup preview generator
+# README preview generator
 
-Renders a spinning 3D model into the green (`#00FF00`) viewport area of each macOS
-window mockup in `../macOS_mockups/`, and writes one looping animated **WebP** per window
-to `../exported/` (`app_window.webp`, `finder_details_pane.webp`, `quick_look.webp`).
-Green-less mockups (e.g. `finder_thumbnails.png`) are copied through as a plain still.
+Renders a spinning 3D model into the green (`#00FF00`) viewport of each mockup in
+`mockups/`, and writes one looping animated **WebP** into `../assets/`
+(`app_window.webp`, `finder_details_pane.webp`, `quick_look.webp`).
 
-This folder is **not** part of the app — it's just asset tooling.
+`assets/finder_thumbnails.png` is a static README image and is not generated here.
+
+This folder is not part of the app.
 
 ## Run
 
 ```sh
-cd assets/scripts
+cd ReadmePreviews
 npm i          # installs puppeteer-core, sharp, model-viewer (no browser download)
 npm start
 ```

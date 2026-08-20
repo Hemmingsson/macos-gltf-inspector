@@ -1,7 +1,7 @@
 // Render a spinning 3D model into each macOS window mockup's green (#00FF00) area
-// and write one looping animated WebP per window into ../exported/.
+// and write one looping animated WebP per window into ../assets/.
 //
-//   cd assets/scripts && npm i && npm start
+//   cd ReadmePreviews && npm i && npm start
 //
 // Renderer: headless Google Chrome (already installed) driving <model-viewer>.
 // Compositing + WebP: sharp. Nothing here touches the app codebase.
@@ -13,9 +13,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const HERE = import.meta.dirname;
-const ASSETS = path.resolve(HERE, '..');                 // .../assets
-const MOCKUPS = path.join(ASSETS, 'macOS_mockups');
-const EXPORT_DIR = path.join(ASSETS, 'exported');        // all generated previews land here
+const MOCKUPS = path.join(HERE, 'mockups');
+const EXPORT_DIR = path.resolve(HERE, '../assets');
 const MODELS_DIR = path.join(HERE, 'models');
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 // model-viewer bundle, injected into every render page — read once
@@ -38,12 +37,6 @@ const JOBS = [
   { mockup: 'app_window.png',          model: 'DamagedHelmet', out: 'app_window.webp' },
   { mockup: 'finder_details_pane.png', model: 'BoomBox',       out: 'finder_details_pane.webp' },
   { mockup: 'quick_look.png',          model: 'Lantern',       out: 'quick_look.webp' },
-];
-
-// Mockups with no green area — copied through as a plain still (represents Finder icon
-// thumbnails, which don't animate). Just downscaled + re-encoded to match the others.
-const STILLS = [
-  { mockup: 'finder_thumbnails.png', out: 'finder_thumbnails.webp' },
 ];
 
 // print a file's size in KB (used by the export log lines)
@@ -213,14 +206,6 @@ async function build(job, browser) {
   console.log(`  → ${path.relative(process.cwd(), outFile)}  (${outW}×${outH}, ${await kb(outFile)} KB)\n`);
 }
 
-// downscale a green-less mockup straight to a still WebP
-async function buildStill(job) {
-  const outFile = path.join(EXPORT_DIR, job.out);
-  await sharp(path.join(MOCKUPS, job.mockup)).resize({ width: MAX_WIDTH })
-    .webp({ quality: WEBP_QUALITY, effort: 5 }).toFile(outFile);
-  console.log(`${job.mockup}  (still)\n  → ${path.relative(process.cwd(), outFile)}  (${await kb(outFile)} KB)\n`);
-}
-
 // ---- main --------------------------------------------------------------
 if (!existsSync(CHROME)) {
   console.error(`Google Chrome not found at:\n  ${CHROME}\nInstall Chrome or edit CHROME in this file.`);
@@ -236,5 +221,4 @@ try {
 } finally {
   await browser.close();
 }
-for (const job of STILLS) await buildStill(job);
 console.log(`all previews written to ${path.relative(process.cwd(), EXPORT_DIR)}/`);
