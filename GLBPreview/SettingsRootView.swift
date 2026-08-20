@@ -5,7 +5,6 @@ import UniformTypeIdentifiers
 enum SettingsPane: String, CaseIterable, Identifiable {
     case general
     case preview
-    case environment
     case about
 
     var id: Self { self }
@@ -14,7 +13,6 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general: "General"
         case .preview: "Preview"
-        case .environment: "Environment"
         case .about: "About"
         }
     }
@@ -23,7 +21,6 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .preview: "cube.transparent"
-        case .environment: "sun.max"
         case .about: "info.circle"
         }
     }
@@ -76,8 +73,6 @@ struct SettingsRootView: View {
                 GeneralSettingsPane()
             case .preview:
                 PreviewSettingsPane()
-            case .environment:
-                EnvironmentSettingsPane()
             case .about:
                 AboutSettingsPane()
             }
@@ -98,7 +93,7 @@ extension View {
 
 private struct GeneralSettingsPane: View {
     @AppStorage(SettingsKeys.appearance) private var appearance = SettingsAppearance.system.rawValue
-    @AppStorage(SettingsKeys.quitWhenLastWindowCloses) private var quitWhenLastWindowCloses = true
+    @State private var isDefaultApplication = false
     @State private var defaultAppName: String?
     @State private var defaultAppError: String?
 
@@ -117,14 +112,10 @@ private struct GeneralSettingsPane: View {
             }
 
             Section {
-                Toggle("Quit when last window closes", isOn: $quitWhenLastWindowCloses)
-                    .toggleStyle(.switch)
-            }
-
-            Section {
                 Button("Set as Default Application") {
                     setAsDefaultApplication()
                 }
+                .disabled(isDefaultApplication)
                 if let defaultAppName {
                     Text("Current default: \(defaultAppName)")
                         .foregroundStyle(.secondary)
@@ -147,7 +138,7 @@ private struct GeneralSettingsPane: View {
         .navigationTitle(SettingsPane.general.title)
         .onAppear {
             SettingsAppearance.apply(appearance)
-            refreshDefaultAppName()
+            refreshDefaultApp()
         }
     }
 
@@ -155,12 +146,15 @@ private struct GeneralSettingsPane: View {
         [UTType("org.khronos.glb"), UTType("org.khronos.gltf")].compactMap { $0 }
     }
 
-    private func refreshDefaultAppName() {
-        let names = glTFTypes.compactMap { type -> String? in
-            guard let url = NSWorkspace.shared.urlForApplication(toOpen: type) else { return nil }
-            return FileManager.default.displayName(atPath: url.path)
+    private func refreshDefaultApp() {
+        let appURL = Bundle.main.bundleURL.resolvingSymlinksInPath()
+        let handlers = glTFTypes.map { type -> URL? in
+            NSWorkspace.shared.urlForApplication(toOpen: type)?.resolvingSymlinksInPath()
         }
-        defaultAppName = names.first
+        isDefaultApplication = !handlers.isEmpty && handlers.allSatisfy { $0 == appURL }
+        defaultAppName = handlers.compactMap { url in
+            url.map { FileManager.default.displayName(atPath: $0.path) }
+        }.first
     }
 
     private func setAsDefaultApplication() {
@@ -172,7 +166,7 @@ private struct GeneralSettingsPane: View {
                 for type in types {
                     try await NSWorkspace.shared.setDefaultApplication(at: appURL, toOpen: type)
                 }
-                await MainActor.run { refreshDefaultAppName() }
+                await MainActor.run { refreshDefaultApp() }
             } catch {
                 await MainActor.run {
                     defaultAppError = error.localizedDescription
@@ -185,10 +179,9 @@ private struct GeneralSettingsPane: View {
 private struct PreviewSettingsPane: View {
     @AppStorage(SettingsKeys.autoRotate) private var autoRotate = true
     @AppStorage(SettingsKeys.background) private var background = PreviewBackground.window.rawValue
-    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = false
-    @AppStorage(SettingsKeys.showStats) private var showStats = true
     @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
-    @AppStorage(SettingsKeys.defaultCamera) private var defaultCamera = PreviewDefaultCamera.fit.rawValue
+    private let store = AppLookStore.shared
+    @State private var importError: String?
 
     var body: some View {
         Form {
@@ -197,16 +190,6 @@ private struct PreviewSettingsPane: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Auto-rotate")
                         Text("Orbit the model when using the Fit camera. Reduced Motion turns this off.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .toggleStyle(.switch)
-
-                Toggle(isOn: $playOnOpen) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Play animations on open")
-                        Text("Starts the first clip when the file has animations.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -225,50 +208,27 @@ private struct PreviewSettingsPane: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Picker("Default camera", selection: $defaultCamera) {
-                    ForEach(PreviewDefaultCamera.allCases) { option in
-                        Text(option.title).tag(option.rawValue)
-                    }
-                }
-                .pickerStyle(.menu)
-            }
-
-            Section("Quick Look") {
-                Toggle("Show file info", isOn: $showStats)
-                    .toggleStyle(.switch)
                 Toggle("Show toolbar on open", isOn: $showToolbar)
                     .toggleStyle(.switch)
             }
-        }
-        .settingsFormChrome()
-        .navigationTitle(SettingsPane.preview.title)
-    }
-}
 
-private struct EnvironmentSettingsPane: View {
-    private let store = AppLookStore.shared
-    @State private var importError: String?
-
-    var body: some View {
-        Form {
             Section {
                 Toggle("Use environment map", isOn: useEnvironmentMapBinding)
                     .toggleStyle(.switch)
 
-                Picker("Environment", selection: catalogBinding) {
-                    ForEach(KhronosEnvironments.allCases, id: \.rawValue) { option in
-                        Text(option.title).tag(option.rawValue)
+                EnvironmentCatalogPicker(
+                    catalogRaw: store.look.catalogRaw,
+                    customFileName: store.look.customFileName,
+                    onSelectCatalog: { raw in
+                        var next = store.look
+                        next.catalogRaw = raw
+                        next.customFileName = nil
+                        store.apply(next)
                     }
-                }
-                .pickerStyle(.menu)
+                )
 
                 Button("Add your own…") {
                     addCustomHDR()
-                }
-
-                if let name = store.look.customFileName {
-                    Text("Custom: \(name)")
-                        .foregroundStyle(.secondary)
                 }
             } footer: {
                 Group {
@@ -285,7 +245,7 @@ private struct EnvironmentSettingsPane: View {
             }
         }
         .settingsFormChrome()
-        .navigationTitle(SettingsPane.environment.title)
+        .navigationTitle(SettingsPane.preview.title)
         .onAppear {
             store.reloadFromDisk()
         }
@@ -297,18 +257,6 @@ private struct EnvironmentSettingsPane: View {
             set: { value in
                 var next = store.look
                 next.useEnvironmentMap = value
-                store.apply(next)
-            }
-        )
-    }
-
-    private var catalogBinding: Binding<String> {
-        Binding(
-            get: { store.look.catalogRaw },
-            set: { value in
-                var next = store.look
-                next.catalogRaw = value
-                next.customFileName = nil
                 store.apply(next)
             }
         )
@@ -366,6 +314,96 @@ private struct EnvironmentSettingsPane: View {
         }
         try FileManager.default.copyItem(at: source, to: dest)
         return (dest, fileName)
+    }
+}
+
+/// Horizontal strip of environment previews; selected tile gets an accent ring.
+private struct EnvironmentCatalogPicker: View {
+    var catalogRaw: String
+    var customFileName: String?
+    var onSelectCatalog: (String) -> Void
+
+    private var customIsSelected: Bool {
+        !(customFileName ?? "").isEmpty
+    }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 12) {
+                ForEach(KhronosEnvironments.allCases, id: \.rawValue) { option in
+                    EnvironmentThumbnailButton(
+                        title: option.title,
+                        url: PreviewLighting.catalogURL(option),
+                        isSelected: !customIsSelected && catalogRaw == option.rawValue
+                    ) {
+                        onSelectCatalog(option.rawValue)
+                    }
+                }
+                if let name = customFileName, !name.isEmpty {
+                    EnvironmentThumbnailButton(
+                        title: name,
+                        url: AppLook.iblDirectory(in: AppLook.supportDirectory()).appendingPathComponent(name),
+                        isSelected: true
+                    ) {}
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+private struct EnvironmentThumbnailButton: View {
+    let title: String
+    let url: URL?
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var image: NSImage?
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.secondary.opacity(0.12))
+                    if let image {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    }
+                }
+                .frame(width: 112, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(
+                            isSelected ? Color.accentColor : Color.secondary.opacity(0.28),
+                            lineWidth: isSelected ? 2.5 : 1
+                        )
+                }
+
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(isSelected ? .semibold : .regular)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 112)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .task(id: url?.path) {
+            image = await loadThumbnail()
+        }
+    }
+
+    private func loadThumbnail() async -> NSImage? {
+        guard let url else { return nil }
+        return await Task.detached(priority: .utility) {
+            guard let cgImage = PreviewLighting.thumbnailImage(from: url) else { return nil }
+            return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+        }.value
     }
 }
 

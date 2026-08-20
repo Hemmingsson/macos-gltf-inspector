@@ -43,7 +43,10 @@ enum PreviewLighting {
         look: AppLook = .current,
         intensityExponent: Float
     ) {
-        for entity in content.entities where lookEntityNames.contains(entity.name) {
+        // Snapshot first — removing during `for entity in content.entities` traps in
+        // Entity.ChildCollection (EXC_BREAKPOINT) when Settings changes the look.
+        let stale = content.entities.filter { lookEntityNames.contains($0.name) }
+        for entity in stale {
             content.remove(entity)
         }
         if look.useEnvironmentMap {
@@ -166,6 +169,18 @@ enum PreviewLighting {
             kCGImageSourceShouldCache: true,
         ]
         return CGImageSourceCreateImageAtIndex(source, 0, options as CFDictionary)
+    }
+
+    /// Small SDR preview for Settings (not for IBL).
+    static func thumbnailImage(from url: URL, maxPixelSize: Int = 240) -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldAllowFloat: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
     @MainActor

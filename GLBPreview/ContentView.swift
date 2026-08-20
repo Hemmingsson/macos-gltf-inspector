@@ -103,7 +103,6 @@ struct ContentView: View {
             detailColumn
         }
         .navigationSplitViewStyle(.balanced)
-        .onAppear { applyDefaultCamera() }
     }
 
     @ViewBuilder
@@ -163,15 +162,6 @@ struct ContentView: View {
         return nil
     }
 
-    private func applyDefaultCamera() {
-        guard let sidebar, !sidebar.document.cameras.isEmpty else { return }
-        let raw = UserDefaults.standard.string(forKey: SettingsKeys.defaultCamera)
-            ?? PreviewDefaultCamera.fit.rawValue
-        if raw == PreviewDefaultCamera.firstFile.rawValue {
-            sidebar.selectedCameraIndex = 0
-            sidebar.overlayRevision += 1
-        }
-    }
 
     private func loadDocument(_ url: URL) {
         guard GLBDocumentOpening.isGLBFile(url) else { return }

@@ -18,10 +18,7 @@ final class GLBAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        if UserDefaults.standard.object(forKey: SettingsKeys.quitWhenLastWindowCloses) == nil {
-            return true
-        }
-        return UserDefaults.standard.bool(forKey: SettingsKeys.quitWhenLastWindowCloses)
+        true
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -44,7 +41,6 @@ struct GLBPreviewApp: App {
     init() {
         UserDefaults.standard.register(defaults: [
             SettingsKeys.background: PreviewBackground.window.rawValue,
-            SettingsKeys.playOnOpen: false,
             "NSQuitAlwaysKeepsWindows": false,
             // macOS 26 Liquid Glass defaults to a floating inset sidebar; Finder uses tiled full-height.
             "NSSplitViewItemSidebarDefaultsToFloatingAppearance": false,

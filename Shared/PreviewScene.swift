@@ -18,8 +18,6 @@ struct PreviewScene: View {
     var sidebar: (any PreviewOverlay)?
 
     @AppStorage(SettingsKeys.autoRotate) private var settingsAutoRotate = true
-    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = false
-    @AppStorage(SettingsKeys.showStats) private var showStats = true
     @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
     @AppStorage(SettingsKeys.background) private var backgroundRaw = PreviewBackground.window.rawValue
 
@@ -126,8 +124,8 @@ struct PreviewScene: View {
                 clips = usable
                 if !usable.isEmpty {
                     clipIndex = 0
-                    isPlaying = playOnOpen
-                    startClip(at: 0, playing: playOnOpen)
+                    isPlaying = false
+                    startClip(at: 0, playing: false)
                 }
             } update: { content in
                 if let pending = pendingReady, pending != appliedLook,
@@ -248,7 +246,7 @@ struct PreviewScene: View {
                 .transition(.opacity)
             }
 
-            if !isHost, chromeVisible, showStats, let facts = stats?.overlayFacts, !facts.isEmpty {
+            if !isHost, chromeVisible, let facts = stats?.overlayFacts, !facts.isEmpty {
                 PreviewOverlayFacts(facts: facts, tint: chromeTint(active: true))
                     .allowsHitTesting(false)
                     .padding(.leading, 14)

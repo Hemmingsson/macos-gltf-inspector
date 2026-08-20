@@ -3,12 +3,8 @@ import SwiftUI
 enum SettingsKeys {
     static let autoRotate = "settings.preview.autoRotate"
     static let background = "settings.preview.background"
-    static let playOnOpen = "settings.preview.playOnOpen"
-    static let showStats = "settings.preview.showStats"
     static let showToolbar = "settings.preview.showToolbar"
-    static let defaultCamera = "settings.preview.defaultCamera"
     static let appearance = "settings.general.appearance"
-    static let quitWhenLastWindowCloses = "settings.general.quitWhenLastWindowCloses"
 }
 
 enum PreviewBackground: String, CaseIterable, Identifiable {
@@ -20,7 +16,7 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .window: "Window"
+        case .window: "None"
         case .white: "White"
         case .dark: "Dark"
         }
@@ -69,19 +65,5 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
             ? .white
             : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
         return active ? base : base.opacity(inactiveIconOpacity)
-    }
-}
-
-enum PreviewDefaultCamera: String, CaseIterable, Identifiable {
-    case fit
-    case firstFile
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .fit: "Fit"
-        case .firstFile: "First file camera"
-        }
     }
 }
