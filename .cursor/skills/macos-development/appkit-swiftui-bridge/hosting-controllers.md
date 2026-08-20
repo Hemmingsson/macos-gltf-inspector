@@ -31,7 +31,7 @@ final class ClickThroughHostingView<Content: View>: NSHostingView<Content> {
 }
 ```
 
-Menu-bar popovers also need `NSApp.activate` (`../macos-capabilities/menubar.md`).
+Menu-bar popovers also need `NSApp.activate` (menu-bar product notes (n/a for this app)).
 
 **Scroll:** One scroll owner. Host inside `NSScrollView` → SwiftUI may eat the wheel; forward:
 

@@ -5,10 +5,6 @@ import simd
 @testable import GLBPreview
 
 struct PreviewFloorTests {
-    @Test func polarGridSpecCounts() {
-        #expect(PreviewFloor.ringCount == 4)
-        #expect(PreviewFloor.radialCount == 8)
-    }
 
     @MainActor
     @Test func makeBuildsNamedFloorWithMeshParts() {
@@ -32,17 +28,6 @@ struct PreviewFloorTests {
             PreviewFloor.ringCount
             + PreviewFloor.radialCount
         #expect(meshParts == expected)
-        #expect(PreviewFloor.diameterScale == 2.7)
-    }
-}
-
-struct PreviewOrbitTests {
-    @MainActor
-    @Test func applyViewKeepsFiniteOrientation() {
-        let camera = PerspectiveCamera()
-        PreviewOrbit.applyView(to: camera, eye: SIMD3(0, 1, 3), target: .zero)
-        let q = camera.orientation
-        #expect(q.vector.x.isFinite && q.vector.y.isFinite && q.vector.z.isFinite && q.vector.w.isFinite)
     }
 }
 

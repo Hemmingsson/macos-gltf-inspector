@@ -134,36 +134,35 @@ class RealityKitResourceContext {
             return existingMatch
         }
 
-        return LoadPhaseTimer.measure(.texture) {
         if gltfImage.inferMediaType() == GLTFMediaTypeKTX2 {
-                let mtlTexture = gltfImage.newTexture(with: device)
-                guard let sourceTexture = mtlTexture else { return nil }
-                do {
-                    let lowLevelDesc = LowLevelTexture.Descriptor(textureType: sourceTexture.textureType,
-                                                                  pixelFormat: sourceTexture.pixelFormat,
-                                                                  width: sourceTexture.width,
-                                                                  height: sourceTexture.height,
-                                                                  depth: sourceTexture.depth,
-                                                                  mipmapLevelCount: sourceTexture.mipmapLevelCount,
-                                                                  arrayLength: sourceTexture.arrayLength,
-                                                                  textureUsage: [.shaderRead],
-                                                                  swizzle: channels.textureSwizzle)
-                    let lowLevelTexture = try LowLevelTexture(descriptor: lowLevelDesc)
-                    if let commandBuffer = commandQueue.makeCommandBuffer() {
-                        let targetTexture = lowLevelTexture.replace(using: commandBuffer)
-                        if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
-                            blitEncoder.copy(from: sourceTexture, to: targetTexture)
-                            blitEncoder.endEncoding()
-                        }
-                        commandBuffer.commit()
+            let mtlTexture = gltfImage.newTexture(with: device)
+            guard let sourceTexture = mtlTexture else { return nil }
+            do {
+                let lowLevelDesc = LowLevelTexture.Descriptor(textureType: sourceTexture.textureType,
+                                                              pixelFormat: sourceTexture.pixelFormat,
+                                                              width: sourceTexture.width,
+                                                              height: sourceTexture.height,
+                                                              depth: sourceTexture.depth,
+                                                              mipmapLevelCount: sourceTexture.mipmapLevelCount,
+                                                              arrayLength: sourceTexture.arrayLength,
+                                                              textureUsage: [.shaderRead],
+                                                              swizzle: channels.textureSwizzle)
+                let lowLevelTexture = try LowLevelTexture(descriptor: lowLevelDesc)
+                if let commandBuffer = commandQueue.makeCommandBuffer() {
+                    let targetTexture = lowLevelTexture.replace(using: commandBuffer)
+                    if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
+                        blitEncoder.copy(from: sourceTexture, to: targetTexture)
+                        blitEncoder.endEncoding()
                     }
-                    let resource = try TextureResource(from: lowLevelTexture)
-                    storeTextureResource(resource, for: gltfImage, channels: channels)
-                    return resource
-                } catch {
-                    AppLog.error(AppLog.load, "KTX2 texture convert failed: \(error)")
-                    return nil
+                    commandBuffer.commit()
                 }
+                let resource = try TextureResource(from: lowLevelTexture)
+                storeTextureResource(resource, for: gltfImage, channels: channels)
+                return resource
+            } catch {
+                AppLog.error(AppLog.load, "KTX2 texture convert failed: \(error)")
+                return nil
+            }
         }
 
         guard let originalImage = cachedCGImage(for: gltfImage) else { return nil }
@@ -175,7 +174,7 @@ class RealityKitResourceContext {
         guard let resource = try? TextureResource(image: sourceImage, withName: nil, options: options) else { return nil }
         storeTextureResource(resource, for: gltfImage, channels: channels)
         return resource
-        }
+
     }
 
     private static func gltfImage(for texture: GLTFTexture) -> GLTFImage? {

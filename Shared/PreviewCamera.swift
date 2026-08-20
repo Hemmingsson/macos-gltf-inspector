@@ -58,7 +58,7 @@ enum PreviewCamera {
             aspect: aspect
         )
         let eye = fitted.position(relativeTo: nil)
-        PreviewOrbit.applyView(to: camera, eye: eye, target: center)
+        applyView(to: camera, eye: eye, target: center)
         if var perspective = camera.components[PerspectiveCameraComponent.self] {
             applyFitClip(to: &perspective, eye: eye, target: center)
             camera.components.set(perspective)
@@ -79,7 +79,7 @@ enum PreviewCamera {
         func walk(_ node: Entity) {
             // Floor / selection helpers carry ModelComponents; skip their subtrees
             // so Fit framing stays on the glTF mesh only.
-            if PreviewFloor.isHelperName(node.name) { return }
+            if node.name == "previewFloor" || node.name == "selectionBox" { return }
             if node.components[ModelComponent.self] != nil {
                 let box = node.visualBounds(recursive: false, relativeTo: reference)
                 if !box.isEmpty, allFinite(box.min), allFinite(box.max) {
@@ -241,7 +241,7 @@ enum PreviewCamera {
         camera.camera.fieldOfViewInDegrees = fieldOfViewDegrees
         camera.camera.fieldOfViewOrientation = .vertical
         // Avoid `Entity.look(at:from:)` — traps when the view axis ‖ world +Y.
-        PreviewOrbit.applyView(to: camera, eye: position, target: center)
+        applyView(to: camera, eye: position, target: center)
         applyFitClip(to: &camera.camera, eye: position, target: center)
         return camera
     }
@@ -297,5 +297,35 @@ enum PreviewCamera {
 
     private static func allFinite(_ v: SIMD3<Float>) -> Bool {
         v.x.isFinite && v.y.isFinite && v.z.isFinite
+    }
+
+    /// Pose `camera` at `eye` looking at `target` with a stable Y-up basis.
+    /// Interactive orbit uses RealityKit `CameraControls.orbit` — not this helper.
+    @MainActor
+    static func applyView(to camera: Entity, eye: SIMD3<Float>, target: SIMD3<Float>) {
+        let offset = eye - target
+        let radius = length(offset)
+        guard radius > 1e-4,
+              eye.x.isFinite, eye.y.isFinite, eye.z.isFinite,
+              target.x.isFinite, target.y.isFinite, target.z.isFinite
+        else { return }
+
+        let polar = acos(min(max(offset.y / radius, -1), 1))
+        let yaw = atan2(offset.x, offset.z)
+        let sinP = sin(polar)
+        let cosP = cos(polar)
+        let sinY = sin(yaw)
+        let cosY = cos(yaw)
+        let look = SIMD3<Float>(-sinP * sinY, -cosP, -sinP * cosY)
+        let right = SIMD3<Float>(cosY, 0, -sinY)
+        var up = cross(right, look)
+        let upLength = length(up)
+        if upLength > 1e-5 {
+            up /= upLength
+        } else {
+            up = SIMD3(0, 0, 1)
+        }
+        camera.setPosition(eye, relativeTo: nil)
+        camera.orientation = simd_quatf(simd_float3x3(columns: (right, up, -look)))
     }
 }

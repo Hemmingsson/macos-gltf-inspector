@@ -9,7 +9,7 @@
 - [Windows and toolbars](#windows-and-toolbars)
 - [Review checklist](#review-checklist)
 
-AppKit modernization **review**. Representable how-to: `../appkit-swiftui-bridge/`. Glass API: `swiftui-expert-skill/references/liquid-glass.md`. Menu-bar product: `../macos-capabilities/menubar.md`.
+AppKit modernization **review**. Representable how-to: `../appkit-swiftui-bridge/`. Glass API: `swiftui-expert-skill/references/liquid-glass.md`. Menu-bar product: menu-bar product notes (n/a for this app).
 
 ## When AppKit is justified
 

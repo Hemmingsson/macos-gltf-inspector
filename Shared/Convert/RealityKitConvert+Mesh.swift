@@ -38,7 +38,6 @@ extension RealityKitConvert {
         context: RealityKitResourceContext
     ) throws -> RealityKit.ModelComponent?
     {
-        return try LoadPhaseTimer.measure(.decode) {
         if skeleton == nil {
             do {
                 if let packed = try convertTightFloatMesh(gltfMesh, context: context) {
@@ -92,7 +91,6 @@ extension RealityKitConvert {
         let modelComponent = ModelComponent(mesh: meshResource, materials: materials)
 
         return modelComponent
-        }
     }
 
     /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts and

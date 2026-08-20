@@ -2,6 +2,15 @@ import AppKit
 import Sparkle
 import SwiftUI
 
+@MainActor
+struct FocusedPreviewCommands {
+    let fit: () -> Void
+}
+
+extension FocusedValues {
+    @Entry var previewCommands: FocusedPreviewCommands?
+}
+
 private let staleWelcomeFrameAutosaveKey = "NSWindow Frame welcome-AppWindow-1"
 
 final class GLBAppDelegate: NSObject, NSApplicationDelegate {

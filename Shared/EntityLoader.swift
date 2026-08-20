@@ -123,7 +123,7 @@ enum EntityLoader {
         // Parse the glTF header once for prepare gates, then keep the JSON that
         // actually gets converted so overlay stats match RealityKit.
         let isGLB = url.pathExtension.lowercased() == "glb"
-        let (fileSize, loadURL, assetDirectory, statsJSON) = try LoadPhaseTimer.measure(.fileRead) {
+        let (fileSize, loadURL, assetDirectory, statsJSON) = try {
             let fileSize = fileSizeBytes(of: url)
             if isGLB {
                 let sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
@@ -144,7 +144,7 @@ enum EntityLoader {
                     prepared.json
                 )
             }
-        }
+        }()
         // Prepared/packed GLBs are throwaway temp files; the retry path below only ever
         // reopens the original `url`, so the temp is safe to delete once loading finishes.
         defer {
@@ -269,12 +269,10 @@ enum EntityLoader {
         name: String,
         sceneIndex: Int?
     ) async throws -> (Entity, GLTFSessionDocument) {
-        let asset = try LoadPhaseTimer.measure(.parse) {
-            try GLTFAsset(
-                url: loadURL,
-                options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
-            )
-        }
+        let asset = try GLTFAsset(
+            url: loadURL,
+            options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
+        )
         // Drop 1-keyframe "Default Take" clips. Convert also rejects a zero stride,
         // but empty takes are still useless to play.
         if includeAnimations {

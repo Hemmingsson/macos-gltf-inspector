@@ -2,7 +2,7 @@
 
 # macOS Scenes
 
-Menu-bar **product** architecture (LSUIElement, activation, sandbox): `macos-development/macos-capabilities/menubar.md`. This file = **scene API**.
+Menu-bar **product** architecture (LSUIElement, activation, sandbox): macOS menu-bar product docs (removed; not used by this app). This file = **scene API**.
 
 **Contents**
 - [Lookup](#lookup)
@@ -34,7 +34,7 @@ Settings {
 
 macOS 14+: `SettingsLink`; `@Environment(\.openSettings)`.
 
-`.menu` = dropdown; `.window` = panel. `isInserted:` + `@AppStorage` to hide — does **not** quit. Terminate via `applicationShouldTerminateAfterLastWindowClosed` and/or explicit Quit. Agent apps: capabilities `menubar.md`.
+`.menu` = dropdown; `.window` = panel. `isInserted:` + `@AppStorage` to hide — does **not** quit. Terminate via `applicationShouldTerminateAfterLastWindowClosed` and/or explicit Quit. Agent apps: menu-bar product notes (n/a).
 
 ## Windows
 

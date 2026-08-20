@@ -26,7 +26,6 @@ Router for this repo’s macOS work. Read a module’s `MODULE.md`, then only th
 | Sandbox, entitlements, QL/thumbnail/XPC, menu bar, login items | `macos-capabilities/` |
 | NSViewRepresentable, hosting, bridge state | `appkit-swiftui-bridge/` |
 | UI review, Tahoe HIG, AppKit modernization (design) | `ui-review-tahoe/` |
-| Plan or audit an app | `app-planner/` |
 
 `MenuBarExtra` scene API → `swiftui-expert-skill`. Entitlements → `macos-capabilities/`.
 

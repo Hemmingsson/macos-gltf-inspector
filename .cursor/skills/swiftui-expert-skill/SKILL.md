@@ -19,7 +19,6 @@ SwiftUI implementation. Sandbox, HIG, AppKit bridge, architecture: `macos-develo
 - Prefer `@Observable`. Large lists: `List`/`Table`; profile first → else `macos-development/appkit-swiftui-bridge`.
 - Gate version APIs with `#available` + fallback.
 - API/deprecation → `references/latest-apis.md`. Refresh → `references/updating-apis.md`.
-- Traces → `references/trace-recording.md`, `references/trace-analysis.md`.
 - `@State`/`@FocusState` are `private`. Never `@State` passed values. `ForEach` ids stable (never `.indices`). `.animation` always has `value:`.
 
 ## vs macos-development
@@ -46,7 +45,6 @@ SwiftUI implementation. Sandbox, HIG, AppKit bridge, architecture: `macos-develo
 | Focus | `focus-patterns.md` |
 | Animation | `animation.md` |
 | Accessibility | `accessibility-patterns.md` |
-| Charts | `charts.md` |
 | Images | `image-optimization.md` |
 | Liquid Glass | `liquid-glass.md` |
 | macOS scenes / windows / views | `macos-scenes.md` / `macos-window-styling.md` / `macos-views.md` |
@@ -54,4 +52,3 @@ SwiftUI implementation. Sandbox, HIG, AppKit bridge, architecture: `macos-develo
 | Latest APIs / soft deprecation | `latest-apis.md` / `soft-deprecation.md` |
 | Refresh latest-apis | `updating-apis.md` (+ `scan-manifest.md`) |
 | Previews | `previews.md` |
-| Traces | `trace-analysis.md` / `trace-recording.md` |

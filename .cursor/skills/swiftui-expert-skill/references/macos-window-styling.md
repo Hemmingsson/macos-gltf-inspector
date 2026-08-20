@@ -2,7 +2,7 @@
 
 # macOS Window and Toolbar Styling
 
-`MenuBarExtra` styles = scene API here. LSUIElement/agent: `macos-development/macos-capabilities/menubar.md`. Glass 26+: `liquid-glass.md`.
+`MenuBarExtra` styles = scene API here. LSUIElement/agent: macOS menu-bar product docs (removed; not used by this app). Glass 26+: `liquid-glass.md`.
 
 **Contents**
 - [Lookup](#lookup)

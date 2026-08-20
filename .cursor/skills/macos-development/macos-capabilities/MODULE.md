@@ -8,8 +8,6 @@ Sandbox, extensions (incl. Quick Look / thumbnails), menu-bar product architectu
 |------|--------|
 | File access, bookmarks, entitlements XML | `sandboxing.md` |
 | Share, Finder Sync, Quick Look, thumbnails, XPC | `extensions.md` |
-| LSUIElement, activation policy, status-item product | `menubar.md` |
-| Login items, agents, background work | `background.md` |
 
 ## Deferrals
 

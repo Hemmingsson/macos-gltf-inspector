@@ -213,6 +213,7 @@ targets:
           - PreviewChromeBar.swift
           - PreviewCycleMenu.swift
           - PreviewOverlayFacts.swift
+          - PreviewFloor.swift
           - AppSettings.swift
       - path: Shared/Convert
         includes:

@@ -74,4 +74,4 @@ Granularity traps (computed props, struct fields, collections): `state-managemen
 
 `#if DEBUG let _ = Self._logChanges() #endif` (iOS 17+, `com.apple.SwiftUI` / “Changed Body Properties”). `_printChanges()` → stdout. `@self` = view value changed; `@identity` = persistent data recycled. Remove before ship.
 
-Instruments: `trace-recording.md` / `trace-analysis.md`.
+Instruments: Instruments (not bundled in this skill tree).

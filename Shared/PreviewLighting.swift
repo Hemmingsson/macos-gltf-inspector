@@ -138,7 +138,7 @@ enum PreviewLighting {
             light.shadow = DirectionalLightComponent.Shadow()
         }
         // Same safe basis as the orbit camera — avoid Entity.look(at:from:).
-        PreviewOrbit.applyView(to: light, eye: from, target: .zero)
+        PreviewCamera.applyView(to: light, eye: from, target: .zero)
         return light
     }
 
