@@ -7,7 +7,11 @@ extension RealityKitConvert {
                             context: RealityKitResourceContext) throws -> any RealityKit.Material
     {
         guard let gltfMaterial = gltfMaterial else { return context.defaultMaterial }
+        if let cached = context.cachedConvertedMaterial(for: gltfMaterial) {
+            return cached
+        }
 
+        let converted: any RealityKit.Material
         if gltfMaterial.isUnlit {
             var material = UnlitMaterial()
             if let metallicRoughness = gltfMaterial.metallicRoughness {
@@ -17,7 +21,7 @@ extension RealityKitConvert {
                 }
             }
             applyBlendMode(toUnlit: &material, gltfMaterial: gltfMaterial, context: context)
-            return material
+            converted = material
         } else {
             var material = PhysicallyBasedMaterial()
             if let metallicRoughness = gltfMaterial.metallicRoughness {
@@ -101,8 +105,10 @@ extension RealityKitConvert {
                 let opacity = min(1, max(0.08, 1 - transmission.transmissionFactor))
                 material.blending = .transparent(opacity: .init(scale: opacity))
             }
-            return material
+            converted = material
         }
+        context.storeConvertedMaterial(converted, for: gltfMaterial)
+        return converted
     }
 
     @MainActor

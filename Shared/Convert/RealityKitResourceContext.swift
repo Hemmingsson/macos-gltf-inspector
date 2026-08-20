@@ -83,9 +83,18 @@ class RealityKitResourceContext {
     let commandQueue: MTLCommandQueue
     private var cgImagesForImageIdentifiers = [UUID : CGImage]()
     private var textureResourcesForImageIdentifiers = [UUID : [(RealityKit.TextureResource, ColorMask)]]()
+    private var convertedMaterialsForIdentifiers = [ObjectIdentifier: any Material]()
 
     var defaultMaterial: any Material {
         return RealityKit.SimpleMaterial(color: .init(white: 0.5, alpha: 1.0), isMetallic: false)
+    }
+
+    @MainActor func cachedConvertedMaterial(for gltfMaterial: GLTFMaterial) -> (any Material)? {
+        convertedMaterialsForIdentifiers[ObjectIdentifier(gltfMaterial)]
+    }
+
+    @MainActor func storeConvertedMaterial(_ material: any Material, for gltfMaterial: GLTFMaterial) {
+        convertedMaterialsForIdentifiers[ObjectIdentifier(gltfMaterial)] = material
     }
 
     init() {
