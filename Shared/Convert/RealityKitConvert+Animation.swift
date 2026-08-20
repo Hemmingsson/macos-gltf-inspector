@@ -13,9 +13,9 @@ extension RealityKitConvert {
         struct AnimatedJointData {
             var jointNames = [String]()
             var jointTransformSamplers = [TransformSampler]()
-            var minTime: Float = 0
-            var maxTime: Float = 0
-            var sampleInterval: Float = 1 / 30.0
+            var minTime: Float = .infinity
+            var maxTime: Float = -.infinity
+            var sampleInterval: Float = AnimationSampling.defaultInterval
         }
         var jointAnimation = AnimatedJointData()
         var animations = [AnimationDefinition]()
@@ -52,25 +52,39 @@ extension RealityKitConvert {
                 jointAnimation.jointTransformSamplers.append(transformSampler)
                 jointAnimation.minTime = min(jointAnimation.minTime, transformSampler.startTime)
                 jointAnimation.maxTime = max(jointAnimation.maxTime, transformSampler.endTime)
-                jointAnimation.sampleInterval = min(jointAnimation.sampleInterval, transformSampler.recommendedSampleInterval)
+                jointAnimation.sampleInterval = AnimationSampling.mergeSampleInterval(
+                    jointAnimation.sampleInterval,
+                    transformSampler.recommendedSampleInterval
+                )
             } else {
-                let frames = stride(from: transformSampler.startTime,
-                                    through: transformSampler.endTime,
-                                    by: transformSampler.recommendedSampleInterval).map
-                {
+                let frames = AnimationSampling.sampleTimes(
+                    from: transformSampler.startTime,
+                    through: transformSampler.endTime,
+                    by: transformSampler.recommendedSampleInterval
+                ).map {
                     transformSampler.transform(at: $0)
                 }
                 let sampledAnimation = SampledAnimation(frames: frames,
                                                         tweenMode: transformSampler.hasStepChannel ? .hold : .linear,
-                                                        frameInterval: transformSampler.recommendedSampleInterval,
+                                                        frameInterval: AnimationSampling.sampleInterval(
+                                                            averageKeyDuration: transformSampler.recommendedSampleInterval,
+                                                            maximum: AnimationSampling.defaultInterval
+                                                        ),
                                                         bindTarget: targetNode.bindPath.transform,
                                                         delay: TimeInterval(transformSampler.startTime))
                 animations.append(sampledAnimation)
             }
         }
         if !jointAnimation.jointNames.isEmpty {
+            if !jointAnimation.minTime.isFinite { jointAnimation.minTime = 0 }
+            if !jointAnimation.maxTime.isFinite { jointAnimation.maxTime = jointAnimation.minTime }
+            if jointAnimation.maxTime < jointAnimation.minTime { jointAnimation.maxTime = jointAnimation.minTime }
             var jointTransforms = [JointTransforms]()
-            for t in stride(from: jointAnimation.minTime, through: jointAnimation.maxTime, by: jointAnimation.sampleInterval) {
+            for t in AnimationSampling.sampleTimes(
+                from: jointAnimation.minTime,
+                through: jointAnimation.maxTime,
+                by: jointAnimation.sampleInterval
+            ) {
                 let sampledTransforms = zip(jointAnimation.jointNames, jointAnimation.jointTransformSamplers).map { jointName, transformSampler -> Transform in
                     var jointTransform = transformSampler.transform(at: t)
                     if let ancestorTransform = skeletonTransformsByJointName[jointName] {
@@ -93,7 +107,10 @@ extension RealityKitConvert {
                 let skeletalAnimation = SampledAnimation(jointNames: jointAnimation.jointNames,
                                                          frames: jointTransforms,
                                                          tweenMode: .linear, // TODO: Support .hold?
-                                                         frameInterval: jointAnimation.sampleInterval,
+                                                         frameInterval: AnimationSampling.sampleInterval(
+                                                            averageKeyDuration: jointAnimation.sampleInterval,
+                                                            maximum: AnimationSampling.defaultInterval
+                                                         ),
                                                          bindTarget: bindPath.jointTransforms,
                                                          delay: delay)
                 animations.append(skeletalAnimation)
@@ -124,8 +141,15 @@ extension RealityKitConvert {
             targetCount: names.count,
             interpolation: channel.sampler.interpolationMode
         )
-        let interval = max(sampler.recommendedSampleInterval, 1 / 60)
-        let frames = stride(from: sampler.minimumTime, through: sampler.maximumTime, by: interval).map {
+        let interval = AnimationSampling.sampleInterval(
+            averageKeyDuration: sampler.recommendedSampleInterval,
+            maximum: 1 / 30
+        )
+        let frames = AnimationSampling.sampleTimes(
+            from: sampler.minimumTime,
+            through: sampler.maximumTime,
+            by: interval
+        ).map {
             BlendShapeWeights(sampler.value(at: $0))
         }
         return SampledAnimation(

@@ -13,13 +13,54 @@ enum Packed {
     }
 
     static func floatArray(for accessor: GLTFAccessor) -> [Float]? {
-        floats(accessor, dimension: 1, allowed: { $0 == .scalar })
+        packedFloats(accessor, dimension: 1, allowed: { $0 == .scalar }) { src, count in
+            Array(src.prefix(count))
+        }
+    }
+
+    static func isTightFloat(_ accessor: GLTFAccessor, dimension: GLTFValueDimension) -> Bool {
+        guard accessor.sparse == nil,
+              accessor.componentType == .float,
+              !accessor.isNormalized,
+              accessor.dimension == dimension,
+              let bufferView = accessor.bufferView,
+              bufferView.meshoptCompression == nil,
+              bufferView.buffer.data != nil
+        else { return false }
+        let elementSize = MemoryLayout<Float>.size * {
+            switch dimension {
+            case .vector2: return 2
+            case .vector3: return 3
+            case .vector4: return 4
+            default: return 0
+            }
+        }()
+        guard elementSize > 0 else { return false }
+        let stride = bufferView.stride
+        return stride == 0 || stride == elementSize
+    }
+
+    static func copyTight(_ accessor: GLTFAccessor, elementFloats: Int, to dest: UnsafeMutableRawPointer) {
+        guard let bufferView = accessor.bufferView,
+              let data = bufferView.buffer.data
+        else { return }
+        let byteCount = accessor.count * elementFloats * MemoryLayout<Float>.size
+        let offset = bufferView.offset + accessor.offset
+        data.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress, offset + byteCount <= raw.count else { return }
+            memcpy(dest, base + offset, byteCount)
+        }
     }
 
     static func float2Array(for accessor: GLTFAccessor, flipVertically: Bool = false) -> [SIMD2<Float>]? {
-        guard let values = floats(accessor, dimension: 2, allowed: { $0 == .vector2 }) else { return nil }
-        return Swift.stride(from: 0, to: values.count, by: 2).map { i in
-            SIMD2(values[i], flipVertically ? 1 - values[i + 1] : values[i + 1])
+        packedFloats(accessor, dimension: 2, allowed: { $0 == .vector2 }) { src, count in
+            [SIMD2<Float>](unsafeUninitializedCapacity: count) { dest, initializedCount in
+                for i in 0..<count {
+                    let y = src[i * 2 + 1]
+                    dest[i] = SIMD2(src[i * 2], flipVertically ? 1 - y : y)
+                }
+                initializedCount = count
+            }
         }
     }
 
@@ -27,18 +68,24 @@ enum Packed {
         if accessor.dimension == .vector4 {
             return float4Array(for: accessor)?.map { SIMD3($0.x, $0.y, $0.z) }
         }
-        guard let values = floats(accessor, dimension: 3, allowed: { $0 == .vector3 }) else {
-            return nil
-        }
-        return Swift.stride(from: 0, to: values.count, by: 3).map { i in
-            SIMD3(values[i], values[i + 1], values[i + 2])
+        return packedFloats(accessor, dimension: 3, allowed: { $0 == .vector3 }) { src, count in
+            [SIMD3<Float>](unsafeUninitializedCapacity: count) { dest, initializedCount in
+                for i in 0..<count {
+                    dest[i] = SIMD3(src[i * 3], src[i * 3 + 1], src[i * 3 + 2])
+                }
+                initializedCount = count
+            }
         }
     }
 
     static func float4Array(for accessor: GLTFAccessor) -> [SIMD4<Float>]? {
-        guard let values = floats(accessor, dimension: 4, allowed: { $0 == .vector4 }) else { return nil }
-        return Swift.stride(from: 0, to: values.count, by: 4).map { i in
-            SIMD4(values[i], values[i + 1], values[i + 2], values[i + 3])
+        packedFloats(accessor, dimension: 4, allowed: { $0 == .vector4 }) { src, count in
+            [SIMD4<Float>](unsafeUninitializedCapacity: count) { dest, initializedCount in
+                for i in 0..<count {
+                    dest[i] = SIMD4(src[i * 4], src[i * 4 + 1], src[i * 4 + 2], src[i * 4 + 3])
+                }
+                initializedCount = count
+            }
         }
     }
 
@@ -144,16 +191,17 @@ enum Packed {
         }
     }
 
-    private static func floats(
+    private static func packedFloats<T>(
         _ accessor: GLTFAccessor,
         dimension: Int,
-        allowed: (GLTFValueDimension) -> Bool
-    ) -> [Float]? {
+        allowed: (GLTFValueDimension) -> Bool,
+        build: (UnsafeBufferPointer<Float>, Int) -> [T]
+    ) -> [T]? {
         guard allowed(accessor.dimension), let data = floatData(for: accessor) else { return nil }
-        let count = accessor.count * dimension
-        guard data.count >= count * MemoryLayout<Float>.size else { return nil }
+        let count = accessor.count
+        guard data.count >= count * dimension * MemoryLayout<Float>.size else { return nil }
         return data.withUnsafeBytes { rawPtr in
-            Array(rawPtr.bindMemory(to: Float.self).prefix(count))
+            build(rawPtr.bindMemory(to: Float.self), count)
         }
     }
 }

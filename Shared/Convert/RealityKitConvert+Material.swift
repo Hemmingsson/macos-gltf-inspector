@@ -2,12 +2,26 @@ import RealityKit
 import GLTFKit2
 import simd
 
+private enum MaterialBlendDecision {
+    case none
+    case mask(Float)
+    case factorTransparent(Float)
+    case cutout
+    case opaque
+}
+
+private let detectedCutoutOpacityThreshold: Float = 0.4
+
 extension RealityKitConvert {
     @MainActor func convert(material gltfMaterial: GLTFMaterial?,
                             context: RealityKitResourceContext) throws -> any RealityKit.Material
     {
         guard let gltfMaterial = gltfMaterial else { return context.defaultMaterial }
+        if let cached = context.cachedConvertedMaterial(for: gltfMaterial) {
+            return cached
+        }
 
+        let converted: any RealityKit.Material
         if gltfMaterial.isUnlit {
             var material = UnlitMaterial()
             if let metallicRoughness = gltfMaterial.metallicRoughness {
@@ -17,7 +31,7 @@ extension RealityKitConvert {
                 }
             }
             applyBlendMode(toUnlit: &material, gltfMaterial: gltfMaterial, context: context)
-            return material
+            converted = material
         } else {
             var material = PhysicallyBasedMaterial()
             if let metallicRoughness = gltfMaterial.metallicRoughness {
@@ -101,8 +115,10 @@ extension RealityKitConvert {
                 let opacity = min(1, max(0.08, 1 - transmission.transmissionFactor))
                 material.blending = .transparent(opacity: .init(scale: opacity))
             }
-            return material
+            converted = material
         }
+        context.storeConvertedMaterial(converted, for: gltfMaterial)
+        return converted
     }
 
     @MainActor
@@ -111,31 +127,22 @@ extension RealityKitConvert {
         gltfMaterial: GLTFMaterial,
         context: RealityKitResourceContext
     ) {
-        if gltfMaterial.alphaMode == .mask {
-            material.opacityThreshold = gltfMaterial.alphaCutoff
+        switch blendDecision(for: gltfMaterial, context: context) {
+        case .none:
             return
-        }
-        guard gltfMaterial.alphaMode == .blend else { return }
-        let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
-        if alpha < 0.999 {
+        case .mask(let cutoff):
+            material.opacityThreshold = cutoff
+        case .factorTransparent(let alpha):
             var opacity = PhysicallyBasedMaterial.Opacity(scale: alpha)
             if let texture = gltfMaterial.metallicRoughness?.baseColorTexture {
                 opacity.texture = context.texture(for: texture, channels: .alpha, semantic: .scalar)
             }
             material.blending = .transparent(opacity: opacity)
-            return
+        case .cutout:
+            material.opacityThreshold = detectedCutoutOpacityThreshold
+        case .opaque:
+            material.blending = .opaque
         }
-        // Factor 1 + BLEND + empty/zero texture alpha is Sketchfab car paint (invisible
-        // if blended). Factor 1 + BLEND + a real alpha span is foliage / decals.
-        if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
-           context.alphaUsage(for: texture) == .cutout
-        {
-            let opacity = context.opacityTexture(for: texture)
-            material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
-            material.opacityThreshold = 0.4
-            return
-        }
-        material.blending = .opaque
     }
 
     @MainActor
@@ -144,25 +151,41 @@ extension RealityKitConvert {
         gltfMaterial: GLTFMaterial,
         context: RealityKitResourceContext
     ) {
-        if gltfMaterial.alphaMode == .mask {
-            material.opacityThreshold = gltfMaterial.alphaCutoff
+        switch blendDecision(for: gltfMaterial, context: context) {
+        case .none:
             return
+        case .mask(let cutoff):
+            material.opacityThreshold = cutoff
+        case .factorTransparent:
+            material.blending = .transparent(opacity: 1.0)
+        case .cutout:
+            material.opacityThreshold = detectedCutoutOpacityThreshold
+        case .opaque:
+            material.blending = .opaque
         }
-        guard gltfMaterial.alphaMode == .blend else { return }
+    }
+
+    /// Factor 1 + BLEND + empty/zero texture alpha is Sketchfab car paint (invisible
+    /// if blended). Factor 1 + BLEND + a real alpha span is foliage / decals.
+    /// Detected cutout: treat like native MASK (threshold only, no opacity texture).
+    @MainActor
+    private func blendDecision(
+        for gltfMaterial: GLTFMaterial,
+        context: RealityKitResourceContext
+    ) -> MaterialBlendDecision {
+        if gltfMaterial.alphaMode == .mask {
+            return .mask(gltfMaterial.alphaCutoff)
+        }
+        guard gltfMaterial.alphaMode == .blend else { return .none }
         let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
         if alpha < 0.999 {
-            material.blending = .transparent(opacity: 1.0)
-            return
+            return .factorTransparent(alpha)
         }
         if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
            context.alphaUsage(for: texture) == .cutout
         {
-            if let opacity = context.opacityTexture(for: texture) {
-                material.blending = .transparent(opacity: .init(scale: 1, texture: opacity))
-            }
-            material.opacityThreshold = 0.4
-            return
+            return .cutout
         }
-        material.blending = .opaque
+        return .opaque
     }
 }

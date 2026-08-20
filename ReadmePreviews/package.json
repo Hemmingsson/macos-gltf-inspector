@@ -2,7 +2,7 @@
   "name": "glb-preview-mockups",
   "private": true,
   "type": "module",
-  "description": "Render spinning-model turntables into the macOS window mockups (assets/*.webp). Not part of the app.",
+  "description": "Render spinning-model turntables into README mockups (../assets/*.webp). Not part of the app.",
   "scripts": {
     "start": "node make-previews.mjs"
   },

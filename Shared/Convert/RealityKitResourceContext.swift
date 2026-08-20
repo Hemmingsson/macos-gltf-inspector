@@ -83,9 +83,18 @@ class RealityKitResourceContext {
     let commandQueue: MTLCommandQueue
     private var cgImagesForImageIdentifiers = [UUID : CGImage]()
     private var textureResourcesForImageIdentifiers = [UUID : [(RealityKit.TextureResource, ColorMask)]]()
+    private var convertedMaterialsForIdentifiers = [ObjectIdentifier: any Material]()
 
     var defaultMaterial: any Material {
         return RealityKit.SimpleMaterial(color: .init(white: 0.5, alpha: 1.0), isMetallic: false)
+    }
+
+    @MainActor func cachedConvertedMaterial(for gltfMaterial: GLTFMaterial) -> (any Material)? {
+        convertedMaterialsForIdentifiers[ObjectIdentifier(gltfMaterial)]
+    }
+
+    @MainActor func storeConvertedMaterial(_ material: any Material, for gltfMaterial: GLTFMaterial) {
+        convertedMaterialsForIdentifiers[ObjectIdentifier(gltfMaterial)] = material
     }
 
     init() {
@@ -97,56 +106,18 @@ class RealityKitResourceContext {
     }
 
     @MainActor func alphaUsage(for gltfTextureParams: GLTFTextureParams) -> TextureAlpha.Usage {
-        let gltfTexture = gltfTextureParams.texture
-        guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else {
-            return .unused
-        }
-        var cgImage = cgImagesForImageIdentifiers[image.identifier]
-        if cgImage == nil {
-            cgImage = image.newCGImage()?.takeRetainedValue()
-            if let cgImage {
-                cgImagesForImageIdentifiers[image.identifier] = cgImage
-            }
-        }
-        guard let cgImage, let range = TextureAlpha.range(of: cgImage) else { return .unused }
+        guard let image = Self.gltfImage(for: gltfTextureParams.texture),
+              let cgImage = cachedCGImage(for: image),
+              let range = TextureAlpha.range(of: cgImage)
+        else { return .unused }
         return TextureAlpha.usage(minAlpha: range.0, maxAlpha: range.1)
-    }
-
-    @MainActor func cachedCGImage(for gltfTextureParams: GLTFTextureParams) -> CGImage? {
-        let gltfTexture = gltfTextureParams.texture
-        guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else {
-            return nil
-        }
-        if let existing = cgImagesForImageIdentifiers[image.identifier] {
-            return existing
-        }
-        let cgImage = image.newCGImage()?.takeRetainedValue()
-        if let cgImage {
-            cgImagesForImageIdentifiers[image.identifier] = cgImage
-        }
-        return cgImage
-    }
-
-    @MainActor func opacityTexture(for gltfTextureParams: GLTFTextureParams)
-        -> RealityKit.PhysicallyBasedMaterial.Texture?
-    {
-        guard let cgImage = cachedCGImage(for: gltfTextureParams),
-              let gray = TextureAlpha.opacityMap(of: cgImage)
-        else { return nil }
-        let options = TextureResource.CreateOptions(semantic: .raw)
-        guard let resource = try? TextureResource.generate(from: gray, options: options) else { return nil }
-        let descriptor = MTLSamplerDescriptor(from: gltfTextureParams.texture.sampler ?? GLTFTextureSampler())
-        return RealityKit.PhysicallyBasedMaterial.Texture(
-            resource,
-            sampler: MaterialParameters.Texture.Sampler(descriptor)
-        )
     }
 
     @MainActor func texture(for gltfTextureParams: GLTFTextureParams, channels: ColorMask,
                             semantic: RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
     {
         let gltfTexture = gltfTextureParams.texture
-        guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else { return nil }
+        guard let image = Self.gltfImage(for: gltfTexture) else { return nil }
         if let resource = textureResource(for:image, channels: channels, semantic: semantic) {
             let descriptor = MTLSamplerDescriptor(from: gltfTexture.sampler ?? GLTFTextureSampler())
             let sampler = MaterialParameters.Texture.Sampler(descriptor)
@@ -163,6 +134,7 @@ class RealityKitResourceContext {
             return existingMatch
         }
 
+        return LoadPhaseTimer.measure(.texture) {
         if gltfImage.inferMediaType() == GLTFMediaTypeKTX2 {
                 let mtlTexture = gltfImage.newTexture(with: device)
                 guard let sourceTexture = mtlTexture else { return nil }
@@ -186,11 +158,7 @@ class RealityKitResourceContext {
                         commandBuffer.commit()
                     }
                     let resource = try TextureResource(from: lowLevelTexture)
-                    if textureResourcesForImageIdentifiers[gltfImage.identifier] != nil {
-                        textureResourcesForImageIdentifiers[gltfImage.identifier]!.append((resource, channels))
-                    } else {
-                        textureResourcesForImageIdentifiers[gltfImage.identifier] = [(resource, channels)]
-                    }
+                    storeTextureResource(resource, for: gltfImage, channels: channels)
                     return resource
                 } catch {
                     AppLog.error(AppLog.load, "KTX2 texture convert failed: \(error)")
@@ -198,27 +166,39 @@ class RealityKitResourceContext {
                 }
         }
 
-        var cgImage = cgImagesForImageIdentifiers[gltfImage.identifier]
-        if cgImage == nil {
-            cgImage = gltfImage.newCGImage()?.takeRetainedValue()
-            if cgImage != nil {
-                cgImagesForImageIdentifiers[gltfImage.identifier] = cgImage
-            }
-        }
-        guard let originalImage = cgImage else { return nil }
+        guard let originalImage = cachedCGImage(for: gltfImage) else { return nil }
 
         guard let sourceImage = (channels == .all) ? originalImage :
                 singleChannelImage(from: originalImage, channels: channels) else { return nil }
 
         let options = TextureResource.CreateOptions(semantic: semantic)
         guard let resource = try? TextureResource.generate(from: sourceImage, options: options) else { return nil }
-        if textureResourcesForImageIdentifiers[gltfImage.identifier] != nil {
-            textureResourcesForImageIdentifiers[gltfImage.identifier]!.append((resource, channels))
-        } else {
-            textureResourcesForImageIdentifiers[gltfImage.identifier] = [(resource, channels)]
-        }
-
+        storeTextureResource(resource, for: gltfImage, channels: channels)
         return resource
+        }
+    }
+
+    private static func gltfImage(for texture: GLTFTexture) -> GLTFImage? {
+        texture.basisUSource ?? texture.webpSource ?? texture.source
+    }
+
+    @MainActor private func cachedCGImage(for gltfImage: GLTFImage) -> CGImage? {
+        if let existing = cgImagesForImageIdentifiers[gltfImage.identifier] {
+            return existing
+        }
+        let cgImage = gltfImage.newCGImage()?.takeRetainedValue()
+        if let cgImage {
+            cgImagesForImageIdentifiers[gltfImage.identifier] = cgImage
+        }
+        return cgImage
+    }
+
+    private func storeTextureResource(
+        _ resource: RealityKit.TextureResource,
+        for gltfImage: GLTFImage,
+        channels: ColorMask
+    ) {
+        textureResourcesForImageIdentifiers[gltfImage.identifier, default: []].append((resource, channels))
     }
 
     func singleChannelImage(from cgImage: CGImage, channels: ColorMask) -> CGImage? {

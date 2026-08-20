@@ -8,14 +8,9 @@ enum EntityLoader {
         let entity: Entity
         let stats: PreviewStats
         let document: GLTFSessionDocument
-
-        @MainActor var punctualLightCount: Int {
-            EntityLoader.punctualLightCount(in: entity)
-        }
-
-        @MainActor var studioIBLExponent: Float {
-            PreviewEmissive.studioIBLExponent(punctualLightCount: punctualLightCount)
-        }
+        let debugModes: [PreviewDebugMode]
+        /// Computed once at load; avoid re-walking the entity tree on every host view refresh.
+        let studioIBLExponent: Float
     }
 
     @MainActor
@@ -128,27 +123,27 @@ enum EntityLoader {
         // Parse the glTF header once for prepare gates, then keep the JSON that
         // actually gets converted so overlay stats match RealityKit.
         let isGLB = url.pathExtension.lowercased() == "glb"
-        let sourceJSON: [String: Any]
-        if isGLB {
-            sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
-        } else {
-            sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
-        }
-        let fileSize = fileSizeBytes(of: url)
-
-        let loadURL: URL
-        let assetDirectory: URL
-        let statsJSON: [String: Any]
-        if isGLB {
-            let prepared = prepareGLB(url, json: sourceJSON)
-            loadURL = prepared.url
-            statsJSON = prepared.json
-            assetDirectory = directoryURL
-        } else {
-            let prepared = try packAndPrepareGLTF(from: url, directoryURL: directoryURL)
-            loadURL = prepared.url
-            statsJSON = prepared.json
-            assetDirectory = loadURL.deletingLastPathComponent()
+        let (fileSize, loadURL, assetDirectory, statsJSON) = try LoadPhaseTimer.measure(.fileRead) {
+            let fileSize = fileSizeBytes(of: url)
+            if isGLB {
+                let sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
+                let prepared = prepareGLB(url, json: sourceJSON)
+                return (fileSize, prepared.url, directoryURL, prepared.json)
+            } else {
+                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                let sourceJSON = try GLBBox.parseJSON(data)
+                let prepared = try packAndPrepareGLTF(
+                    from: url,
+                    directoryURL: directoryURL,
+                    json: sourceJSON
+                )
+                return (
+                    fileSize,
+                    prepared.url,
+                    prepared.url.deletingLastPathComponent(),
+                    prepared.json
+                )
+            }
         }
         // Prepared/packed GLBs are throwaway temp files; the retry path below only ever
         // reopens the original `url`, so the temp is safe to delete once loading finishes.
@@ -186,10 +181,14 @@ enum EntityLoader {
             entity: entity,
             stats: PreviewStats.from(
                 json: json,
-                usableAnimations: entity.availableAnimations,
+                animationCount: entity.availableAnimations.count,
                 fileSizeBytes: fileSizeBytes
             ),
-            document: document
+            document: document,
+            debugModes: PreviewDebugMode.available(from: json),
+            studioIBLExponent: PreviewEmissive.studioIBLExponent(
+                punctualLightCount: punctualLightCount(in: entity)
+            )
         )
     }
 
@@ -232,9 +231,11 @@ enum EntityLoader {
 
     /// Sidecar `.gltf` is JSON, not a GLB. Pack buffers/images into a GLB in memory,
     /// run the same prepares, and write one temp file.
-    private static func packAndPrepareGLTF(from url: URL, directoryURL: URL) throws -> (url: URL, json: [String: Any]) {
-        let data = try Data(contentsOf: url)
-        let json = try GLBBox.parseJSON(data)
+    private static func packAndPrepareGLTF(
+        from url: URL,
+        directoryURL: URL,
+        json: [String: Any]
+    ) throws -> (url: URL, json: [String: Any]) {
         let packed = try GLBBox.packSidecar(json) { uri in
             guard isAllowedSidecarURI(uri, assetDirectory: directoryURL) else {
                 throw GLBPreviewError.make(1021, "glTF sidecar URI is not a safe relative path")
@@ -268,14 +269,16 @@ enum EntityLoader {
         name: String,
         sceneIndex: Int?
     ) async throws -> (Entity, GLTFSessionDocument) {
-        let asset = try GLTFAsset(
-            url: loadURL,
-            options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
-        )
-        // Sketchfab/FBX often embeds a 1-keyframe "Default Take". GLTFKit2 then
-        // calls stride(from:through:by: 0) and traps.
+        let asset = try LoadPhaseTimer.measure(.parse) {
+            try GLTFAsset(
+                url: loadURL,
+                options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
+            )
+        }
+        // Drop 1-keyframe "Default Take" clips. Convert also rejects a zero stride,
+        // but empty takes are still useless to play.
         if includeAnimations {
-            asset.animations = asset.animations.filter { hasPositiveDuration($0) }
+            asset.animations = asset.animations.filter { AnimationSampling.hasPositiveDuration($0) }
         } else {
             asset.animations = []
         }
@@ -402,19 +405,4 @@ enum EntityLoader {
         return resolved.path.hasPrefix(rootPath)
     }
 
-    private static func hasPositiveDuration(_ animation: GLTFAnimation) -> Bool {
-        var minTime = Float.infinity
-        var maxTime = -Float.infinity
-        var sampleCount = 0
-        for sampler in animation.samplers {
-            sampleCount = max(sampleCount, sampler.input.count)
-            if let lo = sampler.input.minValues.first?.floatValue {
-                minTime = min(minTime, lo)
-            }
-            if let hi = sampler.input.maxValues.first?.floatValue {
-                maxTime = max(maxTime, hi)
-            }
-        }
-        return sampleCount > 1 && maxTime - minTime > 1e-4
-    }
 }

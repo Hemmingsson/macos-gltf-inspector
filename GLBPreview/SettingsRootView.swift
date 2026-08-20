@@ -185,7 +185,7 @@ private struct GeneralSettingsPane: View {
 private struct PreviewSettingsPane: View {
     @AppStorage(SettingsKeys.autoRotate) private var autoRotate = true
     @AppStorage(SettingsKeys.background) private var background = PreviewBackground.window.rawValue
-    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = true
+    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = false
     @AppStorage(SettingsKeys.showStats) private var showStats = true
     @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
     @AppStorage(SettingsKeys.defaultCamera) private var defaultCamera = PreviewDefaultCamera.fit.rawValue
@@ -221,7 +221,7 @@ private struct PreviewSettingsPane: View {
                     }
                 }
                 .pickerStyle(.menu)
-                Text("Used by the app and as the initial Quick Look backdrop. Quick Look can still cycle colors from the toolbar.")
+                Text("Used by the app and as the initial Quick Look backdrop. Both can cycle colors from the preview icons.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -246,34 +246,27 @@ private struct PreviewSettingsPane: View {
 }
 
 private struct EnvironmentSettingsPane: View {
-    @State private var look = AppLook.current
+    private let store = AppLookStore.shared
     @State private var importError: String?
 
     var body: some View {
         Form {
             Section {
-                Toggle("Use environment map", isOn: $look.useEnvironmentMap)
+                Toggle("Use environment map", isOn: useEnvironmentMapBinding)
                     .toggleStyle(.switch)
-                    .onChange(of: look.useEnvironmentMap) { _, _ in
-                        persist()
-                    }
 
-                Picker("Environment", selection: $look.catalogRaw) {
+                Picker("Environment", selection: catalogBinding) {
                     ForEach(KhronosEnvironments.allCases, id: \.rawValue) { option in
                         Text(option.title).tag(option.rawValue)
                     }
                 }
                 .pickerStyle(.menu)
-                .onChange(of: look.catalogRaw) { _, _ in
-                    look.customFileName = nil
-                    persist()
-                }
 
                 Button("Add your own…") {
                     addCustomHDR()
                 }
 
-                if let name = look.customFileName {
+                if let name = store.look.customFileName {
                     Text("Custom: \(name)")
                         .foregroundStyle(.secondary)
                 }
@@ -294,12 +287,31 @@ private struct EnvironmentSettingsPane: View {
         .settingsFormChrome()
         .navigationTitle(SettingsPane.environment.title)
         .onAppear {
-            look = AppLook.current
+            store.reloadFromDisk()
         }
     }
 
-    private func persist() {
-        AppLook.saveCurrent(look)
+    private var useEnvironmentMapBinding: Binding<Bool> {
+        Binding(
+            get: { store.look.useEnvironmentMap },
+            set: { value in
+                var next = store.look
+                next.useEnvironmentMap = value
+                store.apply(next)
+            }
+        )
+    }
+
+    private var catalogBinding: Binding<String> {
+        Binding(
+            get: { store.look.catalogRaw },
+            set: { value in
+                var next = store.look
+                next.catalogRaw = value
+                next.customFileName = nil
+                store.apply(next)
+            }
+        )
     }
 
     private func addCustomHDR() {
@@ -317,9 +329,10 @@ private struct EnvironmentSettingsPane: View {
                 importError = "Could not decode \(source.lastPathComponent). The previous environment is unchanged."
                 return
             }
-            look.customFileName = imported.fileName
-            look.useEnvironmentMap = true
-            persist()
+            var next = store.look
+            next.customFileName = imported.fileName
+            next.useEnvironmentMap = true
+            store.apply(next)
             importError = nil
         } catch {
             importError = error.localizedDescription

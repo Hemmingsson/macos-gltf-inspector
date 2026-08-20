@@ -1,0 +1,1131 @@
+{
+  "champion": "cp-003",
+  "champion_sum_median_total_ms": 7464.757585000001,
+  "champion_sum_median_load_ms": 7246.301582,
+  "recorded_control": {
+    "sha": "173fc71f3e366dc26b8323d98ccecc228a16c8b5",
+    "sum_median_total_ms": 7464.757585000001,
+    "sum_median_load_ms": 7246.301582,
+    "raw": "/tmp/glb-preview-load-bench/20260820-063818-cp-003.json",
+    "recorded_at": "2026-08-20T04:39:53Z"
+  },
+  "accepted_queue": [],
+  "reject_only_batches": 2,
+  "checkpoints": [
+    {
+      "id": "cp-001",
+      "at": "2026-08-20T03:08:55Z",
+      "integrated": [
+        "EXP-006-v2",
+        "EXP-009",
+        "EXP-011"
+      ],
+      "champion_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d",
+      "baseline_sum_median_total_ms": 16387.431751,
+      "pre_checkpoint_sum_median_total_ms": 8001.7,
+      "post_sum_median_total_ms": 7620.179249000001,
+      "vs_baseline_ms": -8767.252502,
+      "vs_baseline_pct": -53.49985669026509,
+      "vs_pre_checkpoint_ms": -381.5207509999991,
+      "notes": "Retroactive checkpoint: KEEps were cherry-picked before staging protocol; tip already contains all three."
+    },
+    {
+      "id": "cp-002",
+      "at": "2026-08-20T04:04:16Z",
+      "integrated": [
+        "EXP-017"
+      ],
+      "champion_sha": "1aceedaaba823ab866cfc6385b13f2c624d593e1",
+      "baseline_sum_median_total_ms": 16387.431751,
+      "pre_checkpoint_sum_median_total_ms": 7620.179,
+      "post_sum_median_total_ms": 7372.906,
+      "vs_baseline_ms": -9014.526,
+      "vs_baseline_pct": -55.01,
+      "vs_pre_checkpoint_ms": -247.273,
+      "notes": "candidate KEEP was \u2212554 ms (~7066); tip reproduced \u2212247 ms only"
+    },
+    {
+      "id": "cp-003",
+      "at": "2026-08-20T04:39:53Z",
+      "integrated": [
+        "EXP-029"
+      ],
+      "champion_sha": "173fc71f3e366dc26b8323d98ccecc228a16c8b5",
+      "baseline_sum_median_total_ms": 16387.431751,
+      "pre_checkpoint_sum_median_total_ms": 7372.906,
+      "post_sum_median_total_ms": 7464.758,
+      "vs_baseline_ms": -8922.674,
+      "vs_baseline_pct": -54.45,
+      "vs_pre_checkpoint_ms": 91.852,
+      "notes": "candidate KEEP was \u2212243.4 ms (~7129.5); tip reproduced +91.9 ms only (candidate_vs_tip_shrink -335.3 ms vs cand)"
+    }
+  ],
+  "primary_metric": "sum of per-asset median total_load_ms (load + first_render when measured)",
+  "noise_rule": "Reject |delta| < 3% of recorded_control sum unless same direction on 8/10; prefer same-machine control",
+  "experiments": [
+    {
+      "id": "EXP-000",
+      "date": "2026-08-20",
+      "parent_champion": null,
+      "hypothesis": "Uncommitted 6s sleep is not production load time.",
+      "reason": "git blame Not Committed Yet on PreviewView.swift",
+      "agent": "orchestrator",
+      "files_changed": [
+        "Shared/PreviewView.swift"
+      ],
+      "implementation_summary": "Deleted Task.sleep(for: .seconds(6))",
+      "benchmark_command": null,
+      "decision": "n/a-cleanup",
+      "rejection_reason": null
+    },
+    {
+      "id": "EXP-001",
+      "date": "2026-08-20",
+      "parent_champion": "working-tree",
+      "hypothesis": "Establish informal 3-rep EntityLoader.load baseline.",
+      "agent": "orchestrator",
+      "files_changed": [],
+      "benchmark_command": "LABEL=baseline ./scripts/load-bench.sh",
+      "candidate_result": {
+        "sum_median_load_ms": 2505.9,
+        "reps": 3,
+        "first_render": "unavailable"
+      },
+      "decision": "superseded-by-official-baseline",
+      "rejection_reason": null
+    },
+    {
+      "id": "EXP-002",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-001",
+      "hypothesis": "I believe animation convert contributes ~100\u2013300ms on animated assets because includeAnimations walks channels and samples joints.",
+      "agent": "orchestrator",
+      "files_changed": [],
+      "implementation_summary": "Manifest includeAnimations=false only",
+      "benchmark_command": "LABEL=noanim GLB_LOAD_BENCH_MANIFEST=.../manifest-noanim.json ./scripts/load-bench.sh",
+      "baseline_result": {
+        "sum_median_load_ms": 2505.9
+      },
+      "candidate_result": {
+        "sum_median_load_ms": 2003.5
+      },
+      "delta": {
+        "abs_ms": -502.4,
+        "pct": -20.0
+      },
+      "correctness_result": "skips required QL clip playback",
+      "complexity_assessment": "none (flag only)",
+      "decision": "reject",
+      "rejection_reason": "False optimization: disabling required work. VARIANT=cheaper sampling allowed."
+    },
+    {
+      "id": "EXP-003",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-001",
+      "hypothesis": "I believe makeDocument firstIndex walks contribute measurable time because QL does not show the outliner.",
+      "agent": "orchestrator",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert.swift"
+      ],
+      "implementation_summary": "Skipped makeDocument behind a temp file flag; reverted after.",
+      "benchmark_command": "touch skip-document; LABEL=skip-document ./scripts/load-bench.sh",
+      "baseline_result": {
+        "sum_median_load_ms": 2505.9
+      },
+      "candidate_result": {
+        "sum_median_load_ms": 2446.9
+      },
+      "delta": {
+        "abs_ms": -59.0,
+        "pct": -2.4
+      },
+      "variance": "mixed; eagle/bmw slower",
+      "correctness_result": "host outliner would empty",
+      "complexity_assessment": "file-flag hack",
+      "decision": "reject",
+      "rejection_reason": "Within noise; host still needs document; extra flag complexity."
+    },
+    {
+      "id": "EXP-004",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-001",
+      "hypothesis": "I believe prepareGLB full-file parse/serialize/temp-write contributes hundreds of ms on files with integer accessors.",
+      "agent": "orchestrator",
+      "files_changed": [
+        "Shared/EntityLoader.swift"
+      ],
+      "implementation_summary": "prepareGLB returned original URL behind skip-prepare flag; reverted after.",
+      "benchmark_command": "touch skip-prepare; LABEL=skip-prepare ./scripts/load-bench.sh",
+      "baseline_result": {
+        "sum_median_load_ms": 2505.9
+      },
+      "candidate_result": {
+        "sum_median_load_ms": 2143.7
+      },
+      "delta": {
+        "abs_ms": -362.2,
+        "pct": -14.5
+      },
+      "correctness_result": "corpus still loaded; prepare is still required for other assets",
+      "complexity_assessment": "skip",
+      "decision": "reject",
+      "rejection_reason": "Improvement by skipping required prepare. VARIANT=cheaper prepare allowed."
+    },
+    {
+      "id": "EXP-007",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-5rep",
+      "hypothesis": "I believe inputRange unpacking Packed.floatArray when min/max exist contributes eagle load time.",
+      "agent": "076b8774-9293-48b7-ae7c-d35501386599",
+      "files_changed": [
+        "Shared/AnimationHelpers.swift"
+      ],
+      "implementation_summary": "Early-return inputRange from accessor min/max/count; unpack fallback when bounds missing.",
+      "benchmark_command": "LABEL=EXP-007 ./scripts/load-bench.sh (worktree exp-007)",
+      "baseline_result": {
+        "sum_median_total_ms": 2324.5,
+        "sum_median_load_ms": 2183.8
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 1921.2,
+        "sum_median_load_ms": 1822.6
+      },
+      "delta": {
+        "abs_ms": -403.3,
+        "pct": -17.4
+      },
+      "variance": "10/10 faster including non-animated BMW/stone/CD and first-render; eagle-only ~-58ms",
+      "correctness_result": "AnimationSamplingTests+SceneGraphConvertTests 12/12 pass; clips retained",
+      "complexity_assessment": "tiny (6-line early-return)",
+      "decision": "reject",
+      "rejection_reason": "Corpus delta is warm-machine bias vs frozen champion; target-isolated signal inside noise. Branch exp/007-anim-minmax@00d40f5 not merged."
+    },
+    {
+      "id": "EXP-005",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-5rep",
+      "corpus": "v1",
+      "hypothesis": "I believe writePrepared + GLTFAsset(url:) re-read of prepared bytes contributes load time; GLTFAsset(data:) removes that tail without skipping prepare.",
+      "agent": "bc9d0d83-2196-4256-a6e4-5ea3bf5d716a",
+      "files_changed": [
+        "Shared/EntityLoader.swift"
+      ],
+      "implementation_summary": "Keep prepared Data; load via GLTFAsset(data:options:). URL path for no-prepare. Retry to original URL.",
+      "benchmark_command": "LABEL=EXP-005 ./scripts/load-bench.sh (worktree exp-005)",
+      "baseline_result": {
+        "sum_median_total_ms": 2324.5,
+        "sum_median_load_ms": 2183.8
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 1926.4,
+        "sum_median_load_ms": 1827.8
+      },
+      "delta": {
+        "abs_ms": -398.1,
+        "pct": -17.1
+      },
+      "variance": "10/10 faster; matches EXP-007 within 5ms; prepare path never executed on v1 corpus",
+      "correctness_result": "LoaderHelpers+SessionDocument pass; prepare not skipped",
+      "complexity_assessment": "small (optional preparedData branch)",
+      "decision": "reject",
+      "rejection_reason": "Hypothesis unmeasured on v1 (0/10 need prepare). Warm bias. Re-queue on corpus-v2 where realistic_animals triggers metal-rough prepare. Branch exp/005-prepared-asset-data@97b6e0a not merged."
+    },
+    {
+      "id": "EXP-006",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-5rep",
+      "corpus": "v1",
+      "hypothesis": "I believe Packed.grouped per-vertex [[Float]] allocations dominate high-vert convert (stone_wall).",
+      "agent": "8fc41a1b-f1a5-4d21-8f0d-70bc31c8f359",
+      "files_changed": [
+        "Shared/PackedAccessors.swift"
+      ],
+      "implementation_summary": "Write SIMD arrays in one pass; delete grouped.",
+      "benchmark_command": "LABEL=EXP-006 + same-machine LABEL=EXP-006-champ without change",
+      "baseline_result": {
+        "sum_median_total_ms": 2324.5,
+        "same_machine_champ_total_ms": 1861.1
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 1650.3,
+        "sum_median_load_ms": 1545.3
+      },
+      "delta": {
+        "vs_frozen_ms": -674.2,
+        "vs_same_machine_ms": -210.8,
+        "pct_vs_same_machine": -11.3
+      },
+      "variance": "isolated win almost all on stone_wall (\u2212197 ms); tiny/simple flat vs same-machine control",
+      "correctness_result": "TextureUV/Loader/Morph/SceneGraph/AnimationSampling tests passed",
+      "complexity_assessment": "tiny",
+      "decision": "superseded-by-EXP-006-v2",
+      "rejection_reason": null,
+      "notes": "v1 tentative KEEP; promoted via EXP-006-v2 on corpus-v2"
+    },
+    {
+      "id": "EXP-006-v2",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-v2",
+      "corpus": "v2",
+      "classification": "VARIANT of EXP-006",
+      "hypothesis": "Packed SIMD (delete grouped) reduces corpus-v2 load beyond noise.",
+      "files_changed": [
+        "Shared/PackedAccessors.swift"
+      ],
+      "implementation_summary": "One-pass SIMD packed floats; delete grouped.",
+      "benchmark_command": "LABEL=EXP-006-v2 + LABEL=EXP-006-v2-champ (same-machine)",
+      "baseline_result": {
+        "frozen_total_ms": 16387.4,
+        "same_machine_champ_total_ms": 16451.0
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 15332.9,
+        "sum_median_load_ms": 15178.6
+      },
+      "delta": {
+        "vs_same_machine_ms": -1118.1,
+        "pct": -6.8
+      },
+      "variance": "wins on stone -201, vegetation -310, cinema -295, stronghold -116; tiny flat",
+      "correctness_result": "prior v1 tests green; v2 corpus all loaded",
+      "complexity_assessment": "tiny",
+      "decision": "keep",
+      "rejection_reason": null,
+      "commit": "c29a04d",
+      "branch": "exp/006-packed-simd@13c1c62"
+    },
+    {
+      "id": "EXP-005-v2",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-006-v2",
+      "corpus": "v2",
+      "classification": "VARIANT of EXP-005",
+      "hypothesis": "After prepare, GLTFAsset(data:) removes writePrepared+url re-read cost on prepare-hit assets without skipping prepare.",
+      "agent": "6c3a280c-9188-4cd9-b834-7f94498b1eb9",
+      "files_changed": [
+        "Shared/EntityLoader.swift"
+      ],
+      "implementation_summary": "Keep preparedData; load GLTFAsset(data:). Only 09-realistic_animals hits prepare on v2 (67 spec-gloss mats).",
+      "benchmark_command": "LABEL=EXP-005-v2 + LABEL=EXP-005-v2-champ (same-machine)",
+      "baseline_result": {
+        "frozen_total_ms": 16387.4,
+        "same_machine_champ_total_ms": 18617.2
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 16290.9,
+        "sum_median_load_ms": 16108.7
+      },
+      "delta": {
+        "vs_same_machine_ms": -2326.2,
+        "pct_vs_same_machine": -12.5,
+        "vs_frozen_ms": -96.5,
+        "pct_vs_frozen": -0.59
+      },
+      "variance": "09 prepare-hit only 16.7% of isolated delta; 83% from non-prepare (vegetation \u22121112). Control is slow outlier vs frozen/006-champ.",
+      "correctness_result": "0/10 errors; prepare confirmed on 09",
+      "complexity_assessment": "small",
+      "decision": "reject",
+      "rejection_reason": "Isolated win not prepare-concentrated; vs frozen under 3% noise. Do not retry same claim without a prepare-only metric or tighter control.",
+      "artifacts": [
+        "experiments/results/EXP-005-v2.json",
+        "experiments/results/EXP-005-v2-champ.json"
+      ],
+      "notes": "Confirmatory sequential re-run (a03cd786): cand 14856 vs SM champ 14679 (+177 ms / +1.2%, inside noise); prepare-hit 09 only +8 ms. Same REJECT."
+    },
+    {
+      "id": "EXP-009",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-006-v2",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Factor-1 BLEND + detected cutout builds uncached opacity TextureResources; MASK-like threshold-only deletes that work.",
+      "agent": "eb3d5db0-f128-438e-9c64-08f644192c61",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Material.swift"
+      ],
+      "implementation_summary": "Detected cutout: opacityThreshold=0.4 only; no opacityTexture / transparent blending (mirrors native MASK).",
+      "benchmark_command": "LABEL=EXP-009 + LABEL=EXP-009-champ",
+      "baseline_result": {
+        "frozen_EXP-006-v2_total_ms": 15332.9,
+        "same_machine_champ_total_ms": 14677.8
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7732.9,
+        "sum_median_load_ms": 7596.5765
+      },
+      "delta": {
+        "vs_same_machine_ms": -6944.9,
+        "pct": -47.3
+      },
+      "variance": "07-vegetation \u22126744 ms (\u221289%); 08-cinema \u22121 ms (flat control)",
+      "correctness_result": "0/10 errors; visual: threshold-only cutout vs prior opacity map",
+      "complexity_assessment": "tiny (\u22125/+2)",
+      "decision": "keep",
+      "rejection_reason": null,
+      "commit": "6986fc5",
+      "branch": "exp/009-cutout-as-mask@90def67",
+      "artifacts": [
+        "experiments/results/EXP-009.json",
+        "experiments/results/EXP-009-champ.json"
+      ]
+    },
+    {
+      "id": "EXP-008",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-009",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Cache BGRA\u2192ARGB convert once per source image so sibling channel extracts reuse it.",
+      "agent": "eb450f64-05c6-4719-a224-4989a38a0fe8",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift",
+        "GLBPreviewTests/TextureTests.swift"
+      ],
+      "implementation_summary": "Cache ARGB vImage buffer per image identifier for sibling channel extracts.",
+      "benchmark_command": "LABEL=EXP-008 + LABEL=EXP-008-champ",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7786.5
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7777.0
+      },
+      "delta": {
+        "vs_same_machine_ms": -9.5,
+        "pct": -0.12
+      },
+      "variance": "09 \u22127.6 / 10 +6.8; all assets within tens of ms; no concentration",
+      "correctness_result": "0/10 errors; TextureTests updated in worktree",
+      "complexity_assessment": "medium (+52/\u221218) for ~0% gain",
+      "decision": "reject",
+      "rejection_reason": "Isolated \u22129.5 ms (\u22120.12%) under 3% noise (~234 ms). No 09/10 concentration.",
+      "branch": "exp/008-argb-sibling-channels@ca44b02",
+      "artifacts": [
+        "experiments/results/EXP-008.json",
+        "experiments/results/EXP-008-champ.json"
+      ]
+    },
+    {
+      "id": "EXP-010",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-009",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Raster scalar channels still pay vImageExtract + TextureResource.generate; one Metal upload + LowLevelTexture swizzle (like KTX2) should cut 09/10.",
+      "agent": "executor",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift"
+      ],
+      "implementation_summary": "Cache BGRA MTLTexture per image; scalar ColorMask via LowLevelTexture swizzle + blit (shared helper with KTX2). Fallback to vImage path if upload fails.",
+      "benchmark_command": "LABEL=EXP-010 + LABEL=EXP-010-champ",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 8208.8
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 8388.5,
+        "sum_median_load_ms": 8187.4
+      },
+      "delta": {
+        "vs_same_machine_ms": 179.7,
+        "pct": 2.19
+      },
+      "variance": "8/10 faster (mid assets) but 09 +35 / 10 +429 dominate; net regression under 3% noise (~246 ms of control)",
+      "correctness_result": "0/10 errors; TextureChannelExtractTests + TextureAlphaUsageTests pass",
+      "complexity_assessment": "medium (+129/\u221236) for net slowdown",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +180 ms (+2.2%); hypothesized 09/10 concentration inverted (mecha +429 ms). Discard worktree.",
+      "branch": "exp/EXP-010",
+      "artifacts": [
+        "experiments/results/EXP-010.json",
+        "experiments/results/EXP-010-champ.json"
+      ],
+      "notes": "Initial candidate 8956 with unsupported CGBitmap alpha-first; fixed to DeviceRGB+premul-first and re-benched (8388.5)."
+    },
+    {
+      "id": "EXP-011",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-009",
+      "corpus": "v2",
+      "classification": "VARIANT",
+      "hypothesis": "Cache converted RealityKit materials by ObjectIdentifier of GLTFMaterial so multi-mesh shared-material assets avoid rebuilding PBR materials repeatedly.",
+      "agent": "executor",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift",
+        "Shared/Convert/RealityKitConvert+Material.swift"
+      ],
+      "implementation_summary": "Convert-session cache ObjectIdentifier(GLTFMaterial) \u2192 any Material; nil still uses defaultMaterial; applyBlendMode/EXP-009 cutout path unchanged.",
+      "benchmark_command": "LABEL=EXP-011 + LABEL=EXP-011-champ",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 8370.5
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 8001.7,
+        "sum_median_load_ms": 7835.2
+      },
+      "delta": {
+        "vs_same_machine_ms": -368.8,
+        "pct": -4.41
+      },
+      "variance": "07-vegetation \u2212183 ms (\u221219%); 10-mecha \u2212132 ms; 6/10 faster; concentration on multi-mesh shared materials",
+      "correctness_result": "0/10 bench errors; BLEND/MASK/cutout convert path unchanged (cache only)",
+      "complexity_assessment": "low (+17/\u22122)",
+      "decision": "keep",
+      "rejection_reason": null,
+      "commit": "59c777a",
+      "branch": "exp/EXP-011",
+      "artifacts": [
+        "experiments/results/EXP-011.json",
+        "experiments/results/EXP-011-champ.json"
+      ],
+      "notes": "Champion pointer left on EXP-009 for orchestrator promote. Worktree retained.",
+      "promoted": true,
+      "promote_commit": "59c777a",
+      "complexity": "low"
+    },
+    {
+      "id": "EXP-012",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-011",
+      "corpus": "v2",
+      "classification": "VARIANT",
+      "hypothesis": "Fuse wrapSingleTile + RealityKit V-flip into one in-place pass to cut O(verts) array maps on high-poly unit-tile UVs (06/07/08).",
+      "agent": "executor",
+      "files_changed": [
+        "Shared/TextureUV.swift",
+        "Shared/Convert/RealityKitConvert+Mesh.swift",
+        "GLBPreviewTests/TextureUVTests.swift"
+      ],
+      "implementation_summary": "Added TextureUV.wrapSingleTileAndFlipV (min/max once, optional tile subtract + V-flip in one loop); bakedTextureCoordinates uses it. wrapSingleTile kept for tests; UDIM/transform/sampler wrap unchanged.",
+      "benchmark_command": "LABEL=EXP-012 + LABEL=EXP-012-champ",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7534.1
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7684.1,
+        "sum_median_load_ms": 7529.8
+      },
+      "delta": {
+        "vs_same_machine_ms": 150.0,
+        "pct": 1.99
+      },
+      "variance": "2/10 faster; 06 +32 / 07 +57 / 08 +45 ms (hypothesized high-vert wins inverted); within 3% noise of control (~226 ms)",
+      "correctness_result": "0/10 bench errors; TextureUVTests 5/5 including fuse\u2261separate passes",
+      "complexity_assessment": "low (+52/\u22122)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +150 ms (+2.0%); high-vert 06/07/08 slower. UV bake not the residual hot path after EXP-011.",
+      "branch": "exp/EXP-012",
+      "artifacts": [
+        "experiments/results/EXP-012.json",
+        "experiments/results/EXP-012-champ.json"
+      ],
+      "notes": "Champion pointer left on EXP-011. Worktree+branch removed."
+    },
+    {
+      "id": "EXP-013",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "JSON-only prepare (metalRough, bake gated) can splice new JSON + copy source BIN chunk instead of full parse/serialize of ~208MB BIN on prepare-hit 09.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/EntityLoader.swift",
+        "Shared/GLBBox.swift",
+        "Shared/MetalRoughPrepare.swift"
+      ],
+      "implementation_summary": "JSON-only prepare fast path when metalRough needs conversion but bake is gated and RealityPrepare not needed; rewrite JSON only and copy source BIN chunk.",
+      "benchmark_command": "LABEL=EXP-013 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7663.274,
+        "sum_median_load_ms": 7513.144375000001
+      },
+      "delta": {
+        "vs_same_machine_ms": 43.1,
+        "pct": 0.57
+      },
+      "variance": "4/10 faster; 09 +18.5 / 10 +51 dominate; hypothesized prepare-hit 09 not improved; within 3% noise (~229 ms)",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+175/\u221216)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +43 ms (+0.57%) within noise; 09 not faster. Discard worktree.",
+      "commit": "9f7a0cb",
+      "branch": "exp/EXP-013",
+      "artifacts": [
+        "experiments/results/EXP-013.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Worktree+branch removed."
+    },
+    {
+      "id": "EXP-014",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Packed.float*Array still pays GLTFPackedDataForAccessor malloc+memcpy; reading float accessors straight from bufferView into SIMD cuts convert on high-vert assets beyond noise.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/PackedAccessors.swift"
+      ],
+      "implementation_summary": "Direct bufferView\u2192SIMD float path for non-sparse float accessors; keep packed path for int/normalized/sparse.",
+      "benchmark_command": "LABEL=EXP-014 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7396.732,
+        "sum_median_load_ms": 7218.013165
+      },
+      "delta": {
+        "vs_same_machine_ms": -223.4,
+        "pct": -2.93
+      },
+      "variance": "5/10 faster; 06 \u221250 / 07 \u2212155 / 08 \u221269 but 04 +35 / 10 +74; |delta| 223 ms < 3% noise (~229 ms) and not \u22658/10 same direction",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "low (+135/\u22123)",
+      "decision": "reject",
+      "rejection_reason": "\u2212223 ms (\u22122.93%) just under 3% noise (~229 ms); only 5/10 faster. Discard worktree.",
+      "commit": "f162e85",
+      "branch": "exp/EXP-014",
+      "artifacts": [
+        "experiments/results/EXP-014.json"
+      ],
+      "notes": "Closest candidate in batch; tournament KEEP bar not met. Worktree+branch removed."
+    },
+    {
+      "id": "EXP-015",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "channels=.all raster textures dominate residual on 09/10; MTKTextureLoader+mipgen\u2192LowLevel blit cuts upload vs TextureResource.generate without dropping mips or touching scalar swizzle.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift"
+      ],
+      "implementation_summary": "Route channels=.all non-KTX2 maps through Metal mip generation and existing LowLevel blit; keep scalar vImage extracts; fall back to TextureResource.generate on upload failure.",
+      "benchmark_command": "LABEL=EXP-015 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 8066.752,
+        "sum_median_load_ms": 7902.247833
+      },
+      "delta": {
+        "vs_same_machine_ms": 446.6,
+        "pct": 5.86
+      },
+      "variance": "1/10 faster; 07 +153 / 09 +55 / 10 +190 (hypothesized 09/10 wins inverted); 9/10 slower",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+73/\u221228)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +447 ms (+5.9%) beyond noise; 09/10 slower. Discard worktree.",
+      "commit": "fd9da13",
+      "branch": "exp/EXP-015",
+      "artifacts": [
+        "experiments/results/EXP-015.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Worktree+branch removed."
+    },
+    {
+      "id": "EXP-016",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "VARIANT",
+      "hypothesis": "Factor-only KHR_materials_pbrSpecularGlossiness on prepare-hit 09 can map at RealityKitConvert and skip bake-gated prepare rewrite (~208MB I/O).",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Material.swift",
+        "Shared/EntityLoader.swift",
+        "Shared/MetalRoughPrepare.swift"
+      ],
+      "implementation_summary": "Skip prepareGLB rewrite when metalRough needsConversion && !bake && !RealityPrepare; map specularGlossiness factors at convert time.",
+      "benchmark_command": "LABEL=EXP-016 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7433.0186650000005,
+        "sum_median_load_ms": 7300.153917
+      },
+      "delta": {
+        "vs_same_machine_ms": -187.2,
+        "pct": -2.46
+      },
+      "variance": "7/10 faster; 09 \u2212127.5 / 10 \u221255.7; under 3% noise; not \u22658/10",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+73/\u221213)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine \u2212187 ms (\u22122.46%) under ~229 ms noise; 7/10. Discard worktree.",
+      "commit": "0afe24d",
+      "branch": "exp/EXP-016",
+      "artifacts": [
+        "experiments/results/EXP-016.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Worktree+branch removed."
+    },
+    {
+      "id": "EXP-017",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Packed float3 bufferViews can feed LowLevelMesh without MeshBuffers.Positions 12\u219216 SIMD3 expand on high-vert assets (06/07/08).",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Mesh.swift"
+      ],
+      "implementation_summary": "Build LowLevelMesh from packed float3 bufferViews when stride/layout allows; skip SIMD3 expand path.",
+      "benchmark_command": "LABEL=EXP-017 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7066.122835,
+        "sum_median_load_ms": 6930.9882099999995
+      },
+      "delta": {
+        "vs_same_machine_ms": -554.1,
+        "pct": -7.27
+      },
+      "variance": "9/10 faster; 06 \u221294 / 07 \u2212269 / 08 \u2212129 (targets); only 01 slightly slower",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium-high (+293)",
+      "decision": "accepted-staged",
+      "rejection_reason": null,
+      "commit": "2efb16f",
+      "branch": "exp/EXP-017",
+      "artifacts": [
+        "experiments/results/EXP-017.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Staged to accepted_queue; worktree kept for checkpoint."
+    },
+    {
+      "id": "EXP-018",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Serial TextureResource.generate on unique rasters dominates 09/10; concurrent prefetch should overlap decode/upload.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert.swift",
+        "Shared/Convert/RealityKitResourceContext.swift",
+        "Shared/EntityLoader.swift"
+      ],
+      "implementation_summary": "Concurrently prefetch raster TextureResources before mesh convert; fall back to sync generate.",
+      "benchmark_command": "LABEL=EXP-018 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 8182.200293,
+        "sum_median_load_ms": 8036.346834
+      },
+      "delta": {
+        "vs_same_machine_ms": 562.0,
+        "pct": 7.38
+      },
+      "variance": "4/10 faster; 05 +568 (animated stronghold); 09/10 not faster; 6/10 slower",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+183/\u221224)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +562 ms (+7.4%) beyond noise; 05 regresses hard; 09/10 no win. Discard worktree.",
+      "commit": "a6c7d3b",
+      "branch": "exp/EXP-018",
+      "artifacts": [
+        "experiments/results/EXP-018.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Worktree+branch removed."
+    },
+    {
+      "id": "EXP-019",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "TextureResource.CreateOptions default mipmapsMode:.allocateAndGenerateAll adds full mipgen on every raster; mipmapsMode:.none keeps full base textures but skips derived mip work on 09/10.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift"
+      ],
+      "implementation_summary": "Pass mipmapsMode:.none on raster + opacity TextureResource.CreateOptions; KTX2 path unchanged.",
+      "benchmark_command": "LABEL=EXP-019 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7516.053167,
+        "sum_median_load_ms": 7380.02246
+      },
+      "delta": {
+        "vs_same_machine_ms": -104.1,
+        "pct": -1.37
+      },
+      "variance": "6/10 faster; 09 \u221239 / 10 \u221297; 08 +42; |delta| 104 ms < 3% noise (~229 ms) and not \u22658/10",
+      "correctness_result": "0/10 bench errors; base-resolution textures retained (mip skip only)",
+      "complexity_assessment": "low (+2/\u22122)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine \u2212104 ms (\u22121.37%) under ~229 ms noise; only 6/10 faster. Discard worktree.",
+      "commit": "6dd880f",
+      "branch": "exp/EXP-019",
+      "artifacts": [
+        "experiments/results/EXP-019.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Worktree+branch removed."
+    },
+    {
+      "id": "EXP-021",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-017",
+      "corpus": "v2",
+      "classification": "VARIANT",
+      "hypothesis": "After EXP-017 packed float3 path, streaming ushort indices (or uint16 LowLevelMesh) removes Packed.uint32Array intermediate on high-tri 06/07/08.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Mesh.swift"
+      ],
+      "implementation_summary": "On EXP-017 convertPackedFloat3Mesh path: stream ushort/ubyte\u2192indices without [UInt32] pack; prefer uint16 when safe.",
+      "benchmark_command": "LABEL=EXP-021 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "exp017_control_total_ms": 7066.122835,
+        "exp017_sha": "2efb16f0872843f8e58b6a3395b77c46cc91622e",
+        "recorded_control_tip_ms": 7620.179249000001,
+        "note": "KEEP judged incremental vs EXP-017 only (not tip)"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 8235.881791,
+        "sum_median_load_ms": 8083.927167000001
+      },
+      "delta": {
+        "vs_exp017_ms": 1169.8,
+        "pct_vs_exp017": 16.55,
+        "naive_vs_tip_ms": 615.7,
+        "naive_vs_tip_pct": 8.08
+      },
+      "variance": "0/10 faster vs EXP-017; 06 +203 / 07 +318 / 08 +327 (undoes packed wins)",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+146/\u221221)",
+      "decision": "reject",
+      "rejection_reason": "Incremental +1170 ms (+16.6%) vs EXP-017 7066.1; 0/10 faster; noise ~212 ms. Leave EXP-017 in accepted_queue. Discard worktree.",
+      "commit": "1bc16ac",
+      "branch": "exp/EXP-021",
+      "artifacts": [
+        "experiments/results/EXP-021.json"
+      ],
+      "notes": "EXP-017 control reused (KEEP result @ 7066.1). Tip delta ignored (double-counts EXP-017). Worktree+branch removed; EXP-017 remains staged."
+    },
+    {
+      "id": "EXP-022",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "CreateOptions(semantic:) leaves compression at .default (lossy on macOS 15+); CreateOptions(semantic:compression:.none) with default mipmaps should cut TextureResource.generate CPU on 09/10.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift"
+      ],
+      "implementation_summary": "Pass compression:.none on raster TextureResource.CreateOptions; keep default mipmapsMode.",
+      "benchmark_command": "LABEL=EXP-022 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 8479.558999,
+        "sum_median_load_ms": 8221.516459
+      },
+      "delta": {
+        "vs_same_machine_ms": 859.4,
+        "pct": 11.28
+      },
+      "variance": "2/10 faster; 09 +347 / 10 +407; 08 +68",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "low (+2/\u22122)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +859 ms (+11.3%) vs tip 7620.2; only 2/10 faster; 09/10 clear regress. Discard worktree.",
+      "commit": "5b62ae7",
+      "branch": "exp/EXP-022",
+      "artifacts": [
+        "experiments/results/EXP-022.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Worktree+branch removed."
+    },
+    {
+      "id": "EXP-020",
+      "date": "2026-08-20",
+      "parent_champion": "cp-001",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "GLTFAsset(url:) heap-copies no-prepare GLBs via unmapped NSData URL read; feeding mappedIfSafe NSData into GLTFAsset(data:) removes that memcpy on large no-prepare assets (07/08/10).",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/EntityLoader.swift"
+      ],
+      "implementation_summary": "On originalURL (no prepare) path: NSData(contentsOf:options:.mappedIfSafe) \u2192 GLTFAsset(data:); keep peekJSON prepare gate.",
+      "benchmark_command": "LABEL=EXP-020 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7620.179249000001,
+        "recorded_control_sha": "1329a23bcc91051cc3ae48a82e0caa8956be5e6d"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 8153.481793,
+        "sum_median_load_ms": 7944.113332999999
+      },
+      "delta": {
+        "vs_same_machine_ms": 533.3,
+        "pct": 7.0
+      },
+      "variance": "0/10 faster; 09 +154 / 10 +169; 08 +57 / 04 +48 / 05 +49",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "low (+21/\u22128)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +533 ms (+7.0%) vs tip 7620.2; 0/10 faster; noise ~229 ms. Discard worktree.",
+      "commit": "b18f8d5",
+      "branch": "exp/EXP-020",
+      "artifacts": [
+        "experiments/results/EXP-020.json"
+      ],
+      "notes": "Control reused (cp-001 @ 7620.2). Worktree+branch removed. accepted_queue unchanged ([EXP-017])."
+    },
+    {
+      "id": "EXP-024",
+      "date": "2026-08-20",
+      "parent_champion": "cp-002",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Tight float2 UV bufferViews can fuse wrap-gated decode + RealityKit V-flip into LowLevelMesh UV write, skipping multi-pass GLTFPackedData\u2192SIMD2\u2192wrap-scan\u2192V-flip on high-UV assets (06/07/08).",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Mesh.swift",
+        "Shared/TextureUV.swift",
+        "GLBPreviewTests/TextureUVTests.swift"
+      ],
+      "implementation_summary": "Fuse tight float2 UV decode into LowLevelMesh; accessor min/max gates wrap; RealityKit-flipped float2 written straight into packed UV buffer; KHR_texture_transform stays on array path.",
+      "benchmark_command": "LABEL=EXP-024 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7372.905918,
+        "recorded_control_sha": "1aceedaaba823ab866cfc6385b13f2c624d593e1"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7471.4320830000015,
+        "sum_median_load_ms": 7280.511834000001
+      },
+      "delta": {
+        "vs_same_machine_ms": 98.5,
+        "pct": 1.34
+      },
+      "variance": "3/10 faster; targets 06 \u221238 / 07 \u221279 / 08 \u221282; 09 +126 / 10 +105 wipe gains",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium-high (+195/\u221219)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +98.5 ms (+1.34%) under ~221 ms noise; only 3/10 faster; 09/10 regress. Discard worktree.",
+      "commit": "5e6fb0f",
+      "branch": "exp/EXP-024",
+      "artifacts": [
+        "experiments/results/EXP-024.json"
+      ],
+      "notes": "Control reused (cp-002 @ 7372.9). Worktree+branch removed. accepted_queue unchanged ([])."
+    },
+    {
+      "id": "EXP-027",
+      "date": "2026-08-20",
+      "parent_champion": "cp-002",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Pair TextureResource CreateOptions compression.none with mipmapsMode.none so PNG/JPEG uploads skip CPU block-compress and the uncompressed mip pyramid while keeping full base resolution (interaction cell never benched alone as 019 or 022).",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift"
+      ],
+      "implementation_summary": "Raster (+ opacity) CreateOptions: compression:.none + mipmapsMode:.none; KTX2 path unchanged.",
+      "benchmark_command": "LABEL=EXP-027 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7372.905918,
+        "recorded_control_sha": "1aceedaaba823ab866cfc6385b13f2c624d593e1"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7305.113458,
+        "sum_median_load_ms": 7101.697083999999
+      },
+      "delta": {
+        "vs_same_machine_ms": -67.8,
+        "pct": -0.92
+      },
+      "variance": "6/10 faster; 07 \u221219 / 08 \u221221 / 10 \u221251; 09 +12; mid assets mixed",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "low (+2/\u22122)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine \u221267.8 ms (\u22120.92%) under ~221 ms noise; only 6/10 faster. Discard worktree.",
+      "commit": "dbeb84e",
+      "branch": "exp/EXP-027",
+      "artifacts": [
+        "experiments/results/EXP-027.json"
+      ],
+      "notes": "Control reused (cp-002 @ 7372.9). Worktree+branch removed. accepted_queue unchanged ([])."
+    },
+    {
+      "id": "EXP-028",
+      "date": "2026-08-20",
+      "parent_champion": "cp-002",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "After EXP-017, skinned 05/10/03 still expand JOINTS_0/WEIGHTS_0 through [SIMD4]+zip/reduce into MeshJointInfluence; one reserved bufferView\u2192MeshBuffers.JointInfluences pass for ushort/float VEC4 should cut that tax without touching packed LowLevelMesh.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Mesh.swift"
+      ],
+      "implementation_summary": "Fuse ushort joints + float weights into reserved JointInfluences (influencesPerVertex=4); Packed fallback for odd layouts.",
+      "benchmark_command": "LABEL=EXP-028 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7372.905918,
+        "recorded_control_sha": "1aceedaaba823ab866cfc6385b13f2c624d593e1"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7476.630832,
+        "sum_median_load_ms": 7295.683498
+      },
+      "delta": {
+        "vs_same_machine_ms": 103.7,
+        "pct": 1.41
+      },
+      "variance": "2/10 faster; skinned 03 +6 / 05 +40 / 10 \u221277; 09 +75 dominates; not concentrated",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+94/\u221216)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +103.7 ms (+1.41%) under ~221 ms noise; only 2/10 faster; skinned 03/05 regress, only 10 helped. Discard worktree.",
+      "commit": "8d20f0f",
+      "branch": "exp/EXP-028",
+      "artifacts": [
+        "experiments/results/EXP-028.json"
+      ],
+      "notes": "Control reused (cp-002 @ 7372.9). Worktree+branch removed. accepted_queue unchanged ([])."
+    },
+    {
+      "id": "EXP-029",
+      "date": "2026-08-20",
+      "parent_champion": "cp-002",
+      "corpus": "v2",
+      "classification": "VARIANT of EXP-002",
+      "hypothesis": "Floor SampledAnimation densify at defaultInterval (30 fps) so dense skeletal/morph keys on 03/05/10 no longer densify above ~50\u201387 fps (cheaper sampling VARIANT allowed after EXP-002).",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/AnimationHelpers.swift",
+        "GLBPreviewTests/AnimationSamplingTests.swift"
+      ],
+      "implementation_summary": "Raise AnimationSampling.minimumInterval from 1/120 to defaultInterval (1/30); densifyNeverExceedsThirtyFps test.",
+      "benchmark_command": "LABEL=EXP-029 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7372.905918,
+        "recorded_control_sha": "1aceedaaba823ab866cfc6385b13f2c624d593e1"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7129.49575,
+        "sum_median_load_ms": 6938.724626
+      },
+      "delta": {
+        "vs_same_machine_ms": -243.4,
+        "pct": -3.3
+      },
+      "variance": "4/10 faster; targets 03 \u221251 / 05 \u221275 / 10 \u2212123 (\u2212249 of \u2212243 total); 08 \u221253; mid assets small noise",
+      "correctness_result": "0/10 bench errors; AnimationSamplingTests 8/8 pass",
+      "complexity_assessment": "trivial (+18/\u22121)",
+      "decision": "accepted-staged",
+      "rejection_reason": null,
+      "commit": "e58473a",
+      "branch": "exp/EXP-029",
+      "artifacts": [
+        "experiments/results/EXP-029.json"
+      ],
+      "notes": "Control reused (cp-002 @ 7372.9). Staged to accepted_queue; worktree kept for checkpoint. Candidate delta \u2212243.4 ms (\u22123.30%)."
+    },
+    {
+      "id": "EXP-030",
+      "date": "2026-08-20",
+      "parent_champion": "cp-003",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "GLTFKit2 GLTFImage.newCGImage CFDataCreate-copies each bufferView raster then ImageIO with NULL options; no-copy byte view + kCGImageSourceShouldCacheImmediately should cut (08, texture|decode) and concentrate on 09/10 texture.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift"
+      ],
+      "implementation_summary": "Decode bufferView rasters via no-copy ImageIO (ShouldCacheImmediately); keep TextureResource.generate; fall back to newCGImage.",
+      "benchmark_command": "LABEL=EXP-030 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7464.757585000001,
+        "recorded_control_sha": "173fc71f3e366dc26b8323d98ccecc228a16c8b5"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7804.239669,
+        "sum_median_load_ms": 7626.220877
+      },
+      "delta": {
+        "vs_same_machine_ms": 339.5,
+        "pct": 4.55
+      },
+      "variance": "4/10 faster; regress 07 +90 / 08 +116 / 09 +146; 10 \u221227; 08+09+10 = +235 of +339",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+49/\u221219)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +339.5 ms (+4.55%) beyond ~224 ms noise; 4/10 faster; inverted on residual targets (08/09 regress hard, only 10 slightly faster). Discard worktree.",
+      "commit": "7ead6be",
+      "branch": "exp/EXP-030",
+      "artifacts": [
+        "experiments/results/EXP-030.json"
+      ],
+      "notes": "Control reused (cp-003 @ 7464.8). Worktree+branch removed. accepted_queue unchanged ([]). reject_only_batches=1."
+    },
+    {
+      "id": "EXP-031",
+      "date": "2026-08-20",
+      "parent_champion": "cp-003",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Bind metallicRoughness once via MaterialParameters.Texture.swizzle (macOS 15) to delete dual vImage+generate on MR maps; concentrate on 10 (MR dual ~43% of MP-generates). Tweak1: pack G\u2192Y/B\u2192A single 16bpp generate for raster MR.",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Material.swift",
+        "Shared/Convert/RealityKitResourceContext.swift",
+        "GLBPreviewTests/TextureTests.swift"
+      ],
+      "implementation_summary": "MR swizzle bind + tweak1 gray+alpha 16bpp pack for one TextureResource.generate; TextureTests cover path.",
+      "benchmark_command": "LABEL=EXP-031 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7464.757585000001,
+        "recorded_control_sha": "173fc71f3e366dc26b8323d98ccecc228a16c8b5"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 16841.519874999998,
+        "sum_median_load_ms": 16590.222083
+      },
+      "delta": {
+        "vs_same_machine_ms": 9376.8,
+        "pct": 125.61
+      },
+      "variance": "3/10 faster; residual 09 +60.8 / 10 +9302 (all 5 reps ~12s); prior NEAR_MISS was \u2212191 ms",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "medium (+189/\u22126)",
+      "decision": "reject",
+      "rejection_reason": "Tweak1 clear regress vs cp-003: +9376.8 ms (+125.6%); inverted on residual 10 (+9302, consistent across reps) and 09 (+61). Final REJECT after NEAR_MISS tweak 1/2; Must-not-retry. Discard worktree.",
+      "commit": "424494a",
+      "branch": "exp/EXP-031",
+      "artifacts": [
+        "experiments/results/EXP-031.json"
+      ],
+      "notes": "Control reused (cp-003 @ 7464.8). Prior NEAR_MISS \u2212191 ms @ 2b0e992; tweak1 424494a G/A pack catastrophe on 10. Worktree+branch removed. accepted_queue unchanged ([]). reject_only_batches=2."
+    }
+  ],
+  "corpus_version": 2
+}

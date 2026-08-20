@@ -12,21 +12,21 @@
 <table>
   <tr>
     <td align="center" valign="top" width="50%">
-      <img src="assets/exported/app_window.webp" alt="App window preview of a spinning .glb file">
+      <img src="assets/app_window.webp" alt="App window preview of a spinning .glb file">
       <small>Viewer App</small>
     </td>
     <td align="center" valign="top" width="50%">
-      <img src="assets/exported/finder_thumbnails.webp" alt="Finder thumbnail previews for .glb / .gltf files">
+      <img src="assets/finder_thumbnails.png" alt="Finder thumbnail previews for .glb / .gltf files">
       <small>Thumbnails</small>
     </td>
   </tr>
   <tr>
     <td align="center" valign="top" width="50%">
-      <img src="assets/exported/quick_look.webp" alt="Quick Look preview of a .glb file, model spinning">
+      <img src="assets/quick_look.webp" alt="Quick Look preview of a .glb file, model spinning">
       <small>Quick Look</small>
     </td>
     <td align="center" valign="top" width="50%">
-      <img src="assets/exported/finder_details_pane.webp" alt="Finder open-panel preview of a spinning .glb file">
+      <img src="assets/finder_details_pane.webp" alt="Finder open-panel preview of a spinning .glb file">
       <small>Preview Pane</small>
     </td>
   </tr>

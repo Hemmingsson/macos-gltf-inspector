@@ -139,9 +139,14 @@ func texturedPBRTriangleGLB(
     uvs: [(Float, Float)]? = nil
 ) throws -> Data {
     var bin = Data()
-    for value in [Int16(0), 0, 0, Int16(100), 0, 0, Int16(0), 100, 0] {
-        var bits = value.littleEndian
-        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    // Float3 positions with stride 16 (pad) so RealityPrepare does not rewrite them into a
+    // tight float layout that takes the LowLevelMesh path (MeshBuffers UV readback is empty there).
+    let positionStride = 16
+    for point: (Float, Float, Float) in [(0, 0, 0), (100, 0, 0), (0, 100, 0)] {
+        for value in [point.0, point.1, point.2, 0] {
+            var bits = value.bitPattern.littleEndian
+            Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+        }
     }
     let positionsLength = bin.count
     if let uvs {
@@ -156,11 +161,16 @@ func texturedPBRTriangleGLB(
     let pngStart = bin.count
     bin.append(png)
     var bufferViews: [[String: Any]] = [
-        ["buffer": 0, "byteOffset": 0, "byteLength": positionsLength],
+        [
+            "buffer": 0,
+            "byteOffset": 0,
+            "byteLength": positionsLength,
+            "byteStride": positionStride,
+        ],
     ]
     var accessors: [[String: Any]] = [[
         "bufferView": 0,
-        "componentType": 5122,
+        "componentType": 5126,
         "count": 3,
         "type": "VEC3",
         "max": [100, 100, 0],
@@ -334,7 +344,9 @@ func firstMeshUVs(in entity: Entity) -> [SIMD2<Float>]? {
         for meshModel in model.mesh.contents.models {
             for part in meshModel.parts {
                 if let uvs = part[MeshBuffers.textureCoordinates] {
-                    return Array(uvs)
+                    let array = Array(uvs)
+                    // LowLevelMesh-backed resources can expose an empty MeshBuffers view.
+                    if !array.isEmpty { return array }
                 }
             }
         }

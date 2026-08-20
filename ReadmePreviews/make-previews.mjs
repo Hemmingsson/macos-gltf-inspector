@@ -1,7 +1,7 @@
 // Render a spinning 3D model into each macOS window mockup's green (#00FF00) area
-// and write one looping animated WebP per window into ../exported/.
+// and write one looping animated WebP per window into ../assets/.
 //
-//   cd assets/scripts && npm i && npm start
+//   cd ReadmePreviews && npm i && npm start
 //
 // Renderer: headless Google Chrome (already installed) driving <model-viewer>.
 // Compositing + WebP: sharp. Nothing here touches the app codebase.
@@ -13,45 +13,30 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const HERE = import.meta.dirname;
-const ASSETS = path.resolve(HERE, '..');                 // .../assets
-const MOCKUPS = path.join(ASSETS, 'macOS_mockups');
-const EXPORT_DIR = path.join(ASSETS, 'exported');        // all generated previews land here
+const MOCKUPS = path.join(HERE, 'mockups');
+const EXPORT_DIR = path.resolve(HERE, '../assets');
 const MODELS_DIR = path.join(HERE, 'models');
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-// model-viewer bundle, injected into every render page — read once
 const MV_SRC = await fsp.readFile(path.join(HERE, 'node_modules/@google/model-viewer/dist/model-viewer.min.js'), 'utf8');
 
 // ---- knobs -------------------------------------------------------------
-const FRAMES = 90;            // frames for one full 360° turn (90 @ 30fps = a smooth 3s loop)
-const FPS = 30;               // playback rate. 33ms/frame (1000/30) is honoured by every viewer;
-                              // delays under 20ms get clamped up to ~100ms (10fps) by some of them.
-                              // (FRAMES + FPS identical across windows => same spin speed everywhere.)
-const MAX_WIDTH = 1200;       // downscale the final WebP to this width (file-size lever)
-const WEBP_QUALITY = 54;      // 0..100 (file-size / quality lever)
-const DILATE = 3;             // grow the fill this many mockup px past the green edge, so the
-                              // anti-aliased green/chrome boundary is covered (no dark seam lines)
-const ORBIT = (deg) => `${deg}deg 75deg 105%`;  // theta, polar, radius (105% = a little padding)
+const FRAMES = 90;            // 90 @ 30fps = a 3s loop
+const FPS = 30;               // delays under 20ms get clamped to ~100ms by some viewers
+const MAX_WIDTH = 1200;
+const WEBP_QUALITY = 54;
+const DILATE = 3;             // cover the anti-aliased green/chrome seam
+const ORBIT = (deg) => `${deg}deg 75deg 105%`;
 
-// One model per green-masked window. Swap `model` for any local file in models/,
-// or any Khronos glTF-Sample-Assets name (auto-downloaded if missing).
+// One model per green-masked window. Khronos sample name or a file in models/.
 const JOBS = [
   { mockup: 'app_window.png',          model: 'DamagedHelmet', out: 'app_window.webp' },
   { mockup: 'finder_details_pane.png', model: 'BoomBox',       out: 'finder_details_pane.webp' },
   { mockup: 'quick_look.png',          model: 'Lantern',       out: 'quick_look.webp' },
 ];
 
-// Mockups with no green area — copied through as a plain still (represents Finder icon
-// thumbnails, which don't animate). Just downscaled + re-encoded to match the others.
-const STILLS = [
-  { mockup: 'finder_thumbnails.png', out: 'finder_thumbnails.webp' },
-];
-
-// print a file's size in KB (used by the export log lines)
-const kb = async (file) => ((await fsp.stat(file)).size / 1024).toFixed(0);
-
 // ---- source models -----------------------------------------------------
 async function modelPath(name) {
-  if (name.endsWith('.glb') || name.endsWith('.gltf')) {   // treat as a path the user provided
+  if (name.endsWith('.glb') || name.endsWith('.gltf')) {
     const p = path.isAbsolute(name) ? name : path.join(MODELS_DIR, name);
     if (!existsSync(p)) throw new Error(`model not found: ${p}`);
     return p;
@@ -75,7 +60,10 @@ function dilate(mask, W, H, r) {
     const row = y * W;
     for (let x = 0; x < W; x++) {
       let on = 0;
-      for (let k = -r; k <= r && !on; k++) { const xx = x + k; if (xx >= 0 && xx < W && mask[row + xx]) on = 1; }
+      for (let k = -r; k <= r && !on; k++) {
+        const xx = x + k;
+        if (xx >= 0 && xx < W && mask[row + xx]) on = 1;
+      }
       h[row + x] = on;
     }
   }
@@ -83,7 +71,10 @@ function dilate(mask, W, H, r) {
   for (let x = 0; x < W; x++) {
     for (let y = 0; y < H; y++) {
       let on = 0;
-      for (let k = -r; k <= r && !on; k++) { const yy = y + k; if (yy >= 0 && yy < H && h[yy * W + x]) on = 1; }
+      for (let k = -r; k <= r && !on; k++) {
+        const yy = y + k;
+        if (yy >= 0 && yy < H && h[yy * W + x]) on = 1;
+      }
       out[y * W + x] = on;
     }
   }
@@ -95,7 +86,7 @@ function dilate(mask, W, H, r) {
 // bbox of the big green rectangle (small tag-colour swatches are rejected).
 async function greenMask(mockupFile) {
   const { data, info } = await sharp(mockupFile).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const { width: W, height: H } = info;                    // channels === 4
+  const { width: W, height: H } = info;
   const mask = new Uint8Array(W * H);
   const colSum = new Int32Array(W);
   const rowSum = new Int32Array(H);
@@ -108,11 +99,17 @@ async function greenMask(mockupFile) {
     }
   }
   let x0 = W, x1 = -1, y0 = H, y1 = -1;
-  for (let x = 0; x < W; x++) if (colSum[x] > H * 0.25) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
-  for (let y = 0; y < H; y++) if (rowSum[y] > W * 0.15) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  for (let x = 0; x < W; x++) {
+    if (colSum[x] <= H * 0.25) continue;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+  }
+  for (let y = 0; y < H; y++) {
+    if (rowSum[y] <= W * 0.15) continue;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
   if (x1 < 0 || y1 < 0) throw new Error(`no green mask found in ${mockupFile}`);
-  // Dilate so the anti-aliased green→chrome edge (a thin darker ring just outside the
-  // strict-green pixels) gets painted over instead of left as a dark seam line.
   const fill = dilate(mask, W, H, DILATE);
   return { W, H, base: data, fill, bbox: { x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } };
 }
@@ -142,8 +139,8 @@ async function renderFrames(browser, glbPath, w, h) {
       mv.addEventListener('error', () => rej(new Error('model-viewer failed to load model')), { once: true });
       setTimeout(() => rej(new Error('model load timed out')), 60000);
     });
-    mv.interpolationDecay = 0;                  // camera jumps instantly, no tweening between frames
-    await new Promise((r) => setTimeout(r, 200)); // let any load-time UI settle before the first capture
+    mv.interpolationDecay = 0;
+    await new Promise((r) => setTimeout(r, 200)); // let load-time UI settle before the first capture
   }, dataUrl);
 
   const frames = [];
@@ -184,10 +181,8 @@ async function build(job, browser) {
   // pixels and touches nothing else, so the untouched pixels always stay == base.
   const full = Buffer.from(base);
   for (const png of frames) {
-    // model on white (the viewport colour), raw RGBA at the render-rect size
     const { data: fr } = await sharp(png).flatten({ background: '#ffffff' }).ensureAlpha()
       .raw().toBuffer({ resolveWithObject: true });
-    // overwrite only the (dilated) fill-mask pixels
     for (let y = 0; y < rh; y++) {
       const my = ry0 + y;
       for (let x = 0; x < rw; x++) {
@@ -210,15 +205,8 @@ async function build(job, browser) {
     // rest at libwebp's 100ms default (that was the ~10fps stutter).
     .webp({ quality: WEBP_QUALITY, loop: 0, delay: Array(pages.length).fill(Math.round(1000 / FPS)), effort: 4, smartSubsample: true })
     .toFile(outFile);
-  console.log(`  → ${path.relative(process.cwd(), outFile)}  (${outW}×${outH}, ${await kb(outFile)} KB)\n`);
-}
-
-// downscale a green-less mockup straight to a still WebP
-async function buildStill(job) {
-  const outFile = path.join(EXPORT_DIR, job.out);
-  await sharp(path.join(MOCKUPS, job.mockup)).resize({ width: MAX_WIDTH })
-    .webp({ quality: WEBP_QUALITY, effort: 5 }).toFile(outFile);
-  console.log(`${job.mockup}  (still)\n  → ${path.relative(process.cwd(), outFile)}  (${await kb(outFile)} KB)\n`);
+  const kb = ((await fsp.stat(outFile)).size / 1024).toFixed(0);
+  console.log(`  → ${path.relative(process.cwd(), outFile)}  (${outW}×${outH}, ${kb} KB)\n`);
 }
 
 // ---- main --------------------------------------------------------------
@@ -236,5 +224,4 @@ try {
 } finally {
   await browser.close();
 }
-for (const job of STILLS) await buildStill(job);
 console.log(`all previews written to ${path.relative(process.cwd(), EXPORT_DIR)}/`);

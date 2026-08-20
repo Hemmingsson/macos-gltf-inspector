@@ -46,40 +46,4 @@ enum TextureAlpha {
         }
         return (Float(minA) / 255, Float(maxA) / 255)
     }
-
-    static func opacityMap(of image: CGImage) -> CGImage? {
-        let width = image.width
-        let height = image.height
-        guard width > 0, height > 0 else { return nil }
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let ctx = CGContext(
-                data: &pixels,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: width * 4,
-                space: space,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-              )
-        else { return nil }
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        var gray = [UInt8](repeating: 0, count: width * height)
-        for i in 0..<(width * height) {
-            gray[i] = pixels[i * 4 + 3]
-        }
-        guard let graySpace = CGColorSpace(name: CGColorSpace.linearGray) else { return nil }
-        return gray.withUnsafeMutableBytes { buf in
-            guard let base = buf.baseAddress else { return nil }
-            return CGContext(
-                data: base,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: width,
-                space: graySpace,
-                bitmapInfo: CGImageAlphaInfo.none.rawValue
-            )?.makeImage()
-        }
-    }
 }

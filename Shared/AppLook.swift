@@ -1,5 +1,21 @@
 import Foundation
 
+enum KhronosEnvironments: String, CaseIterable, Sendable {
+    case field = "field"
+    case studioNeutral = "neutral"
+    case colorfulStudio = "Colorful_Studio"
+
+    static var defaultLook: Self { .studioNeutral }
+
+    var title: String {
+        switch self {
+        case .field: "Field"
+        case .studioNeutral: "Studio Neutral"
+        case .colorfulStudio: "Colorful Studio"
+        }
+    }
+}
+
 struct AppLook: Codable, Equatable, Sendable {
     var useEnvironmentMap: Bool
     var catalogRaw: String
@@ -56,10 +72,6 @@ struct AppLook: Codable, Equatable, Sendable {
         load(from: supportDirectory())
     }
 
-    static func saveCurrent(_ look: AppLook) {
-        look.save(to: supportDirectory())
-    }
-
     func resolvedHDRURL(bundle: Bundle = .main) -> URL? {
         resolvedHDRURL(in: Self.supportDirectory(), bundle: bundle)
     }
@@ -75,11 +87,29 @@ struct AppLook: Codable, Equatable, Sendable {
     }
 
     private static func catalogURL(_ environment: KhronosEnvironments, bundle: Bundle) -> URL? {
-        if bundle == .main {
-            return PreviewLighting.catalogURL(environment)
-        }
-        let name = environment.resourceName
-        return bundle.url(forResource: name, withExtension: "hdr", subdirectory: "khronos")
-            ?? bundle.url(forResource: name, withExtension: "hdr")
+        PreviewLighting.catalogURL(environment, bundle: bundle)
+    }
+}
+
+@MainActor
+@Observable
+final class AppLookStore {
+    static let shared = AppLookStore(directory: AppLook.supportDirectory())
+
+    private let directory: URL
+    var look: AppLook
+
+    init(directory: URL) {
+        self.directory = directory
+        self.look = AppLook.load(from: directory)
+    }
+
+    func apply(_ look: AppLook) {
+        self.look = look
+        look.save(to: directory)
+    }
+
+    func reloadFromDisk() {
+        look = AppLook.load(from: directory)
     }
 }

@@ -5,7 +5,7 @@ import SwiftUI
 
 enum PreviewLighting {
     private static var studioHDRName: String {
-        KhronosEnvironments.defaultLook.resourceName
+        KhronosEnvironments.defaultLook.rawValue
     }
 
     /// Finder icons: key plus IBL when Settings uses an environment map.
@@ -131,10 +131,10 @@ enum PreviewLighting {
         }
     }
 
-    static func catalogURL(_ environment: KhronosEnvironments) -> URL? {
-        let name = environment.resourceName
-        return Bundle.main.url(forResource: name, withExtension: "hdr", subdirectory: "khronos")
-            ?? Bundle.main.url(forResource: name, withExtension: "hdr")
+    static func catalogURL(_ environment: KhronosEnvironments, bundle: Bundle = .main) -> URL? {
+        let name = environment.rawValue
+        return bundle.url(forResource: name, withExtension: "hdr", subdirectory: "khronos")
+            ?? bundle.url(forResource: name, withExtension: "hdr")
     }
 
     static func canDecodeHDR(at url: URL) -> Bool {

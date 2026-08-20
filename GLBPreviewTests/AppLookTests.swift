@@ -75,4 +75,34 @@ struct AppLookTests {
         #expect(resolved.deletingLastPathComponent().lastPathComponent == "ibl")
         #expect(resolved.path == dest.path)
     }
+
+    @Test func catalogHasExactViewerTitles() {
+        let titles = KhronosEnvironments.allCases.map(\.title)
+        #expect(titles == [
+            "Field",
+            "Studio Neutral",
+            "Colorful Studio",
+        ])
+        #expect(KhronosEnvironments.defaultLook == .studioNeutral)
+        #expect(KhronosEnvironments.defaultLook.title == "Studio Neutral")
+    }
+
+    @Test func studioNeutralHDRIsInBundle() {
+        #expect(PreviewLighting.catalogURL(.studioNeutral) != nil)
+    }
+
+    @Test @MainActor func storeApplyPersistsToInjectedDirectory() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("applook-store-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let store = AppLookStore(directory: dir)
+        var look = AppLook.default
+        look.useEnvironmentMap = false
+        look.catalogRaw = KhronosEnvironments.field.rawValue
+        store.apply(look)
+
+        #expect(store.look == look)
+        #expect(AppLook.load(from: dir) == look)
+    }
 }

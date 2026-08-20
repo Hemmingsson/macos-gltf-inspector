@@ -37,6 +37,17 @@ final class PreviewInteraction {
 final class PreviewHostingView: NSHostingView<PreviewView> {
     var interaction: PreviewInteraction?
 
+    required override init(rootView: PreviewView) {
+        super.init(rootView: rootView)
+        // Size from the AppKit frame so loading/failed content fills the window
+        // instead of hugging the ProgressView and landing at the origin.
+        sizingOptions = []
+    }
+
+    @MainActor required dynamic init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override var isOpaque: Bool { false }
     override var mouseDownCanMoveWindow: Bool { false }
     override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
