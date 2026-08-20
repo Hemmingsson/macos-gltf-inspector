@@ -9,7 +9,6 @@ enum SettingsKeys {
     static let defaultCamera = "settings.preview.defaultCamera"
     static let appearance = "settings.general.appearance"
     static let quitWhenLastWindowCloses = "settings.general.quitWhenLastWindowCloses"
-    static let hostSidebarWidth = "settings.host.sidebarWidth"
 }
 
 enum PreviewBackground: String, CaseIterable, Identifiable {
@@ -66,7 +65,7 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         let base: Color = useLightIcons(at: index, systemDark: systemDark)
             ? .white
             : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
-        return active ? base : base.opacity(0.4)
+        return active ? base : base.opacity(0.55)
     }
 }
 

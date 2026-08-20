@@ -9,11 +9,6 @@ struct PreviewDebugModeTests {
         #expect(PreviewDebugMode.wire.shortTitle == "Wire")
         #expect(PreviewDebugMode.visualization(.normal).shortTitle == "Nrm")
         #expect(PreviewDebugMode.visualization(.textureCoordinates).shortTitle == "UV")
-        #expect(PreviewDebugMode.variableValue(index: 0, count: 1) == 0)
-        #expect(PreviewDebugMode.variableValue(index: 0, count: 4) == 0)
-        #expect(PreviewDebugMode.variableValue(index: 1, count: 4) == 1)
-        #expect(PreviewDebugMode.variableValue(index: 2, count: 4) == 0.5)
-        #expect(PreviewDebugMode.variableValue(index: 3, count: 4) == 0)
     }
 
     @Test func baseAndUVMeshIncludesExpectedModes() {

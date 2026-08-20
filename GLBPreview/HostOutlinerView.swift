@@ -64,12 +64,23 @@ private struct OutlinerContent: View {
 
     @ViewBuilder
     private var statsBlock: some View {
-        if let rows = model?.stats.previewRows {
-            ForEach(rows, id: \.label) { row in
-                LabeledContent(row.label, value: row.value)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        if let facts = model?.stats.overlayFacts, !facts.isEmpty {
+            VStack(spacing: 2) {
+                ForEach(facts, id: \.label) { fact in
+                    HStack(spacing: 8) {
+                        if !fact.value.isEmpty {
+                            Text(fact.value)
+                                .foregroundStyle(.primary.opacity(0.85))
+                        }
+                        Spacer(minLength: 8)
+                        if !fact.label.isEmpty {
+                            Text(fact.label)
+                                .foregroundStyle(.primary.opacity(0.4))
+                        }
+                    }
+                }
             }
+            .font(.system(size: 11, weight: .regular).monospacedDigit())
         }
     }
 
@@ -139,7 +150,7 @@ private struct LayerRowView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Color.clear.frame(width: CGFloat(depth) * 14)
+            Color.clear.frame(width: CGFloat(depth) * 8)
 
             if hasChildren {
                 Button(action: onToggleExpand) {

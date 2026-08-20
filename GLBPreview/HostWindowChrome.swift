@@ -9,10 +9,7 @@ enum HostWindowChrome {
         window.isOpaque = true
         window.styleMask.insert(.fullSizeContentView)
         window.isMovableByWindowBackground = false
-        lockToolbarIconOnly(window)
-        DispatchQueue.main.async {
-            lockToolbarIconOnly(window)
-        }
+        lockToolbarNowAndNextTurn(window)
     }
 
     /// Document windows using NavigationSplitView: keep system sidebar/titlebar chrome.
@@ -22,10 +19,8 @@ enum HostWindowChrome {
         window.isOpaque = true
         window.isMovableByWindowBackground = false
         window.toolbarStyle = .unifiedCompact
-        lockToolbarIconOnly(window)
-        DispatchQueue.main.async {
+        lockToolbarNowAndNextTurn(window) {
             window.toolbarStyle = .unifiedCompact
-            lockToolbarIconOnly(window)
         }
     }
 
@@ -34,5 +29,14 @@ enum HostWindowChrome {
         toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = false
         toolbar.allowsDisplayModeCustomization = false
+    }
+
+    /// Toolbar may attach one run-loop turn after first layout.
+    private static func lockToolbarNowAndNextTurn(_ window: NSWindow, extraAsync: (() -> Void)? = nil) {
+        lockToolbarIconOnly(window)
+        DispatchQueue.main.async {
+            extraAsync?()
+            lockToolbarIconOnly(window)
+        }
     }
 }

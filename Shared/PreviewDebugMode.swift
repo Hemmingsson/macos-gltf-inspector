@@ -31,15 +31,6 @@ enum PreviewDebugMode: Equatable, Hashable {
         }
     }
 
-    /// None is empty. Wire (first real mode) is 100%; later options count down toward 0.
-    static func variableValue(index: Int, count: Int) -> Double {
-        guard count > 1 else { return 0 }
-        let clamped = min(max(index, 0), count - 1)
-        if clamped == 0 { return 0 }
-        if count == 2 { return 1 }
-        return 1 - Double(clamped - 1) / Double(count - 2)
-    }
-
     /// Modes present and used in `json`, in cycle order.
     static func available(from json: [String: Any]) -> [PreviewDebugMode] {
         let flags = Channels(json: json)

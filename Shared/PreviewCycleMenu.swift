@@ -6,7 +6,7 @@ struct PreviewCycleMenu<Icon: View>: View {
     let options: [String]
     @Binding var index: Int
     var tint: (Bool) -> Color
-    @ViewBuilder var icon: (Double) -> Icon
+    @ViewBuilder var icon: () -> Icon
 
     @State private var hovering = false
 
@@ -30,9 +30,9 @@ struct PreviewCycleMenu<Icon: View>: View {
             Button {
                 cycle()
             } label: {
-                icon(PreviewDebugMode.variableValue(index: index, count: options.count))
+                icon()
                     .frame(width: 24, height: 24)
-                    .opacity(isNoneSelected ? 0.4 : 1)
+                    .opacity(isNoneSelected ? 0.55 : 1)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

@@ -14,12 +14,10 @@ struct ContentView: View {
     @State private var sidebar: HostSidebarModel?
     @State private var loadGeneration = 0
     @State private var blenderLaunchError: String?
-    @AppStorage(SettingsKeys.hostSidebarWidth) private var sidebarWidth = 252.0
 
     private static let sidebarMinWidth: CGFloat = 200
+    private static let sidebarIdealWidth: CGFloat = 252
     private static let sidebarMaxWidth: CGFloat = 480
-
-    private var openedFileName: String? { documentURL?.lastPathComponent }
 
     private static let finderMenuIcon: NSImage = {
         let url =
@@ -61,7 +59,6 @@ struct ContentView: View {
             Text(blenderLaunchError ?? "")
         }
         .onAppear {
-            configureDocumentWindow()
             dismissWindow(id: WelcomeWindow.id)
             GLBDocumentOpening.closeWelcomeWindows()
             if let documentURL {
@@ -96,7 +93,7 @@ struct ContentView: View {
             sidebarColumn
                 .navigationSplitViewColumnWidth(
                     min: Self.sidebarMinWidth,
-                    ideal: clampedSidebarWidth,
+                    ideal: Self.sidebarIdealWidth,
                     max: Self.sidebarMaxWidth
                 )
         } detail: {
@@ -127,7 +124,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .modifier(DetailBackgroundExtension())
         .ignoresSafeArea(edges: .bottom)
-        .navigationTitle(openedFileName ?? "GLB Preview")
+        .navigationTitle(documentURL?.lastPathComponent ?? "GLB Preview")
         .toolbar {
             if let documentURL {
                 ToolbarItem(placement: .primaryAction) {
@@ -159,23 +156,9 @@ struct ContentView: View {
         }
     }
 
-    private var clampedSidebarWidth: CGFloat {
-        min(max(sidebarWidth, Self.sidebarMinWidth), Self.sidebarMaxWidth)
-    }
-
     private var loadedModel: EntityLoader.LoadedModel? {
         if case .ready(let model) = previewState { return model }
         return nil
-    }
-
-    private func configureDocumentWindow() {
-        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
-            return
-        }
-        // Let NavigationSplitView own traffic lights / glass chrome; only lock toolbar + tabbing.
-        HostWindowChrome.applySplitChrome(to: window)
-        window.tabbingIdentifier = GLBDocumentOpening.documentTabbingIdentifier
-        window.tabbingMode = .preferred
     }
 
     private func applyDefaultCamera() {

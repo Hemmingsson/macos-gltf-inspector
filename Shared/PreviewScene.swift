@@ -191,7 +191,7 @@ struct PreviewScene: View {
                                 active: active
                             )
                         }
-                    ) { _ in
+                    ) {
                         Image(systemName: "circle.lefthalf.filled")
                             .font(.system(size: 14, weight: .regular))
                             .symbolRenderingMode(.monochrome)
@@ -203,15 +203,11 @@ struct PreviewScene: View {
                         tint: { active in
                             chromeTint(active: active)
                         }
-                    ) { variableValue in
-                        Image(
-                            systemName: "square.3.layers.3d",
-                            variableValue: variableValue
-                        )
-                        .font(.system(size: 14, weight: .regular))
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(chromeTint(active: debugModeIndex != 0), .yellow)
-                        .animation(.easeInOut(duration: 0.2), value: variableValue)
+                    ) {
+                        Image(systemName: "square.3.layers.3d", variableValue: 1)
+                            .font(.system(size: 14, weight: .regular))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(chromeTint(active: debugModeIndex != 0), .yellow)
                     }
                     Button {
                         autoRotate.toggle()
