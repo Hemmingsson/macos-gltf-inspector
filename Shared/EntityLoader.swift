@@ -9,14 +9,8 @@ enum EntityLoader {
         let stats: PreviewStats
         let document: GLTFSessionDocument
         let debugModes: [PreviewDebugMode]
-
-        @MainActor var punctualLightCount: Int {
-            EntityLoader.punctualLightCount(in: entity)
-        }
-
-        @MainActor var studioIBLExponent: Float {
-            PreviewEmissive.studioIBLExponent(punctualLightCount: punctualLightCount)
-        }
+        /// Computed once at load; avoid re-walking the entity tree on every host view refresh.
+        let studioIBLExponent: Float
     }
 
     @MainActor
@@ -187,11 +181,14 @@ enum EntityLoader {
             entity: entity,
             stats: PreviewStats.from(
                 json: json,
-                usableAnimations: entity.availableAnimations,
+                animationCount: entity.availableAnimations.count,
                 fileSizeBytes: fileSizeBytes
             ),
             document: document,
-            debugModes: PreviewDebugMode.available(from: json)
+            debugModes: PreviewDebugMode.available(from: json),
+            studioIBLExponent: PreviewEmissive.studioIBLExponent(
+                punctualLightCount: punctualLightCount(in: entity)
+            )
         )
     }
 

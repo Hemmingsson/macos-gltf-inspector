@@ -215,7 +215,10 @@ struct ContentView: View {
                             entity: entity,
                             stats: model.stats,
                             document: model.document,
-                            debugModes: model.debugModes
+                            debugModes: model.debugModes,
+                            studioIBLExponent: PreviewEmissive.studioIBLExponent(
+                                punctualLightCount: EntityLoader.punctualLightCount(in: entity)
+                            )
                         )
                     )
                     sidebar.overlayRevision += 1

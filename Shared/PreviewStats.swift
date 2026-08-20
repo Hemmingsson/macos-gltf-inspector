@@ -1,5 +1,4 @@
 import Foundation
-import RealityKit
 
 /// Mesh / material / node / texture from the glTF JSON header. Animation count
 /// comes from converted usable clips, not `json["animations"]`.
@@ -24,18 +23,12 @@ struct PreviewStats: Equatable {
         fromJSONCounts(json, animationCount: 0, fileSizeBytes: fileSizeBytes)
     }
 
-    /// Animation count comes from converted usable clips (`duration > 0`), not JSON.
-    @MainActor
     static func from(
         json: [String: Any],
-        usableAnimations: [AnimationResource],
+        animationCount: Int,
         fileSizeBytes: Int64? = nil
     ) -> PreviewStats {
-        fromJSONCounts(
-            json,
-            animationCount: usableAnimations.count,
-            fileSizeBytes: fileSizeBytes
-        )
+        fromJSONCounts(json, animationCount: animationCount, fileSizeBytes: fileSizeBytes)
     }
 
     /// One left-aligned fact per line for Quick Look. `noun` is the dimmed unit.
@@ -97,7 +90,7 @@ struct PreviewStats: Equatable {
             materialCount: materials.count,
             pbrLabel: pbrLabel(materials),
             animationCount: animationCount,
-            textureCount: arrayCount(json["textures"]),
+            textureCount: (json["textures"] as? [Any])?.count ?? 0,
             hasVertexColors: geometry.hasColors,
             isRigged: !skins.isEmpty || geometry.hasJoints,
             morphGeometryCount: geometry.morphMeshes,
@@ -183,10 +176,6 @@ struct PreviewStats: Equatable {
     private static func accessorCount(_ value: Any?, accessors: [[String: Any]]) -> Int {
         guard let index = GLBBox.intValue(value), accessors.indices.contains(index) else { return 0 }
         return GLBBox.intValue(accessors[index]["count"]) ?? 0
-    }
-
-    private static func arrayCount(_ value: Any?) -> Int {
-        (value as? [Any])?.count ?? 0
     }
 
     private func compact(_ value: Int) -> String {

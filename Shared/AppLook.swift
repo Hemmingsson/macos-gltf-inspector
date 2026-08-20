@@ -14,9 +14,6 @@ enum KhronosEnvironments: String, CaseIterable, Sendable {
         case .colorfulStudio: "Colorful Studio"
         }
     }
-
-    /// Bundle resource name without extension (`assets/ibl/khronos/<rawValue>.hdr`).
-    var resourceName: String { rawValue }
 }
 
 struct AppLook: Codable, Equatable, Sendable {
@@ -90,12 +87,7 @@ struct AppLook: Codable, Equatable, Sendable {
     }
 
     private static func catalogURL(_ environment: KhronosEnvironments, bundle: Bundle) -> URL? {
-        if bundle == .main {
-            return PreviewLighting.catalogURL(environment)
-        }
-        let name = environment.resourceName
-        return bundle.url(forResource: name, withExtension: "hdr", subdirectory: "khronos")
-            ?? bundle.url(forResource: name, withExtension: "hdr")
+        PreviewLighting.catalogURL(environment, bundle: bundle)
     }
 }
 

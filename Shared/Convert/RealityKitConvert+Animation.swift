@@ -66,7 +66,10 @@ extension RealityKitConvert {
                 }
                 let sampledAnimation = SampledAnimation(frames: frames,
                                                         tweenMode: transformSampler.hasStepChannel ? .hold : .linear,
-                                                        frameInterval: AnimationSampling.frameInterval(transformSampler.recommendedSampleInterval),
+                                                        frameInterval: AnimationSampling.sampleInterval(
+                                                            averageKeyDuration: transformSampler.recommendedSampleInterval,
+                                                            maximum: AnimationSampling.defaultInterval
+                                                        ),
                                                         bindTarget: targetNode.bindPath.transform,
                                                         delay: TimeInterval(transformSampler.startTime))
                 animations.append(sampledAnimation)
@@ -104,7 +107,10 @@ extension RealityKitConvert {
                 let skeletalAnimation = SampledAnimation(jointNames: jointAnimation.jointNames,
                                                          frames: jointTransforms,
                                                          tweenMode: .linear, // TODO: Support .hold?
-                                                         frameInterval: AnimationSampling.frameInterval(jointAnimation.sampleInterval),
+                                                         frameInterval: AnimationSampling.sampleInterval(
+                                                            averageKeyDuration: jointAnimation.sampleInterval,
+                                                            maximum: AnimationSampling.defaultInterval
+                                                         ),
                                                          bindTarget: bindPath.jointTransforms,
                                                          delay: delay)
                 animations.append(skeletalAnimation)

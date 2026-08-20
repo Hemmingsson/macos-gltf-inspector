@@ -8,7 +8,7 @@ struct SceneGraphConvertTests {
     @MainActor
     @Test func punctualLightUsesEngineUnitsAndNonZeroRange() async throws {
         let model = try await loadModel(try punctualLightsGLB())
-        #expect(model.punctualLightCount == 2)
+        #expect(EntityLoader.punctualLightCount(in: model.entity) == 2)
 
         let point = try #require(firstComponent(PointLightComponent.self, in: model.entity))
         #expect(abs(point.intensity - 10 * 4 * .pi) < 0.01)
@@ -47,7 +47,7 @@ struct SceneGraphConvertTests {
         let material = try #require(pbrMaterials(in: model.entity).first)
         #expect(abs(material.metallic.scale - 1) < 0.001)
         #expect(abs(material.roughness.scale - 0.2) < 0.001)
-        #expect(model.punctualLightCount == 1)
+        #expect(EntityLoader.punctualLightCount(in: model.entity) == 1)
 
         await PreviewLighting.prefetchLook(.current)
         let renderer = try RealityRenderer()

@@ -88,9 +88,7 @@ struct AppLookTests {
     }
 
     @Test func studioNeutralHDRIsInBundle() {
-        let url = Bundle.main.url(forResource: "neutral", withExtension: "hdr")
-            ?? Bundle.main.url(forResource: "neutral", withExtension: "hdr", subdirectory: "khronos")
-        #expect(url != nil)
+        #expect(PreviewLighting.catalogURL(.studioNeutral) != nil)
     }
 
     @Test @MainActor func storeApplyPersistsToInjectedDirectory() throws {

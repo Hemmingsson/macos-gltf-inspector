@@ -31,10 +31,6 @@ enum AnimationSampling {
         return Array(stride(from: lo, through: hi, by: step))
     }
 
-    static func frameInterval(_ interval: Float) -> Float {
-        sampleInterval(averageKeyDuration: interval, maximum: defaultInterval)
-    }
-
     static func inputRange(of sampler: GLTFAnimationSampler) -> (count: Int, minTime: Float, maxTime: Float) {
         var minTime = Float.infinity
         var maxTime = -Float.infinity

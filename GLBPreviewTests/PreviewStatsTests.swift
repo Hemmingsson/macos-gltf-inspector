@@ -1,24 +1,13 @@
-import AppKit
-import CoreGraphics
 import Foundation
-import RealityKit
 import Testing
-import simd
 @testable import GLBPreview
 
 struct PreviewStatsTests {
-    @Test func countsAndDurationFromJSON() {
+    @Test func countsMaterialsAndTexturesFromJSON() {
         let json: [String: Any] = [
             "meshes": [[:], [:]],
             "materials": [[:]],
-            "animations": [[
-                "samplers": [["input": 0]],
-            ]],
-            "nodes": [[:], [:], [:]],
             "textures": [[:]],
-            "accessors": [
-                ["max": [2.5]],
-            ],
         ]
         let stats = PreviewStats.from(json: json)
         #expect(stats.materialCount == 1)
@@ -31,7 +20,7 @@ struct PreviewStatsTests {
         #expect(stats.overlayFacts.contains { $0.label == "textures" && $0.value == "1" })
     }
 
-    @Test func trianglesAndTransparentFromPrimitives() {
+    @Test func trianglesAndFileSizeOverlay() {
         let json: [String: Any] = [
             "accessors": [
                 ["count": 9],
@@ -46,21 +35,13 @@ struct PreviewStatsTests {
                     ["indices": 2, "mode": 1],
                 ]],
             ],
-            "materials": [
-                [:],
-                ["alphaMode": "MASK"],
-                ["alphaMode": "BLEND"],
-                [
-                    "alphaMode": "OPAQUE",
-                    "extensions": ["KHR_materials_transmission": ["transmissionFactor": 1]],
-                ],
-            ],
+            "materials": [[:]],
         ]
         let stats = PreviewStats.from(json: json, fileSizeBytes: 1_500_000)
         #expect(stats.triangleCount == 8)
         #expect(stats.vertexCount == 6)
         #expect(stats.overlayFacts.contains { $0.label == "triangles" && $0.value == "8" })
-        #expect(stats.overlayFacts.contains { $0.label == "MB" || $0.label == "KB" || !$0.value.isEmpty })
+        #expect(stats.overlayFacts.contains { $0.label == "MB" && !$0.value.isEmpty })
     }
 
     @Test func sketchfabStyleFlagsFromJSON() {
@@ -72,7 +53,6 @@ struct PreviewStatsTests {
                 "primitives": [[
                     "attributes": [
                         "POSITION": 0,
-                        "TEXCOORD_0": 0,
                         "COLOR_0": 0,
                         "JOINTS_0": 0,
                     ],
@@ -84,7 +64,6 @@ struct PreviewStatsTests {
             ]],
             "textures": [[:], [:]],
             "skins": [["joints": [0]]],
-            "nodes": [["scale": [2, 1, 1]]],
         ]
         let stats = PreviewStats.from(json: json)
         #expect(stats.hasVertexColors)

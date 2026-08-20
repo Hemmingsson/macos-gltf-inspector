@@ -33,18 +33,8 @@ final class PreviewInteraction {
     }
 }
 
-/// AppKit views that forward trackpad zoom into `PreviewInteraction`.
-private protocol PreviewZoomForwarding: AnyObject {
-    var interaction: PreviewInteraction? { get }
-}
-
-extension PreviewZoomForwarding where Self: NSView {
-    func forwardScrollWheel(_ event: NSEvent) { interaction?.applyScroll(event) }
-    func forwardMagnify(_ event: NSEvent) { interaction?.applyMagnify(event) }
-}
-
 /// Forwards trackpad scroll/magnify into `PreviewInteraction` (SwiftUI misses these on macOS).
-final class PreviewHostingView: NSHostingView<PreviewView>, PreviewZoomForwarding {
+final class PreviewHostingView: NSHostingView<PreviewView> {
     var interaction: PreviewInteraction?
 
     required override init(rootView: PreviewView) {
@@ -60,8 +50,8 @@ final class PreviewHostingView: NSHostingView<PreviewView>, PreviewZoomForwardin
 
     override var isOpaque: Bool { false }
     override var mouseDownCanMoveWindow: Bool { false }
-    override func scrollWheel(with event: NSEvent) { forwardScrollWheel(event) }
-    override func magnify(with event: NSEvent) { forwardMagnify(event) }
+    override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
+    override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
     override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
     override var acceptsFirstResponder: Bool { true }
 
@@ -74,12 +64,12 @@ final class PreviewHostingView: NSHostingView<PreviewView>, PreviewZoomForwardin
 }
 
 /// Non-hosting root used by Quick Look so scroll events still hit before the hosting view.
-final class PreviewEventView: NSView, PreviewZoomForwarding {
+final class PreviewEventView: NSView {
     var interaction: PreviewInteraction?
 
     override var isOpaque: Bool { false }
-    override func scrollWheel(with event: NSEvent) { forwardScrollWheel(event) }
-    override func magnify(with event: NSEvent) { forwardMagnify(event) }
+    override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
+    override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
     override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
     override var acceptsFirstResponder: Bool { true }
 }
