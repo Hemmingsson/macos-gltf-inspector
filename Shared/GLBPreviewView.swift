@@ -132,7 +132,6 @@ struct GLBPreviewView: View {
 /// Reference box so RealityView `make` can stash unscaled bounds while zoom scales the pivot.
 private final class PreviewFrame {
     var bounds = BoundingBox()
-    var cameraAspect: Float = -1
 }
 
 private struct GLBPreviewScene: View {
@@ -247,7 +246,6 @@ private struct GLBPreviewScene: View {
                 if sidebar?.selectedCameraIndex != nil {
                     applyFileCamera(content)
                 } else {
-                    frame.cameraAspect = viewAspect
                     for entity in content.entities where entity.name == "previewCamera" {
                         GLBPreviewCamera.restoreFitPerspective(on: entity)
                         let position = GLBPreviewCamera.cameraPosition(
