@@ -112,6 +112,7 @@ targets:
                 - model/gltf+json
         NSMainStoryboardFile: ""
         NSPrincipalClass: NSApplication
+        LSSupportsOpeningDocumentsInPlace: true
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         SUFeedURL: https://github.com/Hemmingsson/macos-gltf-preview/releases/latest/download/appcast.xml

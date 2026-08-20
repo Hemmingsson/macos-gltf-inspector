@@ -1,0 +1,401 @@
+{
+  "files" : [
+    {
+      "bytes" : 428,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "01-tiny",
+      "mean_load_ms" : 4.5121247999999996,
+      "mean_total_ms" : 26.609550000000002,
+      "median_first_render_ms" : 7.7137089999999997,
+      "median_load_ms" : 5.44475,
+      "median_total_ms" : 13.158459000000001,
+      "p90_load_ms" : 5.5037909999999997,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/01-tiny.glb",
+      "samples_first_render_ms" : [
+        84.415000000000006,
+        8.4130000000000003,
+        7.7137089999999997,
+        4.9029170000000004,
+        5.0425000000000004
+      ],
+      "samples_load_ms" : [
+        0.89691600000000005,
+        5.5037909999999997,
+        5.44475,
+        5.260834,
+        5.4543330000000001
+      ],
+      "samples_total_ms" : [
+        85.311916000000011,
+        13.916791,
+        13.158459000000001,
+        10.163751000000001,
+        10.496833000000001
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 380608,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "02-free_streetbanch1",
+      "mean_load_ms" : 13.329541599999999,
+      "mean_total_ms" : 23.143633399999999,
+      "median_first_render_ms" : 9.7138749999999998,
+      "median_load_ms" : 12.56575,
+      "median_total_ms" : 22.189792000000001,
+      "p90_load_ms" : 16.847249999999999,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/02-free_streetbanch1.glb",
+      "samples_first_render_ms" : [
+        10.352042000000001,
+        9.7138749999999998,
+        9.4940840000000009,
+        9.6979159999999993,
+        9.8125420000000005
+      ],
+      "samples_load_ms" : [
+        16.847249999999999,
+        12.290540999999999,
+        12.566917,
+        12.56575,
+        12.37725
+      ],
+      "samples_total_ms" : [
+        27.199292,
+        22.004415999999999,
+        22.061001000000001,
+        22.263666000000001,
+        22.189792000000001
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 3307436,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "03-animated_eagle",
+      "mean_load_ms" : 134.2997168,
+      "mean_total_ms" : 146.70196659999999,
+      "median_first_render_ms" : 10.897833,
+      "median_load_ms" : 132.01712499999999,
+      "median_total_ms" : 143.02937499999999,
+      "p90_load_ms" : 146.18991700000001,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/03-animated_eagle.glb",
+      "samples_first_render_ms" : [
+        18.838958000000002,
+        10.897833,
+        10.481707999999999,
+        10.7805,
+        11.01225
+      ],
+      "samples_load_ms" : [
+        146.18991700000001,
+        135.65908300000001,
+        130.79833400000001,
+        126.834125,
+        132.01712499999999
+      ],
+      "samples_total_ms" : [
+        165.028875,
+        146.556916,
+        141.28004200000001,
+        137.61462499999999,
+        143.02937499999999
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 10383924,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "04-bmw_z3_gtr",
+      "mean_load_ms" : 271.65616660000001,
+      "mean_total_ms" : 284.13864999999998,
+      "median_first_render_ms" : 11.980375,
+      "median_load_ms" : 270.067791,
+      "median_total_ms" : 282.91637400000002,
+      "p90_load_ms" : 280.56308300000001,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/04-bmw_z3_gtr.glb",
+      "samples_first_render_ms" : [
+        14.570417000000001,
+        11.980375,
+        12.848583,
+        11.651,
+        11.362042000000001
+      ],
+      "samples_load_ms" : [
+        273.84300000000002,
+        264.50762500000002,
+        270.067791,
+        280.56308300000001,
+        269.29933399999999
+      ],
+      "samples_total_ms" : [
+        288.41341700000004,
+        276.488,
+        282.91637400000002,
+        292.21408300000002,
+        280.66137599999996
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 54418804,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "05-last_stronghold_animated",
+      "mean_load_ms" : 488.17200000000003,
+      "mean_total_ms" : 503.319975,
+      "median_first_render_ms" : 15.401624999999999,
+      "median_load_ms" : 481.82662499999998,
+      "median_total_ms" : 496.00687499999998,
+      "p90_load_ms" : 507.363,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/05-last_stronghold_animated.glb",
+      "samples_first_render_ms" : [
+        16.560832999999999,
+        14.180249999999999,
+        15.401624999999999,
+        13.922499999999999,
+        15.674666999999999
+      ],
+      "samples_load_ms" : [
+        507.363,
+        481.82662499999998,
+        501.548833,
+        470.06041699999997,
+        480.061125
+      ],
+      "samples_total_ms" : [
+        523.92383299999995,
+        496.00687499999998,
+        516.95045800000003,
+        483.98291699999999,
+        495.735792
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 32764712,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "06-stone_wall_nr.2",
+      "mean_load_ms" : 224.70322479999999,
+      "mean_total_ms" : 236.0134414,
+      "median_first_render_ms" : 11.695874999999999,
+      "median_load_ms" : 222.481708,
+      "median_total_ms" : 234.767583,
+      "p90_load_ms" : 244.846125,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/06-stone_wall_nr.2.glb",
+      "samples_first_render_ms" : [
+        9.4773750000000003,
+        11.695874999999999,
+        11.746874999999999,
+        12.285875000000001,
+        11.345083000000001
+      ],
+      "samples_load_ms" : [
+        244.846125,
+        217.682208,
+        223.82029199999999,
+        222.481708,
+        214.68579099999999
+      ],
+      "samples_total_ms" : [
+        254.3235,
+        229.378083,
+        235.56716699999998,
+        234.767583,
+        226.03087399999998
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 100621896,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "07-vegetation_pack",
+      "mean_load_ms" : 947.93489979999993,
+      "mean_total_ms" : 967.18645840000011,
+      "median_first_render_ms" : 19.220292000000001,
+      "median_load_ms" : 964.59866599999998,
+      "median_total_ms" : 984.96158300000002,
+      "p90_load_ms" : 995.06045800000004,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/07-vegetation_pack.glb",
+      "samples_first_render_ms" : [
+        21.990625000000001,
+        20.362916999999999,
+        19.220292000000001,
+        17.071791999999999,
+        17.612166999999999
+      ],
+      "samples_load_ms" : [
+        979.40591600000005,
+        964.59866599999998,
+        995.06045800000004,
+        901.34679200000005,
+        899.26266699999996
+      ],
+      "samples_total_ms" : [
+        1001.3965410000001,
+        984.96158300000002,
+        1014.28075,
+        918.41858400000001,
+        916.87483399999996
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 125451176,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "08-cinema_projector",
+      "mean_load_ms" : 983.98843339999985,
+      "mean_total_ms" : 1000.4492418,
+      "median_first_render_ms" : 15.091167,
+      "median_load_ms" : 971.76766699999996,
+      "median_total_ms" : 991.85754199999997,
+      "p90_load_ms" : 1037.232458,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/08-cinema_projector.glb",
+      "samples_first_render_ms" : [
+        14.417375,
+        15.091167,
+        13.492749999999999,
+        20.089874999999999,
+        19.212875
+      ],
+      "samples_load_ms" : [
+        1037.232458,
+        1029.8333749999999,
+        922.32062499999995,
+        971.76766699999996,
+        958.78804200000002
+      ],
+      "samples_total_ms" : [
+        1051.6498329999999,
+        1044.924542,
+        935.81337499999995,
+        991.85754199999997,
+        978.00091700000007
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 208358820,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "09-realistic_animals",
+      "mean_load_ms" : 1985.2927168000001,
+      "mean_total_ms" : 2008.8286584000002,
+      "median_first_render_ms" : 21.797833000000001,
+      "median_load_ms" : 1962.4818340000002,
+      "median_total_ms" : 1989.5210010000001,
+      "p90_load_ms" : 2053.2129169999998,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/09-realistic_animals.glb",
+      "samples_first_render_ms" : [
+        21.797833000000001,
+        27.039166999999999,
+        29.668333000000001,
+        20.459125,
+        18.715250000000001
+      ],
+      "samples_load_ms" : [
+        2053.2129169999998,
+        1962.4818340000002,
+        2019.3776250000001,
+        1945.4935420000002,
+        1945.8976659999998
+      ],
+      "samples_total_ms" : [
+        2075.0107499999999,
+        1989.5210010000001,
+        2049.0459580000002,
+        1965.9526670000002,
+        1964.6129159999998
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    },
+    {
+      "bytes" : 254472304,
+      "decode_ms" : null,
+      "error" : null,
+      "file_read_ms" : null,
+      "gpu_upload_ms" : null,
+      "id" : "10-bot_mecha_warrior",
+      "mean_load_ms" : 3033.3354918000005,
+      "mean_total_ms" : 3089.7828083999998,
+      "median_first_render_ms" : 59.002457999999997,
+      "median_load_ms" : 3003.5619579999998,
+      "median_total_ms" : 3050.3745409999997,
+      "p90_load_ms" : 3120.9206250000002,
+      "parse_ms" : null,
+      "path" : "\/tmp\/glb-preview-load-bench\/set\/10-bot_mecha_warrior.glb",
+      "samples_first_render_ms" : [
+        62.818832999999998,
+        69.373334,
+        59.002457999999997,
+        46.812582999999997,
+        44.229374999999997
+      ],
+      "samples_load_ms" : [
+        2974.9335000000001,
+        3101.7738340000001,
+        3120.9206250000002,
+        3003.5619579999998,
+        2965.4875419999998
+      ],
+      "samples_total_ms" : [
+        3037.7523329999999,
+        3171.147168,
+        3179.9230830000001,
+        3050.3745409999997,
+        3009.7169169999997
+      ],
+      "scene_build_ms" : null,
+      "texture_ms" : null
+    }
+  ],
+  "includeAnimations" : true,
+  "label" : "EXP-010-champ",
+  "reps" : 5,
+  "started" : "2026-08-20T02:48:15Z",
+  "sum_median_load_ms" : 8026.8138739999995,
+  "sum_median_ms" : 8208.7831249999999,
+  "sum_median_total_ms" : 8208.7831249999999
+}

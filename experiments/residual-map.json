@@ -1,0 +1,187 @@
+{
+  "champion": "cp-003",
+  "sha": "173fc71f3e366dc26b8323d98ccecc228a16c8b5",
+  "source": "/tmp/glb-preview-load-bench/20260820-063818-cp-003.json",
+  "sum_median_total_ms": 7464.757585000001,
+  "recorded_at": "2026-08-20T04:39:53Z",
+  "noise_floor_ms": 223.94272755000003,
+  "assets": [
+    {
+      "id": "01-tiny",
+      "median_total_ms": 8.687291,
+      "median_load_ms": 4.45825,
+      "share_pct": 0.1,
+      "lane_hint": "A",
+      "phases": {
+        "file_read_ms": 0.157208,
+        "parse_ms": 0.090375,
+        "decode_ms": 0.123875,
+        "scene_build_ms": 0.43225
+      }
+    },
+    {
+      "id": "02-free_streetbanch1",
+      "median_total_ms": 19.241792,
+      "median_load_ms": 11.023541,
+      "share_pct": 0.3,
+      "lane_hint": "A",
+      "phases": {
+        "file_read_ms": 0.212083,
+        "parse_ms": 0.201791,
+        "decode_ms": 6.918041,
+        "texture_ms": 4.574499,
+        "scene_build_ms": 7.398125
+      }
+    },
+    {
+      "id": "03-animated_eagle",
+      "median_total_ms": 74.568626,
+      "median_load_ms": 64.255542,
+      "share_pct": 1.0,
+      "lane_hint": "A",
+      "phases": {
+        "file_read_ms": 1.8415,
+        "parse_ms": 1.664792,
+        "decode_ms": 18.631334,
+        "texture_ms": 13.665125,
+        "scene_build_ms": 124.072334
+      }
+    },
+    {
+      "id": "04-bmw_z3_gtr",
+      "median_total_ms": 247.51375,
+      "median_load_ms": 236.427708,
+      "share_pct": 3.3,
+      "lane_hint": "A",
+      "phases": {
+        "file_read_ms": 1.184167,
+        "parse_ms": 2.229541,
+        "decode_ms": 241.18878900000004,
+        "texture_ms": 157.67429100000004,
+        "scene_build_ms": 244.4485
+      }
+    },
+    {
+      "id": "05-last_stronghold_animated",
+      "median_total_ms": 369.468125,
+      "median_load_ms": 355.672375,
+      "share_pct": 4.9,
+      "lane_hint": "A",
+      "phases": {
+        "file_read_ms": 2.98325,
+        "parse_ms": 9.647916,
+        "decode_ms": 204.94249900000003,
+        "texture_ms": 73.267292,
+        "scene_build_ms": 479.261458
+      }
+    },
+    {
+      "id": "06-stone_wall_nr.2",
+      "median_total_ms": 117.15775000000001,
+      "median_load_ms": 106.85075,
+      "share_pct": 1.6,
+      "lane_hint": "A",
+      "phases": {
+        "file_read_ms": 0.377291,
+        "parse_ms": 4.686958,
+        "decode_ms": 110.974541,
+        "texture_ms": 6.988042,
+        "scene_build_ms": 111.959
+      }
+    },
+    {
+      "id": "07-vegetation_pack",
+      "median_total_ms": 440.602125,
+      "median_load_ms": 422.814541,
+      "share_pct": 5.9,
+      "lane_hint": "C",
+      "phases": {
+        "file_read_ms": 3.012125,
+        "parse_ms": 14.102583,
+        "decode_ms": 393.4175359999999,
+        "texture_ms": 196.43833200000003,
+        "scene_build_ms": 399.232875
+      }
+    },
+    {
+      "id": "08-cinema_projector",
+      "median_total_ms": 783.431376,
+      "median_load_ms": 771.610417,
+      "share_pct": 10.5,
+      "lane_hint": "B",
+      "phases": {
+        "file_read_ms": 0.404666,
+        "parse_ms": 20.54825,
+        "decode_ms": 772.3812079999999,
+        "texture_ms": 629.744166,
+        "scene_build_ms": 776.170125
+      }
+    },
+    {
+      "id": "09-realistic_animals",
+      "median_total_ms": 2202.0740840000003,
+      "median_load_ms": 2153.507167,
+      "share_pct": 29.5,
+      "lane_hint": "C",
+      "phases": {
+        "file_read_ms": 72.953083,
+        "parse_ms": 35.563625,
+        "decode_ms": 2004.8129539999995,
+        "texture_ms": 1832.5681229999996,
+        "scene_build_ms": 2022.675
+      }
+    },
+    {
+      "id": "10-bot_mecha_warrior",
+      "median_total_ms": 3202.012666,
+      "median_load_ms": 3119.681291,
+      "share_pct": 42.9,
+      "lane_hint": "C",
+      "phases": {
+        "file_read_ms": 4.465125,
+        "parse_ms": 49.65925,
+        "decode_ms": 3092.400042000001,
+        "texture_ms": 2937.131582,
+        "scene_build_ms": 3275.968917
+      }
+    }
+  ],
+  "phases": {
+    "file_read_ms": {
+      "sum_ms": 87.59049800000001,
+      "present": true
+    },
+    "parse_ms": {
+      "sum_ms": 138.395081,
+      "present": true
+    },
+    "decode_ms": {
+      "sum_ms": 6845.790819000001,
+      "present": true
+    },
+    "texture_ms": {
+      "sum_ms": 5852.051452,
+      "present": true
+    },
+    "scene_build_ms": {
+      "sum_ms": 7441.618584,
+      "present": true
+    }
+  },
+  "reject_only_batches": 0,
+  "phases_source": "/Users/mattias/dev/glb-preview/experiments/results/cp-002-phases.json",
+  "top": [
+    {
+      "id": "10-bot_mecha_warrior",
+      "share_pct": 42.9
+    },
+    {
+      "id": "09-realistic_animals",
+      "share_pct": 29.5
+    },
+    {
+      "id": "08-cinema_projector",
+      "share_pct": 10.5
+    }
+  ]
+}

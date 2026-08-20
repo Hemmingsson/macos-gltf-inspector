@@ -37,14 +37,21 @@ struct LoadTimeBenchTests {
             try #require(FileManager.default.fileExists(atPath: path), "missing \(path)")
             var loadSamples: [Double] = []
             var renderSamples: [Double] = []
+            var phaseSamples: [String: [Double]] = [:]
             var lastError: String?
             print("LOAD_BENCH file=\(id) path=\(path)")
             for _ in 0..<reps {
                 let loadStart = ContinuousClock.now
                 do {
-                    let model = try await EntityLoader.load(from: url, includeAnimations: includeAnimations)
-                    let loadMs = milliseconds(from: loadStart)
+                    let sink = LoadPhaseTimer.Sink()
+                    let model = try await LoadPhaseTimer.$sink.withValue(sink) {
+                        try await EntityLoader.load(from: url, includeAnimations: includeAnimations)
+                    }
+                    let loadMs = LoadPhaseTimer.milliseconds(from: loadStart)
                     loadSamples.append(loadMs)
+                    for (key, value) in sink.snapshot() {
+                        phaseSamples[key, default: []].append(value)
+                    }
                     let renderStart = ContinuousClock.now
                     let assembled = PreviewCamera.makeTurntable(for: model.entity)
                     let still = try await StillRenderer(
@@ -57,7 +64,7 @@ struct LoadTimeBenchTests {
                         intensityExponent: model.studioIBLExponent
                     )
                     _ = try await still.capture()
-                    renderSamples.append(milliseconds(from: renderStart))
+                    renderSamples.append(LoadPhaseTimer.milliseconds(from: renderStart))
                 } catch {
                     lastError = String(describing: error)
                 }
@@ -74,7 +81,7 @@ struct LoadTimeBenchTests {
             let render = summary(renderSamples)
             let totals = zip(loadSamples, renderSamples).map { $0 + $1 }
             let total = summary(totals)
-            results.append([
+            var row: [String: Any] = [
                 "id": id,
                 "path": path,
                 "bytes": (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? NSNumber)?.int64Value ?? 0,
@@ -87,14 +94,12 @@ struct LoadTimeBenchTests {
                 "median_first_render_ms": render.median as Any,
                 "median_total_ms": total.median as Any,
                 "mean_total_ms": total.mean as Any,
-                "file_read_ms": NSNull(),
-                "parse_ms": NSNull(),
-                "decode_ms": NSNull(),
-                "texture_ms": NSNull(),
-                "scene_build_ms": NSNull(),
-                "gpu_upload_ms": NSNull(),
                 "error": lastError as Any,
-            ])
+            ]
+            for phase in LoadPhaseTimer.Phase.allCases {
+                row[phase.rawValue] = summary(phaseSamples[phase.rawValue] ?? []).median ?? NSNull()
+            }
+            results.append(row)
             let partial: [String: Any] = [
                 "label": label,
                 "partial": true,
@@ -126,11 +131,5 @@ struct LoadTimeBenchTests {
         )
         try encoded.write(to: URL(fileURLWithPath: outPath))
         print("LOAD_BENCH \(label) sum_median_total_ms=\(medians.reduce(0, +)) sum_median_load_ms=\(loadMedians.reduce(0, +)) out=\(outPath)")
-    }
-
-    private func milliseconds(from start: ContinuousClock.Instant) -> Double {
-        let elapsed = start.duration(to: .now)
-        return Double(elapsed.components.seconds) * 1000
-            + Double(elapsed.components.attoseconds) / 1e15
     }
 }

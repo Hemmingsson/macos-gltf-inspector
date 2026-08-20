@@ -185,7 +185,7 @@ private struct GeneralSettingsPane: View {
 private struct PreviewSettingsPane: View {
     @AppStorage(SettingsKeys.autoRotate) private var autoRotate = true
     @AppStorage(SettingsKeys.background) private var background = PreviewBackground.window.rawValue
-    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = true
+    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = false
     @AppStorage(SettingsKeys.showStats) private var showStats = true
     @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
     @AppStorage(SettingsKeys.defaultCamera) private var defaultCamera = PreviewDefaultCamera.fit.rawValue
@@ -221,7 +221,7 @@ private struct PreviewSettingsPane: View {
                     }
                 }
                 .pickerStyle(.menu)
-                Text("Used by the app and as the initial Quick Look backdrop. Quick Look can still cycle colors from the toolbar.")
+                Text("Used by the app and as the initial Quick Look backdrop. Both can cycle colors from the preview icons.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

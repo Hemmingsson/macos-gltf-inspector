@@ -7,9 +7,10 @@ macOS 15+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview`
 ```bash
 ./scripts/build.sh            # xcodegen + Debug build + install to /Applications
 ./scripts/verify.sh           # check installed app + pluginkit
-./scripts/proof.sh            # still-renderer PNG; qlmanage with timeout
+./scripts/proof.sh            # still PNG + qlmanage with timeout
 ./scripts/release.sh          # Developer ID + notary + Sparkle appcast + gh release
 ./scripts/vendor-khronos-environments.sh  # refresh bundled IBL HDRs
+LABEL=<id> ./scripts/load-bench.sh        # frozen 10-GLB load+still timing
 cd ReadmePreviews && npm i && npm start   # README spinning-model WebPs → assets/
 ```
 
@@ -21,3 +22,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
   -derivedDataPath /tmp/GLBPreview-dd test
 ```
+
+## Load-time experiments
+
+`/glb-load-experiments` → `.cursor/skills/glb-load-experiments`. Workers: `.cursor/agents/glb-load-*`. Data: `experiments/`.

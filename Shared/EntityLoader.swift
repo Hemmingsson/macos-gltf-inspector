@@ -8,6 +8,7 @@ enum EntityLoader {
         let entity: Entity
         let stats: PreviewStats
         let document: GLTFSessionDocument
+        let debugModes: [PreviewDebugMode]
 
         @MainActor var punctualLightCount: Int {
             EntityLoader.punctualLightCount(in: entity)
@@ -128,27 +129,26 @@ enum EntityLoader {
         // Parse the glTF header once for prepare gates, then keep the JSON that
         // actually gets converted so overlay stats match RealityKit.
         let isGLB = url.pathExtension.lowercased() == "glb"
-        let sourceJSON: [String: Any]
-        if isGLB {
-            sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
-        } else {
-            sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
-        }
-        let fileSize = fileSizeBytes(of: url)
-
-        let loadURL: URL
-        let assetDirectory: URL
-        let statsJSON: [String: Any]
-        if isGLB {
-            let prepared = prepareGLB(url, json: sourceJSON)
-            loadURL = prepared.url
-            statsJSON = prepared.json
-            assetDirectory = directoryURL
-        } else {
-            let prepared = try packAndPrepareGLTF(from: url, directoryURL: directoryURL)
-            loadURL = prepared.url
-            statsJSON = prepared.json
-            assetDirectory = loadURL.deletingLastPathComponent()
+        let (fileSize, loadURL, assetDirectory, statsJSON) = try LoadPhaseTimer.measure(.fileRead) {
+            let sourceJSON: [String: Any]
+            if isGLB {
+                sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
+            } else {
+                sourceJSON = try GLBBox.parseJSON(try Data(contentsOf: url, options: [.mappedIfSafe]))
+            }
+            let fileSize = fileSizeBytes(of: url)
+            if isGLB {
+                let prepared = prepareGLB(url, json: sourceJSON)
+                return (fileSize, prepared.url, directoryURL, prepared.json)
+            } else {
+                let prepared = try packAndPrepareGLTF(from: url, directoryURL: directoryURL)
+                return (
+                    fileSize,
+                    prepared.url,
+                    prepared.url.deletingLastPathComponent(),
+                    prepared.json
+                )
+            }
         }
         // Prepared/packed GLBs are throwaway temp files; the retry path below only ever
         // reopens the original `url`, so the temp is safe to delete once loading finishes.
@@ -189,7 +189,8 @@ enum EntityLoader {
                 usableAnimations: entity.availableAnimations,
                 fileSizeBytes: fileSizeBytes
             ),
-            document: document
+            document: document,
+            debugModes: PreviewDebugMode.available(from: json)
         )
     }
 
@@ -268,10 +269,12 @@ enum EntityLoader {
         name: String,
         sceneIndex: Int?
     ) async throws -> (Entity, GLTFSessionDocument) {
-        let asset = try GLTFAsset(
-            url: loadURL,
-            options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
-        )
+        let asset = try LoadPhaseTimer.measure(.parse) {
+            try GLTFAsset(
+                url: loadURL,
+                options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
+            )
+        }
         // Drop 1-keyframe "Default Take" clips. Convert also rejects a zero stride,
         // but empty takes are still useless to play.
         if includeAnimations {

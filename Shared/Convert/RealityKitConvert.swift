@@ -60,39 +60,41 @@ public class RealityKitConvert {
         asset: GLTFAsset? = nil,
         document: inout GLTFSessionDocument
     ) -> RealityKit.Entity {
-        sourceAsset = asset
-        if let asset {
-            document = Self.makeDocument(from: asset)
-        }
-        let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))
-        ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(emissiveHints)
-        if ignoreBakedEmissive {
-            AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
-        }
-        let context = RealityKitResourceContext()
-
-        let rootEntity = Entity()
-        rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
-
-        do {
-            let rootNodes = try scene.nodes.compactMap { try self.convert(node: $0, context: context) }
-
-            for rootNode in rootNodes {
-                rootEntity.addChild(rootNode)
+        return LoadPhaseTimer.measure(.sceneBuild) {
+            sourceAsset = asset
+            if let asset {
+                document = Self.makeDocument(from: asset)
             }
-        } catch {
-            AppLog.error(AppLog.load, "Error when converting scene: \(error)")
-        }
+            let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))
+            ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(emissiveHints)
+            if ignoreBakedEmissive {
+                AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
+            }
+            let context = RealityKitResourceContext()
 
-        for animation in asset?.animations ?? [] {
+            let rootEntity = Entity()
+            rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
+
             do {
-                try convert(animation: animation).store(in: rootEntity)
-            } catch {
-                AppLog.error(AppLog.load, "animation convert failed: \(error)")
-            }
-        }
+                let rootNodes = try scene.nodes.compactMap { try self.convert(node: $0, context: context) }
 
-        return rootEntity
+                for rootNode in rootNodes {
+                    rootEntity.addChild(rootNode)
+                }
+            } catch {
+                AppLog.error(AppLog.load, "Error when converting scene: \(error)")
+            }
+
+            for animation in asset?.animations ?? [] {
+                do {
+                    try convert(animation: animation).store(in: rootEntity)
+                } catch {
+                    AppLog.error(AppLog.load, "animation convert failed: \(error)")
+                }
+            }
+
+            return rootEntity
+        }
     }
 
     @MainActor func convert(node gltfNode: GLTFNode, context: RealityKitResourceContext) throws -> RealityKit.Entity {

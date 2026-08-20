@@ -96,6 +96,62 @@ struct PreviewStats: Equatable {
         previewRows.map { "\($0.label) \($0.value)" }
     }
 
+    /// One left-aligned fact per line for Quick Look. `noun` is the dimmed unit.
+    var overlayFacts: [Row] {
+        var lines: [Row] = []
+        if triangleCount > 0 {
+            lines.append(Row(label: "triangles", value: compact(triangleCount)))
+        }
+        if vertexCount > 0 {
+            lines.append(Row(label: "vertices", value: compact(vertexCount)))
+        }
+        if textureCount > 0 {
+            lines.append(Row(label: "textures", value: "\(textureCount)"))
+        }
+        if materialCount > 0 {
+            lines.append(Row(label: "materials", value: "\(materialCount)"))
+        }
+        if pbrLabel != "Metalness" {
+            lines.append(Row(label: pbrLabel, value: ""))
+        }
+        if animationCount > 0 {
+            if let durationSeconds, durationSeconds > 0 {
+                lines.append(Row(label: "clips", value: "\(animationCount) · \(String(format: "%.1fs", durationSeconds))"))
+            } else {
+                lines.append(Row(label: "clips", value: "\(animationCount)"))
+            }
+        }
+        if hasVertexColors {
+            lines.append(Row(label: "vertex colors", value: ""))
+        }
+        if isRigged {
+            lines.append(Row(label: "rigged", value: ""))
+        }
+        if morphGeometryCount > 0 {
+            lines.append(Row(label: "morphs", value: "\(morphGeometryCount)"))
+        }
+        if let fileSizeBytes, fileSizeBytes > 0 {
+            let size = Self.byteCountFormatter.string(fromByteCount: fileSizeBytes)
+            if let split = size.lastIndex(of: " ") {
+                lines.append(
+                    Row(
+                        label: String(size[size.index(after: split)...]),
+                        value: String(size[..<split])
+                    )
+                )
+            } else {
+                lines.append(Row(label: "", value: size))
+            }
+        }
+        return lines
+    }
+
+    var overlayLines: [String] {
+        overlayFacts.map { fact in
+            [fact.value, fact.label].filter { !$0.isEmpty }.joined(separator: " ")
+        }
+    }
+
     private static func fromJSONCounts(
         _ json: [String: Any],
         animationCount: Int,

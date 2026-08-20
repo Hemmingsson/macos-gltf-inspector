@@ -1,53 +1,57 @@
 # What we tried
 
-Search this file **before** creating a dex EXP task. Duplicates are forbidden.
-Full rules: [`PROTOCOL.md`](./PROTOCOL.md).
+Do not retry the **Must not retry** column. Residual pie/phases: `residual-map.json` (authoritative). Noise: `results.json` `noise_rule`.
 
 ## Champion
 
-| Label | Corpus | sum_median_total_ms | Notes |
-|-------|--------|--------------------:|-------|
-| **EXP-009** (current) | v2 | **7732.9** | Cutout-as-mask; same-machine control 14677.8; vegetation −89% |
-| EXP-006-v2 | v2 | 15332.9 | Packed SIMD (parent) |
-| baseline-v2 | v2 | 16387.4 | Frozen immutable baseline (`baseline.json`) |
-| baseline-5rep | v1 | 2324.5 | Archived; do not use for new EXPs |
+| Label | ms | Notes |
+|-------|---:|-------|
+| **cp-003** | **7464.8** | Tip `173fc71` (EXP-029); −54.4% vs baseline-v2; tip +91.9 vs cp-002 |
+| cp-002 | 7372.9 | Tip `1aceeda`; −55% vs baseline-v2 |
+| cp-001 | 7620.2 | 006-v2+009+011 |
+| baseline-v2 | 16387.4 | Immutable |
 
-Noise: reject `|delta| < 3%` of champion sum unless ≥8/10 same direction. Prefer same-machine control.
+## Residual (cp-003)
+
+09+10 ≈ **70%** of sum. Convert-bound: nested `texture_ms` dominates `decode`/`scene_build` (see `results/cp-002-phases.json`). Research must name assets that can clear ~3% noise (~221 ms).
 
 ## Tried
 
-| ID | Class | Result | Must not retry |
-|----|-------|--------|----------------|
-| EXP-000 | cleanup | Removed uncommitted 6s sleep | Re-adding artificial delay |
-| EXP-001 | baseline | Informal 3-rep (v1) | Treating as official |
-| EXP-002 | skip-required | `includeAnimations: false` | Disabling clips to win bench |
-| EXP-003 | skip-required | Skip `makeDocument` (−2.4%, noise) | Skip outliner for tiny/noise gain |
-| EXP-004 | skip-required | Skip `prepareGLB` | Shipping prepare skip (VARIANT=cheaper prepare OK) |
-| EXP-005 | VARIANT-of-004 (v1) | **REJECT** — prepare never ran; warm bias | Claiming prepare-path win when prepare does not run |
-| EXP-005-v2 | VARIANT of EXP-005 | **REJECT** — prepare hits 09 only; isolated “win” 83% non-prepare + slow control; vs frozen −0.59% | Same data-path claim without prepare-only metric / clean control |
-| EXP-006 | NEW (v1) | Tentative KEEP −211 ms isolated (stone_wall) | Merging on frozen delta alone |
-| EXP-006-v2 | VARIANT (v2) | **KEEP** −1118 ms vs same-machine control (−6.8%); stone/vegetation/cinema | — |
-| EXP-007 | VARIANT-of-002 | **REJECT** — warm bias; eagle-only ~−58 ms | Claiming corpus win when non-target files move equally |
-| EXP-009 | NEW | **KEEP** −6945 ms vs SM control (−47%); vegetation −89% / cinema flat | Re-adding opacityTexture for detected cutout without fidelity gate |
+| ID | Result | Must not retry |
+|----|--------|----------------|
+| EXP-000 | cleanup sleep | Artificial delay |
+| EXP-001 | informal v1 baseline | Treat as official |
+| EXP-002 | skip anims −20% | Disable clips to win |
+| EXP-003 | skip document −2.4% | Skip outliner for noise |
+| EXP-004 | skip prepare −14.5% | Ship prepare skip (cheaper prepare VARIANT OK) |
+| EXP-005 | REJECT prepare never ran | Prepare win when prepare doesn’t run |
+| EXP-005-v2 | REJECT dirty control | Same without prepare-only / clean control |
+| EXP-006 | tentative v1 KEEP | Merge on frozen delta alone |
+| EXP-006-v2 | **KEEP** −6.8% | — |
+| EXP-007 | REJECT warm bias | Corpus win when non-targets move equally |
+| EXP-008 | REJECT −0.12% | ARGB sibling-cache w/o new evidence |
+| EXP-009 | **KEEP** −47% (07 −89%) | OpacityTexture back on cutout w/o fidelity gate |
+| EXP-010 | REJECT +2.2% | LowLevel swizzle w/o 09/10 evidence |
+| EXP-011 | **KEEP** −4.4% | Blind material cache w/o ObjectIdentifier evidence |
+| EXP-012 | REJECT +2.0% | Fused UV wrap+flip w/o UV-dominant residual |
+| EXP-013 | REJECT +0.57% | BIN passthrough w/o prepare-concentrated 09 win |
+| EXP-014 | REJECT −2.93% under noise | Direct-float pack w/o ≥8/10 or beyond-noise |
+| EXP-015 | REJECT +5.9% | Full-RGBA Metal upload w/o 09/10 evidence |
+| EXP-016 | REJECT −2.46% under noise | Factor-only metalRough skip w/o ≥8/10 |
+| EXP-017 | **KEEP** tip −3.2% (cand −554→−247) | Blind packed LowLevelMesh w/o evidence |
+| EXP-018 | REJECT +7.4% | Concurrent texture prefetch w/o 09/10 evidence |
+| EXP-019 | REJECT −1.37% under noise | mipmapsMode:.none w/o ≥8/10 |
+| EXP-020 | REJECT +7.0% | mapped GLTFAsset(data:) w/o beyond-noise |
+| EXP-021 | REJECT +16.6% vs 017 | Index-stream on packed mesh undoing 06/07/08 |
+| EXP-022 | REJECT +11.3% | compression:.none w/o 09/10 evidence |
+| EXP-024 | REJECT +1.34% | Fused UV float2 w/o ≥8/10 |
+| EXP-027 | REJECT −0.92% under noise | none∧none CreateOptions w/o ≥8/10 |
+| EXP-028 | REJECT +1.41% under noise | Fused JointInfluences w/o ≥8/10 |
+| EXP-029 | **KEEP** −3.30% (03/05/10 −249) | — |
+| EXP-030 | REJECT +4.55% regress | No-copy ImageIO bufferView decode w/o 08/09/10 win |
+| EXP-031 | REJECT +125.6% (tweak1; was NEAR_MISS −2.56%) | MR swizzle / gray+alpha 16bpp pack dual-delete w/o beyond-noise (10 regress) |
 
-## Queued (dex)
+## Notes
 
-| ID | Hypothesis | Gate |
-|----|------------|------|
-| EXP-008 | One ARGB extract → sibling channels | **next** — mecha/animals; not vegetation |
-| EXP-010 | convert each GLTFMaterial once per scene | After 008 — leftover after cutout-as-mask may be small |
-| EXP-011 | skip unit-square UV wrap + flip alloc | After 008 — vegetation UV tax residual |
-| Round research | External docs (profile done) | Before inventing further EXPs |
-
-## Profiler note (vegetation)
-
-07 is slow due to **per-mesh convert**, not file size (≈same tris as cinema, 6.8× slower). 81 factor-1 BLEND cutouts + per-primitive material convert. Do not aim EXP-005/008 at 07.
-
-## Forbidden
-
-- Parallel benchmarks / builds on this machine
-- Lower quality, skip textures/meshes, special-case corpus
-- Re-running EXP-002/003/004 as if new
-- Shipping prepare skip
-- Treating v1 deltas as v2 champion wins without re-bench
-- Dex task IDs in commits
+- After 009, 07 is not the old opacity tax — don’t retarget ARGB ideas at 07.
+- Post-cp-002: structural KEEPs done; late EXPs were folklore on the wrong residual. No research without residual-map. VARIANT of REJECT needs new measured evidence.

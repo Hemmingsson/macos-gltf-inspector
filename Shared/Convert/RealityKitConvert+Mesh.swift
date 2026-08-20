@@ -40,6 +40,7 @@ extension RealityKitConvert {
     {
         // Packed float3 LowLevelMesh path: skip MeshBuffers SIMD3 expand for
         // non-skinned / non-morph triangle primitives with tight float accessors.
+        return try LoadPhaseTimer.measure(.decode) {
         if skeleton == nil {
             do {
                 if let packed = try convertPackedFloat3Mesh(gltfMesh, context: context) {
@@ -93,6 +94,7 @@ extension RealityKitConvert {
         let modelComponent = ModelComponent(mesh: meshResource, materials: materials)
 
         return modelComponent
+        }
     }
 
     /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts and

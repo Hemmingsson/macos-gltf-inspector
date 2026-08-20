@@ -4,15 +4,22 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
+    let documentURL: URL?
+
     @Environment(\.colorScheme) private var colorScheme
-    @State private var openedURL: URL?
+    @Environment(\.openDocument) private var openDocument
+    @Environment(\.dismissWindow) private var dismissWindow
     @State private var previewState: PreviewView.State = .loading
     @State private var interaction = PreviewInteraction()
     @State private var sidebar: HostSidebarModel?
     @State private var loadGeneration = 0
     @State private var blenderLaunchError: String?
+    @AppStorage(SettingsKeys.hostSidebarWidth) private var sidebarWidth = 252.0
 
-    private var openedFileName: String? { openedURL?.lastPathComponent }
+    private static let sidebarMinWidth: CGFloat = 200
+    private static let sidebarMaxWidth: CGFloat = 480
+
+    private var openedFileName: String? { documentURL?.lastPathComponent }
 
     private static let finderMenuIcon: NSImage = {
         let url =
@@ -34,29 +41,106 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if openedURL != nil {
+            if documentURL != nil {
                 hostViewer
-                    .id(openedURL)
+                    .id(documentURL)
             } else {
-                emptyState
+                missingDocumentState
             }
         }
+        .frame(minWidth: 560, minHeight: 360)
+        .alert(
+            "Couldn’t open in Blender",
+            isPresented: Binding(
+                get: { blenderLaunchError != nil },
+                set: { if !$0 { blenderLaunchError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(blenderLaunchError ?? "")
+        }
+        .onAppear {
+            configureDocumentWindow()
+            dismissWindow(id: WelcomeWindow.id)
+            GLBDocumentOpening.closeWelcomeWindows()
+            if let documentURL {
+                loadDocument(documentURL)
+            }
+        }
+        .background(DocumentWindowTabbing())
+        .onChange(of: documentURL) { _, url in
+            if let url {
+                loadDocument(url)
+            }
+        }
+        .onChange(of: sidebar?.activeSceneIndex) { _, index in
+            reloadScene(index)
+        }
+        .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
+    }
+
+    private var missingDocumentState: some View {
+        VStack(spacing: 12) {
+            Text("Couldn’t open this file")
+                .font(.title2)
+            Text("The document URL is missing.")
+                .foregroundStyle(.secondary)
+        }
+        .padding(40)
         .frame(minWidth: 400, minHeight: 300)
+    }
+
+    private var hostViewer: some View {
+        NavigationSplitView {
+            sidebarColumn
+                .navigationSplitViewColumnWidth(
+                    min: Self.sidebarMinWidth,
+                    ideal: clampedSidebarWidth,
+                    max: Self.sidebarMaxWidth
+                )
+        } detail: {
+            detailColumn
+        }
+        .navigationSplitViewStyle(.balanced)
+        .onAppear { applyDefaultCamera() }
+    }
+
+    @ViewBuilder
+    private var sidebarColumn: some View {
+        if let sidebar {
+            HostOutlinerView(model: loadedModel, sidebar: sidebar)
+        } else {
+            ProgressView()
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var detailColumn: some View {
+        HostPreviewContainer(
+            state: previewState,
+            interaction: interaction,
+            isDark: colorScheme == .dark,
+            sidebar: sidebar
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .modifier(DetailBackgroundExtension())
+        .ignoresSafeArea(edges: .bottom)
         .navigationTitle(openedFileName ?? "GLB Preview")
-        .toolbarBackground(.hidden, for: .windowToolbar)
         .toolbar {
-            if let openedURL {
+            if let documentURL {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
-                            NSWorkspace.shared.activateFileViewerSelecting([openedURL])
+                            NSWorkspace.shared.activateFileViewerSelecting([documentURL])
                         } label: {
                             openInMenuRow(title: "Finder", icon: Self.finderMenuIcon)
                         }
                         if BlenderLauncher.isInstalled, let blenderIcon = BlenderLauncher.applicationIcon {
                             Button {
                                 do {
-                                    try BlenderLauncher.openInNewBlenderInstance(openedURL)
+                                    try BlenderLauncher.openInNewBlenderInstance(documentURL)
                                 } catch {
                                     AppLog.error(AppLog.host, "blender open failed \(error.localizedDescription)")
                                     blenderLaunchError = error.localizedDescription
@@ -73,62 +157,10 @@ struct ContentView: View {
                 }
             }
         }
-        .alert(
-            "Couldn’t open in Blender",
-            isPresented: Binding(
-                get: { blenderLaunchError != nil },
-                set: { if !$0 { blenderLaunchError = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(blenderLaunchError ?? "")
-        }
-        .onAppear { showTrafficLights() }
-        .onChange(of: sidebar?.activeSceneIndex) { _, index in
-            reloadScene(index)
-        }
-        .onOpenURL(perform: openIfGLB)
-        .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 96, height: 96)
-            Text("GLB Preview")
-                .font(.title)
-            Text("Quick Look preview and thumbnails for .glb and .gltf files are installed.")
-                .foregroundStyle(.secondary)
-        }
-        .padding(40)
-        .frame(minWidth: 400, minHeight: 300)
-    }
-
-    private var hostViewer: some View {
-        ZStack(alignment: .topLeading) {
-            HostPreviewContainer(
-                state: previewState,
-                interaction: interaction,
-                isDark: colorScheme == .dark,
-                sidebar: sidebar
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea()
-
-            if let sidebar {
-                HostOutlinerView(model: loadedModel, sidebar: sidebar)
-                    .frame(width: 252)
-                    .frame(maxHeight: .infinity)
-                    .padding(.leading, 10)
-                    .padding(.trailing, 0)
-                    .padding(.bottom, 10)
-                    .padding(.top, 8)
-            }
-        }
-        .onAppear { applyDefaultCamera() }
+    private var clampedSidebarWidth: CGFloat {
+        min(max(sidebarWidth, Self.sidebarMinWidth), Self.sidebarMaxWidth)
     }
 
     private var loadedModel: EntityLoader.LoadedModel? {
@@ -136,16 +168,14 @@ struct ContentView: View {
         return nil
     }
 
-    private func showTrafficLights() {
+    private func configureDocumentWindow() {
         guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
             return
         }
-        window.titleVisibility = .visible
-        window.titlebarAppearsTransparent = true
-        window.backgroundColor = .windowBackgroundColor
-        window.isOpaque = true
-        window.styleMask.insert(.fullSizeContentView)
-        window.isMovableByWindowBackground = false
+        // Let NavigationSplitView own traffic lights / glass chrome; only lock toolbar + tabbing.
+        HostWindowChrome.applySplitChrome(to: window)
+        window.tabbingIdentifier = GLBDocumentOpening.documentTabbingIdentifier
+        window.tabbingMode = .preferred
     }
 
     private func applyDefaultCamera() {
@@ -158,10 +188,8 @@ struct ContentView: View {
         }
     }
 
-    private func openIfGLB(_ url: URL) {
-        let ext = url.pathExtension.lowercased()
-        guard ext == "glb" || ext == "gltf" else { return }
-        openedURL = url
+    private func loadDocument(_ url: URL) {
+        guard GLBDocumentOpening.isGLBFile(url) else { return }
         previewState = .loading
         sidebar = nil
         interaction = PreviewInteraction()
@@ -188,7 +216,7 @@ struct ContentView: View {
     }
 
     private func reloadScene(_ index: Int?) {
-        guard let url = openedURL, let index, let sidebar, sidebar.document.scenes.count > 1 else { return }
+        guard let url = documentURL, let index, let sidebar, sidebar.document.scenes.count > 1 else { return }
         loadGeneration += 1
         let generation = loadGeneration
         Task {
@@ -201,7 +229,8 @@ struct ContentView: View {
                         EntityLoader.LoadedModel(
                             entity: entity,
                             stats: model.stats,
-                            document: model.document
+                            document: model.document,
+                            debugModes: model.debugModes
                         )
                     )
                     sidebar.overlayRevision += 1
@@ -213,21 +242,21 @@ struct ContentView: View {
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }) else {
-            return false
+        GLBDocumentOpening.handleDrop(providers) { url in
+            try await openDocument(at: url)
         }
-        _ = provider.loadObject(ofClass: URL.self) { url, error in
-            if let error {
-                AppLog.error(AppLog.host, "drop URL load failed \(error)")
-            }
-            guard let url else { return }
-            Task { @MainActor in
-                openIfGLB(url)
-            }
-        }
-        return true
     }
+}
 
+/// Extends detail content under the Liquid Glass sidebar on macOS 26+.
+private struct DetailBackgroundExtension: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content.backgroundExtensionEffect()
+        } else {
+            content
+        }
+    }
 }
 
 private func fileSize(_ url: URL) -> Int64 {

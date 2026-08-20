@@ -10,12 +10,13 @@ private final class PreviewFrame {
 struct PreviewScene: View {
     let entity: Entity
     var stats: PreviewStats?
+    var debugModes: [PreviewDebugMode]
     @Bindable var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)?
 
     @AppStorage(SettingsKeys.autoRotate) private var settingsAutoRotate = true
-    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = true
+    @AppStorage(SettingsKeys.playOnOpen) private var playOnOpen = false
     @AppStorage(SettingsKeys.showStats) private var showStats = true
     @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
     @AppStorage(SettingsKeys.background) private var backgroundRaw = PreviewBackground.window.rawValue
@@ -29,20 +30,26 @@ struct PreviewScene: View {
     @State private var playback: AnimationPlaybackController?
     @State private var clipDuration: TimeInterval = 0
     @State private var currentTime: TimeInterval = 0
-    @State private var isPlaying = true
+    @State private var isPlaying = false
+    @State private var isSeeking = false
     @State private var viewport = CGSize(width: 810, height: 600)
     @State private var chromeVisible = true
+    @State private var debugModeIndex = 0
     private let frame = PreviewFrame()
+    private let debugStore = DebugMaterialStore()
+    private let debugApplied = DebugAppliedIndex()
 
     init(
         entity: Entity,
         stats: PreviewStats?,
+        debugModes: [PreviewDebugMode] = [.none],
         interaction: PreviewInteraction,
         isDark: Bool,
         sidebar: (any PreviewOverlay)? = nil
     ) {
         self.entity = entity
         self.stats = stats
+        self.debugModes = debugModes.isEmpty ? [.none] : debugModes
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
@@ -75,7 +82,7 @@ struct PreviewScene: View {
     }
 
     private var tickWhileActive: Bool {
-        return autoRotate || (!isHost && chromeVisible && isPlaying && playback != nil)
+        autoRotate || (isPlaying && playback != nil && (isHost || chromeVisible))
     }
 
     var body: some View {
@@ -106,11 +113,15 @@ struct PreviewScene: View {
                 )
                 sidebar?.applyIfNeeded(to: assembled.pivot)
 
-                if playOnOpen, let animation = entity.availableAnimations.first,
+                if let animation = entity.availableAnimations.first,
                    let duration = EntityLoader.clipDuration(animation, on: entity)
                 {
                     clipDuration = duration
                     playback = entity.playAnimation(animation.repeat())
+                    if !playOnOpen {
+                        playback?.pause()
+                    }
+                    isPlaying = playOnOpen
                 }
             } update: { content in
                 for entity in content.entities where entity.name == "turntable" {
@@ -119,6 +130,7 @@ struct PreviewScene: View {
                         simd_quatf(angle: orbitPitch, axis: [1, 0, 0])
                     entity.scale = SIMD3<Float>(repeating: interaction.zoom)
                     sidebar?.applyIfNeeded(to: entity)
+                    applyDebugIfNeeded(to: entity)
                 }
                 let viewAspect = aspect(of: viewport)
                 if sidebar?.selectedCameraIndex != nil {
@@ -167,37 +179,97 @@ struct PreviewScene: View {
                     chromeVisible.toggle()
                 }
 
-            if !isHost, chromeVisible, showToolbar {
-                HStack(alignment: .bottom, spacing: 12) {
-                    PreviewToolbar(
-                        backdropIndex: $backdropIndex,
-                        autoRotate: $autoRotate,
-                        showPlayback: playback != nil,
-                        isPlaying: $isPlaying,
-                        currentTime: currentTime,
-                        systemDark: isDark
-                    )
-                    Spacer(minLength: 8)
-                        .allowsHitTesting(false)
-                    if showStats, let lines = stats?.previewLines, !lines.isEmpty {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            ForEach(lines, id: \.self) { line in
-                                Text(line)
-                                    .font(.system(size: 11, weight: .regular).monospacedDigit())
-                                    .foregroundStyle(
-                                        PreviewBackground.iconColor(
-                                            at: backdropIndex,
-                                            systemDark: isDark,
-                                            active: true
-                                        ).opacity(0.55)
-                                    )
+            if showToolbar, isHost || chromeVisible {
+                VStack(alignment: .trailing, spacing: 10) {
+                    PreviewCycleMenu(
+                        options: PreviewBackground.allCases.map(\.shortTitle),
+                        index: $backdropIndex,
+                        tint: { active in
+                            PreviewBackground.iconColor(
+                                at: backdropIndex,
+                                systemDark: isDark,
+                                active: active
+                            )
+                        }
+                    ) { _ in
+                        Image(systemName: "circle.lefthalf.filled")
+                            .font(.system(size: 14, weight: .regular))
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundStyle(chromeTint(active: backdropIndex != 0))
+                    }
+                    PreviewCycleMenu(
+                        options: debugModes.map(\.shortTitle),
+                        index: $debugModeIndex,
+                        tint: { active in
+                            chromeTint(active: active)
+                        }
+                    ) { variableValue in
+                        Image(
+                            systemName: "square.3.layers.3d",
+                            variableValue: variableValue
+                        )
+                        .font(.system(size: 14, weight: .regular))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(chromeTint(active: debugModeIndex != 0), .yellow)
+                        .animation(.easeInOut(duration: 0.2), value: variableValue)
+                    }
+                    Button {
+                        autoRotate.toggle()
+                        if isHost {
+                            settingsAutoRotate = autoRotate
+                        }
+                    } label: {
+                        Image(systemName: "arrow.trianglehead.counterclockwise.rotate.90")
+                            .font(.system(size: 14, weight: .regular))
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundStyle(chromeTint(active: autoRotate))
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Auto-rotate")
+                }
+                .padding(.top, isHost ? 12 : 14)
+                .padding(.trailing, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .transition(.opacity)
+            }
+
+            if !isHost, chromeVisible, showStats, let facts = stats?.overlayFacts, !facts.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(facts, id: \.label) { fact in
+                        HStack(spacing: 4) {
+                            if !fact.value.isEmpty {
+                                Text(fact.value)
+                                    .foregroundStyle(chromeTint(active: true).opacity(0.85))
+                            }
+                            if !fact.label.isEmpty {
+                                Text(fact.label)
+                                    .foregroundStyle(chromeTint(active: true).opacity(0.4))
                             }
                         }
-                        .allowsHitTesting(false)
                     }
                 }
-                .padding(.horizontal, 14)
+                .font(.system(size: 11, weight: .regular).monospacedDigit())
+                .allowsHitTesting(false)
+                .padding(.leading, 14)
                 .padding(.bottom, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .transition(.opacity)
+            }
+
+            if showToolbar, playback != nil, clipDuration > 0, isHost || chromeVisible {
+                PreviewPlaybackBar(
+                    isPlaying: $isPlaying,
+                    isSeeking: $isSeeking,
+                    currentTime: $currentTime,
+                    clipDuration: clipDuration,
+                    tint: chromeTint(active: true),
+                    onSeek: seek(to:)
+                )
+                .padding(.horizontal, 24)
+                .padding(.bottom, 16)
+                .frame(maxWidth: 420)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .transition(.opacity)
             }
@@ -208,6 +280,18 @@ struct PreviewScene: View {
         }
         .onChange(of: settingsAutoRotate) { _, _ in
             applyAutoRotateSetting()
+        }
+        .onChange(of: backdropIndex) { _, index in
+            guard isHost else { return }
+            let backgrounds = PreviewBackground.allCases
+            backgroundRaw = backgrounds[index % backgrounds.count].rawValue
+        }
+        .onChange(of: backgroundRaw) { _, raw in
+            guard isHost,
+                  let background = PreviewBackground(rawValue: raw),
+                  let index = PreviewBackground.allCases.firstIndex(of: background)
+            else { return }
+            backdropIndex = index
         }
         .onChange(of: isPlaying) { _, playing in
             guard let playback else { return }
@@ -227,7 +311,7 @@ struct PreviewScene: View {
                 if autoRotate, dragOrigin == nil {
                     orbitYaw += Float(dt) * 20 * .pi / 180
                 }
-                if chromeVisible, isPlaying, let playback, clipDuration > 0 {
+                if !isSeeking, isPlaying, let playback, clipDuration > 0 {
                     currentTime = playback.time.truncatingRemainder(dividingBy: clipDuration)
                     if currentTime < 0 { currentTime += clipDuration }
                 }
@@ -287,6 +371,24 @@ struct PreviewScene: View {
         autoRotate = settingsAutoRotate && !reduceMotion
     }
 
+    private func chromeTint(active: Bool) -> Color {
+        PreviewBackground.iconColor(at: backdropIndex, systemDark: isDark, active: active)
+    }
+
+    private func seek(to time: TimeInterval) {
+        let duration = max(clipDuration, 0.001)
+        let clamped = min(max(time, 0), duration)
+        currentTime = clamped
+        playback?.time = clamped
+    }
+
+    private func applyDebugIfNeeded(to root: Entity) {
+        let index = debugModes.indices.contains(debugModeIndex) ? debugModeIndex : 0
+        guard debugApplied.index != index else { return }
+        PreviewDebugMode.apply(debugModes[index], to: root, store: debugStore)
+        debugApplied.index = index
+    }
+
     private func applyViewport(_ size: CGSize) {
         guard size.width > 1, size.height > 1 else { return }
         if abs(size.width - viewport.width) > 0.5 || abs(size.height - viewport.height) > 0.5 {
@@ -299,63 +401,62 @@ struct PreviewScene: View {
     }
 }
 
-struct PreviewToolbar: View {
-    @Binding var backdropIndex: Int
-    @Binding var autoRotate: Bool
-    var showPlayback: Bool
-    @Binding var isPlaying: Bool
-    var currentTime: TimeInterval
-    var systemDark: Bool
+private final class DebugAppliedIndex {
+    var index: Int?
+}
 
-    private func tint(active: Bool) -> Color {
-        PreviewBackground.iconColor(at: backdropIndex, systemDark: systemDark, active: active)
-    }
+private struct PreviewPlaybackBar: View {
+    @Binding var isPlaying: Bool
+    @Binding var isSeeking: Bool
+    @Binding var currentTime: TimeInterval
+    var clipDuration: TimeInterval
+    var tint: Color
+    var onSeek: (TimeInterval) -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            iconButton("circle.lefthalf.filled", active: true, help: "Toggle background") {
-                backdropIndex = (backdropIndex + 1) % PreviewBackground.allCases.count
+        HStack(spacing: 10) {
+            Button {
+                isPlaying.toggle()
+            } label: {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
             }
-            iconButton(
-                "arrow.trianglehead.2.clockwise.rotate.90",
-                active: autoRotate,
-                help: "Auto-rotate"
-            ) {
-                autoRotate.toggle()
-            }
-            if showPlayback {
-                iconButton(
-                    isPlaying ? "pause.fill" : "play.fill",
-                    active: isPlaying,
-                    help: "Play/Pause"
-                ) {
-                    isPlaying.toggle()
-                }
-                Text(String(format: "%.2f", currentTime))
-                    .font(.system(size: 11, weight: .regular).monospacedDigit())
-                    .foregroundStyle(tint(active: isPlaying))
-                    .frame(minWidth: 36, alignment: .leading)
-            }
-        }
-        .padding(.horizontal, 2)
-        .padding(.vertical, 2)
-    }
+            .buttonStyle(.plain)
+            .help(isPlaying ? "Pause" : "Play")
 
-    private func iconButton(
-        _ systemName: String,
-        active: Bool,
-        help: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 14, weight: .regular))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(tint(active: active))
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
+            Slider(
+                value: Binding(
+                    get: { currentTime },
+                    set: { onSeek($0) }
+                ),
+                in: 0...max(clipDuration, 0.001)
+            ) { editing in
+                isSeeking = editing
+            }
+            .controlSize(.small)
+            .tint(tint)
+
+            Text(String(format: "%.2f", currentTime))
+                .font(.system(size: 11, weight: .regular).monospacedDigit())
+                .foregroundStyle(tint)
+                .frame(minWidth: 36, alignment: .trailing)
         }
-        .buttonStyle(.plain)
-        .help(help)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .previewLiquidGlass(in: Capsule(style: .continuous))
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func previewLiquidGlass<S: Shape>(in shape: S) -> some View {
+        if #available(macOS 26, *) {
+            self.glassEffect(.regular, in: shape)
+        } else {
+            self.background(.regularMaterial, in: shape)
+        }
     }
 }

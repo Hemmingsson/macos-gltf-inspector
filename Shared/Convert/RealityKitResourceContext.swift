@@ -172,6 +172,7 @@ class RealityKitResourceContext {
             return existingMatch
         }
 
+        return LoadPhaseTimer.measure(.texture) {
         if gltfImage.inferMediaType() == GLTFMediaTypeKTX2 {
                 let mtlTexture = gltfImage.newTexture(with: device)
                 guard let sourceTexture = mtlTexture else { return nil }
@@ -228,6 +229,7 @@ class RealityKitResourceContext {
         }
 
         return resource
+        }
     }
 
     func singleChannelImage(from cgImage: CGImage, channels: ColorMask) -> CGImage? {

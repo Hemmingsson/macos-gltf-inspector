@@ -6,8 +6,8 @@ struct HostOutlinerView: View {
 
     var body: some View {
         OutlinerContent(model: model, sidebar: sidebar)
+            .padding(EdgeInsets(top: 8, leading: 12, bottom: 12, trailing: 12))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .modifier(HostColumnChrome())
     }
 }
 
@@ -46,9 +46,9 @@ private struct OutlinerContent: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
+                LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(layerRoots) { row in
-                        LayerDisclosure(row: row, expanded: $expanded, sidebar: sidebar)
+                        LayerBranch(row: row, depth: 0, expanded: $expanded, sidebar: sidebar)
                     }
                 }
             }
@@ -82,65 +82,98 @@ private struct OutlinerContent: View {
     }
 }
 
-private struct LayerDisclosure: View {
+private struct LayerBranch: View {
     let row: LayerRow
+    let depth: Int
     @Binding var expanded: Set<Int>
     @Bindable var sidebar: HostSidebarModel
 
+    private var children: [LayerRow] { row.children ?? [] }
+    private var hasChildren: Bool { !children.isEmpty }
+    private var isExpanded: Bool { expanded.contains(row.id) }
+
     var body: some View {
-        if let children = row.children, !children.isEmpty {
-            DisclosureGroup(isExpanded: expandedBinding) {
+        VStack(alignment: .leading, spacing: 2) {
+            LayerRowView(
+                row: row,
+                depth: depth,
+                hasChildren: hasChildren,
+                isExpanded: isExpanded,
+                sidebar: sidebar,
+                onToggleExpand: toggleExpand
+            )
+            if hasChildren, isExpanded {
                 ForEach(children) { child in
-                    LayerDisclosure(row: child, expanded: $expanded, sidebar: sidebar)
+                    LayerBranch(row: child, depth: depth + 1, expanded: $expanded, sidebar: sidebar)
                 }
-            } label: {
-                LayerRowView(row: row, sidebar: sidebar)
             }
-        } else {
-            LayerRowView(row: row, sidebar: sidebar)
         }
     }
 
-    private var expandedBinding: Binding<Bool> {
-        Binding(
-            get: { expanded.contains(row.id) },
-            set: { isOpen in
-                if isOpen {
-                    expanded.insert(row.id)
-                } else {
-                    expanded.remove(row.id)
-                }
-            }
-        )
+    private func toggleExpand() {
+        if isExpanded {
+            expanded.remove(row.id)
+        } else {
+            expanded.insert(row.id)
+        }
     }
 }
 
 private struct LayerRowView: View {
     let row: LayerRow
+    let depth: Int
+    let hasChildren: Bool
+    let isExpanded: Bool
     @Bindable var sidebar: HostSidebarModel
+    let onToggleExpand: () -> Void
+
+    @State private var isHovered = false
+
+    private var isHidden: Bool {
+        sidebar.hide.contains(row.id) || sidebar.soloHides(row.id)
+    }
+
+    private var showEye: Bool {
+        isHovered || sidebar.hide.contains(row.id)
+    }
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
+            Color.clear.frame(width: CGFloat(depth) * 14)
+
+            if hasChildren {
+                Button(action: onToggleExpand) {
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                        .frame(width: 12, height: 12)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+            } else {
+                Color.clear.frame(width: 12, height: 12)
+            }
+
             Text(row.title)
                 .lineLimit(1)
-                .opacity(sidebar.hide.contains(row.id) || sidebar.soloHides(row.id) ? 0.45 : 1)
+                .opacity(isHidden ? 0.45 : 1)
             Spacer(minLength: 8)
-            Button {
-                toggleHide()
-            } label: {
-                Image(systemName: sidebar.hide.contains(row.id) ? "eye.slash" : "eye")
-            }
-            .buttonStyle(.borderless)
-            .help(sidebar.hide.contains(row.id) ? "Show" : "Hide")
 
-            Button {
-                toggleSolo()
-            } label: {
-                Image(systemName: sidebar.soloRoot == row.id ? "circle.inset.filled" : "circle")
+            if showEye {
+                Button {
+                    toggleHide()
+                } label: {
+                    Image(systemName: sidebar.hide.contains(row.id) ? "eye.slash" : "eye")
+                }
+                .buttonStyle(.borderless)
+                .help(sidebar.hide.contains(row.id) ? "Show" : "Hide")
+            } else {
+                Color.clear.frame(width: 16, height: 16)
             }
-            .buttonStyle(.borderless)
-            .help(sidebar.soloRoot == row.id ? "Clear solo" : "Solo")
         }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
     }
 
     private func toggleHide() {
@@ -149,11 +182,6 @@ private struct LayerRowView: View {
         } else {
             sidebar.hide.insert(row.id)
         }
-        sidebar.overlayRevision += 1
-    }
-
-    private func toggleSolo() {
-        sidebar.soloRoot = sidebar.soloRoot == row.id ? nil : row.id
         sidebar.overlayRevision += 1
     }
 }
@@ -195,21 +223,3 @@ private func sceneTitle(_ scene: GLTFSessionDocument.Scene, index: Int) -> Strin
 private func cameraTitle(_ camera: GLTFSessionDocument.Camera, index: Int) -> String {
     camera.name.isEmpty ? "Camera \(index)" : camera.name
 }
-
-/// Liquid glass on macOS 26; plain column on 15.
-private struct HostColumnChrome: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(macOS 26, *) {
-            content
-                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
-                .frame(maxHeight: .infinity, alignment: .top)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        } else {
-            content
-                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
-                .frame(maxHeight: .infinity, alignment: .top)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-    }
-}
-

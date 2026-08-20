@@ -41,6 +41,7 @@ struct PreviewView: View {
                 PreviewScene(
                     entity: model.entity,
                     stats: model.stats,
+                    debugModes: model.debugModes,
                     interaction: interaction,
                     isDark: isDark,
                     sidebar: sidebar
