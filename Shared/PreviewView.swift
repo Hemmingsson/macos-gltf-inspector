@@ -58,5 +58,6 @@ struct PreviewView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

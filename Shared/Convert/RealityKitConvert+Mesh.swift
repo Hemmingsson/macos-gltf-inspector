@@ -217,7 +217,8 @@ extension RealityKitConvert {
             part.setBlendShapeOffsets(named: name, buffer: MeshBuffers.BlendShapeOffsets(offsets))
         }
     }
-    /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), then flip V for RealityKit.
+    /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), wrap a single
+    /// UDIM tile into 0–1, then flip V for RealityKit.
     private func bakedTextureCoordinates(for primitive: GLTFPrimitive) -> [SIMD2<Float>]? {
         let params = primitive.material?.metallicRoughness?.baseColorTexture
             ?? primitive.material?.normalTexture
@@ -239,6 +240,7 @@ extension RealityKitConvert {
                 return SIMD2(p.x, p.y)
             }
         }
+        uvs = TextureUV.wrapSingleTile(uvs)
         return uvs.map { SIMD2($0.x, 1 - $0.y) }
     }
 }

@@ -203,4 +203,11 @@ private struct HostPreviewContainer: NSViewRepresentable {
             sidebar: sidebar
         )
     }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PreviewHostingView, context: Context) -> CGSize? {
+        CGSize(
+            width: proposal.width ?? nsView.bounds.width,
+            height: proposal.height ?? nsView.bounds.height
+        )
+    }
 }

@@ -119,6 +119,31 @@ struct LoaderHelpersTests {
         #expect(abs(uvs[2].y - (-2.2)) < 0.001)
     }
 
+    /// Character Creator / Sketchfab split each UDIM tile into its own 0–1
+    /// texture but leave mesh UVs in tile space (U 2–3, V 3–4, …). RealityKit
+    /// clamps those, so the albedo never hits the map.
+    @MainActor
+    @Test func wrapsSingleUDIMTileIntoUnitSquare() async throws {
+        let glb = try texturedPBRTriangleGLB(
+            material: [
+                "pbrMetallicRoughness": [
+                    "baseColorTexture": ["index": 0],
+                    "metallicFactor": 0,
+                    "roughnessFactor": 1,
+                ],
+            ],
+            uvs: [(2.1, 3.2), (2.8, 3.2), (2.1, 3.9)]
+        )
+        let uvs = try #require(firstMeshUVs(in: try await loadModel(glb).entity))
+        try #require(uvs.count >= 3)
+        #expect(abs(uvs[0].x - 0.1) < 0.001)
+        #expect(abs(uvs[0].y - 0.8) < 0.001)
+        #expect(abs(uvs[1].x - 0.8) < 0.001)
+        #expect(abs(uvs[1].y - 0.8) < 0.001)
+        #expect(abs(uvs[2].x - 0.1) < 0.001)
+        #expect(abs(uvs[2].y - 0.1) < 0.001)
+    }
+
     @MainActor
     @Test func blendUsesBaseColorAlpha() async throws {
         let material = try await loadFirstPBR(try texturedPBRTriangleGLB(

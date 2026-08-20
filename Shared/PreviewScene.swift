@@ -143,6 +143,10 @@ struct PreviewScene: View {
                         }
                     }
                 }
+            } placeholder: {
+                // RealityView's default ProgressView is unframed and sits at the
+                // AppKit origin — a sliver in the window's bottom-left corner.
+                Color.clear
             }
             .backgroundStyle(backdropColor)
             .background {
