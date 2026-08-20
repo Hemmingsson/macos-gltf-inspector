@@ -13,6 +13,22 @@ struct AnimationSamplingTests {
         #expect(AnimationSampling.mergeSampleInterval(thirty, .nan) == thirty)
     }
 
+    @Test func densifyNeverExceedsThirtyFps() {
+        // Dense glTF keys (corpus ~87/50/54 fps) must floor at defaultInterval.
+        let denserThanThirty: Float = 1 / 87
+        let interval = AnimationSampling.sampleInterval(
+            averageKeyDuration: denserThanThirty,
+            maximum: AnimationSampling.defaultInterval
+        )
+        #expect(interval == AnimationSampling.defaultInterval)
+        #expect(interval == AnimationSampling.minimumInterval)
+        let merged = AnimationSampling.mergeSampleInterval(
+            AnimationSampling.defaultInterval,
+            denserThanThirty
+        )
+        #expect(merged == AnimationSampling.defaultInterval)
+    }
+
     @Test func sampleTimesNeverUsesZeroStride() {
         #expect(AnimationSampling.sampleTimes(from: 0, through: 0, by: 0) == [0])
         #expect(!AnimationSampling.sampleTimes(from: 0, through: 1, by: .nan).isEmpty)

@@ -7,7 +7,8 @@ import simd
 
 enum AnimationSampling {
     static let defaultInterval: Float = 1 / 30
-    static let minimumInterval: Float = 1 / 120
+    /// Floor for densify: never sample finer than 30 fps (was 1/120).
+    static let minimumInterval: Float = defaultInterval
     static let minimumDuration: Float = 1e-4
 
     static func sampleInterval(averageKeyDuration: Float, maximum: Float) -> Float {
