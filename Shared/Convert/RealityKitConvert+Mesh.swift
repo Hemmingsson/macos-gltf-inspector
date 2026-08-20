@@ -1,5 +1,6 @@
 import RealityKit
 import GLTFKit2
+import Metal
 import simd
 
 extension RealityKitConvert {
@@ -37,6 +38,18 @@ extension RealityKitConvert {
         context: RealityKitResourceContext
     ) throws -> RealityKit.ModelComponent?
     {
+        // Packed float3 LowLevelMesh path: skip MeshBuffers SIMD3 expand for
+        // non-skinned / non-morph triangle primitives with tight float accessors.
+        if skeleton == nil {
+            do {
+                if let packed = try convertPackedFloat3Mesh(gltfMesh, context: context) {
+                    return packed
+                }
+            } catch {
+                // Fall through to MeshResource.Part path.
+            }
+        }
+
         let skeletonID = skeleton?.id
 
         typealias PartMaterialPair = (MeshResource.Part, any RealityKit.Material)
@@ -80,6 +93,286 @@ extension RealityKitConvert {
         let modelComponent = ModelComponent(mesh: meshResource, materials: materials)
 
         return modelComponent
+    }
+
+    /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts and
+    /// memcpy tight glTF bufferViews (no `[SIMD3<Float>]` expansion).
+    @MainActor private func convertPackedFloat3Mesh(
+        _ gltfMesh: GLTFMesh,
+        context: RealityKitResourceContext
+    ) throws -> ModelComponent? {
+        struct Plan {
+            let primitive: GLTFPrimitive
+            let materialIndex: Int
+            let positions: GLTFAccessor
+            let normals: GLTFAccessor?
+            let tangents: GLTFAccessor?
+            let bakedUVs: [SIMD2<Float>]?
+            let indices: [UInt32]
+            let bounds: BoundingBox
+            var vertexCount: Int { positions.count }
+            var indexCount: Int { indices.count }
+        }
+
+        var plans: [Plan] = []
+        plans.reserveCapacity(gltfMesh.primitives.count)
+        var totalVertices = 0
+        var totalIndices = 0
+        var anyNormals = false
+        var anyTangents = false
+        var anyUVs = false
+
+        for primitive in gltfMesh.primitives {
+            guard primitive.primitiveType == .triangles,
+                  primitive.targets.isEmpty,
+                  primitive.attribute(forName: "JOINTS_0") == nil,
+                  let positionAttr = primitive.attribute(forName: "POSITION"),
+                  isTightPackedFloatAccessor(positionAttr.accessor, dimension: .vector3),
+                  let bounds = boundingBox(for: positionAttr.accessor)
+            else { return nil }
+
+            let normalsAccessor: GLTFAccessor?
+            if let normalAttr = primitive.attribute(forName: "NORMAL") {
+                guard isTightPackedFloatAccessor(normalAttr.accessor, dimension: .vector3),
+                      normalAttr.accessor.count == positionAttr.accessor.count
+                else { return nil }
+                normalsAccessor = normalAttr.accessor
+                anyNormals = true
+            } else {
+                normalsAccessor = nil
+            }
+
+            let tangentsAccessor: GLTFAccessor?
+            if let tangentAttr = primitive.attribute(forName: "TANGENT") {
+                // glTF tangents are VEC4 (xyz + handedness); keep packed float4 as-is.
+                guard isTightPackedFloatAccessor(tangentAttr.accessor, dimension: .vector4),
+                      tangentAttr.accessor.count == positionAttr.accessor.count
+                else { return nil }
+                tangentsAccessor = tangentAttr.accessor
+                anyTangents = true
+            } else {
+                tangentsAccessor = nil
+            }
+
+            let bakedUVs = bakedTextureCoordinates(for: primitive)
+            if let bakedUVs {
+                guard bakedUVs.count == positionAttr.accessor.count else { return nil }
+                anyUVs = true
+            }
+
+            let indices: [UInt32]
+            if let indexAccessor = primitive.indices {
+                guard let packed = Packed.uint32Array(for: indexAccessor), !packed.isEmpty else { return nil }
+                indices = packed
+            } else {
+                let count = positionAttr.accessor.count
+                indices = [UInt32](UInt32(0)..<UInt32(count))
+            }
+
+            plans.append(
+                Plan(
+                    primitive: primitive,
+                    materialIndex: plans.count,
+                    positions: positionAttr.accessor,
+                    normals: normalsAccessor,
+                    tangents: tangentsAccessor,
+                    bakedUVs: bakedUVs,
+                    indices: indices,
+                    bounds: bounds
+                )
+            )
+            totalVertices += positionAttr.accessor.count
+            totalIndices += indices.count
+        }
+
+        guard !plans.isEmpty, totalVertices > 0, totalIndices > 0 else { return nil }
+
+        var attributes: [LowLevelMesh.Attribute] = [
+            .init(semantic: .position, format: .float3, layoutIndex: 0, offset: 0)
+        ]
+        var layouts: [LowLevelMesh.Layout] = [
+            .init(bufferIndex: 0, bufferStride: 12)
+        ]
+        var normalBufferIndex: Int?
+        var tangentBufferIndex: Int?
+        var uvBufferIndex: Int?
+        if anyNormals {
+            let idx = layouts.count
+            normalBufferIndex = idx
+            attributes.append(.init(semantic: .normal, format: .float3, layoutIndex: idx, offset: 0))
+            layouts.append(.init(bufferIndex: idx, bufferStride: 12))
+        }
+        if anyTangents {
+            let idx = layouts.count
+            tangentBufferIndex = idx
+            attributes.append(.init(semantic: .tangent, format: .float4, layoutIndex: idx, offset: 0))
+            layouts.append(.init(bufferIndex: idx, bufferStride: 16))
+        }
+        if anyUVs {
+            let idx = layouts.count
+            uvBufferIndex = idx
+            attributes.append(.init(semantic: .uv0, format: .float2, layoutIndex: idx, offset: 0))
+            layouts.append(.init(bufferIndex: idx, bufferStride: 8))
+        }
+
+        let descriptor = LowLevelMesh.Descriptor(
+            vertexCapacity: totalVertices,
+            vertexAttributes: attributes,
+            vertexLayouts: layouts,
+            indexCapacity: totalIndices,
+            indexType: .uint32
+        )
+        let lowLevelMesh = try LowLevelMesh(descriptor: descriptor)
+
+        lowLevelMesh.withUnsafeMutableBytes(bufferIndex: 0) { dest in
+            var byteOffset = 0
+            for plan in plans {
+                let nbytes = plan.vertexCount * 12
+                copyTightPackedFloatAccessor(plan.positions, elementFloats: 3, to: dest.baseAddress! + byteOffset)
+                byteOffset += nbytes
+            }
+        }
+
+        if let normalBufferIndex {
+            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: normalBufferIndex) { dest in
+                var byteOffset = 0
+                for plan in plans {
+                    let nbytes = plan.vertexCount * 12
+                    if let normals = plan.normals {
+                        copyTightPackedFloatAccessor(normals, elementFloats: 3, to: dest.baseAddress! + byteOffset)
+                    } else {
+                        memset(dest.baseAddress! + byteOffset, 0, nbytes)
+                    }
+                    byteOffset += nbytes
+                }
+            }
+        }
+
+        if let tangentBufferIndex {
+            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: tangentBufferIndex) { dest in
+                var byteOffset = 0
+                for plan in plans {
+                    let nbytes = plan.vertexCount * 16
+                    if let tangents = plan.tangents {
+                        copyTightPackedFloatAccessor(tangents, elementFloats: 4, to: dest.baseAddress! + byteOffset)
+                    } else {
+                        memset(dest.baseAddress! + byteOffset, 0, nbytes)
+                    }
+                    byteOffset += nbytes
+                }
+            }
+        }
+
+        if let uvBufferIndex {
+            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: uvBufferIndex) { dest in
+                var byteOffset = 0
+                for plan in plans {
+                    let nbytes = plan.vertexCount * 8
+                    if let uvs = plan.bakedUVs {
+                        uvs.withUnsafeBytes { src in
+                            guard let base = src.baseAddress else { return }
+                            memcpy(dest.baseAddress! + byteOffset, base, min(nbytes, src.count))
+                        }
+                    } else {
+                        memset(dest.baseAddress! + byteOffset, 0, nbytes)
+                    }
+                    byteOffset += nbytes
+                }
+            }
+        }
+
+        lowLevelMesh.withUnsafeMutableIndices { dest in
+            var vertexBase: UInt32 = 0
+            var byteOffset = 0
+            for plan in plans {
+                let indexBytes = plan.indexCount * MemoryLayout<UInt32>.size
+                let out = (dest.baseAddress! + byteOffset).assumingMemoryBound(to: UInt32.self)
+                if vertexBase == 0 {
+                    plan.indices.withUnsafeBufferPointer { src in
+                        memcpy(out, src.baseAddress!, indexBytes)
+                    }
+                } else {
+                    for i in 0..<plan.indexCount {
+                        out[i] = plan.indices[i] &+ vertexBase
+                    }
+                }
+                byteOffset += indexBytes
+                vertexBase &+= UInt32(plan.vertexCount)
+            }
+        }
+
+        var parts: [LowLevelMesh.Part] = []
+        parts.reserveCapacity(plans.count)
+        var indexByteOffset = 0
+        for plan in plans {
+            parts.append(
+                LowLevelMesh.Part(
+                    indexOffset: indexByteOffset,
+                    indexCount: plan.indexCount,
+                    topology: .triangle,
+                    materialIndex: plan.materialIndex,
+                    bounds: plan.bounds
+                )
+            )
+            indexByteOffset += plan.indexCount * MemoryLayout<UInt32>.size
+        }
+        lowLevelMesh.parts.replaceAll(parts)
+
+        let meshResource = try MeshResource(from: lowLevelMesh)
+        let materials: [any RealityKit.Material] = try plans.map { plan in
+            try convert(material: plan.primitive.material, context: context)
+        }
+        return ModelComponent(mesh: meshResource, materials: materials)
+    }
+
+    private func isTightPackedFloatAccessor(_ accessor: GLTFAccessor, dimension: GLTFValueDimension) -> Bool {
+        guard accessor.sparse == nil,
+              accessor.componentType == .float,
+              !accessor.isNormalized,
+              accessor.dimension == dimension,
+              let bufferView = accessor.bufferView,
+              bufferView.meshoptCompression == nil,
+              bufferView.buffer.data != nil
+        else { return false }
+        let elementSize = MemoryLayout<Float>.size * {
+            switch dimension {
+            case .vector2: return 2
+            case .vector3: return 3
+            case .vector4: return 4
+            default: return 0
+            }
+        }()
+        guard elementSize > 0 else { return false }
+        let stride = bufferView.stride
+        return stride == 0 || stride == elementSize
+    }
+
+    private func copyTightPackedFloatAccessor(
+        _ accessor: GLTFAccessor,
+        elementFloats: Int,
+        to dest: UnsafeMutableRawPointer
+    ) {
+        guard let bufferView = accessor.bufferView,
+              let data = bufferView.buffer.data
+        else { return }
+        let byteCount = accessor.count * elementFloats * MemoryLayout<Float>.size
+        let offset = bufferView.offset + accessor.offset
+        data.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress, offset + byteCount <= raw.count else { return }
+            memcpy(dest, base + offset, byteCount)
+        }
+    }
+
+    private func boundingBox(for positionAccessor: GLTFAccessor) -> BoundingBox? {
+        let mins = positionAccessor.minValues
+        let maxs = positionAccessor.maxValues
+        guard mins.count >= 3, maxs.count >= 3 else { return nil }
+        let minP = SIMD3<Float>(mins[0].floatValue, mins[1].floatValue, mins[2].floatValue)
+        let maxP = SIMD3<Float>(maxs[0].floatValue, maxs[1].floatValue, maxs[2].floatValue)
+        guard minP.x.isFinite, minP.y.isFinite, minP.z.isFinite,
+              maxP.x.isFinite, maxP.y.isFinite, maxP.z.isFinite
+        else { return nil }
+        return BoundingBox(min: minP, max: maxP)
     }
 
     func convertPoints(_ gltfPrimitive: GLTFPrimitive, materialIndex: Int) -> RealityKit.MeshResource.Part?
