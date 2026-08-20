@@ -189,7 +189,7 @@ struct ContentView: View {
                 let extent = bounds.max - bounds.min
                 AppLog.info(
                     AppLog.host,
-                    "open ready \(url.lastPathComponent) meshes=\(model.document.meshes.count) nodes=\(model.document.nodes.count) lights=\(model.document.lights.count) cameras=\(model.document.cameras.count) extent=\(extent.x)x\(extent.y)x\(extent.z) emptyBounds=\(bounds.isEmpty)"
+                    "open ready \(url.lastPathComponent) nodes=\(model.document.nodes.count) cameras=\(model.document.cameras.count) triangles=\(model.stats.triangleCount) extent=\(extent.x)x\(extent.y)x\(extent.z) emptyBounds=\(bounds.isEmpty)"
                 )
                 sidebar = HostSidebarModel(document: model.document)
             } else if case .failed(let message) = state {

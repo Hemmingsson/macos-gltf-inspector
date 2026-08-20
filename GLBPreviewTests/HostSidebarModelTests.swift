@@ -23,13 +23,11 @@ struct HostSidebarModelTests {
         #expect(model.layerRootIndices() == [1])
     }
 
-    @Test func showAllClearsHideAndSolo() {
+    @Test func showAllClearsHide() {
         let model = HostSidebarModel(document: .init())
         model.hide = [0, 1]
-        model.soloRoot = 0
         model.showAll()
         #expect(model.hide.isEmpty)
-        #expect(model.soloRoot == nil)
     }
 
     @Test func selectNodeTogglesAndClearsOnSceneChange() {
@@ -130,57 +128,8 @@ struct HostSidebarModelTests {
         #expect(entity(nodeIndex: 0, in: loaded.entity)?.isEnabled == false)
     }
 
-    @MainActor
-    @Test func soloDisablesOtherSceneRootsNotAncestors() {
-        var doc = GLTFSessionDocument()
-        doc.scenes = [.init(name: "A", rootNodeIndices: [0, 1])]
-        doc.nodes = [
-            testNode(index: 0, name: "RootA", children: [2]),
-            testNode(index: 1, name: "RootB", children: []),
-            testNode(index: 2, name: "Child", children: []),
-        ]
-        let model = HostSidebarModel(document: doc)
-
-        let root = Entity()
-        let node0 = Entity()
-        let node1 = Entity()
-        let node2 = Entity()
-        node0.components.set(GLTFNodeIDComponent(nodeIndex: 0))
-        node1.components.set(GLTFNodeIDComponent(nodeIndex: 1))
-        node2.components.set(GLTFNodeIDComponent(nodeIndex: 2))
-        node0.addChild(node2)
-        root.addChild(node0)
-        root.addChild(node1)
-
-        model.soloRoot = 0
-        model.overlayRevision += 1
-        model.applyIfNeeded(to: root)
-        #expect(node0.isEnabled == true)
-        #expect(node1.isEnabled == false)
-        #expect(node2.isEnabled == true)
-        #expect(model.soloHides(0) == false)
-        #expect(model.soloHides(1) == true)
-        #expect(model.soloHides(2) == false)
-
-        model.soloRoot = 2
-        model.overlayRevision += 1
-        model.applyIfNeeded(to: root)
-        #expect(node2.isEnabled == true)
-        #expect(node0.isEnabled == true)
-        #expect(node1.isEnabled == false)
-    }
 }
 
 private func testNode(index: Int, name: String, children: [Int]) -> GLTFSessionDocument.Node {
-    .init(
-        index: index,
-        name: name,
-        children: children,
-        meshIndex: nil,
-        cameraIndex: nil,
-        lightIndex: nil,
-        translation: .zero,
-        rotation: SIMD4<Float>(0, 0, 0, 1),
-        scale: .one
-    )
+    .init(index: index, name: name, children: children, cameraIndex: nil)
 }

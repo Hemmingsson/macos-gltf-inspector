@@ -11,7 +11,7 @@ struct SessionDocumentTests {
 
         let model = try await EntityLoader.load(from: url, includeAnimations: false)
         #expect(stampedNodeIndices(in: model.entity).contains(0))
-        #expect(model.document.nodes.contains { $0.name == "Helmet" || $0.meshIndex != nil })
+        #expect(model.document.nodes.contains { $0.name == "Helmet" })
         #expect(model.document.scenes.count >= 1)
         #expect(model.document.defaultSceneIndex == 0)
         #expect(model.document.scenes[model.document.defaultSceneIndex].rootNodeIndices.contains(0))

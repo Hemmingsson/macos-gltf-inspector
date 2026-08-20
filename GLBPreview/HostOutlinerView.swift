@@ -201,7 +201,7 @@ private struct LayerRowLabel: View {
     @State private var isHovered = false
 
     private var isHidden: Bool {
-        sidebar.hide.contains(row.id) || sidebar.soloHides(row.id)
+        sidebar.hide.contains(row.id)
     }
 
     private var isSelected: Bool {
