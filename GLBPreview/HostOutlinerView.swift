@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HostOutlinerView: View {
-    var model: GLBEntityLoader.LoadedModel?
+    var model: EntityLoader.LoadedModel?
     var sidebar: HostSidebarModel
 
     var body: some View {
@@ -12,7 +12,7 @@ struct HostOutlinerView: View {
 }
 
 private struct OutlinerContent: View {
-    var model: GLBEntityLoader.LoadedModel?
+    var model: EntityLoader.LoadedModel?
     @Bindable var sidebar: HostSidebarModel
     @State private var expanded = Set<Int>()
 

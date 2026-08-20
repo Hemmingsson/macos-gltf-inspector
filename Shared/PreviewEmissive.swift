@@ -5,7 +5,7 @@ import simd
 /// Sketchfab / 3ds Max often write `emissiveFactor: [1,1,1]` (and a copy of the
 /// albedo as `emissiveTexture`) so the mesh is visible in a dark viewer. With
 /// studio IBL that becomes a second full-bright light and washes the model out.
-enum GLBPreviewEmissive {
+enum PreviewEmissive {
     struct Hint: Equatable {
         var factor: SIMD3<Float> = .zero
         var strength: Float = 1

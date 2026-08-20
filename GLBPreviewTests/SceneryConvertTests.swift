@@ -7,7 +7,7 @@ import simd
 struct SceneryConvertTests {
     @MainActor
     @Test func punctualLightUsesEngineUnitsAndNonZeroRange() async throws {
-        let model = try await loadGLB(punctualLightsGLB())
+        let model = try await loadModel(try punctualLightsGLB())
         #expect(model.punctualLightCount == 2)
         #expect(model.punctualLightCount > 0)
 
@@ -22,13 +22,13 @@ struct SceneryConvertTests {
 
     @MainActor
     @Test func twoPerspectiveCamerasStayListedAfterTurntable() async throws {
-        let model = try await loadGLB(twoPerspectiveCamerasGLB())
+        let model = try await loadModel(try twoPerspectiveCamerasGLB())
         #expect(model.document.cameras.count == 2)
         #expect(model.document.cameras.allSatisfy { $0.type == "perspective" })
         #expect(model.document.nodes.contains { $0.name == "CamA" && $0.cameraIndex != nil })
         #expect(model.document.nodes.contains { $0.name == "CamB" && $0.cameraIndex != nil })
 
-        let assembled = GLBPreviewCamera.makeTurntable(for: model.entity)
+        let assembled = PreviewCamera.makeTurntable(for: model.entity)
         #expect(assembled.pivot.name == "turntable")
         #expect(namedEntity("CamA", in: assembled.pivot) != nil)
         #expect(namedEntity("CamB", in: assembled.pivot) != nil)
@@ -37,14 +37,14 @@ struct SceneryConvertTests {
 
     @MainActor
     @Test func twoPositiveClipsKeptAndOneKeyframeDropped() async throws {
-        let model = try await loadGLB(threeClipTriangleGLB(), includeAnimations: true)
+        let model = try await loadModel(try threeClipTriangleGLB(), includeAnimations: true)
         #expect(model.stats.animationCount == 2)
         #expect(model.document.animations.count == 2)
     }
 
     @MainActor
     @Test func thumbnailKeepsPunctualPBRAndStudioLighting() async throws {
-        let model = try await loadGLB(litMetallicTriangleGLB())
+        let model = try await loadModel(try litMetallicTriangleGLB())
         let before = try #require(pbrMaterials(in: model.entity).first)
         let metallic = before.metallic.scale
         let roughness = before.roughness.scale
@@ -55,55 +55,20 @@ struct SceneryConvertTests {
         #expect(abs(after.metallic.scale - metallic) < 0.001)
         #expect(abs(after.roughness.scale - roughness) < 0.001)
 
-        await GLBPreviewLighting.prefetchLook(.current)
+        await PreviewLighting.prefetchLook(.current)
         let renderer = try RealityRenderer()
-        await GLBPreviewLighting.configureThumbnailLighting(on: renderer)
+        await PreviewLighting.configureThumbnailLighting(on: renderer)
         #expect(renderer.lighting.resource != nil)
     }
 
     @MainActor
     @Test func orthographicCameraConverts() async throws {
-        let model = try await loadGLB(orthographicCameraGLB())
+        let model = try await loadModel(try orthographicCameraGLB())
         #expect(model.document.cameras.contains { $0.type == "orthographic" })
         #expect(model.document.nodes.contains { $0.name == "OrthoCam" && $0.cameraIndex != nil })
         let node = try #require(firstComponent(OrthographicCameraComponent.self, in: model.entity))
         #expect(node.scale > 0)
     }
-}
-
-@MainActor
-private func loadGLB(_ data: Data, includeAnimations: Bool = false) async throws -> GLBEntityLoader.LoadedModel {
-    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("scenery-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: dir) }
-    let url = dir.appendingPathComponent("m.glb")
-    try data.write(to: url)
-    return try await GLBEntityLoader.load(from: url, includeAnimations: includeAnimations)
-}
-
-@MainActor
-private func pbrMaterials(in entity: Entity) -> [PhysicallyBasedMaterial] {
-    var out: [PhysicallyBasedMaterial] = []
-    if let model = entity.components[ModelComponent.self] {
-        for material in model.materials {
-            if let pbr = material as? PhysicallyBasedMaterial {
-                out.append(pbr)
-            }
-        }
-    }
-    for child in entity.children {
-        out.append(contentsOf: pbrMaterials(in: child))
-    }
-    return out
-}
-
-@MainActor
-private func firstComponent<T: Component>(_ type: T.Type, in entity: Entity) -> T? {
-    if let found = entity.components[type] { return found }
-    for child in entity.children {
-        if let found = firstComponent(type, in: child) { return found }
-    }
-    return nil
 }
 
 @MainActor
@@ -122,13 +87,6 @@ private func livePerspectiveCount(in entity: Entity) -> Int {
         count += livePerspectiveCount(in: child)
     }
     return count
-}
-
-private func appendFloats(_ values: [Float], to bin: inout Data) {
-    for value in values {
-        var bits = value.bitPattern.littleEndian
-        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
-    }
 }
 
 private func trianglePositions() -> [Float] {

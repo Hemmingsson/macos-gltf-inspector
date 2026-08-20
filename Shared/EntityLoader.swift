@@ -2,19 +2,19 @@ import Foundation
 import GLTFKit2
 import RealityKit
 
-enum GLBEntityLoader {
+enum EntityLoader {
     /// A converted model plus the cheap glTF-header stats shown in the preview overlay.
     struct LoadedModel {
         let entity: Entity
-        let stats: GLBPreviewStats
+        let stats: PreviewStats
         let document: GLTFSessionDocument
 
         @MainActor var punctualLightCount: Int {
-            GLBEntityLoader.punctualLightCount(in: entity)
+            EntityLoader.punctualLightCount(in: entity)
         }
 
         @MainActor var studioIBLExponent: Float {
-            GLBPreviewEmissive.studioIBLExponent(punctualLightCount: punctualLightCount)
+            PreviewEmissive.studioIBLExponent(punctualLightCount: punctualLightCount)
         }
     }
 
@@ -93,7 +93,7 @@ enum GLBEntityLoader {
             )
         } catch {
             guard prepared.loadURL != prepared.originalURL else { throw error }
-            GLBLog.error(GLBLog.prepare, "prepared GLB produced no mesh, retrying original")
+            AppLog.error(AppLog.prepare, "prepared GLB produced no mesh, retrying original")
             return try await convertAsset(
                 at: prepared.originalURL,
                 assetDirectory: prepared.fallbackDirectory,
@@ -179,7 +179,7 @@ enum GLBEntityLoader {
     ) -> LoadedModel {
         LoadedModel(
             entity: entity,
-            stats: GLBPreviewStats.from(
+            stats: PreviewStats.from(
                 json: json,
                 usableAnimations: entity.availableAnimations,
                 fileSizeBytes: fileSizeBytes
@@ -193,7 +193,7 @@ enum GLBEntityLoader {
     /// final serialize/write) fails, the original URL is returned so `convertAsset` still
     /// gets a chance on the untouched bytes.
     private static func prepareGLB(_ url: URL, json: [String: Any]) -> URL {
-        guard GLBMetalRoughPrepare.needsConversion(json) || GLBRealityPrepare.needsPrepare(json) else {
+        guard MetalRoughPrepare.needsConversion(json) || RealityPrepare.needsPrepare(json) else {
             return url
         }
         do {
@@ -201,25 +201,25 @@ enum GLBEntityLoader {
             let data = try GLBBox.serialize(json: prepared.json, bin: prepared.bin)
             return try GLBBox.writePrepared(data, prefix: "glb-prepared")
         } catch {
-            GLBLog.error(GLBLog.prepare, "prepare failed, using original: \(error)")
+            AppLog.error(AppLog.prepare, "prepare failed, using original: \(error)")
             return url
         }
     }
 
     private static func applyPrepares(_ glb: GLBBox) -> GLBBox {
         var out = glb
-        if GLBMetalRoughPrepare.needsConversion(out.json) {
+        if MetalRoughPrepare.needsConversion(out.json) {
             do {
-                out = try GLBMetalRoughPrepare.transformed(out)
+                out = try MetalRoughPrepare.transformed(out)
             } catch {
-                GLBLog.error(GLBLog.prepare, "metal-rough failed, using original: \(error)")
+                AppLog.error(AppLog.prepare, "metal-rough failed, using original: \(error)")
             }
         }
-        if GLBRealityPrepare.needsPrepare(out.json) {
+        if RealityPrepare.needsPrepare(out.json) {
             do {
-                out = try GLBRealityPrepare.transformed(out)
+                out = try RealityPrepare.transformed(out)
             } catch {
-                GLBLog.error(GLBLog.prepare, "reality prepare failed, using previous: \(error)")
+                AppLog.error(AppLog.prepare, "reality prepare failed, using previous: \(error)")
             }
         }
         return out
@@ -241,7 +241,7 @@ enum GLBEntityLoader {
             do {
                 return try Data(contentsOf: sidecar)
             } catch {
-                GLBLog.error(GLBLog.load, "sidecar \(decoded): \(error.localizedDescription)")
+                AppLog.error(AppLog.load, "sidecar \(decoded): \(error.localizedDescription)")
                 throw error
             }
         }
@@ -251,7 +251,7 @@ enum GLBEntityLoader {
             let out = try GLBBox.serialize(json: prepared.json, bin: prepared.bin)
             return try GLBBox.writePrepared(out, prefix: "gltf-prepared")
         } catch {
-            GLBLog.error(GLBLog.prepare, "gltf prepare failed, using packed: \(error)")
+            AppLog.error(AppLog.prepare, "gltf prepare failed, using packed: \(error)")
             return try GLBBox.writePrepared(packed, prefix: "gltf-packed")
         }
     }
@@ -277,14 +277,14 @@ enum GLBEntityLoader {
         let scene: GLTFScene
         if let sceneIndex {
             guard sceneIndex >= 0, sceneIndex < asset.scenes.count else {
-                GLBLog.error(GLBLog.load, "scene index \(sceneIndex) out of range for \(name)")
+                AppLog.error(AppLog.load, "scene index \(sceneIndex) out of range for \(name)")
                 throw GLBPreviewError.make(1020, "The glTF asset does not contain scene index \(sceneIndex)")
             }
             scene = asset.scenes[sceneIndex]
         } else if let defaultScene = asset.defaultScene {
             scene = defaultScene
         } else {
-            GLBLog.error(GLBLog.load, "no default scene for \(name)")
+            AppLog.error(AppLog.load, "no default scene for \(name)")
             throw GLBPreviewError.make(1020, "The glTF asset did not specify a default scene")
         }
         let retryWithoutAnimations = includeAnimations && !asset.animations.isEmpty
@@ -316,7 +316,7 @@ enum GLBEntityLoader {
                 return try convertVisible(scene: scene, asset: asset)
             } catch {
                 lastError = error
-                GLBLog.error(GLBLog.load, error.localizedDescription)
+                AppLog.error(AppLog.load, error.localizedDescription)
             }
         }
         throw convertFailure(from: lastError ?? GLBPreviewError.make(1022, "Failed to convert the glTF asset"))
@@ -327,7 +327,7 @@ enum GLBEntityLoader {
         var converted: Entity?
         var document = GLTFSessionDocument()
         try GLBTry.run {
-            converted = GLBRealityKitConvert.convert(scene: scene, asset: asset, document: &document)
+            converted = RealityKitConvert.convert(scene: scene, asset: asset, document: &document)
         }
         guard let converted, modelComponentCount(in: converted) > 0 else {
             throw GLBPreviewError.make(1022, "The glTF asset has no visible mesh")
@@ -339,12 +339,18 @@ enum GLBEntityLoader {
     }
 
     @MainActor
+    static func clipDuration(_ resource: AnimationResource, on entity: Entity) -> TimeInterval? {
+        let probe = entity.playAnimation(resource, startsPaused: true)
+        let duration = probe.duration
+        probe.stop()
+        guard duration.isFinite, duration > 0 else { return nil }
+        return duration
+    }
+
+    @MainActor
     private static func usableClips(from entity: Entity) -> [GLTFSessionDocument.Animation] {
         entity.availableAnimations.compactMap { resource in
-            let probe = entity.playAnimation(resource, startsPaused: true)
-            let duration = probe.duration
-            probe.stop()
-            guard duration.isFinite, duration > 0 else { return nil }
+            guard let duration = clipDuration(resource, on: entity) else { return nil }
             return GLTFSessionDocument.Animation(name: resource.name ?? "", duration: duration)
         }
     }

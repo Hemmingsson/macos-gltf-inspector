@@ -7,12 +7,12 @@ struct AppLook: Codable, Equatable, Sendable {
 
     static let `default` = AppLook(
         useEnvironmentMap: true,
-        catalogRaw: GLBKhronosEnvironments.studioNeutral.rawValue,
+        catalogRaw: KhronosEnvironments.studioNeutral.rawValue,
         customFileName: nil
     )
 
-    var catalog: GLBKhronosEnvironments {
-        GLBKhronosEnvironments(rawValue: catalogRaw) ?? .studioNeutral
+    var catalog: KhronosEnvironments {
+        KhronosEnvironments(rawValue: catalogRaw) ?? .studioNeutral
     }
 
     static func supportDirectory() -> URL {
@@ -44,7 +44,7 @@ struct AppLook: Codable, Equatable, Sendable {
             let data = try JSONEncoder().encode(self)
             try data.write(to: Self.lookURL(in: directory), options: .atomic)
         } catch {
-            GLBLog.error(GLBLog.lighting, "AppLook save failed: \(error)")
+            AppLog.error(AppLog.lighting, "AppLook save failed: \(error)")
         }
     }
 
@@ -70,9 +70,9 @@ struct AppLook: Codable, Equatable, Sendable {
         return Self.catalogURL(catalog, bundle: bundle)
     }
 
-    private static func catalogURL(_ environment: GLBKhronosEnvironments, bundle: Bundle) -> URL? {
+    private static func catalogURL(_ environment: KhronosEnvironments, bundle: Bundle) -> URL? {
         if bundle == .main {
-            return GLBPreviewLighting.catalogURL(environment)
+            return PreviewLighting.catalogURL(environment)
         }
         let name = environment.resourceName
         return bundle.url(forResource: name, withExtension: "hdr", subdirectory: "khronos")

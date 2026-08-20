@@ -48,7 +48,7 @@ struct HostSidebarModelTests {
         let url = try writeTempOneNodeMeshGLB(nodeName: "Mesh")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let loaded = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        let loaded = try await EntityLoader.load(from: url, includeAnimations: false)
         let model = HostSidebarModel(document: loaded.document)
         model.hide.insert(0)
         model.overlayRevision += 1

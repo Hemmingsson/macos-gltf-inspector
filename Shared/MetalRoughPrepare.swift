@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 
 /// Rewrites `KHR_materials_pbrSpecularGlossiness` to metal/rough + specular/IOR,
 /// matching `@gltf-transform/functions` `metalRough()`.
-enum GLBMetalRoughPrepare {
+enum MetalRoughPrepare {
     private static let specGlossName = "KHR_materials_pbrSpecularGlossiness"
     private static let specularName = "KHR_materials_specular"
     private static let iorName = "KHR_materials_ior"
@@ -20,7 +20,7 @@ enum GLBMetalRoughPrepare {
     }
 
     /// Spec/gloss → metal/rough rewrite, in memory. Serialization happens once at the
-    /// end of the fused prepare in `GLBEntityLoader`.
+    /// end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
@@ -331,7 +331,7 @@ struct PixelImage {
             space: cs,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else {
-            throw GLBMetalRoughPrepare.PrepareError.decodeImage
+            throw MetalRoughPrepare.PrepareError.decodeImage
         }
         ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
     }
@@ -370,7 +370,7 @@ struct PixelImage {
             space: cs,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ), let image = ctx.makeImage() else {
-            throw GLBMetalRoughPrepare.PrepareError.encodeImage
+            throw MetalRoughPrepare.PrepareError.encodeImage
         }
         return image
     }

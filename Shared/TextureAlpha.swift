@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-enum GLBTextureAlpha {
+enum TextureAlpha {
     enum Usage: Equatable {
         /// Missing, constant 0 (Sketchfab empty), or constant 1.
         case unused

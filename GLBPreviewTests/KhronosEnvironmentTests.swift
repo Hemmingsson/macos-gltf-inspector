@@ -3,7 +3,7 @@ import Testing
 
 struct KhronosEnvironmentTests {
     @Test func catalogHasExactViewerTitles() {
-        let titles = GLBKhronosEnvironments.allCases.map(\.title)
+        let titles = KhronosEnvironments.allCases.map(\.title)
         #expect(titles == [
             "Cannon Exterior",
             "Footprint Court",
@@ -17,8 +17,8 @@ struct KhronosEnvironmentTests {
             "Colorful Studio",
             "Wide Street",
         ])
-        #expect(GLBKhronosEnvironments.defaultLook == .studioNeutral)
-        #expect(GLBKhronosEnvironments.defaultLook.title == "Studio Neutral")
+        #expect(KhronosEnvironments.defaultLook == .studioNeutral)
+        #expect(KhronosEnvironments.defaultLook.title == "Studio Neutral")
     }
 
     @Test func studioNeutralHDRIsInBundle() {

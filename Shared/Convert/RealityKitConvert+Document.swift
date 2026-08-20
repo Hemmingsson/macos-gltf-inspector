@@ -1,7 +1,7 @@
 import GLTFKit2
 import simd
 
-extension GLBRealityKitConvert {
+extension RealityKitConvert {
     static func makeDocument(from asset: GLTFAsset) -> GLTFSessionDocument {
         var document = GLTFSessionDocument()
         document.defaultSceneIndex = asset.scenes.firstIndex(where: { $0 === asset.defaultScene }) ?? 0

@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 
 /// Rewrites a GLB so RealityKit convert can see meshes: float positions,
 /// PNG textures, expanded GPU instances. Meshopt stays — GLTFKit2 decompresses it.
-enum GLBRealityPrepare {
+enum RealityPrepare {
     private static let quantization = "KHR_mesh_quantization"
     private static let instancing = "EXT_mesh_gpu_instancing"
     private static let webp = "EXT_texture_webp"
@@ -31,7 +31,7 @@ enum GLBRealityPrepare {
     }
 
     /// Float positions, PNG textures, expanded GPU instances — in memory. Serialization
-    /// happens once at the end of the fused prepare in `GLBEntityLoader`.
+    /// happens once at the end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
@@ -180,7 +180,7 @@ enum GLBRealityPrepare {
         guard var nodes = json["nodes"] as? [[String: Any]] else { return }
         visitSkinJoints(json) { index, offset, name in
             if name.isEmpty {
-                nodes[index]["name"] = GLBSkin.synthesizedName(index: offset)
+                nodes[index]["name"] = Skin.synthesizedName(index: offset)
             }
         }
         json["nodes"] = nodes

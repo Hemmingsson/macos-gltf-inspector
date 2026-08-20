@@ -6,8 +6,8 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var openedURL: URL?
-    @State private var previewState: GLBPreviewView.State = .loading
-    @State private var interaction = GLBPreviewInteraction()
+    @State private var previewState: PreviewView.State = .loading
+    @State private var interaction = PreviewInteraction()
     @State private var sidebar: HostSidebarModel?
     @State private var loadGeneration = 0
 
@@ -72,7 +72,7 @@ struct ContentView: View {
         .onAppear { applyDefaultCamera() }
     }
 
-    private var loadedModel: GLBEntityLoader.LoadedModel? {
+    private var loadedModel: EntityLoader.LoadedModel? {
         if case .ready(let model) = previewState { return model }
         return nil
     }
@@ -105,25 +105,25 @@ struct ContentView: View {
         openedURL = url
         previewState = .loading
         sidebar = nil
-        interaction = GLBPreviewInteraction()
+        interaction = PreviewInteraction()
         loadGeneration += 1
         let generation = loadGeneration
-        GLBLog.info(GLBLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
+        AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
         Task {
-            let state = await GLBPreviewView.State.loaded(from: url)
+            let state = await PreviewView.State.loaded(from: url)
             guard generation == loadGeneration else { return }
             previewState = state
             if case .ready(let model) = state {
                 let bounds = model.entity.visualBounds(relativeTo: nil)
                 let extent = bounds.max - bounds.min
-                GLBLog.info(
-                    GLBLog.host,
+                AppLog.info(
+                    AppLog.host,
                     "open ready \(url.lastPathComponent) meshes=\(model.document.meshes.count) nodes=\(model.document.nodes.count) lights=\(model.document.lights.count) cameras=\(model.document.cameras.count) extent=\(extent.x)x\(extent.y)x\(extent.z) emptyBounds=\(bounds.isEmpty)"
                 )
                 sidebar = HostSidebarModel(document: model.document)
             } else {
                 sidebar = nil
-                GLBLog.error(GLBLog.host, "open failed \(url.lastPathComponent)")
+                AppLog.error(AppLog.host, "open failed \(url.lastPathComponent)")
             }
         }
     }
@@ -134,12 +134,12 @@ struct ContentView: View {
         let generation = loadGeneration
         Task {
             do {
-                let entity = try await GLBEntityLoader.convertScene(index: index, from: url)
+                let entity = try await EntityLoader.convertScene(index: index, from: url)
                 guard generation == loadGeneration else { return }
                 if case .ready(let model) = previewState {
                     sidebar.showAll()
                     previewState = .ready(
-                        GLBEntityLoader.LoadedModel(
+                        EntityLoader.LoadedModel(
                             entity: entity,
                             stats: model.stats,
                             document: model.document
@@ -148,7 +148,7 @@ struct ContentView: View {
                     sidebar.overlayRevision += 1
                 }
             } catch {
-                GLBLog.error(GLBLog.host, "scene switch failed \(error)")
+                AppLog.error(AppLog.host, "scene switch failed \(error)")
             }
         }
     }
@@ -159,7 +159,7 @@ struct ContentView: View {
         }
         _ = provider.loadObject(ofClass: URL.self) { url, error in
             if let error {
-                GLBLog.error(GLBLog.host, "drop URL load failed \(error)")
+                AppLog.error(AppLog.host, "drop URL load failed \(error)")
             }
             guard let url else { return }
             Task { @MainActor in
@@ -176,14 +176,14 @@ private func fileSize(_ url: URL) -> Int64 {
 }
 
 private struct HostPreviewContainer: NSViewRepresentable {
-    var state: GLBPreviewView.State
-    var interaction: GLBPreviewInteraction
+    var state: PreviewView.State
+    var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: HostSidebarModel?
 
-    func makeNSView(context: Context) -> GLBPreviewHostingView {
-        let view = GLBPreviewHostingView(
-            rootView: GLBPreviewView(
+    func makeNSView(context: Context) -> PreviewHostingView {
+        let view = PreviewHostingView(
+            rootView: PreviewView(
                 state: state,
                 interaction: interaction,
                 isDark: isDark,
@@ -194,9 +194,9 @@ private struct HostPreviewContainer: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: GLBPreviewHostingView, context: Context) {
+    func updateNSView(_ nsView: PreviewHostingView, context: Context) {
         nsView.interaction = interaction
-        nsView.rootView = GLBPreviewView(
+        nsView.rootView = PreviewView(
             state: state,
             interaction: interaction,
             isDark: isDark,

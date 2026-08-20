@@ -207,7 +207,9 @@ targets:
           - GLBDracoDecompressor.mm
           - GLBTry.mm
         excludes:
-          - GLBPreviewView.swift
+          - PreviewView.swift
+          - PreviewScene.swift
+          - PreviewChrome.swift
       - path: Shared/Convert
         includes:
           - "*.swift"

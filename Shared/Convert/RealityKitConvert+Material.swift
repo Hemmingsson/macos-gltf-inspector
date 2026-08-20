@@ -2,9 +2,9 @@ import RealityKit
 import GLTFKit2
 import simd
 
-extension GLBRealityKitConvert {
+extension RealityKitConvert {
     @MainActor func convert(material gltfMaterial: GLTFMaterial?,
-                            context: GLBRealityKitResourceContext) throws -> any RealityKit.Material
+                            context: RealityKitResourceContext) throws -> any RealityKit.Material
     {
         guard let gltfMaterial = gltfMaterial else { return context.defaultMaterial }
 
@@ -51,8 +51,8 @@ extension GLBRealityKitConvert {
                 material.normal.texture = context.texture(for: normal, channels: .all, semantic: .normal)
             }
             if let emissive = gltfMaterial.emissive {
-                let hint = GLBPreviewEmissive.hint(from: gltfMaterial)
-                if !GLBPreviewEmissive.shouldIgnore(hint, fileLooksBaked: ignoreBakedEmissive) {
+                let hint = PreviewEmissive.hint(from: gltfMaterial)
+                if !PreviewEmissive.shouldIgnore(hint, fileLooksBaked: ignoreBakedEmissive) {
                     var emissiveTexture: PhysicallyBasedMaterial.Texture?
                     if let texture = emissive.emissiveTexture {
                         emissiveTexture = context.texture(for: texture, channels: .all, semantic: .color)
@@ -109,7 +109,7 @@ extension GLBRealityKitConvert {
     func applyBlendMode(
         toPBR material: inout PhysicallyBasedMaterial,
         gltfMaterial: GLTFMaterial,
-        context: GLBRealityKitResourceContext
+        context: RealityKitResourceContext
     ) {
         if gltfMaterial.alphaMode == .mask {
             material.opacityThreshold = gltfMaterial.alphaCutoff
@@ -142,7 +142,7 @@ extension GLBRealityKitConvert {
     func applyBlendMode(
         toUnlit material: inout UnlitMaterial,
         gltfMaterial: GLTFMaterial,
-        context: GLBRealityKitResourceContext
+        context: RealityKitResourceContext
     ) {
         if gltfMaterial.alphaMode == .mask {
             material.opacityThreshold = gltfMaterial.alphaCutoff

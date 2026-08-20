@@ -30,7 +30,7 @@ func glbCubicInterp(
         + dT * (t3 - t2) * outTangent
 }
 
-protocol GLBAnimatedValue {
+protocol AnimatedValue {
     var sampleCount: Int { get }
     var minimumTime: Float { get }
     var maximumTime: Float { get }
@@ -38,7 +38,7 @@ protocol GLBAnimatedValue {
     var keyTimes: [Float] { get }
 }
 
-extension GLBAnimatedValue {
+extension AnimatedValue {
     var sampleCount: Int { keyTimes.count }
     var minimumTime: Float { keyTimes.first ?? 0 }
     var maximumTime: Float { keyTimes.last ?? 0 }
@@ -66,7 +66,7 @@ extension GLBAnimatedValue {
     }
 }
 
-final class GLBAnimatedVector3: GLBAnimatedValue {
+final class AnimatedVector3: AnimatedValue {
     let keyTimes: [Float]
     let values: [SIMD3<Float>]
     let interpolation: GLTFInterpolationMode
@@ -106,7 +106,7 @@ final class GLBAnimatedVector3: GLBAnimatedValue {
     }
 }
 
-final class GLBAnimatedQuaternion: GLBAnimatedValue {
+final class AnimatedQuaternion: AnimatedValue {
     let keyTimes: [Float]
     let values: [simd_quatf]
     let interpolation: GLTFInterpolationMode
@@ -139,13 +139,60 @@ final class GLBAnimatedQuaternion: GLBAnimatedValue {
     }
 }
 
-final class GLBTransformSampler {
+final class AnimatedWeights: AnimatedValue {
+    let keyTimes: [Float]
+    let values: [Float]
+    let targetCount: Int
+    let interpolation: GLTFInterpolationMode
+
+    init(keyTimes: [Float], values: [Float], targetCount: Int, interpolation: GLTFInterpolationMode) {
+        self.keyTimes = keyTimes
+        self.values = values
+        self.targetCount = max(targetCount, 1)
+        self.interpolation = interpolation
+    }
+
+    var recommendedSampleInterval: Float {
+        let duration = maximumTime - minimumTime
+        let average = duration / Float(max(keyTimes.count, 1))
+        if average <= 0 { return 1 / 30 }
+        return min(max(average, 1 / 120), 1 / 30)
+    }
+
+    func value(at time: Float) -> [Float] {
+        guard !values.isEmpty else { return [Float](repeating: 0, count: targetCount) }
+        guard let (index, nextIndex) = keyTimeIndicesForTime(time) else {
+            return weights(atKeyframe: 0)
+        }
+        if interpolation == .step || index == nextIndex {
+            return weights(atKeyframe: index)
+        }
+        let t0 = keyTimes[index]
+        let t1 = keyTimes[nextIndex]
+        let factor = glbUnlerp(t0, t1, time)
+        return zip(weights(atKeyframe: index), weights(atKeyframe: nextIndex)).map {
+            $0 + factor * ($1 - $0)
+        }
+    }
+
+    private func weights(atKeyframe keyframe: Int) -> [Float] {
+        let stride = interpolation == .cubic ? targetCount * 3 : targetCount
+        let valueOffset = interpolation == .cubic ? targetCount : 0
+        let base = keyframe * stride + valueOffset
+        guard base >= 0, base + targetCount <= values.count else {
+            return [Float](repeating: 0, count: targetCount)
+        }
+        return Array(values[base..<(base + targetCount)])
+    }
+}
+
+final class TransformSampler {
     let startTime: Float
     let endTime: Float
     let recommendedSampleInterval: Float
-    let translation: GLBAnimatedVector3
-    let rotation: GLBAnimatedQuaternion
-    let scale: GLBAnimatedVector3
+    let translation: AnimatedVector3
+    let rotation: AnimatedQuaternion
+    let scale: AnimatedVector3
     let hasStepChannel: Bool
 
     init(
@@ -170,8 +217,8 @@ final class GLBTransformSampler {
         var translationValues = [target.translation]
         var translationInterp = GLTFInterpolationMode.linear
         if let sampler = translationChannel?.sampler,
-           let times = GLBPacked.floatArray(for: sampler.input),
-           let values = GLBPacked.float3Array(for: sampler.output)
+           let times = Packed.floatArray(for: sampler.input),
+           let values = Packed.float3Array(for: sampler.output)
         {
             translationTimes = times
             translationValues = values
@@ -182,8 +229,8 @@ final class GLBTransformSampler {
         var rotationValues = [target.rotation]
         var rotationInterp = GLTFInterpolationMode.linear
         if let sampler = rotationChannel?.sampler,
-           let times = GLBPacked.floatArray(for: sampler.input),
-           let values = GLBPacked.quatfArray(for: sampler.output)
+           let times = Packed.floatArray(for: sampler.input),
+           let values = Packed.quatfArray(for: sampler.output)
         {
             rotationTimes = times
             rotationValues = values
@@ -194,8 +241,8 @@ final class GLBTransformSampler {
         var scaleValues = [target.scale]
         var scaleInterp = GLTFInterpolationMode.linear
         if let sampler = scaleChannel?.sampler,
-           let times = GLBPacked.floatArray(for: sampler.input),
-           let values = GLBPacked.float3Array(for: sampler.output)
+           let times = Packed.floatArray(for: sampler.input),
+           let values = Packed.float3Array(for: sampler.output)
         {
             scaleTimes = times
             scaleValues = values
@@ -205,17 +252,17 @@ final class GLBTransformSampler {
         startTime = minTime
         endTime = maxTime
         hasStepChannel = translationInterp == .step || rotationInterp == .step || scaleInterp == .step
-        translation = GLBAnimatedVector3(
+        translation = AnimatedVector3(
             keyTimes: translationTimes,
             values: translationValues,
             interpolation: translationInterp
         )
-        rotation = GLBAnimatedQuaternion(
+        rotation = AnimatedQuaternion(
             keyTimes: rotationTimes,
             values: rotationValues,
             interpolation: rotationInterp
         )
-        scale = GLBAnimatedVector3(
+        scale = AnimatedVector3(
             keyTimes: scaleTimes,
             values: scaleValues,
             interpolation: scaleInterp

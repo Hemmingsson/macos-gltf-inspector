@@ -55,7 +55,7 @@ extension MTLSamplerDescriptor {
     }
 }
 
-class GLBRealityKitResourceContext {
+class RealityKitResourceContext {
     enum ColorMask : Int {
         case red
         case green
@@ -96,7 +96,7 @@ class GLBRealityKitResourceContext {
         self.commandQueue = metalDevice.makeCommandQueue()!
     }
 
-    @MainActor func alphaUsage(for gltfTextureParams: GLTFTextureParams) -> GLBTextureAlpha.Usage {
+    @MainActor func alphaUsage(for gltfTextureParams: GLTFTextureParams) -> TextureAlpha.Usage {
         let gltfTexture = gltfTextureParams.texture
         guard let image = (gltfTexture.basisUSource ?? gltfTexture.webpSource ?? gltfTexture.source) else {
             return .unused
@@ -108,8 +108,8 @@ class GLBRealityKitResourceContext {
                 cgImagesForImageIdentifiers[image.identifier] = cgImage
             }
         }
-        guard let cgImage, let range = GLBTextureAlpha.range(of: cgImage) else { return .unused }
-        return GLBTextureAlpha.usage(minAlpha: range.0, maxAlpha: range.1)
+        guard let cgImage, let range = TextureAlpha.range(of: cgImage) else { return .unused }
+        return TextureAlpha.usage(minAlpha: range.0, maxAlpha: range.1)
     }
 
     @MainActor func cachedCGImage(for gltfTextureParams: GLTFTextureParams) -> CGImage? {
@@ -131,7 +131,7 @@ class GLBRealityKitResourceContext {
         -> RealityKit.PhysicallyBasedMaterial.Texture?
     {
         guard let cgImage = cachedCGImage(for: gltfTextureParams),
-              let gray = GLBTextureAlpha.opacityMap(of: cgImage)
+              let gray = TextureAlpha.opacityMap(of: cgImage)
         else { return nil }
         let options = TextureResource.CreateOptions(semantic: .raw)
         guard let resource = try? TextureResource.generate(from: gray, options: options) else { return nil }
@@ -193,7 +193,7 @@ class GLBRealityKitResourceContext {
                     }
                     return resource
                 } catch {
-                    GLBLog.error(GLBLog.load, "KTX2 texture convert failed: \(error)")
+                    AppLog.error(AppLog.load, "KTX2 texture convert failed: \(error)")
                     return nil
                 }
         }

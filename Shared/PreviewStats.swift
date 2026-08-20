@@ -3,7 +3,7 @@ import RealityKit
 
 /// Mesh / material / node / texture from the glTF JSON header. Animation count and
 /// duration come from converted usable clips, not `json["animations"]`.
-struct GLBPreviewStats: Equatable {
+struct PreviewStats: Equatable {
     struct Row: Equatable {
         let label: String
         let value: String
@@ -27,7 +27,7 @@ struct GLBPreviewStats: Equatable {
     let durationSeconds: Double?
     let fileSizeBytes: Int64?
 
-    static func from(json: [String: Any], fileSizeBytes: Int64? = nil) -> GLBPreviewStats {
+    static func from(json: [String: Any], fileSizeBytes: Int64? = nil) -> PreviewStats {
         fromJSONCounts(json, animationCount: 0, durationSeconds: nil, fileSizeBytes: fileSizeBytes)
     }
 
@@ -37,7 +37,7 @@ struct GLBPreviewStats: Equatable {
         json: [String: Any],
         usableAnimations: [AnimationResource],
         fileSizeBytes: Int64? = nil
-    ) -> GLBPreviewStats {
+    ) -> PreviewStats {
         let durations = usableAnimations.map(\.definition.duration).filter { $0.isFinite && $0 > 0 }
         return fromJSONCounts(
             json,
@@ -105,7 +105,7 @@ struct GLBPreviewStats: Equatable {
         animationCount: Int,
         durationSeconds: Double?,
         fileSizeBytes: Int64?
-    ) -> GLBPreviewStats {
+    ) -> PreviewStats {
         let materials = json["materials"] as? [[String: Any]] ?? []
         let meshes = json["meshes"] as? [[String: Any]] ?? []
         let accessors = json["accessors"] as? [[String: Any]] ?? []
@@ -113,7 +113,7 @@ struct GLBPreviewStats: Equatable {
         let skins = json["skins"] as? [[String: Any]] ?? []
         let transparent = materials.filter { isTransparent($0) }.count
         let geometry = meshGeometry(meshes, accessors: accessors)
-        return GLBPreviewStats(
+        return PreviewStats(
             meshCount: meshes.count,
             triangleCount: geometry.triangles,
             vertexCount: geometry.vertices,

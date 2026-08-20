@@ -7,8 +7,7 @@ macOS 15+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview`
 ```bash
 ./scripts/build.sh            # xcodegen + Debug build + install to /Applications
 ./scripts/verify.sh           # check installed app + pluginkit
-qlmanage -p path/to/file.glb  # preview proof
-qlmanage -t path/to/file.glb  # thumbnail proof
+./scripts/proof.sh            # still-renderer PNG; qlmanage with timeout
 ./scripts/release.sh          # Developer ID + notary + Sparkle appcast + gh release
 ```
 

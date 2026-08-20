@@ -1,143 +1,16 @@
-import AppKit
 import RealityKit
 import SwiftUI
 
-/// Host-only overlay applied during RealityView updates. Quick Look and thumbnails pass `nil`.
-@MainActor
-protocol PreviewOverlay: AnyObject {
-    var overlayRevision: Int { get }
-    var selectedCameraIndex: Int? { get }
-    var document: GLTFSessionDocument { get }
-    func applyIfNeeded(to root: Entity)
-}
-
-@Observable
-final class GLBPreviewInteraction {
-    var zoom: Float = 1
-
-    func applyScroll(_ event: NSEvent) {
-        let dy = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 8
-        guard dy != 0 else { return }
-        setZoom(zoom * exp(Float(-dy) * 0.004))
-    }
-
-    func applyMagnify(_ event: NSEvent) {
-        guard event.magnification != 0 else { return }
-        setZoom(zoom * Float(1 + event.magnification))
-    }
-
-    var orbitResetNonce = 0
-
-    func resetFit() {
-        zoom = 1
-        orbitResetNonce += 1
-    }
-
-    private func setZoom(_ value: Float) {
-        let clamped = min(max(value, 0.12), 8)
-        guard abs(clamped - zoom) > 0.0001 else { return }
-        zoom = clamped
-    }
-}
-
-/// Forwards trackpad scroll/magnify into `GLBPreviewInteraction` (SwiftUI misses these on macOS).
-final class GLBPreviewHostingView: NSHostingView<GLBPreviewView> {
-    var interaction: GLBPreviewInteraction?
-
-    override var isOpaque: Bool { false }
-    override var mouseDownCanMoveWindow: Bool { false }
-    override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
-    override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
-    override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
-    override var acceptsFirstResponder: Bool { true }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        wantsLayer = true
-        layer?.isOpaque = false
-        layer?.backgroundColor = NSColor.clear.cgColor
-    }
-}
-
-/// Non-hosting root used by Quick Look so scroll events still hit before the hosting view.
-final class GLBPreviewEventView: NSView {
-    var interaction: GLBPreviewInteraction?
-
-    override var isOpaque: Bool { false }
-    override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
-    override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
-    override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
-    override var acceptsFirstResponder: Bool { true }
-}
-
-struct GLBPreviewView: View {
-    enum State {
-        case loading
-        case ready(GLBEntityLoader.LoadedModel)
-        case failed
-
-        /// File IO runs off the main actor (`GLBEntityLoader.load`).
-        static func loaded(from url: URL) async -> State {
-            async let ibl: Void = GLBPreviewLighting.prefetchLook(AppLook.current)
-            do {
-                let model = try await GLBEntityLoader.load(from: url)
-                await ibl
-                return .ready(model)
-            } catch {
-                GLBLog.error(GLBLog.preview, "State.failed \(url.path) \(error)")
-                return .failed
-            }
-        }
-    }
-
-    let state: State
-    var interaction: GLBPreviewInteraction
-    var isDark: Bool
-    var sidebar: (any PreviewOverlay)? = nil
-
-    var body: some View {
-        Group {
-            switch state {
-            case .loading:
-                ZStack {
-                    PreviewBackground.window.color.ignoresSafeArea()
-                    ProgressView()
-                        .controlSize(.regular)
-                        .progressViewStyle(.circular)
-                }
-            case .ready(let model):
-                GLBPreviewScene(
-                    entity: model.entity,
-                    stats: model.stats,
-                    interaction: interaction,
-                    isDark: isDark,
-                    sidebar: sidebar
-                )
-            case .failed:
-                ZStack {
-                    PreviewBackground.window.color.ignoresSafeArea()
-                    Text("Failed to load model")
-                        .font(.system(size: 13))
-                        .foregroundStyle(
-                            PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true).opacity(0.5)
-                        )
-                        .multilineTextAlignment(.center)
-                        .padding()
-                }
-            }
-        }
-    }
-}
 
 /// Reference box so RealityView `make` can stash unscaled bounds while zoom scales the pivot.
 private final class PreviewFrame {
     var bounds = BoundingBox()
 }
 
-private struct GLBPreviewScene: View {
+struct PreviewScene: View {
     let entity: Entity
-    var stats: GLBPreviewStats?
-    @Bindable var interaction: GLBPreviewInteraction
+    var stats: PreviewStats?
+    @Bindable var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)?
 
@@ -163,8 +36,8 @@ private struct GLBPreviewScene: View {
 
     init(
         entity: Entity,
-        stats: GLBPreviewStats?,
-        interaction: GLBPreviewInteraction,
+        stats: PreviewStats?,
+        interaction: PreviewInteraction,
         isDark: Bool,
         sidebar: (any PreviewOverlay)? = nil
     ) {
@@ -173,12 +46,12 @@ private struct GLBPreviewScene: View {
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
-        let bounds = GLBPreviewCamera.modelBounds(of: entity, relativeTo: entity)
+        let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
         let settingsOn = UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
-        if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
+        if PreviewCamera.disablesAutoRotate(extent) {
             _autoRotate = State(initialValue: false)
-            GLBLog.info(GLBLog.preview, "autoRotate disabled for standing plane thinAxis=\(axis)")
+            AppLog.info(AppLog.preview, "autoRotate disabled for standing plane")
         } else {
             _autoRotate = State(initialValue: settingsOn)
         }
@@ -202,22 +75,22 @@ private struct GLBPreviewScene: View {
         ZStack {
             RealityView { content in
                 content.camera = .virtual
-                let assembled = GLBPreviewCamera.makeTurntable(for: entity)
+                let assembled = PreviewCamera.makeTurntable(for: entity)
                 frame.bounds = assembled.bounds
 
                 content.add(assembled.pivot)
                 content.add(
-                    GLBPreviewCamera.makeFrontThreeQuarter(
+                    PreviewCamera.makeFrontThreeQuarter(
                         minBound: assembled.bounds.min,
                         maxBound: assembled.bounds.max,
-                        padding: GLBPreviewCamera.previewFitPadding,
+                        padding: PreviewCamera.previewFitPadding,
                         aspect: aspect(of: viewport)
                     )
                 )
-                let exponent = GLBPreviewEmissive.studioIBLExponent(
-                    punctualLightCount: GLBEntityLoader.punctualLightCount(in: entity)
+                let exponent = PreviewEmissive.studioIBLExponent(
+                    punctualLightCount: EntityLoader.punctualLightCount(in: entity)
                 )
-                GLBPreviewLighting.applyLook(
+                PreviewLighting.applyLook(
                     to: &content,
                     pivot: assembled.pivot,
                     look: AppLook.current,
@@ -225,14 +98,11 @@ private struct GLBPreviewScene: View {
                 )
                 sidebar?.applyIfNeeded(to: assembled.pivot)
 
-                if playOnOpen, let animation = entity.availableAnimations.first {
-                    let probe = entity.playAnimation(animation, startsPaused: true)
-                    let duration = probe.duration
-                    probe.stop()
-                    clipDuration = duration.isFinite && duration > 0 ? duration : 0
-                    if clipDuration > 0 {
-                        playback = entity.playAnimation(animation.repeat())
-                    }
+                if playOnOpen, let animation = entity.availableAnimations.first,
+                   let duration = EntityLoader.clipDuration(animation, on: entity)
+                {
+                    clipDuration = duration
+                    playback = entity.playAnimation(animation.repeat())
                 }
             } update: { content in
                 for entity in content.entities where entity.name == "turntable" {
@@ -247,16 +117,16 @@ private struct GLBPreviewScene: View {
                     applyFileCamera(content)
                 } else {
                     for entity in content.entities where entity.name == "previewCamera" {
-                        GLBPreviewCamera.restoreFitPerspective(on: entity)
-                        let position = GLBPreviewCamera.cameraPosition(
+                        PreviewCamera.restoreFitPerspective(on: entity)
+                        let position = PreviewCamera.cameraPosition(
                             minBound: frame.bounds.min,
                             maxBound: frame.bounds.max,
-                            padding: GLBPreviewCamera.previewFitPadding,
+                            padding: PreviewCamera.previewFitPadding,
                             aspect: viewAspect
                         )
                         entity.look(at: frame.bounds.center, from: position, relativeTo: nil)
                         if var camera = entity.components[PerspectiveCameraComponent.self] {
-                            GLBPreviewCamera.applyFitClip(
+                            PreviewCamera.applyFitClip(
                                 to: &camera,
                                 eye: position,
                                 target: frame.bounds.center
@@ -287,7 +157,7 @@ private struct GLBPreviewScene: View {
 
             if !isHost, chromeVisible, showToolbar {
                 HStack(alignment: .bottom, spacing: 12) {
-                    GLBPreviewToolbar(
+                    PreviewToolbar(
                         backdropIndex: $backdropIndex,
                         autoRotate: $autoRotate,
                         showPlayback: playback != nil,
@@ -381,7 +251,7 @@ private struct GLBPreviewScene: View {
               let cameraNode = findEntity(nodeIndex: node.index, in: entity),
               let preview = content.entities.first(where: { $0.name == "previewCamera" })
         else { return }
-        GLBPreviewCamera.applyFileView(
+        PreviewCamera.applyFileView(
             to: preview,
             cameraNode: cameraNode,
             spec: sidebar.document.cameras[index]
@@ -401,9 +271,9 @@ private struct GLBPreviewScene: View {
     }
 
     private func applyAutoRotateSetting() {
-        let bounds = GLBPreviewCamera.modelBounds(of: entity, relativeTo: entity)
+        let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
-        if let axis = GLBPreviewCamera.thinAxis(extent), axis == 0 || axis == 2 {
+        if PreviewCamera.disablesAutoRotate(extent) {
             autoRotate = false
             return
         }
@@ -422,7 +292,7 @@ private struct GLBPreviewScene: View {
     }
 }
 
-private struct GLBPreviewToolbar: View {
+struct PreviewToolbar: View {
     @Binding var backdropIndex: Int
     @Binding var autoRotate: Bool
     var showPlayback: Bool

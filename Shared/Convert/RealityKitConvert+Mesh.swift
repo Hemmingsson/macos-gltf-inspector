@@ -2,11 +2,11 @@ import RealityKit
 import GLTFKit2
 import simd
 
-extension GLBRealityKitConvert {
+extension RealityKitConvert {
     func convert(skin gltfSkin: GLTFSkin) -> MeshResource.Skeleton? {
         let skeletonName = gltfSkin.name ?? nextUniqueName(prefix: "Skin")
         let jointNames = gltfSkin.joints.enumerated().map { index, joint in
-            GLBSkin.resolvedName(joint.name, index: index)
+            Skin.resolvedName(joint.name, index: index)
         }
 
         let jointParents = gltfSkin.joints.map { skeletonNode in
@@ -17,31 +17,35 @@ extension GLBRealityKitConvert {
             }
         }
 
-        let ibmMatrices = {
-            if let ibmAccessor = gltfSkin.inverseBindMatrices, let matrices = GLBPacked.float4x4(for: ibmAccessor) {
-                return matrices
-            } else {
-                return [simd_float4x4](repeating: matrix_identity_float4x4, count: jointNames.count)
-            }
-        }()
+        let ibmMatrices: [simd_float4x4]
+        if let ibmAccessor = gltfSkin.inverseBindMatrices, let matrices = Packed.float4x4(for: ibmAccessor) {
+            ibmMatrices = matrices
+        } else {
+            ibmMatrices = [simd_float4x4](repeating: matrix_identity_float4x4, count: jointNames.count)
+        }
 
         return MeshResource.Skeleton(id: skeletonName, jointNames: jointNames,
                                      inverseBindPoseMatrices: ibmMatrices, parentIndices: jointParents)
     }
 
-    @MainActor func convert(mesh gltfMesh: GLTFMesh, skeleton: Any? /*MeshResource.Skeleton?*/ = nil,
-                            context: GLBRealityKitResourceContext) throws -> RealityKit.ModelComponent?
+    @MainActor func convert(
+        mesh gltfMesh: GLTFMesh,
+        skeleton: MeshResource.Skeleton? = nil,
+        context: RealityKitResourceContext
+    ) throws -> RealityKit.ModelComponent?
     {
-        var skeletonID: String?
-        if let skeleton = skeleton as? MeshResource.Skeleton {
-            skeletonID = skeleton.id
-        }
+        let skeletonID = skeleton?.id
 
         typealias PartMaterialPair = (MeshResource.Part, any RealityKit.Material)
         var primitiveMaterialIndex: Int = 0
+        let targetNames = morphTargetNames(for: gltfMesh)
         let partsAndMaterials = try gltfMesh.primitives.compactMap { primitive -> PartMaterialPair? in
-            if let part = self.convert(primitive: primitive, materialIndex: primitiveMaterialIndex,
-                                       skeletonID: skeletonID)
+            if let part = self.convert(
+                primitive: primitive,
+                materialIndex: primitiveMaterialIndex,
+                skeletonID: skeletonID,
+                targetNames: targetNames
+            )
             {
                 let material = try self.convert(material: primitive.material, context: context)
                 primitiveMaterialIndex += 1
@@ -65,7 +69,7 @@ extension GLBRealityKitConvert {
 
         var meshContents = MeshResource.Contents()
         meshContents.models = MeshModelCollection([model])
-        if let skeleton = skeleton as? MeshResource.Skeleton {
+        if let skeleton {
             meshContents.skeletons = MeshSkeletonCollection([skeleton])
         }
 
@@ -78,7 +82,7 @@ extension GLBRealityKitConvert {
     func convertPoints(_ gltfPrimitive: GLTFPrimitive, materialIndex: Int) -> RealityKit.MeshResource.Part?
     {
         guard let positionAttribute = gltfPrimitive.attribute(forName: "POSITION"),
-              let points = GLBPacked.float3Array(for: positionAttribute.accessor),
+              let points = Packed.float3Array(for: positionAttribute.accessor),
               !points.isEmpty
         else { return nil }
         var minBound = points[0]
@@ -106,8 +110,12 @@ extension GLBRealityKitConvert {
         return part
     }
 
-    func convert(primitive gltfPrimitive: GLTFPrimitive, materialIndex: Int = 0, skeletonID: String? = nil)
-        -> RealityKit.MeshResource.Part?
+    func convert(
+        primitive gltfPrimitive: GLTFPrimitive,
+        materialIndex: Int = 0,
+        skeletonID: String? = nil,
+        targetNames: [String] = []
+    ) -> RealityKit.MeshResource.Part?
     {
         switch gltfPrimitive.primitiveType {
         case .points:
@@ -122,19 +130,19 @@ extension GLBRealityKitConvert {
         var part = MeshResource.Part(id: partName, materialIndex: materialIndex)
 
         if let positionAttribute = gltfPrimitive.attribute(forName: "POSITION"),
-           let positionArray = GLBPacked.float3Array(for: positionAttribute.accessor)
+           let positionArray = Packed.float3Array(for: positionAttribute.accessor)
         {
             part[MeshBuffers.positions] = MeshBuffers.Positions(positionArray)
         }
 
         if let normalAttribute = gltfPrimitive.attribute(forName: "NORMAL"),
-           let normalArray = GLBPacked.float3Array(for: normalAttribute.accessor)
+           let normalArray = Packed.float3Array(for: normalAttribute.accessor)
         {
             part[MeshBuffers.normals] = MeshBuffers.Normals(normalArray)
         }
 
         if let tangentAttribute = gltfPrimitive.attribute(forName: "TANGENT"),
-           let tangentArray = GLBPacked.float3Array(for: tangentAttribute.accessor)
+           let tangentArray = Packed.float3Array(for: tangentAttribute.accessor)
         {
             part[MeshBuffers.tangents] = MeshBuffers.Tangents(tangentArray)
         }
@@ -145,8 +153,8 @@ extension GLBRealityKitConvert {
 
         if let joints0Attribute = gltfPrimitive.attribute(forName: "JOINTS_0"),
            let weights0Attribute = gltfPrimitive.attribute(forName: "WEIGHTS_0"),
-           let jointsArray = GLBPacked.ushort4Array(for: joints0Attribute.accessor),
-           let weightsArray = GLBPacked.float4Array(for: weights0Attribute.accessor)
+           let jointsArray = Packed.ushort4Array(for: joints0Attribute.accessor),
+           let weightsArray = Packed.float4Array(for: weights0Attribute.accessor)
         {
             let weightsPerVertex = 4
             func jointInfluences(forJoints joints: [SIMD4<UInt16>], weights: [SIMD4<Float>]) -> [MeshJointInfluence] {
@@ -167,7 +175,7 @@ extension GLBRealityKitConvert {
 
         // TODO: Support explicit bitangents and other user attributes?
 
-        if let indexAccessor = gltfPrimitive.indices, let indices = GLBPacked.uint32Array(for: indexAccessor) {
+        if let indexAccessor = gltfPrimitive.indices, let indices = Packed.uint32Array(for: indexAccessor) {
             part.triangleIndices = MeshBuffers.TriangleIndices(indices)
         } else {
             let vertexCount = gltfPrimitive.attribute(forName: "POSITION")?.accessor.count ?? 0
@@ -175,7 +183,36 @@ extension GLBRealityKitConvert {
             part.triangleIndices = MeshBuffers.TriangleIndices(indices)
         }
 
+        applyMorphTargets(to: &part, primitive: gltfPrimitive, targetNames: targetNames)
         return part
+    }
+
+    func morphTargetNames(for mesh: GLTFMesh) -> [String] {
+        let named = mesh.targetNames ?? []
+        let count = mesh.primitives.map(\.targets.count).max() ?? 0
+        return (0..<count).map { index in
+            if index < named.count, !named[index].isEmpty {
+                return named[index]
+            }
+            return "Morph\(index)"
+        }
+    }
+
+    /// glTF morph targets are per-vertex position deltas (optional NORMAL/TANGENT ignored).
+    private func applyMorphTargets(
+        to part: inout MeshResource.Part,
+        primitive: GLTFPrimitive,
+        targetNames: [String]
+    ) {
+        for (index, target) in primitive.targets.enumerated() {
+            let position = target.first { $0.name == "POSITION" }
+            guard let accessor = position?.accessor,
+                  let offsets = Packed.float3Array(for: accessor),
+                  !offsets.isEmpty
+            else { continue }
+            let name = index < targetNames.count ? targetNames[index] : "Morph\(index)"
+            part.setBlendShapeOffsets(named: name, buffer: MeshBuffers.BlendShapeOffsets(offsets))
+        }
     }
     /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), then flip V for RealityKit.
     private func bakedTextureCoordinates(for primitive: GLTFPrimitive) -> [SIMD2<Float>]? {
@@ -190,7 +227,7 @@ extension GLBRealityKitConvert {
         let attribute = primitive.attribute(forName: "TEXCOORD_\(texCoord)")
             ?? primitive.attribute(forName: "TEXCOORD_0")
         guard let attribute,
-              var uvs = GLBPacked.float2Array(for: attribute.accessor, flipVertically: false)
+              var uvs = Packed.float2Array(for: attribute.accessor, flipVertically: false)
         else { return nil }
         if let transform = params?.transform {
             let matrix = transform.matrix

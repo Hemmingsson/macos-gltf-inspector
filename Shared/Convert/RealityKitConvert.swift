@@ -1,5 +1,5 @@
 // Vendored from warrenm/GLTFKit2 GLTFRealityKit.swift (MIT), macOS-only.
-// Packed accessor helpers live in GLBPackedAccessors.swift. Patched: sheen, transmission, POINTS, unnamed joints.
+// Packed accessor helpers live in PackedAccessors.swift. Patched: sheen, transmission, POINTS, unnamed joints.
 
 import AppKit
 import RealityKit
@@ -31,7 +31,7 @@ extension GLTFNode {
     }
 }
 
-public class GLBRealityKitConvert {
+public class RealityKitConvert {
 
     let colorSpace = NSColorSpace(cgColorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)!)!
     fileprivate let nameGenerator = UniqueNameGenerator()
@@ -51,7 +51,7 @@ public class GLBRealityKitConvert {
         asset: GLTFAsset?,
         document: inout GLTFSessionDocument
     ) -> RealityKit.Entity {
-        let instance = GLBRealityKitConvert()
+        let instance = RealityKitConvert()
         return instance.convert(scene: scene, asset: asset, document: &document)
     }
 
@@ -64,12 +64,12 @@ public class GLBRealityKitConvert {
         if let asset {
             document = Self.makeDocument(from: asset)
         }
-        let emissiveHints = (asset?.materials ?? []).map(GLBPreviewEmissive.hint(from:))
-        ignoreBakedEmissive = GLBPreviewEmissive.fileLooksBaked(emissiveHints)
+        let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))
+        ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(emissiveHints)
         if ignoreBakedEmissive {
-            GLBLog.info(GLBLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
+            AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
-        let context = GLBRealityKitResourceContext()
+        let context = RealityKitResourceContext()
 
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
@@ -81,20 +81,21 @@ public class GLBRealityKitConvert {
                 rootEntity.addChild(rootNode)
             }
         } catch {
-            GLBLog.error(GLBLog.load, "Error when converting scene: \(error)")
+            AppLog.error(AppLog.load, "Error when converting scene: \(error)")
         }
 
-        // TODO: Morph targets
-
         for animation in asset?.animations ?? [] {
-            let rkAnimation = try? convert(animation: animation)
-            rkAnimation?.store(in: rootEntity)
+            do {
+                try convert(animation: animation).store(in: rootEntity)
+            } catch {
+                AppLog.error(AppLog.load, "animation convert failed: \(error)")
+            }
         }
 
         return rootEntity
     }
 
-    @MainActor func convert(node gltfNode: GLTFNode, context: GLBRealityKitResourceContext) throws -> RealityKit.Entity {
+    @MainActor func convert(node gltfNode: GLTFNode, context: RealityKitResourceContext) throws -> RealityKit.Entity {
         let nodeEntity = ModelEntity()
 
         // TODO: This only ensures uniqueness for unnamed nodes; the asset could still contain duplicate names.
@@ -103,7 +104,7 @@ public class GLBRealityKitConvert {
 
         nodeEntity.transform = Transform(matrix: gltfNode.matrix)
 
-        var skeleton: Any?
+        var skeleton: MeshResource.Skeleton?
         if let skin = gltfNode.skin {
             if let meshSkeleton = convert(skin: skin) {
                 skeleton = meshSkeleton
@@ -124,6 +125,7 @@ public class GLBRealityKitConvert {
         if let gltfMesh = gltfNode.mesh,
            let meshComponent = try convert(mesh: gltfMesh, skeleton: skeleton, context: context) {
             nodeEntity.components.set(meshComponent)
+            attachMorphWeights(to: nodeEntity, mesh: gltfMesh, node: gltfNode)
         }
 
         if let gltfLight = gltfNode.light {
@@ -148,6 +150,21 @@ public class GLBRealityKitConvert {
         }
 
         return nodeEntity
+    }
+
+    private func attachMorphWeights(to entity: Entity, mesh: GLTFMesh, node: GLTFNode) {
+        guard mesh.primitives.contains(where: { !$0.targets.isEmpty }) else { return }
+        guard let model = entity.components[ModelComponent.self] else { return }
+        var weights = BlendShapeWeightsComponent(
+            weightsMapping: BlendShapeWeightsMapping(meshResource: model.mesh)
+        )
+        let initial = (node.weights ?? mesh.weights ?? []).map(\.floatValue)
+        if !initial.isEmpty, !weights.weightSet.isEmpty {
+            var data = weights.weightSet[0]
+            data.weights = BlendShapeWeights(initial)
+            weights.weightSet[0] = data
+        }
+        entity.components.set(weights)
     }
 
     func nodeIndex(of gltfNode: GLTFNode) -> Int {

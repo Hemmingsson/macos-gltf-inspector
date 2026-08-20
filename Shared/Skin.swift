@@ -1,6 +1,6 @@
 import GLTFKit2
 
-enum GLBSkin {
+enum Skin {
     static func synthesizedName(index: Int) -> String {
         "joint-\(index)"
     }

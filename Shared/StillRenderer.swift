@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 
 /// Offscreen RealityRenderer. No window — used by Finder icon thumbnails.
 @MainActor
-final class GLBStillRenderer {
+final class StillRenderer {
     private let renderer: RealityRenderer
     private let texture: MTLTexture
     let width: Int
@@ -34,14 +34,14 @@ final class GLBStillRenderer {
         renderer.extendedDynamicRangeOutput = false
 
         let aspect = Float(width) / Float(max(height, 1))
-        let camera = GLBPreviewCamera.makeFrontThreeQuarter(
+        let camera = PreviewCamera.makeFrontThreeQuarter(
             minBound: bounds.min,
             maxBound: bounds.max,
             padding: padding,
             aspect: aspect
         )
         renderer.entities.append(root)
-        await GLBPreviewLighting.configureThumbnailLighting(
+        await PreviewLighting.configureThumbnailLighting(
             on: renderer,
             intensityExponent: intensityExponent
         )
@@ -115,5 +115,5 @@ private func image(from texture: MTLTexture, width: Int, height: Int) throws -> 
 }
 
 private func error(_ message: String, code: Int) -> NSError {
-    NSError(domain: "GLBStillRenderer", code: code, userInfo: [NSLocalizedDescriptionKey: message])
+    NSError(domain: "StillRenderer", code: code, userInfo: [NSLocalizedDescriptionKey: message])
 }

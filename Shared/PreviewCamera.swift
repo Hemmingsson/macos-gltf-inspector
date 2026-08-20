@@ -1,7 +1,7 @@
 import RealityKit
 import simd
 
-enum GLBPreviewCamera {
+enum PreviewCamera {
     private static let fieldOfViewDegrees: Float = 35
     private static let yawDegrees: Float = 35
     private static let pitchDegrees: Float = 18
@@ -128,6 +128,12 @@ enum GLBPreviewCamera {
         if extent.y / longest < groundThinRatio { return 1 }
         if extent.z / longest < standingThinRatio { return 2 }
         return nil
+    }
+
+    /// Standing planes (thin X or Z): Fit orbit would spin the face away.
+    static func disablesAutoRotate(_ extent: SIMD3<Float>) -> Bool {
+        guard let axis = thinAxis(extent) else { return false }
+        return axis == 0 || axis == 2
     }
 
     /// Front 3/4, Y-up. glTF +Z is forward, so the camera stands on +Z.

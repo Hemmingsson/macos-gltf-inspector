@@ -1,21 +1,18 @@
 import RealityKit
 import GLTFKit2
 
-extension GLBRealityKitConvert {
+extension RealityKitConvert {
     func convert(animation: GLTFAnimation) throws -> AnimationResource {
-        let groupedChannels = animation.channels.reduce(into: [UUID : [GLTFAnimationChannel]]()) { partialResult, channel in
-            guard let targetIdentifier = channel.target.node?.identifier else { return }
-            if let _ = partialResult[targetIdentifier] {
-                partialResult[targetIdentifier]! += [channel]
-            } else {
-                partialResult[targetIdentifier] = [channel]
-            }
+        var groupedChannels = [UUID: [GLTFAnimationChannel]]()
+        for channel in animation.channels {
+            guard let id = channel.target.node?.identifier else { continue }
+            groupedChannels[id, default: []].append(channel)
         }
         let name = animation.name ?? nextUniqueName(prefix: "Animation")
 
         struct AnimatedJointData {
             var jointNames = [String]()
-            var jointTransformSamplers = [GLBTransformSampler]()
+            var jointTransformSamplers = [TransformSampler]()
             var minTime: Float = 0
             var maxTime: Float = 0
             var sampleInterval: Float = 1 / 30.0
@@ -23,26 +20,31 @@ extension GLBRealityKitConvert {
         var jointAnimation = AnimatedJointData()
         var animations = [AnimationDefinition]()
         for (_, channels) in groupedChannels {
-            if let _ = channels.first(where: { $0.target.path == GLTFAnimationPath.weights.rawValue }), channels.count == 1 {
-                continue // TODO: Implement morph target animation
-            }
             guard let targetNode = channels.first?.target.node else {
                 continue // Can't create an animation without at least one channel and a target
+            }
+            if let weightsChannel = channels.first(where: { $0.target.path == GLTFAnimationPath.weights.rawValue }),
+               let morphAnimation = convertMorphWeights(channel: weightsChannel, target: targetNode)
+            {
+                animations.append(morphAnimation)
+            }
+            if channels.allSatisfy({ $0.target.path == GLTFAnimationPath.weights.rawValue }) {
+                continue
             }
             let translationChannel = channels.first { $0.target.path == GLTFAnimationPath.translation.rawValue }
             let rotationChannel = channels.first { $0.target.path == GLTFAnimationPath.rotation.rawValue }
             let scaleChannel = channels.first { $0.target.path == GLTFAnimationPath.scale.rawValue }
-            let transformSampler = GLBTransformSampler(target: targetNode,
+            let transformSampler = TransformSampler(target: targetNode,
                                                         translationChannel: translationChannel,
                                                         rotationChannel: rotationChannel,
                                                         scaleChannel: scaleChannel,
                                                         maximumSampleInterval: 1 / 30.0) // TODO: Make sample interval an option
             if targetNode.isJoint {
                 let jointName: String
-                if let name = targetNode.name, !name.isEmpty {
+                if let index = Skin.jointIndex(of: targetNode, in: sourceAsset?.skins ?? []) {
+                    jointName = Skin.resolvedName(targetNode.name, index: index)
+                } else if let name = targetNode.name, !name.isEmpty {
                     jointName = name
-                } else if let index = GLBSkin.jointIndex(of: targetNode, in: sourceAsset?.skins ?? []) {
-                    jointName = GLBSkin.synthesizedName(index: index)
                 } else {
                     jointName = nextUniqueName(prefix: "joint")
                 }
@@ -98,7 +100,41 @@ extension GLBRealityKitConvert {
             }
         }
 
+        if animations.isEmpty {
+            throw GLBPreviewError.make(1022, "animation \(name) produced no channels")
+        }
+        if animations.count == 1 {
+            return try AnimationResource.generate(with: animations[0])
+        }
         let groupAnimation = AnimationGroup(group: animations, name: name)
         return try AnimationResource.generate(with: groupAnimation)
+    }
+
+    private func convertMorphWeights(channel: GLTFAnimationChannel, target: GLTFNode) -> AnimationDefinition? {
+        guard let mesh = target.mesh else { return nil }
+        let names = morphTargetNames(for: mesh)
+        guard !names.isEmpty,
+              let times = Packed.floatArray(for: channel.sampler.input),
+              let values = Packed.floatArray(for: channel.sampler.output),
+              !times.isEmpty
+        else { return nil }
+        let sampler = AnimatedWeights(
+            keyTimes: times,
+            values: values,
+            targetCount: names.count,
+            interpolation: channel.sampler.interpolationMode
+        )
+        let interval = max(sampler.recommendedSampleInterval, 1 / 60)
+        let frames = stride(from: sampler.minimumTime, through: sampler.maximumTime, by: interval).map {
+            BlendShapeWeights(sampler.value(at: $0))
+        }
+        return SampledAnimation(
+            weightNames: names,
+            frames: frames,
+            tweenMode: sampler.interpolation == .step ? .hold : .linear,
+            frameInterval: interval,
+            bindTarget: target.bindPath.blendShapeWeights(),
+            delay: TimeInterval(sampler.minimumTime)
+        )
     }
 }

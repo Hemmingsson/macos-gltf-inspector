@@ -2,7 +2,7 @@ import Foundation
 import GLTFKit2
 import simd
 
-enum GLBPacked {
+enum Packed {
     static func floatData(for accessor: GLTFAccessor) -> Data? {
         let packed = GLTFPackedDataForAccessor(accessor)
         guard packed.count > 0 else { return nil }

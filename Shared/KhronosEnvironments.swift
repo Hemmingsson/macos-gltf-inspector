@@ -1,6 +1,6 @@
 import Foundation
 
-enum GLBKhronosEnvironments: String, CaseIterable, Sendable {
+enum KhronosEnvironments: String, CaseIterable, Sendable {
     case cannonExterior = "Cannon_Exterior"
     case footprintCourt = "footprint_court"
     case pisa = "pisa"

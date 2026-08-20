@@ -3,9 +3,9 @@ import ImageIO
 import RealityKit
 import SwiftUI
 
-enum GLBPreviewLighting {
+enum PreviewLighting {
     private static var studioHDRName: String {
-        GLBKhronosEnvironments.defaultLook.resourceName
+        KhronosEnvironments.defaultLook.resourceName
     }
 
     /// Finder icons: key plus IBL when Settings uses an environment map.
@@ -22,7 +22,7 @@ enum GLBPreviewLighting {
             renderer.lighting.resource = resource
             renderer.lighting.intensityExponent = intensityExponent
         } else {
-            GLBLog.error(GLBLog.lighting, "thumbnail IBL probe missing")
+            AppLog.error(AppLog.lighting, "thumbnail IBL probe missing")
         }
     }
 
@@ -82,7 +82,7 @@ enum GLBPreviewLighting {
             return loaded
         }
         if url.path != hdrURL()?.path {
-            GLBLog.error(GLBLog.lighting, "HDR failed \(url.lastPathComponent); using Studio Neutral")
+            AppLog.error(AppLog.lighting, "HDR failed \(url.lastPathComponent); using Studio Neutral")
             return await studioResource()
         }
         return nil
@@ -92,7 +92,7 @@ enum GLBPreviewLighting {
     private static func studioResource() async -> EnvironmentResource? {
         if let cachedProbe { return cachedProbe }
         guard let url = hdrURL() else {
-            GLBLog.error(GLBLog.lighting, "studio HDR missing from bundle (\(studioHDRName).hdr)")
+            AppLog.error(AppLog.lighting, "studio HDR missing from bundle (\(studioHDRName).hdr)")
             return nil
         }
         return await resource(for: url)
@@ -131,7 +131,7 @@ enum GLBPreviewLighting {
         }
     }
 
-    static func catalogURL(_ environment: GLBKhronosEnvironments) -> URL? {
+    static func catalogURL(_ environment: KhronosEnvironments) -> URL? {
         let name = environment.resourceName
         return Bundle.main.url(forResource: name, withExtension: "hdr", subdirectory: "khronos")
             ?? Bundle.main.url(forResource: name, withExtension: "hdr")
@@ -144,19 +144,19 @@ enum GLBPreviewLighting {
     @MainActor
     static func loadEnvironmentResource(from url: URL) async -> EnvironmentResource? {
         guard let image = loadEquirectangular(from: url) else {
-            GLBLog.error(GLBLog.lighting, "HDR decode failed \(url.lastPathComponent)")
+            AppLog.error(AppLog.lighting, "HDR decode failed \(url.lastPathComponent)")
             return nil
         }
         do {
             return try await EnvironmentResource(equirectangular: image)
         } catch {
-            GLBLog.error(GLBLog.lighting, "EnvironmentResource failed: \(error)")
+            AppLog.error(AppLog.lighting, "EnvironmentResource failed: \(error)")
             return nil
         }
     }
 
     private static func hdrURL() -> URL? {
-        catalogURL(GLBKhronosEnvironments.defaultLook)
+        catalogURL(KhronosEnvironments.defaultLook)
     }
 
     static func loadEquirectangular(from url: URL) -> CGImage? {

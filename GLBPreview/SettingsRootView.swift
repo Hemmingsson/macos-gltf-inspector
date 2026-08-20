@@ -256,7 +256,7 @@ private struct EnvironmentSettingsPane: View {
                     }
 
                 Picker("Environment", selection: $look.catalogRaw) {
-                    ForEach(GLBKhronosEnvironments.allCases, id: \.rawValue) { option in
+                    ForEach(KhronosEnvironments.allCases, id: \.rawValue) { option in
                         Text(option.title).tag(option.rawValue)
                     }
                 }
@@ -309,7 +309,7 @@ private struct EnvironmentSettingsPane: View {
 
         do {
             let imported = try Self.importCustomFile(from: source)
-            guard GLBPreviewLighting.canDecodeHDR(at: imported.url) else {
+            guard PreviewLighting.canDecodeHDR(at: imported.url) else {
                 try? FileManager.default.removeItem(at: imported.url)
                 importError = "Could not decode \(source.lastPathComponent). The previous environment is unchanged."
                 return
