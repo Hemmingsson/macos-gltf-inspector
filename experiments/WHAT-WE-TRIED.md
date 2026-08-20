@@ -28,6 +28,7 @@ Noise: reject `|delta| < 3%` of champion sum unless ≥8/10 same direction. Pref
 | EXP-006 | NEW (v1) | Tentative KEEP −211 ms isolated (stone_wall) | Merging on frozen delta alone |
 | EXP-006-v2 | VARIANT (v2) | **KEEP** −1118 ms vs same-machine control (−6.8%); stone/vegetation/cinema | — |
 | EXP-007 | VARIANT-of-002 | **REJECT** — warm bias; eagle-only ~−58 ms | Claiming corpus win when non-target files move equally |
+| EXP-009 | NEW | **KEEP** −6945 ms vs SM control (−47%); vegetation −89% / cinema flat | Re-adding opacityTexture for detected cutout without fidelity gate |
 
 ## Queued (dex)
 

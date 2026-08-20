@@ -1,9 +1,9 @@
 {
-  "champion": "EXP-006-v2",
-  "champion_sum_median_total_ms": 15332.9,
-  "champion_sum_median_load_ms": 15178.6,
+  "champion": "EXP-009",
+  "champion_sum_median_total_ms": 7732.9,
+  "champion_sum_median_load_ms": 7596.5765,
   "primary_metric": "sum of per-asset median total_load_ms (load + first_render when measured)",
-  "noise_rule": "Reject |delta| < 3% of champion sum (~460ms) unless same direction on 8/10; always prefer same-machine control",
+  "noise_rule": "Reject |delta| < 3% of champion sum (~232ms at 7732) unless same direction on 8/10; always prefer same-machine control",
   "experiments": [
     {
       "id": "EXP-000",
@@ -271,6 +271,43 @@
       "artifacts": [
         "experiments/results/EXP-005-v2.json",
         "experiments/results/EXP-005-v2-champ.json"
+      ]
+    },
+    {
+      "id": "EXP-009",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-006-v2",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Factor-1 BLEND + detected cutout builds uncached opacity TextureResources; MASK-like threshold-only deletes that work.",
+      "agent": "eb3d5db0-f128-438e-9c64-08f644192c61",
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert+Material.swift"
+      ],
+      "implementation_summary": "Detected cutout: opacityThreshold=0.4 only; no opacityTexture / transparent blending (mirrors native MASK).",
+      "benchmark_command": "LABEL=EXP-009 + LABEL=EXP-009-champ",
+      "baseline_result": {
+        "frozen_EXP-006-v2_total_ms": 15332.9,
+        "same_machine_champ_total_ms": 14677.8
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7732.9,
+        "sum_median_load_ms": 7596.5765
+      },
+      "delta": {
+        "vs_same_machine_ms": -6944.9,
+        "pct": -47.3
+      },
+      "variance": "07-vegetation \u22126744 ms (\u221289%); 08-cinema \u22121 ms (flat control)",
+      "correctness_result": "0/10 errors; visual: threshold-only cutout vs prior opacity map",
+      "complexity_assessment": "tiny (\u22125/+2)",
+      "decision": "keep",
+      "rejection_reason": null,
+      "commit": "6986fc5",
+      "branch": "exp/009-cutout-as-mask@90def67",
+      "artifacts": [
+        "experiments/results/EXP-009.json",
+        "experiments/results/EXP-009-champ.json"
       ]
     }
   ],
