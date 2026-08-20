@@ -3,7 +3,7 @@ import GLTFKit2
 import Metal
 import RealityKit
 
-private enum GLBTextureFilter {
+private enum TextureFilter {
     static func minMip(from filter: GLTFMinMipFilter) -> (MTLSamplerMinMagFilter, MTLSamplerMipFilter) {
         switch filter {
         case .linear:
@@ -46,12 +46,12 @@ extension MTLSamplerDescriptor {
     convenience init(from sampler: GLTFTextureSampler) {
         self.init()
         normalizedCoordinates = true
-        let (minFilter, mipFilter) = GLBTextureFilter.minMip(from: sampler.minMipFilter)
+        let (minFilter, mipFilter) = TextureFilter.minMip(from: sampler.minMipFilter)
         self.minFilter = minFilter
         self.mipFilter = mipFilter
-        magFilter = GLBTextureFilter.mag(from: sampler.magFilter)
-        sAddressMode = GLBTextureFilter.addressMode(from: sampler.wrapS)
-        tAddressMode = GLBTextureFilter.addressMode(from: sampler.wrapT)
+        magFilter = TextureFilter.mag(from: sampler.magFilter)
+        sAddressMode = TextureFilter.addressMode(from: sampler.wrapS)
+        tAddressMode = TextureFilter.addressMode(from: sampler.wrapT)
     }
 }
 

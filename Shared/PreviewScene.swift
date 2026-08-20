@@ -21,7 +21,7 @@ struct PreviewScene: View {
     @AppStorage(SettingsKeys.background) private var backgroundRaw = PreviewBackground.window.rawValue
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var backdropIndex = 0
+    @State private var backdropIndex: Int
     @State private var autoRotate: Bool
     @State private var orbitYaw: Float = 0
     @State private var orbitPitch: Float = 0
@@ -54,6 +54,14 @@ struct PreviewScene: View {
             AppLog.info(AppLog.preview, "autoRotate disabled for standing plane")
         } else {
             _autoRotate = State(initialValue: settingsOn)
+        }
+        let storedBackground = UserDefaults.standard.string(forKey: SettingsKeys.background)
+            ?? PreviewBackground.window.rawValue
+        if let background = PreviewBackground(rawValue: storedBackground),
+           let index = PreviewBackground.allCases.firstIndex(of: background) {
+            _backdropIndex = State(initialValue: index)
+        } else {
+            _backdropIndex = State(initialValue: 0)
         }
     }
 
@@ -196,11 +204,6 @@ struct PreviewScene: View {
         }
         .onChange(of: settingsAutoRotate) { _, _ in
             applyAutoRotateSetting()
-        }
-        .onChange(of: interaction.orbitResetNonce) { _, _ in
-            orbitYaw = 0
-            orbitPitch = 0
-            autoRotate = false
         }
         .onChange(of: isPlaying) { _, playing in
             guard let playback else { return }

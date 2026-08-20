@@ -21,12 +21,8 @@ struct PreviewStatsTests {
             ],
         ]
         let stats = PreviewStats.from(json: json)
-        #expect(stats.meshCount == 2)
         #expect(stats.materialCount == 1)
-        #expect(stats.opaqueMaterialCount == 1)
-        #expect(stats.transparentMaterialCount == 0)
         #expect(stats.animationCount == 0)
-        #expect(stats.nodeCount == 3)
         #expect(stats.textureCount == 1)
         #expect(stats.durationSeconds == nil)
         #expect(stats.previewRows.contains { $0.label == "Materials" && $0.value == "1" })
@@ -65,8 +61,6 @@ struct PreviewStatsTests {
         let stats = PreviewStats.from(json: json, fileSizeBytes: 1_500_000)
         #expect(stats.triangleCount == 8)
         #expect(stats.vertexCount == 6)
-        #expect(stats.opaqueMaterialCount == 2)
-        #expect(stats.transparentMaterialCount == 2)
         #expect(stats.previewRows.contains { $0.label == "Geometry" && $0.value == "Triangles 8" })
         #expect(stats.previewRows.contains { $0.label == "Size" && ($0.value.contains("MB") || $0.value.contains("KB")) })
     }

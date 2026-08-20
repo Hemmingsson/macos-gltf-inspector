@@ -4,12 +4,11 @@ import Testing
 import simd
 @testable import GLBPreview
 
-struct SceneryConvertTests {
+struct SceneGraphConvertTests {
     @MainActor
     @Test func punctualLightUsesEngineUnitsAndNonZeroRange() async throws {
         let model = try await loadModel(try punctualLightsGLB())
         #expect(model.punctualLightCount == 2)
-        #expect(model.punctualLightCount > 0)
 
         let point = try #require(firstComponent(PointLightComponent.self, in: model.entity))
         #expect(abs(point.intensity - 10 * 4 * .pi) < 0.01)
@@ -45,15 +44,10 @@ struct SceneryConvertTests {
     @MainActor
     @Test func thumbnailKeepsPunctualPBRAndStudioLighting() async throws {
         let model = try await loadModel(try litMetallicTriangleGLB())
-        let before = try #require(pbrMaterials(in: model.entity).first)
-        let metallic = before.metallic.scale
-        let roughness = before.roughness.scale
-        #expect(abs(metallic - 1) < 0.001)
-        #expect(abs(roughness - 0.2) < 0.001)
-        #expect(model.punctualLightCount > 0)
-        let after = try #require(pbrMaterials(in: model.entity).first)
-        #expect(abs(after.metallic.scale - metallic) < 0.001)
-        #expect(abs(after.roughness.scale - roughness) < 0.001)
+        let material = try #require(pbrMaterials(in: model.entity).first)
+        #expect(abs(material.metallic.scale - 1) < 0.001)
+        #expect(abs(material.roughness.scale - 0.2) < 0.001)
+        #expect(model.punctualLightCount == 1)
 
         await PreviewLighting.prefetchLook(.current)
         let renderer = try RealityRenderer()
@@ -72,25 +66,12 @@ struct SceneryConvertTests {
 }
 
 @MainActor
-private func namedEntity(_ name: String, in entity: Entity) -> Entity? {
-    if entity.name == name { return entity }
-    for child in entity.children {
-        if let found = namedEntity(name, in: child) { return found }
-    }
-    return nil
-}
-
-@MainActor
 private func livePerspectiveCount(in entity: Entity) -> Int {
     var count = entity.components[PerspectiveCameraComponent.self] != nil ? 1 : 0
     for child in entity.children {
         count += livePerspectiveCount(in: child)
     }
     return count
-}
-
-private func trianglePositions() -> [Float] {
-    [0, 0, 0, 1, 0, 0, 0, 1, 0]
 }
 
 private func triangleMeshJSON(material: [String: Any]?, extraNodes: [[String: Any]], extraRootNodes: [Int]) -> [String: Any] {
@@ -119,7 +100,7 @@ private func triangleMeshJSON(material: [String: Any]?, extraNodes: [[String: An
 
 private func punctualLightsGLB() throws -> Data {
     var bin = Data()
-    appendFloats(trianglePositions(), to: &bin)
+    appendFloats(floatTrianglePositions(), to: &bin)
     var json = triangleMeshJSON(
         material: nil,
         extraNodes: [[
@@ -155,7 +136,7 @@ private func punctualLightsGLB() throws -> Data {
 
 private func twoPerspectiveCamerasGLB() throws -> Data {
     var bin = Data()
-    appendFloats(trianglePositions(), to: &bin)
+    appendFloats(floatTrianglePositions(), to: &bin)
     var json = triangleMeshJSON(
         material: nil,
         extraNodes: [
@@ -189,7 +170,7 @@ private func twoPerspectiveCamerasGLB() throws -> Data {
 
 private func orthographicCameraGLB() throws -> Data {
     var bin = Data()
-    appendFloats(trianglePositions(), to: &bin)
+    appendFloats(floatTrianglePositions(), to: &bin)
     var json = triangleMeshJSON(
         material: nil,
         extraNodes: [["name": "OrthoCam", "camera": 0]],
@@ -214,7 +195,7 @@ private func orthographicCameraGLB() throws -> Data {
 
 private func litMetallicTriangleGLB() throws -> Data {
     var bin = Data()
-    appendFloats(trianglePositions(), to: &bin)
+    appendFloats(floatTrianglePositions(), to: &bin)
     var json = triangleMeshJSON(
         material: [
             "pbrMetallicRoughness": [
@@ -252,7 +233,7 @@ private func litMetallicTriangleGLB() throws -> Data {
 
 private func threeClipTriangleGLB() throws -> Data {
     var bin = Data()
-    appendFloats(trianglePositions(), to: &bin)
+    appendFloats(floatTrianglePositions(), to: &bin)
     let positionsLength = bin.count
     appendFloats([0, 1], to: &bin)
     let timesAOffset = positionsLength

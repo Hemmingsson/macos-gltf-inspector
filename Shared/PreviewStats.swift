@@ -9,15 +9,11 @@ struct PreviewStats: Equatable {
         let value: String
     }
 
-    let meshCount: Int
     let triangleCount: Int
     let vertexCount: Int
     let materialCount: Int
-    let opaqueMaterialCount: Int
-    let transparentMaterialCount: Int
     let pbrLabel: String
     let animationCount: Int
-    let nodeCount: Int
     let textureCount: Int
     let hasUVLayers: Bool
     let hasVertexColors: Bool
@@ -111,18 +107,13 @@ struct PreviewStats: Equatable {
         let accessors = json["accessors"] as? [[String: Any]] ?? []
         let nodes = json["nodes"] as? [[String: Any]] ?? []
         let skins = json["skins"] as? [[String: Any]] ?? []
-        let transparent = materials.filter { isTransparent($0) }.count
         let geometry = meshGeometry(meshes, accessors: accessors)
         return PreviewStats(
-            meshCount: meshes.count,
             triangleCount: geometry.triangles,
             vertexCount: geometry.vertices,
             materialCount: materials.count,
-            opaqueMaterialCount: materials.count - transparent,
-            transparentMaterialCount: transparent,
             pbrLabel: pbrLabel(materials),
             animationCount: animationCount,
-            nodeCount: nodes.count,
             textureCount: arrayCount(json["textures"]),
             hasUVLayers: geometry.hasUVs,
             hasVertexColors: geometry.hasColors,
@@ -132,19 +123,6 @@ struct PreviewStats: Equatable {
             durationSeconds: durationSeconds,
             fileSizeBytes: fileSizeBytes
         )
-    }
-
-    /// `BLEND` is transparent. `KHR_materials_transmission` with factor > 0 is too.
-    private static func isTransparent(_ material: [String: Any]) -> Bool {
-        if (material["alphaMode"] as? String) == "BLEND" {
-            return true
-        }
-        let extensions = material["extensions"] as? [String: Any]
-        let transmission = extensions?["KHR_materials_transmission"] as? [String: Any]
-        if let factor = GLBBox.doubleValue(transmission?["transmissionFactor"]), factor > 0 {
-            return true
-        }
-        return false
     }
 
     private static func pbrLabel(_ materials: [[String: Any]]) -> String {
