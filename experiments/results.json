@@ -235,6 +235,43 @@
       "rejection_reason": null,
       "commit": "c29a04d",
       "branch": "exp/006-packed-simd@13c1c62"
+    },
+    {
+      "id": "EXP-005-v2",
+      "date": "2026-08-20",
+      "parent_champion": "EXP-006-v2",
+      "corpus": "v2",
+      "classification": "VARIANT of EXP-005",
+      "hypothesis": "After prepare, GLTFAsset(data:) removes writePrepared+url re-read cost on prepare-hit assets without skipping prepare.",
+      "agent": "6c3a280c-9188-4cd9-b834-7f94498b1eb9",
+      "files_changed": [
+        "Shared/EntityLoader.swift"
+      ],
+      "implementation_summary": "Keep preparedData; load GLTFAsset(data:). Only 09-realistic_animals hits prepare on v2 (67 spec-gloss mats).",
+      "benchmark_command": "LABEL=EXP-005-v2 + LABEL=EXP-005-v2-champ (same-machine)",
+      "baseline_result": {
+        "frozen_total_ms": 16387.4,
+        "same_machine_champ_total_ms": 18617.2
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 16290.9,
+        "sum_median_load_ms": 16108.7
+      },
+      "delta": {
+        "vs_same_machine_ms": -2326.2,
+        "pct_vs_same_machine": -12.5,
+        "vs_frozen_ms": -96.5,
+        "pct_vs_frozen": -0.59
+      },
+      "variance": "09 prepare-hit only 16.7% of isolated delta; 83% from non-prepare (vegetation \u22121112). Control is slow outlier vs frozen/006-champ.",
+      "correctness_result": "0/10 errors; prepare confirmed on 09",
+      "complexity_assessment": "small",
+      "decision": "reject",
+      "rejection_reason": "Isolated win not prepare-concentrated; vs frozen under 3% noise. Do not retry same claim without a prepare-only metric or tighter control.",
+      "artifacts": [
+        "experiments/results/EXP-005-v2.json",
+        "experiments/results/EXP-005-v2-champ.json"
+      ]
     }
   ],
   "corpus_version": 2
