@@ -3,21 +3,21 @@ import QuickLookUI
 import SwiftUI
 
 class PreviewViewController: NSViewController, QLPreviewingController {
-    private let interaction = GLBPreviewInteraction()
-    private var hostingView: GLBPreviewHostingView!
+    private let interaction = PreviewInteraction()
+    private var hostingView: PreviewHostingView!
     private var loadTask: Task<Void, Never>?
 
     override func loadView() {
         let dark = Self.systemIsDark()
 
-        hostingView = GLBPreviewHostingView(
-            rootView: GLBPreviewView(state: .loading, interaction: interaction, isDark: dark)
+        hostingView = PreviewHostingView(
+            rootView: PreviewView(state: .loading, interaction: interaction, isDark: dark)
         )
         hostingView.interaction = interaction
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         hostingView.autoresizingMask = [.width, .height]
 
-        let root = GLBPreviewEventView(frame: .zero)
+        let root = PreviewEventView(frame: .zero)
         root.interaction = interaction
         root.wantsLayer = true
         root.layer?.isOpaque = false
@@ -43,16 +43,16 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         loadTask?.cancel()
         loadTask = Task.detached { [weak self] in
             await Task.yield()
-            let state = await GLBPreviewView.State.loaded(from: url)
+            let state = await PreviewView.State.loaded(from: url)
             guard !Task.isCancelled else { return }
             await self?.present(state, dark: dark)
         }
     }
 
     @MainActor
-    private func present(_ state: GLBPreviewView.State, dark: Bool) {
+    private func present(_ state: PreviewView.State, dark: Bool) {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        hostingView.rootView = GLBPreviewView(state: state, interaction: interaction, isDark: dark)
+        hostingView.rootView = PreviewView(state: state, interaction: interaction, isDark: dark)
     }
 
     private static func systemIsDark() -> Bool {

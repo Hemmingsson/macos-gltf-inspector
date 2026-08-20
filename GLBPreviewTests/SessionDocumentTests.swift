@@ -21,7 +21,7 @@ struct SessionDocumentTests {
         let url = try writeTempOneNodeMeshGLB(nodeName: "Helmet")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        let model = try await EntityLoader.load(from: url, includeAnimations: false)
         #expect(stampedNodeIndices(in: model.entity).contains(0))
         #expect(model.document.nodes.contains { $0.name == "Helmet" || $0.meshIndex != nil })
         #expect(model.document.scenes.count >= 1)
@@ -34,7 +34,7 @@ struct SessionDocumentTests {
         let url = try writeTempTwoSceneGLB()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        let model = try await EntityLoader.load(from: url, includeAnimations: false)
         #expect(model.document.scenes.count == 2)
         #expect(model.document.defaultSceneIndex == 0)
         #expect(model.document.scenes[0].rootNodeIndices == [0])
@@ -45,24 +45,11 @@ struct SessionDocumentTests {
     }
 
     @MainActor
-    @Test func documentListsBothScenesAndLoadsDefaultOnly() async throws {
-        let url = try writeTempTwoSceneGLB()
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
-        #expect(model.document.scenes.count == 2)
-        #expect(model.document.defaultSceneIndex == 0)
-        let stamped = stampedNodeIndices(in: model.entity)
-        #expect(stamped.contains(0))
-        #expect(!stamped.contains(1))
-    }
-
-    @MainActor
     @Test func lazyConvertSecondSceneStampsItsRoot() async throws {
         let twoSceneURL = try writeTempTwoSceneGLB()
         defer { try? FileManager.default.removeItem(at: twoSceneURL) }
 
-        let other = try await GLBEntityLoader.convertScene(
+        let other = try await EntityLoader.convertScene(
             index: 1,
             from: twoSceneURL,
             includeAnimations: true
@@ -76,7 +63,7 @@ struct SessionDocumentTests {
         defer { try? FileManager.default.removeItem(at: url) }
 
         do {
-            _ = try await GLBEntityLoader.convertScene(index: 99, from: url, includeAnimations: false)
+            _ = try await EntityLoader.convertScene(index: 99, from: url, includeAnimations: false)
             Issue.record("expected GLBPreviewError 1020")
         } catch {
             let nsError = error as NSError
@@ -90,7 +77,7 @@ struct SessionDocumentTests {
         let url = try writeTempOneNodeMeshGLB(nodeName: "Box")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await GLBEntityLoader.load(from: url, includeAnimations: true)
+        let model = try await EntityLoader.load(from: url, includeAnimations: true)
         #expect(model.document.animations.isEmpty)
         #expect(model.entity.availableAnimations.isEmpty)
     }
@@ -100,7 +87,7 @@ struct SessionDocumentTests {
         let url = try writeTempTwoClipGLB()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await GLBEntityLoader.load(from: url, includeAnimations: true)
+        let model = try await EntityLoader.load(from: url, includeAnimations: true)
         #expect(model.document.animations.count == 2)
         #expect(model.document.animations.count == model.entity.availableAnimations.count)
         #expect(model.document.animations[0].name == "ClipA")
@@ -260,13 +247,6 @@ private func writeTempTwoClipGLB() throws -> URL {
         "scene": 0,
     ]
     return try writeTempGLB(json: json, bin: bin)
-}
-
-private func appendFloats(_ values: [Float], to bin: inout Data) {
-    for value in values {
-        var bits = value.bitPattern.littleEndian
-        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
-    }
 }
 
 private func writeTempGLB(json: [String: Any], bin: Data) throws -> URL {

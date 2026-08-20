@@ -48,10 +48,11 @@ struct HostSidebarModelTests {
         let url = try writeTempOneNodeMeshGLB(nodeName: "Mesh")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let loaded = try await GLBEntityLoader.load(from: url, includeAnimations: false)
+        let loaded = try await EntityLoader.load(from: url, includeAnimations: false)
         let model = HostSidebarModel(document: loaded.document)
         model.hide.insert(0)
-        model.apply(to: loaded.entity)
+        model.overlayRevision += 1
+        model.applyIfNeeded(to: loaded.entity)
         #expect(entity(nodeIndex: 0, in: loaded.entity)?.isEnabled == false)
     }
 
@@ -78,7 +79,8 @@ struct HostSidebarModelTests {
         root.addChild(node1)
 
         model.soloRoot = 0
-        model.apply(to: root)
+        model.overlayRevision += 1
+        model.applyIfNeeded(to: root)
         #expect(node0.isEnabled == true)
         #expect(node1.isEnabled == false)
         #expect(node2.isEnabled == true)
@@ -87,7 +89,8 @@ struct HostSidebarModelTests {
         #expect(model.soloHides(2) == false)
 
         model.soloRoot = 2
-        model.apply(to: root)
+        model.overlayRevision += 1
+        model.applyIfNeeded(to: root)
         #expect(node2.isEnabled == true)
         #expect(node0.isEnabled == true)
         #expect(node1.isEnabled == false)
@@ -100,11 +103,13 @@ struct HostSidebarModelTests {
 
         let model = HostSidebarModel(document: GLTFSessionDocument())
         model.debug = .roughness
-        model.apply(to: entity)
+        model.overlayRevision += 1
+        model.applyIfNeeded(to: entity)
         #expect(debugVisualization(entity) == .roughness)
 
         model.debug = .none
-        model.apply(to: entity)
+        model.overlayRevision += 1
+        model.applyIfNeeded(to: entity)
         #expect(debugVisualization(entity) == nil)
     }
 }

@@ -2,7 +2,7 @@
   <img src="assets/icon.png" width="175" alt="GLB Preview">
 </p>
 
-<h1 align="center">macOS glTF Inspector</h1>
+<h1 align="center">GLB Preview</h1>
 
 <p align="center">
   <strong>Native App and Finder Support for <code>.glb</code> and <code>.gltf</code> Using <a href="https://developer.apple.com/documentation/realitykit">RealityKit</a></strong><br>
@@ -49,6 +49,13 @@ Requires Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Set `DEVEL
 2. `./scripts/build.sh`
 
 This generates the Xcode project, builds, installs to `/Applications`, and checks that the Quick Look extensions registered.
+
+```bash
+xcodegen generate
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
+  -derivedDataPath /tmp/GLBPreview-dd test
+```
 
 ## How it works
 

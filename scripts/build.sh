@@ -3,7 +3,7 @@
 #
 #   ./scripts/build.sh
 #   ./scripts/verify.sh            # check only (no rebuild)
-#   qlmanage -p scripts/tiny.glb   # preview proof
+#   ./scripts/proof.sh             # still-renderer PNG + timed qlmanage
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

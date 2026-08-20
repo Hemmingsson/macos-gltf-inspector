@@ -10,7 +10,6 @@ struct GLTFSessionDocument: Sendable, Equatable {
     var lights: [Light] = []
     var cameras: [Camera] = []
     var animations: [Animation] = []
-    var variants: [Variant] = []
 
     struct Scene: Sendable, Equatable {
         var name: String
@@ -75,11 +74,5 @@ struct GLTFSessionDocument: Sendable, Equatable {
     struct Animation: Sendable, Equatable {
         var name: String
         var duration: Double
-    }
-
-    struct Variant: Sendable, Equatable {
-        var name: String
-        /// primitiveKey `"meshIndex:primitiveIndex"` → material index
-        var mapping: [String: Int]
     }
 }

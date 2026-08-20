@@ -9,7 +9,10 @@ build/
 # Local research / agent scratch (not the product)
 .worktrees/
 .cursor/
+.conductor/
 .dex/
+.superpowers/
+docs/
 plans/
 test-models/
 Fixtures/

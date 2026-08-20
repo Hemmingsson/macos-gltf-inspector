@@ -11,28 +11,27 @@ class ThumbnailProvider: QLThumbnailProvider {
 
         Task { @MainActor in
             do {
-                let model = try await GLBEntityLoader.load(from: url, includeAnimations: false)
-                GLBThumbnailPrepare.apply(to: model.entity)
-                let assembled = GLBPreviewCamera.makeTurntable(for: model.entity)
-                let still = try await GLBStillRenderer(
+                let model = try await EntityLoader.load(from: url, includeAnimations: false)
+                let assembled = PreviewCamera.makeTurntable(for: model.entity)
+                let still = try await StillRenderer(
                     root: assembled.pivot,
                     bounds: assembled.bounds,
                     width: pixel,
                     height: pixel,
                     background: CGColor(gray: 0.94, alpha: 1),
-                    padding: GLBPreviewCamera.thumbnailFitPadding,
+                    padding: PreviewCamera.thumbnailFitPadding,
                     intensityExponent: model.studioIBLExponent
                 )
                 let image = try await still.capture()
                 let fileURL = FileManager.default.temporaryDirectory
                     .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
-                try GLBStillRenderer.writePNG(image, to: fileURL)
+                try StillRenderer.writePNG(image, to: fileURL)
                 // Finder / QLThumbnailGenerator reliably consumes imageFileURL.
                 // The CGContext drawing reply works in `qlmanage -x` but fails with
                 // QLThumbnailError 102 for the generator path Finder uses.
                 handler(QLThumbnailReply(imageFileURL: fileURL), nil)
             } catch {
-                GLBLog.error(GLBLog.thumbnail, "thumbnail failed \(url.path) \(error)")
+                AppLog.error(AppLog.thumbnail, "thumbnail failed \(url.path) \(error)")
                 handler(nil, error)
             }
         }

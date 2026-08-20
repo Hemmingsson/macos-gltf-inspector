@@ -65,11 +65,6 @@ final class HostSidebarModel: PreviewOverlay {
         return layerRootIndices().contains(id)
     }
 
-    func apply(to root: Entity) {
-        appliedRevision = Int.min
-        applyIfNeeded(to: root)
-    }
-
     func applyIfNeeded(to root: Entity) {
         guard overlayRevision != appliedRevision else { return }
         appliedRevision = overlayRevision

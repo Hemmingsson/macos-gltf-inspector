@@ -6,7 +6,7 @@ struct AppLookTests {
     @Test func defaultLookUsesStudioNeutralWithoutCustomFile() {
         let look = AppLook.default
         #expect(look.useEnvironmentMap)
-        #expect(look.catalogRaw == GLBKhronosEnvironments.studioNeutral.rawValue)
+        #expect(look.catalogRaw == KhronosEnvironments.studioNeutral.rawValue)
         #expect(look.catalog == .studioNeutral)
         #expect(look.customFileName == nil)
     }
@@ -18,7 +18,7 @@ struct AppLookTests {
 
         var look = AppLook.default
         look.useEnvironmentMap = false
-        look.catalogRaw = GLBKhronosEnvironments.pisa.rawValue
+        look.catalogRaw = KhronosEnvironments.pisa.rawValue
         look.customFileName = "studio.hdr"
         look.save(to: dir)
 

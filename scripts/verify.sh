@@ -3,7 +3,7 @@
 #
 #   ./scripts/verify.sh
 #   ./scripts/build.sh             # rebuild + install, then this check
-#   qlmanage -p scripts/tiny.glb   # preview proof
+#   ./scripts/proof.sh             # still-renderer PNG + timed qlmanage
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -44,6 +44,5 @@ done
 
 echo "ok $APP"
 echo "ok PreviewExtension + ThumbnailExtension registered"
-echo "preview:  qlmanage -p $ROOT/scripts/tiny.glb"
-echo "icon:     qlmanage -t $ROOT/scripts/tiny.glb"
+echo "proof:    $ROOT/scripts/proof.sh"
 echo "logs:     log stream --style compact --info --predicate 'subsystem == \"com.laurie.GLBPreview\"'"

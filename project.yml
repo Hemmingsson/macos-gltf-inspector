@@ -59,6 +59,9 @@ targets:
           - "*.swift"
           - GLBDracoDecompressor.mm
           - GLBTry.mm
+      - path: Shared/Convert
+        includes:
+          - "*.swift"
     info:
       path: GLBPreview/Info.plist
       properties:
@@ -155,6 +158,9 @@ targets:
           - "*.swift"
           - GLBDracoDecompressor.mm
           - GLBTry.mm
+      - path: Shared/Convert
+        includes:
+          - "*.swift"
     entitlements:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:
@@ -201,7 +207,12 @@ targets:
           - GLBDracoDecompressor.mm
           - GLBTry.mm
         excludes:
-          - GLBPreviewView.swift
+          - PreviewView.swift
+          - PreviewScene.swift
+          - PreviewChrome.swift
+      - path: Shared/Convert
+        includes:
+          - "*.swift"
     entitlements:
       path: ThumbnailExtension/ThumbnailExtension.entitlements
       properties:

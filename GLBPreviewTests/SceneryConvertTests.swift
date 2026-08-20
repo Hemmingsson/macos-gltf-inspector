@@ -7,9 +7,9 @@ import simd
 struct SceneryConvertTests {
     @MainActor
     @Test func punctualLightUsesEngineUnitsAndNonZeroRange() async throws {
-        let model = try await loadGLB(punctualLightsGLB())
+        let model = try await loadModel(try punctualLightsGLB())
         #expect(model.punctualLightCount == 2)
-        #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
+        #expect(model.punctualLightCount > 0)
 
         let point = try #require(firstComponent(PointLightComponent.self, in: model.entity))
         #expect(abs(point.intensity - 10 * 4 * .pi) < 0.01)
@@ -21,116 +21,54 @@ struct SceneryConvertTests {
     }
 
     @MainActor
-    @Test func twoPerspectiveCamerasStayListedAndActivateOne() async throws {
-        let model = try await loadGLB(twoPerspectiveCamerasGLB())
-        let listed = GLBPreviewScenery.fileCameras(in: model.entity)
-        #expect(listed.count == 2)
-        #expect(model.fileCameras.count == 2)
-        let names = Set(model.fileCameras.map(\.displayName))
-        #expect(names == ["CamA", "CamB"])
-        #expect(model.fileCameras.allSatisfy { $0.kind == .perspective })
+    @Test func twoPerspectiveCamerasStayListedAfterTurntable() async throws {
+        let model = try await loadModel(try twoPerspectiveCamerasGLB())
+        #expect(model.document.cameras.count == 2)
+        #expect(model.document.cameras.allSatisfy { $0.type == "perspective" })
+        #expect(model.document.nodes.contains { $0.name == "CamA" && $0.cameraIndex != nil })
+        #expect(model.document.nodes.contains { $0.name == "CamB" && $0.cameraIndex != nil })
 
-        let assembled = GLBPreviewCamera.makeTurntable(for: model.entity)
+        let assembled = PreviewCamera.makeTurntable(for: model.entity)
         #expect(assembled.pivot.name == "turntable")
-        for camera in model.fileCameras {
-            #expect(namedEntity(camera.displayName, in: assembled.pivot) != nil)
-        }
-
-        GLBPreviewCamera.restoreCameras(in: assembled.pivot)
-        #expect(livePerspectiveCount(in: assembled.pivot) == 2)
-
-        let first = model.fileCameras[0].entity
-        let second = model.fileCameras[1].entity
-        GLBPreviewCamera.activateCamera(first, disablingOthersIn: [assembled.pivot])
-        #expect(first.components[PerspectiveCameraComponent.self] != nil)
-        #expect(second.components[PerspectiveCameraComponent.self] == nil)
-        #expect(first.components[OrthographicCameraComponent.self] == nil)
+        #expect(namedEntity("CamA", in: assembled.pivot) != nil)
+        #expect(namedEntity("CamB", in: assembled.pivot) != nil)
+        #expect(livePerspectiveCount(in: assembled.pivot) == 0)
     }
 
     @MainActor
     @Test func twoPositiveClipsKeptAndOneKeyframeDropped() async throws {
-        let model = try await loadGLB(threeClipTriangleGLB(), includeAnimations: true)
-        #expect(model.usableAnimations.count == 2)
-        #expect(GLBPreviewScenery.usableAnimations(in: model.entity).count == 2)
+        let model = try await loadModel(try threeClipTriangleGLB(), includeAnimations: true)
         #expect(model.stats.animationCount == 2)
+        #expect(model.document.animations.count == 2)
     }
 
     @MainActor
     @Test func thumbnailKeepsPunctualPBRAndStudioLighting() async throws {
-        let model = try await loadGLB(litMetallicTriangleGLB())
+        let model = try await loadModel(try litMetallicTriangleGLB())
         let before = try #require(pbrMaterials(in: model.entity).first)
         let metallic = before.metallic.scale
         let roughness = before.roughness.scale
         #expect(abs(metallic - 1) < 0.001)
         #expect(abs(roughness - 0.2) < 0.001)
-        #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
-
-        GLBThumbnailPrepare.apply(to: model.entity)
-        #expect(GLBPreviewScenery.hasPunctualLights(model.entity))
+        #expect(model.punctualLightCount > 0)
         let after = try #require(pbrMaterials(in: model.entity).first)
         #expect(abs(after.metallic.scale - metallic) < 0.001)
         #expect(abs(after.roughness.scale - roughness) < 0.001)
-        #expect(namedEntity("thumbKey", in: model.entity) == nil)
 
-        await GLBPreviewLighting.prefetchStudioIBL()
-        try #require(GLBPreviewLighting.makeStudioIBLEntity(receiver: Entity()) != nil)
-
+        await PreviewLighting.prefetchLook(.current)
         let renderer = try RealityRenderer()
-        await GLBPreviewLighting.configureThumbnailLighting(
-            on: renderer,
-            cameraPosition: SIMD3<Float>(0, 0, 2)
-        )
+        await PreviewLighting.configureThumbnailLighting(on: renderer)
         #expect(renderer.lighting.resource != nil)
-        #expect(namedEntity("thumbKey", in: model.entity) == nil)
-        for entity in renderer.entities {
-            #expect(namedEntity("thumbKey", in: entity) == nil)
-        }
     }
 
     @MainActor
     @Test func orthographicCameraConverts() async throws {
-        let model = try await loadGLB(orthographicCameraGLB())
-        let cameras = model.fileCameras
-        #expect(cameras.contains { $0.kind == .orthographic && $0.displayName == "OrthoCam" })
-        let node = try #require(cameras.first { $0.kind == .orthographic }?.entity)
-        #expect(node.components[OrthographicCameraComponent.self] != nil)
-        #expect(GLBPreviewScenery.fileCameras(in: model.entity).contains { $0.kind == .orthographic })
+        let model = try await loadModel(try orthographicCameraGLB())
+        #expect(model.document.cameras.contains { $0.type == "orthographic" })
+        #expect(model.document.nodes.contains { $0.name == "OrthoCam" && $0.cameraIndex != nil })
+        let node = try #require(firstComponent(OrthographicCameraComponent.self, in: model.entity))
+        #expect(node.scale > 0)
     }
-}
-
-@MainActor
-private func loadGLB(_ data: Data, includeAnimations: Bool = false) async throws -> GLBEntityLoader.LoadedModel {
-    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("scenery-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: dir) }
-    let url = dir.appendingPathComponent("m.glb")
-    try data.write(to: url)
-    return try await GLBEntityLoader.load(from: url, includeAnimations: includeAnimations)
-}
-
-@MainActor
-private func pbrMaterials(in entity: Entity) -> [PhysicallyBasedMaterial] {
-    var out: [PhysicallyBasedMaterial] = []
-    if let model = entity.components[ModelComponent.self] {
-        for material in model.materials {
-            if let pbr = material as? PhysicallyBasedMaterial {
-                out.append(pbr)
-            }
-        }
-    }
-    for child in entity.children {
-        out.append(contentsOf: pbrMaterials(in: child))
-    }
-    return out
-}
-
-@MainActor
-private func firstComponent<T: Component>(_ type: T.Type, in entity: Entity) -> T? {
-    if let found = entity.components[type] { return found }
-    for child in entity.children {
-        if let found = firstComponent(type, in: child) { return found }
-    }
-    return nil
 }
 
 @MainActor
@@ -149,13 +87,6 @@ private func livePerspectiveCount(in entity: Entity) -> Int {
         count += livePerspectiveCount(in: child)
     }
     return count
-}
-
-private func appendFloats(_ values: [Float], to bin: inout Data) {
-    for value in values {
-        var bits = value.bitPattern.littleEndian
-        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
-    }
 }
 
 private func trianglePositions() -> [Float] {

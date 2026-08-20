@@ -1,25 +1,18 @@
 import SwiftUI
 
 struct HostOutlinerView: View {
-    var model: GLBEntityLoader.LoadedModel?
-    var sidebar: HostSidebarModel?
+    var model: EntityLoader.LoadedModel?
+    var sidebar: HostSidebarModel
 
     var body: some View {
-        Group {
-            if let sidebar {
-                OutlinerContent(model: model, sidebar: sidebar)
-            } else {
-                Text("No file")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .modifier(HostColumnChrome())
+        OutlinerContent(model: model, sidebar: sidebar)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .modifier(HostColumnChrome())
     }
 }
 
 private struct OutlinerContent: View {
-    var model: GLBEntityLoader.LoadedModel?
+    var model: EntityLoader.LoadedModel?
     @Bindable var sidebar: HostSidebarModel
     @State private var expanded = Set<Int>()
 
@@ -209,5 +202,22 @@ private func sceneTitle(_ scene: GLTFSessionDocument.Scene, index: Int) -> Strin
 
 private func cameraTitle(_ camera: GLTFSessionDocument.Camera, index: Int) -> String {
     camera.name.isEmpty ? "Camera \(index)" : camera.name
+}
+
+/// Liquid glass on macOS 26; plain column on 15.
+private struct HostColumnChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *) {
+            content
+                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
+                .frame(maxHeight: .infinity, alignment: .top)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else {
+            content
+                .padding(EdgeInsets(top: 36, leading: 10, bottom: 10, trailing: 10))
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
 }
 
