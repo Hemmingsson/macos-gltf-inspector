@@ -10,7 +10,7 @@
     "recorded_at": "2026-08-20T04:39:53Z"
   },
   "accepted_queue": [],
-  "reject_only_batches": 2,
+  "reject_only_batches": 3,
   "checkpoints": [
     {
       "id": "cp-001",
@@ -1125,6 +1125,43 @@
         "experiments/results/EXP-031.json"
       ],
       "notes": "Control reused (cp-003 @ 7464.8). Prior NEAR_MISS \u2212191 ms @ 2b0e992; tweak1 424494a G/A pack catastrophe on 10. Worktree+branch removed. accepted_queue unchanged ([]). reject_only_batches=2."
+    },
+    {
+      "id": "EXP-032",
+      "date": "2026-08-20",
+      "parent_champion": "cp-003",
+      "corpus": "v2",
+      "classification": "NEW",
+      "hypothesis": "Evict cached CGImages after successful .all TextureResource upload \u2014 expect concentration on 09/10 texture (session cgImagesForImageIdentifiers retains decoded rasters beside TextureResources).",
+      "agent": "benchmarker",
+      "files_changed": [
+        "Shared/Convert/RealityKitResourceContext.swift"
+      ],
+      "implementation_summary": "After successful TextureResource.generate(.all), remove session-cached CGImages for uploaded image ids.",
+      "benchmark_command": "LABEL=EXP-032 ./scripts/load-bench.sh",
+      "baseline_result": {
+        "same_machine_champ_total_ms": 7464.757585000001,
+        "recorded_control_sha": "173fc71f3e366dc26b8323d98ccecc228a16c8b5"
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 7583.557039000001,
+        "sum_median_load_ms": 7420.279708
+      },
+      "delta": {
+        "vs_same_machine_ms": 118.8,
+        "pct": 1.59
+      },
+      "variance": "1/10 faster; residual 09 \u2212132.1 / 10 +16.4; 07 +126.3 cancels 09; 9/10 slower",
+      "correctness_result": "0/10 bench errors",
+      "complexity_assessment": "trivial (+17/\u22127)",
+      "decision": "reject",
+      "rejection_reason": "Same-machine +118.8 ms (+1.59%) under ~224 ms noise; inverted 9/10; residual not dual-won (09 \u2212132 only, 10 flat); 07 +126 offsets 09. Discard worktree.",
+      "commit": "e7f4bcc",
+      "branch": "exp/EXP-032",
+      "artifacts": [
+        "experiments/results/EXP-032.json"
+      ],
+      "notes": "Control reused (cp-003 @ 7464.8). Worktree+branch removed. accepted_queue unchanged ([]). reject_only_batches=3."
     }
   ],
   "corpus_version": 2

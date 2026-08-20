@@ -50,8 +50,10 @@ Do not retry the **Must not retry** column. Residual pie/phases: `residual-map.j
 | EXP-029 | **KEEP** −3.30% (03/05/10 −249) | — |
 | EXP-030 | REJECT +4.55% regress | No-copy ImageIO bufferView decode w/o 08/09/10 win |
 | EXP-031 | REJECT +125.6% (tweak1; was NEAR_MISS −2.56%) | MR swizzle / gray+alpha 16bpp pack dual-delete w/o beyond-noise (10 regress) |
+| EXP-032 | REJECT +1.59% under noise | Post-upload session CGImage eviction w/o beyond-noise 09/10 (inverted 9/10) |
 
 ## Notes
 
 - After 009, 07 is not the old opacity tax — don’t retarget ARGB ideas at 07.
 - Post-cp-002: structural KEEPs done; late EXPs were folklore on the wrong residual. No research without residual-map. VARIANT of REJECT needs new measured evidence.
+- Stop 2026-08-20: `reject_only_batches=3`, empty queue → campaign closeout (`PERFORMANCE-OPTIMIZATION.md`). Residual still 09/10 texture-bound.

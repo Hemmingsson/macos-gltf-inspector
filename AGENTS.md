@@ -2,6 +2,10 @@
 
 macOS 15+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/` (+ `Shared/Convert/`); host outliner and settings live in `GLBPreview/`.
 
+## Goal
+
+Closest practical **1:1** glTF rendering via **native RealityKit** on Mac. Personal daily driver first: prefer fidelity and simplicity over product overhead, abstraction layers, or “super secure” hardening. Target: **latest macOS** on an **Apple Silicon MacBook (M2)**.
+
 ## Commands
 
 ```bash
@@ -25,4 +29,4 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ## Load-time experiments
 
-Ledger and protocol: `experiments/` (`PROTOCOL.md`, `results.json`, `WHAT-WE-TRIED.md`). Bench: `LABEL=<id> ./scripts/load-bench.sh`.
+Campaign closed (cp-003, −54% vs baseline-v2): `experiments/PERFORMANCE-OPTIMIZATION.md`. Ledger: `experiments/` (`PROTOCOL.md`, `results.json`, `WHAT-WE-TRIED.md`, `residual-map.json`). Bench: `LABEL=<id> ./scripts/load-bench.sh`.

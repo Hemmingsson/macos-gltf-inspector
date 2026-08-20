@@ -1,9 +1,9 @@
 {
   "champion": "cp-003",
   "sha": "173fc71f3e366dc26b8323d98ccecc228a16c8b5",
-  "source": "/tmp/glb-preview-load-bench/20260820-063818-cp-003.json",
+  "source": "experiments/results/cp-003.json",
   "sum_median_total_ms": 7464.757585000001,
-  "recorded_at": "2026-08-20T04:39:53Z",
+  "recorded_at": "2026-08-20T11:22:11Z",
   "noise_floor_ms": 223.94272755000003,
   "assets": [
     {
@@ -168,8 +168,8 @@
       "present": true
     }
   },
-  "reject_only_batches": 0,
-  "phases_source": "/Users/mattias/dev/glb-preview/experiments/results/cp-002-phases.json",
+  "reject_only_batches": 3,
+  "phases_source": "experiments/results/cp-002-phases.json",
   "top": [
     {
       "id": "10-bot_mecha_warrior",
