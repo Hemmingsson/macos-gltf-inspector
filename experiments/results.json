@@ -1,9 +1,9 @@
 {
-  "champion": "baseline-5rep",
-  "champion_sum_median_total_ms": 2324.5,
-  "champion_sum_median_load_ms": 2183.8,
+  "champion": "EXP-006-v2",
+  "champion_sum_median_total_ms": 15332.9,
+  "champion_sum_median_load_ms": 15178.6,
   "primary_metric": "sum of per-asset median total_load_ms (load + first_render when measured)",
-  "noise_rule": "Reject |delta| < 3% of champion sum unless repeated and same direction on 8/10 assets",
+  "noise_rule": "Reject |delta| < 3% of champion sum (~460ms) unless same direction on 8/10; always prefer same-machine control",
   "experiments": [
     {
       "id": "EXP-000",
@@ -12,7 +12,9 @@
       "hypothesis": "Uncommitted 6s sleep is not production load time.",
       "reason": "git blame Not Committed Yet on PreviewView.swift",
       "agent": "orchestrator",
-      "files_changed": ["Shared/PreviewView.swift"],
+      "files_changed": [
+        "Shared/PreviewView.swift"
+      ],
       "implementation_summary": "Deleted Task.sleep(for: .seconds(6))",
       "benchmark_command": null,
       "decision": "n/a-cleanup",
@@ -26,7 +28,11 @@
       "agent": "orchestrator",
       "files_changed": [],
       "benchmark_command": "LABEL=baseline ./scripts/load-bench.sh",
-      "candidate_result": { "sum_median_load_ms": 2505.9, "reps": 3, "first_render": "unavailable" },
+      "candidate_result": {
+        "sum_median_load_ms": 2505.9,
+        "reps": 3,
+        "first_render": "unavailable"
+      },
       "decision": "superseded-by-official-baseline",
       "rejection_reason": null
     },
@@ -34,14 +40,21 @@
       "id": "EXP-002",
       "date": "2026-08-20",
       "parent_champion": "EXP-001",
-      "hypothesis": "I believe animation convert contributes ~100–300ms on animated assets because includeAnimations walks channels and samples joints.",
+      "hypothesis": "I believe animation convert contributes ~100\u2013300ms on animated assets because includeAnimations walks channels and samples joints.",
       "agent": "orchestrator",
       "files_changed": [],
       "implementation_summary": "Manifest includeAnimations=false only",
       "benchmark_command": "LABEL=noanim GLB_LOAD_BENCH_MANIFEST=.../manifest-noanim.json ./scripts/load-bench.sh",
-      "baseline_result": { "sum_median_load_ms": 2505.9 },
-      "candidate_result": { "sum_median_load_ms": 2003.5 },
-      "delta": { "abs_ms": -502.4, "pct": -20.0 },
+      "baseline_result": {
+        "sum_median_load_ms": 2505.9
+      },
+      "candidate_result": {
+        "sum_median_load_ms": 2003.5
+      },
+      "delta": {
+        "abs_ms": -502.4,
+        "pct": -20.0
+      },
       "correctness_result": "skips required QL clip playback",
       "complexity_assessment": "none (flag only)",
       "decision": "reject",
@@ -53,12 +66,21 @@
       "parent_champion": "EXP-001",
       "hypothesis": "I believe makeDocument firstIndex walks contribute measurable time because QL does not show the outliner.",
       "agent": "orchestrator",
-      "files_changed": ["Shared/Convert/RealityKitConvert.swift"],
+      "files_changed": [
+        "Shared/Convert/RealityKitConvert.swift"
+      ],
       "implementation_summary": "Skipped makeDocument behind a temp file flag; reverted after.",
       "benchmark_command": "touch skip-document; LABEL=skip-document ./scripts/load-bench.sh",
-      "baseline_result": { "sum_median_load_ms": 2505.9 },
-      "candidate_result": { "sum_median_load_ms": 2446.9 },
-      "delta": { "abs_ms": -59.0, "pct": -2.4 },
+      "baseline_result": {
+        "sum_median_load_ms": 2505.9
+      },
+      "candidate_result": {
+        "sum_median_load_ms": 2446.9
+      },
+      "delta": {
+        "abs_ms": -59.0,
+        "pct": -2.4
+      },
       "variance": "mixed; eagle/bmw slower",
       "correctness_result": "host outliner would empty",
       "complexity_assessment": "file-flag hack",
@@ -71,16 +93,149 @@
       "parent_champion": "EXP-001",
       "hypothesis": "I believe prepareGLB full-file parse/serialize/temp-write contributes hundreds of ms on files with integer accessors.",
       "agent": "orchestrator",
-      "files_changed": ["Shared/EntityLoader.swift"],
+      "files_changed": [
+        "Shared/EntityLoader.swift"
+      ],
       "implementation_summary": "prepareGLB returned original URL behind skip-prepare flag; reverted after.",
       "benchmark_command": "touch skip-prepare; LABEL=skip-prepare ./scripts/load-bench.sh",
-      "baseline_result": { "sum_median_load_ms": 2505.9 },
-      "candidate_result": { "sum_median_load_ms": 2143.7 },
-      "delta": { "abs_ms": -362.2, "pct": -14.5 },
+      "baseline_result": {
+        "sum_median_load_ms": 2505.9
+      },
+      "candidate_result": {
+        "sum_median_load_ms": 2143.7
+      },
+      "delta": {
+        "abs_ms": -362.2,
+        "pct": -14.5
+      },
       "correctness_result": "corpus still loaded; prepare is still required for other assets",
       "complexity_assessment": "skip",
       "decision": "reject",
       "rejection_reason": "Improvement by skipping required prepare. VARIANT=cheaper prepare allowed."
+    },
+    {
+      "id": "EXP-007",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-5rep",
+      "hypothesis": "I believe inputRange unpacking Packed.floatArray when min/max exist contributes eagle load time.",
+      "agent": "076b8774-9293-48b7-ae7c-d35501386599",
+      "files_changed": [
+        "Shared/AnimationHelpers.swift"
+      ],
+      "implementation_summary": "Early-return inputRange from accessor min/max/count; unpack fallback when bounds missing.",
+      "benchmark_command": "LABEL=EXP-007 ./scripts/load-bench.sh (worktree exp-007)",
+      "baseline_result": {
+        "sum_median_total_ms": 2324.5,
+        "sum_median_load_ms": 2183.8
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 1921.2,
+        "sum_median_load_ms": 1822.6
+      },
+      "delta": {
+        "abs_ms": -403.3,
+        "pct": -17.4
+      },
+      "variance": "10/10 faster including non-animated BMW/stone/CD and first-render; eagle-only ~-58ms",
+      "correctness_result": "AnimationSamplingTests+SceneGraphConvertTests 12/12 pass; clips retained",
+      "complexity_assessment": "tiny (6-line early-return)",
+      "decision": "reject",
+      "rejection_reason": "Corpus delta is warm-machine bias vs frozen champion; target-isolated signal inside noise. Branch exp/007-anim-minmax@00d40f5 not merged."
+    },
+    {
+      "id": "EXP-005",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-5rep",
+      "corpus": "v1",
+      "hypothesis": "I believe writePrepared + GLTFAsset(url:) re-read of prepared bytes contributes load time; GLTFAsset(data:) removes that tail without skipping prepare.",
+      "agent": "bc9d0d83-2196-4256-a6e4-5ea3bf5d716a",
+      "files_changed": [
+        "Shared/EntityLoader.swift"
+      ],
+      "implementation_summary": "Keep prepared Data; load via GLTFAsset(data:options:). URL path for no-prepare. Retry to original URL.",
+      "benchmark_command": "LABEL=EXP-005 ./scripts/load-bench.sh (worktree exp-005)",
+      "baseline_result": {
+        "sum_median_total_ms": 2324.5,
+        "sum_median_load_ms": 2183.8
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 1926.4,
+        "sum_median_load_ms": 1827.8
+      },
+      "delta": {
+        "abs_ms": -398.1,
+        "pct": -17.1
+      },
+      "variance": "10/10 faster; matches EXP-007 within 5ms; prepare path never executed on v1 corpus",
+      "correctness_result": "LoaderHelpers+SessionDocument pass; prepare not skipped",
+      "complexity_assessment": "small (optional preparedData branch)",
+      "decision": "reject",
+      "rejection_reason": "Hypothesis unmeasured on v1 (0/10 need prepare). Warm bias. Re-queue on corpus-v2 where realistic_animals triggers metal-rough prepare. Branch exp/005-prepared-asset-data@97b6e0a not merged."
+    },
+    {
+      "id": "EXP-006",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-5rep",
+      "corpus": "v1",
+      "hypothesis": "I believe Packed.grouped per-vertex [[Float]] allocations dominate high-vert convert (stone_wall).",
+      "agent": "8fc41a1b-f1a5-4d21-8f0d-70bc31c8f359",
+      "files_changed": [
+        "Shared/PackedAccessors.swift"
+      ],
+      "implementation_summary": "Write SIMD arrays in one pass; delete grouped.",
+      "benchmark_command": "LABEL=EXP-006 + same-machine LABEL=EXP-006-champ without change",
+      "baseline_result": {
+        "sum_median_total_ms": 2324.5,
+        "same_machine_champ_total_ms": 1861.1
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 1650.3,
+        "sum_median_load_ms": 1545.3
+      },
+      "delta": {
+        "vs_frozen_ms": -674.2,
+        "vs_same_machine_ms": -210.8,
+        "pct_vs_same_machine": -11.3
+      },
+      "variance": "isolated win almost all on stone_wall (\u2212197 ms); tiny/simple flat vs same-machine control",
+      "correctness_result": "TextureUV/Loader/Morph/SceneGraph/AnimationSampling tests passed",
+      "complexity_assessment": "tiny",
+      "decision": "superseded-by-EXP-006-v2",
+      "rejection_reason": null,
+      "notes": "v1 tentative KEEP; promoted via EXP-006-v2 on corpus-v2"
+    },
+    {
+      "id": "EXP-006-v2",
+      "date": "2026-08-20",
+      "parent_champion": "baseline-v2",
+      "corpus": "v2",
+      "classification": "VARIANT of EXP-006",
+      "hypothesis": "Packed SIMD (delete grouped) reduces corpus-v2 load beyond noise.",
+      "files_changed": [
+        "Shared/PackedAccessors.swift"
+      ],
+      "implementation_summary": "One-pass SIMD packed floats; delete grouped.",
+      "benchmark_command": "LABEL=EXP-006-v2 + LABEL=EXP-006-v2-champ (same-machine)",
+      "baseline_result": {
+        "frozen_total_ms": 16387.4,
+        "same_machine_champ_total_ms": 16451.0
+      },
+      "candidate_result": {
+        "sum_median_total_ms": 15332.9,
+        "sum_median_load_ms": 15178.6
+      },
+      "delta": {
+        "vs_same_machine_ms": -1118.1,
+        "pct": -6.8
+      },
+      "variance": "wins on stone -201, vegetation -310, cinema -295, stronghold -116; tiny flat",
+      "correctness_result": "prior v1 tests green; v2 corpus all loaded",
+      "complexity_assessment": "tiny",
+      "decision": "keep",
+      "rejection_reason": null,
+      "commit": "pending",
+      "branch": "exp/006-packed-simd@13c1c62"
     }
-  ]
+  ],
+  "corpus_version": 2
 }

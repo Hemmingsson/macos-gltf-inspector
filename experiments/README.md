@@ -1,21 +1,16 @@
 # Quick Look GLB load-time experiments
 
-Orchestrator-only campaign. Subagents implement and bench in isolation.
-The champion is this working tree minus rejected experiment flags.
+**Full protocol:** [`PROTOCOL.md`](./PROTOCOL.md) — Dex epic orchestration, sequential subagents, external research, size-ordered benches, acceptance gates.
 
 ## Primary metric
 
-User-visible path: select GLB → `EntityLoader.load` (QL convert) → first still frame
-(`StillRenderer` capture, the in-process stand-in for first usable pixels).
-
-`total_load_ms = load_ms + first_render_ms`
-
-Stages we cannot isolate (GPU upload vs shader vs decode) are recorded as `null`.
+`total_load_ms = EntityLoader.load + StillRenderer.capture` (256² first still).  
+Aggregate: **sum of per-asset median `total_load_ms`**.
 
 ## Frozen corpus
 
-Exactly 10 files in `/tmp/glb-preview-load-bench/set/`.
-Metadata: `corpus.json`. Do not change the set.
+**v2** (current): `corpus.json` — 10 files in `/tmp/glb-preview-load-bench/set/` (~754 MB).  
+**v1** archived as `corpus-v1.json`. Do not change mid-campaign.
 
 ## How to bench
 
@@ -23,17 +18,13 @@ Metadata: `corpus.json`. Do not change the set.
 LABEL=<id> ./scripts/load-bench.sh
 ```
 
-Writes `/tmp/glb-preview-load-bench/<stamp>-<label>.json`.
-Copy accepted runs into `experiments/results/`.
+Assets run **smallest → largest**. Early abort only for crashes/severe regressions — **never** KEEP without the full corpus. Prefer same-machine champion control.
+
+## Dex
+
+Epic: **Optimization Experiments** (one L1 task per `EXP-NNN`).  
+Start child before edits; `dex complete` with KEEP/REJECT/INCONCLUSIVE evidence. Search `WHAT-WE-TRIED.md` before creating a new EXP task.
 
 ## Champion
 
-Current: `baseline` (see `baseline.json`).
-Accepted experiments become the new parent. Rejected experiments never land on champion.
-
-## Rules
-
-- Search `WHAT-WE-TRIED.md` before proposing anything.
-- One hypothesis per experiment.
-- Accept only if: real drop beyond noise, no correctness skip, no extra complexity.
-- Skipping required work (prepare, animations, textures, document for host) is measurement-only, never a keep.
+See `results.json` / `WHAT-WE-TRIED.md` (corpus-v2 `baseline-v2`).

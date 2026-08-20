@@ -2,16 +2,47 @@
   "reps": 5,
   "includeAnimations": true,
   "primary_metric": "median_total_ms (EntityLoader.load + StillRenderer.capture)",
+  "corpus_version": 2,
   "files": [
-    { "id": "01-tiny", "path": "/tmp/glb-preview-load-bench/set/01-tiny.glb" },
-    { "id": "02-free_streetbanch1", "path": "/tmp/glb-preview-load-bench/set/02-free_streetbanch1.glb" },
-    { "id": "03-german_electrical_box", "path": "/tmp/glb-preview-load-bench/set/03-german_electrical_box.glb" },
-    { "id": "04-chimney_cap", "path": "/tmp/glb-preview-load-bench/set/04-chimney_cap.glb" },
-    { "id": "05-gangster_rigged", "path": "/tmp/glb-preview-load-bench/set/05-gangster_rigged.glb" },
-    { "id": "06-animated_eagle", "path": "/tmp/glb-preview-load-bench/set/06-animated_eagle.glb" },
-    { "id": "07-Audio_CD_Case", "path": "/tmp/glb-preview-load-bench/set/07-Audio_CD_Case.glb" },
-    { "id": "08-bmw_z3_gtr", "path": "/tmp/glb-preview-load-bench/set/08-bmw_z3_gtr.glb" },
-    { "id": "09-semla", "path": "/tmp/glb-preview-load-bench/set/09-semla.glb" },
-    { "id": "10-stone_wall_nr.2", "path": "/tmp/glb-preview-load-bench/set/10-stone_wall_nr.2.glb" }
+    {
+      "id": "01-tiny",
+      "path": "/tmp/glb-preview-load-bench/set/01-tiny.glb"
+    },
+    {
+      "id": "02-free_streetbanch1",
+      "path": "/tmp/glb-preview-load-bench/set/02-free_streetbanch1.glb"
+    },
+    {
+      "id": "03-animated_eagle",
+      "path": "/tmp/glb-preview-load-bench/set/03-animated_eagle.glb"
+    },
+    {
+      "id": "04-bmw_z3_gtr",
+      "path": "/tmp/glb-preview-load-bench/set/04-bmw_z3_gtr.glb"
+    },
+    {
+      "id": "05-last_stronghold_animated",
+      "path": "/tmp/glb-preview-load-bench/set/05-last_stronghold_animated.glb"
+    },
+    {
+      "id": "06-stone_wall_nr.2",
+      "path": "/tmp/glb-preview-load-bench/set/06-stone_wall_nr.2.glb"
+    },
+    {
+      "id": "07-vegetation_pack",
+      "path": "/tmp/glb-preview-load-bench/set/07-vegetation_pack.glb"
+    },
+    {
+      "id": "08-cinema_projector",
+      "path": "/tmp/glb-preview-load-bench/set/08-cinema_projector.glb"
+    },
+    {
+      "id": "09-realistic_animals",
+      "path": "/tmp/glb-preview-load-bench/set/09-realistic_animals.glb"
+    },
+    {
+      "id": "10-bot_mecha_warrior",
+      "path": "/tmp/glb-preview-load-bench/set/10-bot_mecha_warrior.glb"
+    }
   ]
 }

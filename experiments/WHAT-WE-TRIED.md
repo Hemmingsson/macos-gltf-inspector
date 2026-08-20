@@ -1,48 +1,46 @@
 # What we tried
 
-Search this file before proposing an experiment. Duplicates are forbidden.
+Search this file **before** creating a dex EXP task. Duplicates are forbidden.
+Full rules: [`PROTOCOL.md`](./PROTOCOL.md).
 
-| ID | Class | Result | Do not retry |
-|----|-------|--------|--------------|
-| EXP-000 | debug | Uncommitted `Task.sleep(6s)` in `PreviewView.State.loaded` removed before campaign. Not shipping. | Re-adding a sleep |
-| EXP-001 | baseline | Informal 3-rep `EntityLoader.load` sum-median **2505.9 ms**. Superseded by official 5-rep `baseline.json`. | Re-baselining the same 3-rep harness as if new |
-| EXP-002 | skip-required | `includeAnimations: false`. Sum **2003.5 ms** (−502). Eagle 297→140. Also moved non-animated files (noise). QL plays clips. | Disabling animation convert to win the bench |
-| EXP-003 | skip-required | Skip `makeDocument`. Sum **2446.9 ms** (−59, −2.4%). Mixed per-file, within noise. Reverted. | Skipping host outliner snapshot for a <3% maybe-noise gain |
-| EXP-004 | skip-required | Skip `prepareGLB` rewrite (file flag). Sum **2143.7 ms** (−362). Loads still succeeded on this corpus. Rejected: skips required Reality/metal-rough rewrite. | Shipping a prepare skip. VARIANT allowed: make prepare cheaper without skipping |
+## Champion
 
-## Official champion (immutable until an experiment is accepted)
+| Label | Corpus | sum_median_total_ms | Notes |
+|-------|--------|--------------------:|-------|
+| **EXP-006-v2** (current) | v2 | **15332.9** | Packed SIMD; same-machine control was 16451.0 |
+| baseline-v2 | v2 | 16387.4 | Frozen immutable baseline (`baseline.json`) |
+| baseline-5rep | v1 | 2324.5 | Archived; do not use for new EXPs |
 
-5-rep + first still frame (`experiments/baseline.json`):
+Noise: reject `|delta| < 3%` of champion sum unless ≥8/10 same direction. Prefer same-machine control.
 
-- `sum_median_total_ms` **2324.5**
-- `sum_median_load_ms` **2183.8**
-- Noise reject: `|delta| < 3%` of total (~70 ms) unless same direction on 8/10 assets
+## Tried
 
-## Round 1 (in flight, isolated worktrees)
+| ID | Class | Result | Must not retry |
+|----|-------|--------|----------------|
+| EXP-000 | cleanup | Removed uncommitted 6s sleep | Re-adding artificial delay |
+| EXP-001 | baseline | Informal 3-rep (v1) | Treating as official |
+| EXP-002 | skip-required | `includeAnimations: false` | Disabling clips to win bench |
+| EXP-003 | skip-required | Skip `makeDocument` (−2.4%, noise) | Skip outliner for tiny/noise gain |
+| EXP-004 | skip-required | Skip `prepareGLB` | Shipping prepare skip (VARIANT=cheaper prepare OK) |
+| EXP-005 | VARIANT-of-004 (v1) | **REJECT** — prepare never ran; warm bias | Claiming prepare-path win when prepare does not run |
+| EXP-005-v2 | VARIANT (queued) | Interrupted parallel bench; incomplete control | Parallel benches (protocol violation) |
+| EXP-006 | NEW (v1) | Tentative KEEP −211 ms isolated (stone_wall) | Merging on frozen delta alone |
+| EXP-006-v2 | VARIANT (v2) | **KEEP** −1118 ms vs same-machine control (−6.8%); stone/vegetation/cinema | — |
+| EXP-007 | VARIANT-of-002 | **REJECT** — warm bias; eagle-only ~−58 ms | Claiming corpus win when non-target files move equally |
 
-| ID | Class | Hypothesis | Files | Agent |
-|----|-------|------------|-------|-------|
-| EXP-005 | VARIANT-of-004 | Prepared `Data` → `GLTFAsset(data:)` instead of temp write + re-read | `EntityLoader.swift` | implementer-005 |
-| EXP-006 | NEW | `Packed.float2/3/4Array` writes SIMD directly; delete per-vertex `grouped` | `PackedAccessors.swift` | implementer-006 |
-| EXP-007 | VARIANT-of-002 | `inputRange` returns accessor min/max/count without `Packed.floatArray` when bounds exist | `AnimationHelpers.swift` | implementer-007 |
+## Queued (dex)
 
-## Classified, not running this round
-
-| Proposal | Class | Why not now |
-|----------|-------|-------------|
-| skip `makeDocument` / QL-only document | DUPLICATE EXP-003 | Already rejected; corpus ≤97 nodes |
-| skip peek/prepare-until-fail | skip-required | Same family as EXP-004 |
-| sidecar pack skip | NEW | Zero on this GLB-only corpus |
-| first-clip-only / skip remaining clips | skip-required | EXP-002 family |
-| cap bake at 30 fps | VARIANT-of-002 | Quality tradeoff; try lossless EXP-007 first |
-| IBL await before `.ready` | NEW | Primary metric is load+still, not `State.loaded` |
-| UV unit-square fast path | NEW | After EXP-006 (same mesh/UV data) |
-| `opacityTexture` → cached `.alpha` | NEW | Low on this set (tiny BLEND maps) |
-| `firstIndex` ObjectIdentifier map | NEW | Low on this corpus |
+| ID | Hypothesis | Gate |
+|----|------------|------|
+| EXP-005-v2 | `GLTFAsset(data:)` after prepare (animals hits prepare) | After EXP-006-v2; **sequential** only |
+| EXP-008 | One ARGB extract → sibling channel textures | After EXP-005-v2 |
+| Round research | External docs + profile vegetation_pack | Before inventing new EXPs |
 
 ## Forbidden
 
-- Lower quality, skip textures, skip meshes, special-case corpus files.
-- Parallel agents editing the same champion files.
-- Re-running EXP-002/003/004 as if new.
-- Shipping a prepare skip.
+- Parallel benchmarks / builds on this machine
+- Lower quality, skip textures/meshes, special-case corpus
+- Re-running EXP-002/003/004 as if new
+- Shipping prepare skip
+- Treating v1 deltas as v2 champion wins without re-bench
+- Dex task IDs in commits
