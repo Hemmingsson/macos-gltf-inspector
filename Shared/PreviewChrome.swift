@@ -248,25 +248,13 @@ final class PreviewHostingView: NSHostingView<PreviewView> {
 }
 
 /// Non-hosting root used by Quick Look so scroll events still hit before the hosting view.
+/// Orbit/pan monitors stay on the nested `PreviewHostingView` only (one monitor per window).
 final class PreviewEventView: NSView {
     var interaction: PreviewInteraction?
-    private var mouseMonitor: Any?
-
-    deinit { PreviewOrbitDragMonitor.remove(&mouseMonitor) }
 
     override var isOpaque: Bool { false }
     override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
     override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
     override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
     override var acceptsFirstResponder: Bool { true }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        PreviewOrbitDragMonitor.install(
-            on: self,
-            interaction: { [weak self] in self?.interaction },
-            hitTestBounds: false,
-            storage: &mouseMonitor
-        )
-    }
 }

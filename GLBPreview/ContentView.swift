@@ -45,7 +45,9 @@ struct ContentView: View {
                     loadDocument(url)
                 }
             }
-            .onChange(of: sidebar?.activeSceneIndex) { _, index in
+            .onChange(of: sidebar?.activeSceneIndex) { previous, index in
+                // Initial sidebar assign is nil → defaultSceneIndex; that must not re-convert.
+                guard previous != nil else { return }
                 reloadScene(index)
             }
             .onDrop(of: [.fileURL], isTargeted: nil) {
@@ -226,8 +228,7 @@ struct ContentView: View {
                 guard generation == loadGeneration else { return }
                 let message = error.localizedDescription
                 AppLog.error(AppLog.host, "scene switch failed: \(message)")
-                previewState = .failed(message)
-                self.sidebar = nil
+                // Keep the current mesh and sidebar so the user can pick another scene.
             }
         }
     }
