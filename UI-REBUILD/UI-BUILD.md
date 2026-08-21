@@ -9,11 +9,11 @@ depends only on "the seam" (§0). The shell app injects mocks; the real app inje
 engine-backed conformances. **At cutover there is no UI rewrite, only a different
 implementation injected.**
 
-> **Verified 2026-08-21** against `feature/scene-interaction-controls`. Key finding: the engine
-> impls of the seam are **thin adapters over code that already exists** — a full parsed model
-> (`GLTFSessionDocument`), a working outliner with selection/visibility/solo
-> (`HostSidebarModel` + `PreviewSelectionVisuals`), stats, and channel detection. Do not
-> re-parse glTF or rebuild selection; see the mapping under §0.
+> **Re-verified 2026-08-21 against `main`.** Engine adapters stay thin — extend
+> `makeDocument` / `HostSidebarModel` / `PreviewSelectionVisuals`; do not re-parse glTF or
+> rebuild selection. `GLTFSessionDocument` is **slim** (no lights/materials/TRS). Hide exists;
+> isolate does not. `PreviewDebugMode.available(from:)` is the public channel API. Details:
+> `ENGINE-FEATURE-PACKS.md` headline. The §0 "gap" table below can lag — trust that headline.
 
 ```
         ┌─────────────────────────────┐
@@ -50,11 +50,11 @@ they let the UI track and the engine track run fully in parallel.
 
 | Protocol | Backed today by | Gap to fill |
 |---|---|---|
-| `SceneModel` | **`GLTFSessionDocument`** (scenes/nodes/meshes/materials/lights[typed]/cameras/animations) + `PreviewStats` | node `kind` enum · texture max-res · dimensions accessor · `validation` (P17) · `pipelineReport` (P18) |
-| `Availability` | derive from `document` + `PreviewStats` + `PreviewDebugMode.Channels.available` | just compute the booleans |
-| `ViewportController` | backdrop/floor/auto-rotate/debug-mode/Fit already exist | center (P1) · projection (P2) · presets (P3) · reset (P4) · lighting rotation/toggle (P5) · screenshot (P19) |
-| `SelectionModel` | **`HostSidebarModel`** (`selectedNodeIndex`, `hide`, `soloRoot`) + **`PreviewSelectionVisuals`** (3D dim + wirebox + hover) | isolate trigger (P31) · selection-detail view (P32) |
-| `SettingsStore` | `@AppStorage` today, but the **old mirror pattern** on this branch | the single-source refactor (P33) + multi-window decision (P34) |
+| `SceneModel` | slim `GLTFSessionDocument` + `PreviewStats` | persist node kind/TRS/mesh/light/skin, lights, materials (P12–P14); dimensions; max-res; `validation` (P17); `pipelineReport` (P18) |
+| `Availability` | derive from document + `PreviewStats` + `PreviewDebugMode.available(from:)` | compute the booleans |
+| `ViewportController` | backdrop/floor/auto-rotate/debug-mode/Fit | center (P1) · projection (P2) · presets (P3) · reset (P4) · lighting (P5) · screenshot (P19) |
+| `SelectionModel` | `HostSidebarModel` (`selectedNodeIndex`, `hide`) + `PreviewSelectionVisuals` | isolate (P31, not built yet) · detail view (P32) |
+| `SettingsStore` | `@AppStorage`; P33 single-source **already on `main`** | P34 per-window vs sticky |
 
 > Existing seams to reuse: `PreviewOverlay` (`Shared/PreviewChrome.swift`) already bridges scene
 > ↔ sidebar (`selectedCameraIndex`, `document`); `GLTFNodeLookup` maps node index → entity.

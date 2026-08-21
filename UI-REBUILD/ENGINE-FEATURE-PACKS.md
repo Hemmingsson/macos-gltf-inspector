@@ -4,14 +4,38 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 **Each pack is independent and testable in the CURRENT UI now** — add a throwaway control
 (menu item, toggle, print, or test) to prove it, then bind to the seam later.
 
-> **Verified 2026-08-21** against branch `feature/scene-interaction-controls` (three code
-> passes + RealityKit/SwiftUI docs via Context7). Status legend:
+> **Re-verified 2026-08-21 against `main`** (post repo-reduction commits — the earlier pass
+> targeted `feature/scene-interaction-controls`, which had more in `GLTFSessionDocument`; the
+> reduction passes trimmed it, so several "DONE" claims below were downgraded). Status legend:
 > **DONE** = exists, only needs surfacing · **REUSE** = plumbing exists, thin wrapper ·
 > **NEW** = net-new · **DECISION** = needs a call first.
-> The headline correction from the audit: the codebase already has a full parsed scene model
-> (`GLTFSessionDocument`), a working outliner with selection/visibility/solo
-> (`HostSidebarModel` + `PreviewSelectionVisuals`), and channel-presence detection
-> (`PreviewDebugMode.Channels`). **Extend these — do not re-parse glTF or rebuild selection.**
+>
+> **Corrected headline (what actually exists on `main`):**
+> - `GLTFSessionDocument` is **NOT a full parsed model.** Its own doc comment says so. It stores
+>   only: `scenes`, `nodes` (**`index`/`name`/`children`/`cameraIndex?` — no TRS, no
+>   `meshIndex`, no `lightIndex`, no `skinIndex`, no kind**), `cameras`, `animations`
+>   (name/duration). **There is no `document.lights`, `document.materials`, `document.meshes`,
+>   `document.skins`.** The rich per-node/mesh/material/light data *is* available from the
+>   `GLTFAsset` (GLTFKit2) at convert time (`RealityKitConvert.makeDocument`) but is **not
+>   persisted** — most of §B is *extend `makeDocument` + add struct fields*, not *surface*.
+> - Selection **is** built (`HostSidebarModel.selectedNodeIndex` + `PreviewSelectionVisuals`);
+>   per-node **hide** is built (`hide: Set<Int>` + `showAll()`). **Solo/isolate logic does NOT
+>   exist** (no `soloRoot`/`soloHides` on `main`) — P31 must build it, not just wire a trigger.
+> - Channel-presence lives in a **`private` file-scoped `struct Channels`** in
+>   `PreviewDebugMode.swift` (not `PreviewDebugMode.Channels`, not public). The only public
+>   consumer is **`PreviewDebugMode.available(from json:) -> [PreviewDebugMode]`**.
+> - The single-source-of-truth state refactor (P33) is **already done on `main`**
+>   (`PreviewScene.swift:39,94`) and `autoRotate` **is** registered (`GLBPreviewApp.swift:58`).
+>
+> **Extend `HostSidebarModel`/`PreviewSelectionVisuals` and `makeDocument` — don't re-parse glTF
+> or rebuild selection.**
+>
+> **Test fixtures:** the repo ships only `scripts/testdata/cube/cube.gltf` (1 node / 1 mesh /
+> 1 material, **no** cameras / lights / animations / skins / morphs, centered at origin) and
+> `scripts/tiny.glb`. Packs that need lights, cameras, animations, skins, morphs, an off-center
+> origin, or specific extensions **must fetch a Khronos sample** (e.g. `BoxAnimated`,
+> `RiggedSimple`, a `KHR_lights_punctual` sample) — cube.gltf alone will not exercise them.
+> Each "Test now" below names the fixture it needs.
 
 ## macOS API quick-reference (confirmed)
 
@@ -25,8 +49,11 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 - **Wireframe:** `PhysicallyBasedMaterial.triangleFillMode = .lines` (already how `.wire` works).
 - **Backface / double-sided:** material `faceCulling` (`.none` = show backfaces). Already set
   per-material at import (`isDoubleSided ? .none : .back`); a runtime toggle just flips it.
-- **Debug channels:** `ModelDebugOptionsComponent(visualizationMode:)` — code already uses many;
-  unused-but-available: `.lightingDiffuse`, `.lightingSpecular`.
+- **Debug channels:** `ModelDebugOptionsComponent(visualizationMode:)` — code already uses many
+  (`PreviewDebugMode.swift` switch). ⚠ `.lightingDiffuse`/`.lightingSpecular` are cited as
+  "unused-but-available" but **were not verified against the current macOS SDK** — confirm the
+  enum cases exist before relying on them. There is **no** built-in vertex-color visualization
+  mode (see P9).
 - **Window chrome:** `.windowStyle(.hiddenTitleBar)` (macOS 11+) gives the transparent-titlebar /
   no-title look. `glassEffect` / `GlassEffectContainer` / `Settings {}` / `.commands` are already
   used in the app (macOS 26 Liquid Glass).
@@ -37,42 +64,112 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 
 ### P1 — Center toggle + world-origin gizmo · NEW
 - **Goal:** stop force-centering; reveal authored origin.
-- **Now:** `PreviewCamera.makeTurntable` always does `entity.position -= centerInPivot`
-  (`PreviewCamera.swift:35-36`); no skip flag. `PreviewFloor` is a polar grid **parented under
-  the pivot** (follows the model) — *not* a world-origin indicator.
-- **Build:** a `center` flag on `makeTurntable` to skip the subtraction; a **separate**
-  world-origin XYZ axis entity (the floor won't do — it moves with the pivot).
-- **Test now:** temp View-menu toggle; open an off-center model — gizmo at (0,0,0), model offset.
+- **Now (verified):** `PreviewCamera.makeTurntable` always does `entity.position -= centerInPivot`
+  (`PreviewCamera.swift:35-36`); no skip flag. `PreviewFloor` (name `"previewFloor"`) is
+  `assembled.pivot.addChild(floor)` (`PreviewScene.swift:137`) — parented under the pivot, so it
+  sits at the visual center, *not* the authored world origin.
+- **Build:** a `center: Bool = true` param on `makeTurntable`; when false, skip the subtraction so
+  the model keeps its authored offset. Add a **separate** world-origin axis entity added to the
+  **pivot** at local `-centerInPivot` (i.e. at true (0,0,0)), *not* the floor.
+```swift
+static func makeTurntable(for entity: Entity, center: Bool = true) -> (…) {
+    let centerInPivot = entity.convert(position: localBounds.center, to: pivot)
+    if center { entity.position -= centerInPivot }   // else: leave authored offset
+    // world-origin gizmo lives at true origin in pivot space:
+    if !center { pivot.addChild(makeAxisGizmo(at: -centerInPivot)) }
+}
+```
+- **Gotcha:** `makeTurntable` runs in `RealityView { … }` `make` (`PreviewScene.swift:128`). Adding
+  the gizmo there is fine (entity setup), but do **not** write `@State`/`PreviewInteraction`
+  from `make`/`update` — wrap any state write in `Task { @MainActor in … }` (AGENTS.md pitfall 1).
+  Give the gizmo a helper name and add it to `PreviewFloor.isHelperName` / `modelBounds`'
+  skip-list so Fit framing ignores it (else it pushes the camera out).
+- **Test now:** temp View-menu toggle. cube.gltf is centered at origin — **use an off-center
+  fixture** (translate the cube node, or a Khronos sample with authored offset); gizmo pins at
+  (0,0,0) while the model sits off to the side. Depended on by P4.
 
 ### P2 — Perspective ↔ orthographic · REUSE
-- **Now:** preview/fit camera is `PerspectiveCameraComponent` (`makeFrontThreeQuarter`
-  `:239`, `applyFit` `:62`). **Ortho already implemented for file cameras**
-  (`applyFileView:265-274` builds `OrthographicCameraComponent`; `restoreFitPerspective:290`
-  swaps back).
-- **Build:** apply the existing ortho component to the *preview* camera; recompute `scale`
-  from bounds (mirror `applyFit`'s framing). Small.
-- **Test now:** temp toggle; verify no foreshortening.
+- **Now (verified):** preview/fit camera is `PerspectiveCameraComponent` (`makeFrontThreeQuarter`
+  builds `PerspectiveCamera()` at `:239`; `applyFit` reads it at `:62`). **Ortho already
+  implemented for file cameras** — `applyFileView` builds `OrthographicCameraComponent`
+  (`:265-274`); `restoreFitPerspective` (`:290`) swaps back to perspective.
+- **Build:** on toggle, put an `OrthographicCameraComponent` on the *preview* camera entity,
+  keeping the same eye/orientation. `scale` = vertical world-height that fills the view — derive
+  from `bounds` (roughly the projected half-height used in `fitDistance`, ×2×padding).
+```swift
+var ortho = OrthographicCameraComponent()
+ortho.scale = (bounds.max.y - bounds.min.y) * PreviewCamera.previewFitPadding // refine w/ aspect
+camera.components.remove(PerspectiveCameraComponent.self)
+camera.components.set(ortho)                 // toggle off → restoreFitPerspective(on: camera)
+```
+- **Gotcha:** `scale` is a fixed world height, so it does **not** re-fit on window resize the way
+  perspective distance does — recompute `scale` on Fit and on viewport change. Toggling while a
+  file camera is active: `applyFileView` already owns projection there; gate the preview toggle to
+  `useSystemOrbit` (`PreviewScene.swift:110`).
+- **Test now:** temp View-menu toggle on cube.gltf; parallel edges stay parallel (no foreshortening).
 
 ### P3 — Camera presets (front/back/L/R/top/bottom/iso) · NEW (small)
-- **Now:** only one canned pose (front-three-quarter, yaw 35°/pitch 18°). `cameraPosition(yaw:pitch:)`
-  (`:175`) is parameterized and reusable.
-- **Build:** 7 wrappers over `cameraPosition` + `applyFit`.
-- **Test now:** temp menu of 7; verify each frames the model.
+- **⚠ Correction:** there is **no** `cameraPosition(yaw:pitch:)`. The real function is
+  `cameraPosition(minBound:maxBound:padding:aspect:)` (`:175`); it reads yaw/pitch from the
+  **private constants** `yawDegrees=35`/`pitchDegrees=18` (`:7-8`) and internally overrides yaw
+  for thin decals. It is **not** parameterized by angle — you cannot "wrap" it for presets as-is.
+- **Build:** refactor `cameraPosition` (and the `makeFrontThreeQuarter` caller) to take
+  `yaw`/`pitch` params (default to the current constants), then add 7 preset angle pairs +
+  `applyFit`. Keep the thin-axis override behind a flag so presets aren't hijacked.
+```swift
+static func cameraPosition(minBound:…, yaw: Float = yawDegrees, pitch: Float = pitchDegrees, …)
+enum CameraPreset { case front, back, left, right, top, bottom, iso }  // yaw/pitch table
+// apply: makeFrontThreeQuarter(…, yaw:preset.yaw, pitch:preset.pitch) then applyFit(to:camera,…)
+```
+- **Gotcha:** top/bottom look along world +Y — `applyView` (`:305`) explicitly avoids
+  `look(at:from:)` because it traps when the view axis ‖ world up; reuse `applyView`, don't
+  reintroduce `look`.
+- **Test now:** temp menu of 7 on cube.gltf; each reframes and fills the viewport (top shows the
+  cube's top face square-on).
 
 ### P4 — Reset view · NEW (small)
-- **Build:** compose Fit + center-on (P1) + clear Shift-pan offset.
-- **Test now:** pan/rotate → temp Reset → returns. Depends on P1.
+- **Now:** Fit exists (`applyFit`); Shift-drag pans camera **and** pivot (AGENTS.md pitfall 4),
+  auto-rotate yaws a spin child, orbit is RealityKit-managed.
+- **Build:** compose `applyFit(to:camera, bounds:, orbitFocus: pivot)` (re-centers the pivot to
+  `.zero`, `PreviewCamera.swift:53`) + reset `frame.autoRotateYaw = 0` + restore center flag (P1).
+```swift
+func resetView() {
+    frame.pivot?.setPosition(.zero, relativeTo: nil)   // undo Shift-pan on the pivot
+    frame.autoRotateYaw = 0
+    PreviewCamera.applyFit(to: camera, bounds: frame.bounds, aspect: aspect(of: viewport),
+                           orbitFocus: frame.pivot)
+}
+```
+- **Gotcha:** the orbit control also holds camera state; posing the camera entity re-seeds it, but
+  verify orbit doesn't snap back on the next drag. Don't mutate `@State` from `update` — call this
+  from a menu action / `Task { @MainActor }`.
+- **Test now:** pan + rotate + zoom → temp Reset → returns to the opening front-3/4 fit. Depends on P1.
 
 ### P5 — Lighting controls · mixed (integrate `AppLook`/`PreviewLighting`)
-- **Now:** IBL via `ImageBasedLightComponent(intensityExponent:)` (`PreviewLighting.swift:120`);
+- **Now (verified):** IBL via `ImageBasedLightComponent(source:.single(resource), intensityExponent:)`
+  (`PreviewLighting.swift:120`); `inheritsRotation = false` at `:121` pins the IBL to world. The
+  exponent flows in as `PreviewScene.studioIBLExponent` → `applyLook(…, intensityExponent:)` (`:45`).
   `studioIBLExponent(punctualLightCount:)` returns `-2` (0.25×) when the file has punctual lights
-  (`PreviewEmissive.swift:59`). Env catalog + custom HDR import already exist
-  (`AppLook`/`AppLookStore`, `PreviewSettingsPane`). `inheritsRotation = false` pins the IBL.
-- **Build:** (a) **exposure** — surface `intensityExponent` as a control · **DONE-ish**;
-  (b) **file-lights vs studio** — make the auto-dim an explicit toggle · **REUSE**;
-  (c) **env rotation** — **NEW**, and rework the `inheritsRotation=false` pin.
+  (`PreviewEmissive.swift:59`). Env catalog + custom HDR import exist (`AppLook`/`AppLookStore`).
+- **Build:** (a) **exposure** — thread a session `intensityExponent` down to `applyLook` (add ±EV
+  to the `studioIBLExponent` the scene already passes) · **REUSE**;
+  (b) **file-lights vs studio** — the `-2` auto-dim is computed once; make it an explicit toggle by
+  overriding the `studioIBLExponent` the scene passes (0 = studio full, `-2` = dim for file lights) ·
+  **REUSE**;
+  (c) **env rotation** — **NEW.** `applyLook` **rebuilds** the IBL entity on every call and sets
+  `inheritsRotation = false`, so a rotation must be re-applied after each rebuild; either set
+  `ibl.orientation` (and drop the `inheritsRotation=false` pin) or store a session yaw applied in
+  `makeIBLEntity`.
+```swift
+// makeIBLEntity(…): light.inheritsRotation = true; ibl.orientation = simd_quatf(angle: yaw, axis: [0,1,0])
+```
+- **Gotcha:** don't block first paint on IBL (AGENTS.md pitfall 3) — `applyLook` already falls back
+  to key+fill while the HDR loads; keep exposure/rotation changes going through `applyLook` so the
+  fallback path still works. Rebuilding the IBL also re-runs `removeReceivers`/`applyReceivers` — keep
+  that ordering.
 - **Integrate**, don't rebuild, the `AppLookStore` environment picker.
-- **Test now:** temp exposure slider + file-vs-studio toggle (both cheap); rotation later.
+- **Test now:** temp exposure slider (model brightens/darkens) + file-vs-studio toggle. File-vs-studio
+  needs a `KHR_lights_punctual` fixture (cube.gltf has no lights); rotation later.
 
 ### P6 — Backface / double-sided toggle · REUSE
 - **Now:** `faceCulling` set at import (`RealityKitConvert+Material.swift:102`,
@@ -97,10 +194,9 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 
 ## B. Introspection (feed `SceneModel` / `Availability`)
 
-> **`GLTFSessionDocument` is already a full parsed model** — scenes, nodes (TRS + mesh/camera/
-> light indices + children), meshes (counts), materials (factors + per-map Bools), lights
-> (type/color/intensity/cone), cameras (persp/ortho), animations (name/duration). Most of §B is
-> *surfacing*, not building.
+> **Trust the headline, not this older §B copy.** On `main`, `GLTFSessionDocument` is slim
+> (scenes / nodes without TRS or mesh/light/skin / cameras / animations). Most of §B is
+> *extend `makeDocument` + add fields*, then surface. P10/P11/P15/clips are the real surface-only bits.
 
 ### P10 — Dimensions W×H×D · DONE (surface it)
 - **Now:** bounds computed (`PreviewCamera.modelBounds`); extent is logged in `ContentView.swift:188`
@@ -111,23 +207,22 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
   `isRigged`, `morphGeometryCount`. **Missing:** texture **max resolution** (needs image decode) —
   the only NEW bit. Also `overlayFacts` omits `animationCount` (one-line fix).
 
-### P12 — Typed node tree · REUSE
-- **Now:** `document.nodes` have `meshIndex?/cameraIndex?/lightIndex?` + TRS + children; **no
-  explicit kind enum, no `skinIndex`**. `GLTFNodeLookup.entity(nodeIndex:in:)` maps node→entity.
-- **Build:** a small tree model that infers kind from which optional is set (empty = all nil).
+### P12 — Typed node tree · REUSE / extend `makeDocument`
+- **Now:** nodes are `index`/`name`/`children`/`cameraIndex?` only. `GLTFNodeLookup` maps node→entity.
+- **Build:** persist TRS + `meshIndex`/`lightIndex`/`skinIndex` + infer kind (empty = all nil).
 
-### P13 — Lights enumerated · DONE (surface it)
-- **Now:** `document.lights` = `Light{type,color,intensity,range?,innerCone?,outerCone?}` — point/
-  spot/directional already distinguished. Just render the Lights section.
+### P13 — Lights enumerated · NEW (persist, then surface)
+- **Now:** no `document.lights`. Data is on `GLTFAsset` at convert time.
+- **Build:** add `Light{type,color,intensity,range?,innerCone?,outerCone?}` in `makeDocument`.
 
-### P14 — Materials + map presence · DONE (build the list UI)
-- **Now:** presence known in **two** places — `document.Material.has{BaseColor,MetallicRoughness,
-  Normal,Occlusion,Emissive}Texture` Bools, and `PreviewDebugMode.Channels` (adds clearcoat/
-  specular/tangent). **Build:** the materials-list UI; **consolidate** the two sources.
+### P14 — Materials + map presence · NEW (persist, then surface)
+- **Now:** no `document.materials`. Channel presence is a **private** `Channels` struct;
+  public API is `PreviewDebugMode.available(from:)`.
+- **Build:** persist materials + map-presence bools; one canonical source with the debug flags.
 
 ### P15 — Available debug channels · DONE (consume it)
-- **Now:** `PreviewDebugMode.Channels.available(from:)` already filters the cycle to channels
-  present in the model. The new view-mode menu just reads this.
+- **Now:** `PreviewDebugMode.available(from json:)` filters the cycle. There is no public
+  `PreviewDebugMode.Channels`.
 
 ### P16 — Skin / morph · mixed
 - **Now:** `isRigged` (Bool) + `morphGeometryCount` (mesh count). Morph weights set at load +
@@ -166,8 +261,8 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 
 ## D. Selection / visibility / state
 
-> **Selection + visibility are already substantially built** in `HostSidebarModel` +
-> `PreviewSelectionVisuals`. These packs are mostly *surfacing/wiring*, not building.
+> Selection + per-node **hide** are built. Isolate/solo is **not** (no `soloRoot` on `main`).
+> P30 is adopt; P31 must build isolate; P32 is a view on document fields from P12–P14.
 
 ### P30 — Selection → canvas highlight · DONE
 - **Now:** `selectNode` toggles `selectedNodeIndex`; `PreviewSelectionVisuals` dims non-selected
@@ -175,23 +270,17 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
   gets an accent bg. New UI just adopts this.
 
 ### P31 — Per-node visibility + isolate · mixed
-- **Now:** per-node `hide: Set<Int>` with eye buttons (`HostOutlinerView` / `applyVisibility`) —
-  **DONE.** Isolate/solo **logic** exists (`soloRoot`, `soloHides`, `showAll`) but has **no UI
-  trigger** on this branch.
-- **Build:** wire an isolate control (Option-click eye) to the existing solo logic · small.
+- **Now:** `hide: Set<Int>` + eye + `showAll()` exist. **No** `soloRoot`/`soloHides`. Option-click
+  eye currently expands/collapses descendants, not isolate.
+- **Build:** add isolate/solo logic; wire a modifier that does not steal expand/collapse.
 
-### P32 — Selection detail · DONE (build the view)
-- **Now:** `selectedNodeIndex` + `document.nodes[i]` (TRS, mesh/camera/light index) + `materials`
-  give all inspector data. **Build:** the detail view; no new engine data needed.
+### P32 — Selection detail · build the view (after P12–P14)
+- **Now:** `selectedNodeIndex` exists; node/light/material fields land in P12–P14.
+- **Build:** detail view from those fields. Show only what the node kind has.
 
-### P33 — Single-source session state · NEW (⚠ branch note)
-- **⚠ On THIS branch the OLD mirror pattern is present** (local `@State` + bidirectional `onChange`
-  + `onAutoRotateChanged` callback + `applyAutoRotateSetting`). The single-source refactor was done
-  on `simplify/autonomous-reduction`, **not here** — either merge it or redo it. Also `autoRotate`
-  is **not** registered in `UserDefaults.register` (default only lives in `= true` literals).
-- **Build:** storage = source of truth; render computes the effective value; extend to the new
-  controls (view-mode/lighting/camera/ortho) + a "Set as default" affordance. Do after ≥2 new
-  controls exist.
+### P33 — Single-source session state · DONE on `main`
+- **Now:** storage is source of truth (`PreviewScene.swift`); `autoRotate` is registered
+  (`GLBPreviewApp.swift`). Do not redo P33. P34 (per-window vs sticky) is the remaining call.
 
 ### P34 — Multi-window independence · DECISION
 - **Now:** cross-window bleed **confirmed** — host controls share `UserDefaults.standard`;
