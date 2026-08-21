@@ -25,6 +25,11 @@ struct PreviewView: View {
     var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)? = nil
+    /// Host passes `HostSidebarModel.overlayRevision` so RealityView updates on select/hide.
+    /// Reading it through `any PreviewOverlay` alone is not a reliable SwiftUI dependency.
+    var overlayRevision: Int = 0
+    /// Host-owned P34 session; nil in Quick Look (PreviewScene seeds local `@State`).
+    var session: PreviewSessionBindings? = nil
 
     var body: some View {
         Group {
@@ -39,14 +44,17 @@ struct PreviewView: View {
             case .ready(let model):
                 PreviewScene(
                     entity: model.entity,
+                    document: model.document,
                     stats: model.stats,
                     debugModes: model.debugModes,
                     studioIBLExponent: model.studioIBLExponent,
                     interaction: interaction,
                     isDark: isDark,
-                    sidebar: sidebar
+                    sidebar: sidebar,
+                    overlayRevision: overlayRevision,
+                    session: session
                 )
-                .id(ObjectIdentifier(model.entity))
+                .id("\(ObjectIdentifier(model.entity))-\(session?.centerModel.wrappedValue ?? true)")
             case .failed(let message):
                 ZStack {
                     PreviewBackground.window.color.ignoresSafeArea()

@@ -1,6 +1,9 @@
 import AppKit
 import SwiftUI
 
+/// UserDefaults keys. **Writable from Settings only** for canvas defaults
+/// (`autoRotate` / `showFloor` / `background`). Open windows seed once and never write these
+/// back (P34 / DESIGN.md three-job rule). `appearance` and `showToolbar` remain app-wide.
 enum SettingsKeys {
     static let autoRotate = "settings.preview.autoRotate"
     static let background = "settings.preview.background"
@@ -39,6 +42,23 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         case .window: .clear
         case .white: .white
         case .dark: Color(red: Self.charcoal.r, green: Self.charcoal.g, blue: Self.charcoal.b)
+        }
+    }
+
+    /// Opaque clear-color for `StillRenderer` / `RealityRenderer` (window/clear → light gray).
+    var stillBackgroundCGColor: CGColor {
+        switch self {
+        case .window:
+            return CGColor(gray: 0.94, alpha: 1)
+        case .white:
+            return CGColor(gray: 1, alpha: 1)
+        case .dark:
+            return CGColor(
+                srgbRed: Self.charcoal.r,
+                green: Self.charcoal.g,
+                blue: Self.charcoal.b,
+                alpha: 1
+            )
         }
     }
 

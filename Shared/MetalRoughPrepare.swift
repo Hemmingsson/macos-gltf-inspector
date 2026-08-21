@@ -22,6 +22,11 @@ enum MetalRoughPrepare {
     /// Spec/gloss → metal/rough rewrite, in memory. Serialization happens once at the
     /// end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
+        var report = PipelineReport()
+        return try transformed(glb, report: &report)
+    }
+
+    static func transformed(_ glb: GLBBox, report: inout PipelineReport) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
         var images = json["images"] as? [[String: Any]] ?? []
@@ -29,6 +34,8 @@ enum MetalRoughPrepare {
         var materials = json["materials"] as? [[String: Any]] ?? []
 
         let bakeTextures = shouldBakeTextures(json: json, materials: materials)
+        var convertedAny = false
+        var bakedAny = false
 
         func addPNGTexture(_ png: Data) -> Int {
             let bufferView = GLBBox.appendBytes(png, bin: &bin, bufferViews: &bufferViews)
@@ -41,6 +48,7 @@ enum MetalRoughPrepare {
                   let specGloss = extensions[specGlossName] as? [String: Any]
             else { continue }
 
+            convertedAny = true
             let diffuseFactor = doubleArray(specGloss["diffuseFactor"], fallback: [1, 1, 1, 1])
             let specularFactor = doubleArray(specGloss["specularFactor"], fallback: [1, 1, 1])
             let glossinessFactor = doubleValue(specGloss["glossinessFactor"], fallback: 1)
@@ -62,6 +70,7 @@ enum MetalRoughPrepare {
                let sgInfo = specGloss["specularGlossinessTexture"] as? [String: Any],
                let sgImageIndex = textureImageIndex(json: json, textureInfo: sgInfo)
             {
+                bakedAny = true
                 let sgPixels = try decodeImage(glb: glb, images: images, imageIndex: sgImageIndex).downsampled(maxEdge: maxBakeEdge)
                 var diffusePixels: PixelImage?
                 if let diffuseInfo = specGloss["diffuseTexture"] as? [String: Any],
@@ -124,6 +133,8 @@ enum MetalRoughPrepare {
             removing: [specGlossName],
             addingToUsed: [specularName, iorName]
         )
+        if convertedAny { report.specGlossToMetalRough = true }
+        if bakedAny { report.bakedSpecGlossTextures = true }
         return GLBBox(json: json, bin: bin)
     }
 

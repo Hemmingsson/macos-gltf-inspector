@@ -9,11 +9,10 @@ depends only on "the seam" (§0). The shell app injects mocks; the real app inje
 engine-backed conformances. **At cutover there is no UI rewrite, only a different
 implementation injected.**
 
-> **Verified 2026-08-21** against `feature/scene-interaction-controls`. Key finding: the engine
-> impls of the seam are **thin adapters over code that already exists** — a full parsed model
-> (`GLTFSessionDocument`), a working outliner with selection/visibility/solo
-> (`HostSidebarModel` + `PreviewSelectionVisuals`), stats, and channel detection. Do not
-> re-parse glTF or rebuild selection; see the mapping under §0.
+> **Post-`engine-features` (lands on main with this branch):** `GLTFSessionDocument` now
+> persists typed nodes/TRS, lights, materials, skins, morphs; isolate + selection detail exist.
+> Engine adapters stay thin — do not re-parse glTF. Channels via
+> `PreviewDebugMode.available(from:)`. Details: `ENGINE-FEATURE-PACKS.md`.
 
 ```
         ┌─────────────────────────────┐
@@ -50,11 +49,11 @@ they let the UI track and the engine track run fully in parallel.
 
 | Protocol | Backed today by | Gap to fill |
 |---|---|---|
-| `SceneModel` | **`GLTFSessionDocument`** (scenes/nodes/meshes/materials/lights[typed]/cameras/animations) + `PreviewStats` | node `kind` enum · texture max-res · dimensions accessor · `validation` (P17) · `pipelineReport` (P18) |
-| `Availability` | derive from `document` + `PreviewStats` + `PreviewDebugMode.Channels.available` | just compute the booleans |
-| `ViewportController` | backdrop/floor/auto-rotate/debug-mode/Fit already exist | center (P1) · projection (P2) · presets (P3) · reset (P4) · lighting rotation/toggle (P5) · screenshot (P19) |
-| `SelectionModel` | **`HostSidebarModel`** (`selectedNodeIndex`, `hide`, `soloRoot`) + **`PreviewSelectionVisuals`** (3D dim + wirebox + hover) | isolate trigger (P31) · selection-detail view (P32) |
-| `SettingsStore` | `@AppStorage` today, but the **old mirror pattern** on this branch | the single-source refactor (P33) + multi-window decision (P34) |
+| `SceneModel` | `GLTFSessionDocument` (typed nodes/lights/materials/skins/morphs) + `PreviewStats` + `ModelDimensions` + validation + `PipelineReport` | PreviewUI adapter only (engine packs P10–P18/P41 **DONE** on features) |
+| `Availability` | derive from document + `PreviewStats` + `PreviewDebugMode.available(from:)` | compute the booleans in the adapter |
+| `ViewportController` | backdrop/floor/auto-rotate/debug/Fit + center/ortho/presets/reset/lighting/FOV/screenshot (View menu) | bind pills to existing session controls |
+| `SelectionModel` | `HostSidebarModel` (`selected`/`hide`/`isolate`/`soloRoot`) + `PreviewSelectionVisuals` + `SelectionDetail` | PreviewUI adapter only |
+| `SettingsStore` | `@AppStorage`; P33 single-source **already on `main`** | P34 per-window vs sticky |
 
 > Existing seams to reuse: `PreviewOverlay` (`Shared/PreviewChrome.swift`) already bridges scene
 > ↔ sidebar (`selectedCameraIndex`, `document`); `GLTFNodeLookup` maps node index → entity.

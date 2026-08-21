@@ -61,6 +61,12 @@ targets:
       - path: Shared/Convert
         includes:
           - "*.swift"
+      - path: Vendor/gltf-validator
+        includes:
+          - gltf_validator.dart.js
+          - LICENSE
+          - NOTICES
+        buildPhase: resources
     info:
       path: GLBPreview/Info.plist
       properties:
@@ -213,8 +219,11 @@ targets:
           - PreviewChromeBar.swift
           - PreviewCycleMenu.swift
           - PreviewOverlayFacts.swift
+          - PreviewOrientationGizmo.swift
           - PreviewFloor.swift
           - AppSettings.swift
+          - GLTFValidator.swift
+          - PreviewFocus.swift
       - path: Shared/Convert
         includes:
           - "*.swift"

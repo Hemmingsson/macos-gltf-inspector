@@ -6,6 +6,9 @@ import simd
 /// albedo as `emissiveTexture`) so the mesh is visible in a dark viewer. With
 /// studio IBL that becomes a second full-bright light and washes the model out.
 enum PreviewEmissive {
+    /// Dim studio IBL by this many EV when file punctual lights are present / preferred.
+    private static let dimStudioEV: Float = -2
+
     struct Hint: Equatable {
         var factor: SIMD3<Float> = .zero
         var strength: Float = 1
@@ -57,7 +60,12 @@ enum PreviewEmissive {
 
     /// Dim IBL when the file already has punctual lights so they do not stack.
     static func studioIBLExponent(punctualLightCount: Int) -> Float {
-        punctualLightCount > 0 ? -2 : 0
+        punctualLightCount > 0 ? dimStudioEV : 0
+    }
+
+    /// Session IBL intensity: file-vs-studio base (0 or −2 EV) plus exposure EV.
+    static func sessionIBLExponent(dimStudioForFileLights: Bool, exposureEV: Float) -> Float {
+        (dimStudioForFileLights ? dimStudioEV : 0) + exposureEV
     }
 
     static func hint(fromJSON material: [String: Any]) -> Hint {

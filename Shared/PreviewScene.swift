@@ -10,35 +10,63 @@ private final class PreviewFrame {
     /// Set when the real pane size is known so `update` can refit once.
     var needsLayoutFit = false
     var didLayoutFit = false
+    /// Ortho `scale` is fixed world height — recompute on viewport change (P2).
+    var needsOrthoScale = false
+    /// Last session projection applied while `useSystemOrbit` (nil after file camera).
+    var appliedSessionOrthographic: Bool?
     weak var pivot: Entity?
     weak var spin: Entity?
     weak var floor: Entity?
     weak var camera: Entity?
     weak var lookRoot: Entity?
+    /// Last IBL intensity / yaw applied via `applyLook` (session lighting, not @State).
+    var appliedIntensityExponent: Float?
+    var appliedEnvironmentYaw: Float?
+    /// P16 — last skeleton overlay visibility applied to the turntable.
+    var appliedShowSkeleton: Bool?
+    /// P8 — last session FOV applied to the preview camera (nil after file camera).
+    var appliedFieldOfViewDegrees: Float?
     let debugStore = DebugMaterialStore()
     let debugApplied = DebugAppliedIndex()
 }
 
 struct PreviewScene: View {
     let entity: Entity
+    /// Session document — clip names for `PreviewClip.usable` (RK often drops them).
+    var document: GLTFSessionDocument = GLTFSessionDocument()
     var stats: PreviewStats?
     var debugModes: [PreviewDebugMode]
     var studioIBLExponent: Float
     @Bindable var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)?
+    /// Concrete Int from the host — reliable RealityView dependency for select/hide.
+    var overlayRevision: Int
+    /// Host passes window-owned bindings (P34). Quick Look leaves this nil and uses local `@State`.
+    var session: PreviewSessionBindings?
 
-    @AppStorage(SettingsKeys.autoRotate) private var settingsAutoRotate = true
+    /// App-default chrome: Settings may change this live. Canvas stage/look/camera controls
+    /// below are per-window session state (P34) — seeded once, never written back.
     @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
-    @AppStorage(SettingsKeys.showFloor) private var settingsShowFloor = true
-    @AppStorage(SettingsKeys.background) private var backgroundRaw = PreviewBackground.window.rawValue
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var backdropIndex: Int
-    /// Quick Look toggles live only here and never persist. The host reads/writes the
-    /// @AppStorage settings above as the single source of truth — no mirror to sync.
-    @State private var qlAutoRotate: Bool
-    @State private var qlShowFloor: Bool
+    @State private var localBackdropIndex: Int
+    @State private var localAutoRotate: Bool
+    @State private var localShowFloor: Bool
+    /// P1 — Center on by default; ephemeral, never UserDefaults.
+    @State private var localCenterModel: Bool
+    /// P2 — Orthographic projection; ephemeral, never UserDefaults.
+    @State private var localOrthographic: Bool
+    /// P5 — session lighting; ephemeral, never UserDefaults.
+    @State private var localExposureEV: Float
+    @State private var localDimStudioForFileLights: Bool
+    @State private var localEnvironmentYaw: Float
+    /// P6 — force double-sided materials; ephemeral, never UserDefaults.
+    @State private var localDoubleSided: Bool
+    /// P16 — skeleton overlay; ephemeral, never UserDefaults.
+    @State private var localShowSkeleton: Bool
+    /// P8 — perspective FOV; ephemeral, never UserDefaults.
+    @State private var localFieldOfViewDegrees: Float
     /// Huge/flat models veto auto-rotate. Computed once per entity in `init` (cheap to read
     /// in the 16ms tick, unlike re-deriving bounds each frame).
     private let geometryDisablesAutoRotate: Bool
@@ -62,49 +90,121 @@ struct PreviewScene: View {
 
     init(
         entity: Entity,
+        document: GLTFSessionDocument = GLTFSessionDocument(),
         stats: PreviewStats?,
         debugModes: [PreviewDebugMode] = [.none],
         studioIBLExponent: Float = 0,
         interaction: PreviewInteraction,
         isDark: Bool,
-        sidebar: (any PreviewOverlay)? = nil
+        sidebar: (any PreviewOverlay)? = nil,
+        overlayRevision: Int = 0,
+        session: PreviewSessionBindings? = nil
     ) {
         self.entity = entity
+        self.document = document
         self.stats = stats
         self.debugModes = debugModes.isEmpty ? [.none] : debugModes
         self.studioIBLExponent = studioIBLExponent
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
+        self.overlayRevision = overlayRevision
+        self.session = session
         let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
         geometryDisablesAutoRotate = PreviewCamera.disablesAutoRotate(extent)
-        // Seed the Quick Look overrides from saved prefs; the host ignores these.
-        _qlAutoRotate = State(
+        // P34: seed local session from defaults when the host did not pass bindings (Quick Look).
+        // Only `_State(initialValue:)` here — never touch `@Observable` / other `@State` (AGENTS.md).
+        _localAutoRotate = State(
             initialValue: UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
         )
-        _qlShowFloor = State(
+        _localShowFloor = State(
             initialValue: UserDefaults.standard.object(forKey: SettingsKeys.showFloor) as? Bool ?? true
         )
-        _backdropIndex = State(initialValue: PreviewBackground.storedIndex)
+        _localBackdropIndex = State(initialValue: PreviewBackground.storedIndex)
+        _localCenterModel = State(initialValue: true)
+        _localOrthographic = State(initialValue: false)
+        _localExposureEV = State(initialValue: 0)
+        // Match auto-dim when the file brought punctual lights (`studioIBLExponent == -2`).
+        _localDimStudioForFileLights = State(initialValue: studioIBLExponent < 0)
+        _localEnvironmentYaw = State(initialValue: 0)
+        _localDoubleSided = State(initialValue: false)
+        _localShowSkeleton = State(initialValue: false)
+        _localFieldOfViewDegrees = State(initialValue: PreviewCamera.defaultFieldOfViewDegrees)
     }
 
     private var isHost: Bool { sidebar != nil }
 
-    // Auto-rotate / floor: the host binds straight to @AppStorage (single source of truth);
-    // Quick Look uses the ephemeral @State overrides. `autoRotateActive` layers the runtime
-    // vetoes (Reduced Motion, geometry) on top of the saved intent without ever writing them
-    // back — so a flat model or Reduced Motion can't clobber the saved preference.
-    private var showFloorValue: Bool { isHost ? settingsShowFloor : qlShowFloor }
-    private var autoRotateIntent: Bool { isHost ? settingsAutoRotate : qlAutoRotate }
+    private var backdropIndex: Binding<Int> {
+        session?.backdropIndex ?? $localBackdropIndex
+    }
+
+    private var autoRotateBinding: Binding<Bool> {
+        session?.autoRotate ?? $localAutoRotate
+    }
+
+    private var showFloorBinding: Binding<Bool> {
+        session?.showFloor ?? $localShowFloor
+    }
+
+    private var centerModelBinding: Binding<Bool> {
+        session?.centerModel ?? $localCenterModel
+    }
+
+    private var orthographicBinding: Binding<Bool> {
+        session?.orthographic ?? $localOrthographic
+    }
+
+    private var exposureEVBinding: Binding<Float> {
+        session?.exposureEV ?? $localExposureEV
+    }
+
+    private var dimStudioForFileLightsBinding: Binding<Bool> {
+        session?.dimStudioForFileLights ?? $localDimStudioForFileLights
+    }
+
+    private var environmentYawBinding: Binding<Float> {
+        session?.environmentYaw ?? $localEnvironmentYaw
+    }
+
+    private var doubleSidedBinding: Binding<Bool> {
+        session?.doubleSided ?? $localDoubleSided
+    }
+
+    private var showSkeletonBinding: Binding<Bool> {
+        session?.showSkeleton ?? $localShowSkeleton
+    }
+
+    private var fieldOfViewBinding: Binding<Float> {
+        session?.fieldOfViewDegrees ?? $localFieldOfViewDegrees
+    }
+
+    // Session auto-rotate / floor are ephemeral. `autoRotateActive` layers runtime vetoes
+    // (Reduced Motion, geometry) without writing them back to Settings.
+    private var showFloorValue: Bool { showFloorBinding.wrappedValue }
+    private var centerModelValue: Bool { centerModelBinding.wrappedValue }
+    private var orthographicValue: Bool { orthographicBinding.wrappedValue }
+    private var exposureEVValue: Float { exposureEVBinding.wrappedValue }
+    private var dimStudioForFileLightsValue: Bool { dimStudioForFileLightsBinding.wrappedValue }
+    private var environmentYawValue: Float { environmentYawBinding.wrappedValue }
+    private var doubleSidedValue: Bool { doubleSidedBinding.wrappedValue }
+    private var showSkeletonValue: Bool { showSkeletonBinding.wrappedValue }
+    private var fieldOfViewValue: Float {
+        PreviewCamera.clampedFieldOfView(fieldOfViewBinding.wrappedValue)
+    }
+    private var documentSkins: [GLTFSessionDocument.Skin] {
+        let fromSidebar = sidebar?.document.skins ?? []
+        return fromSidebar.isEmpty ? document.skins : fromSidebar
+    }
+    private var effectiveIBLExponent: Float {
+        PreviewEmissive.sessionIBLExponent(
+            dimStudioForFileLights: dimStudioForFileLightsValue,
+            exposureEV: exposureEVValue
+        )
+    }
+    private var autoRotateIntent: Bool { autoRotateBinding.wrappedValue }
     private var autoRotateActive: Bool {
         autoRotateIntent && !reduceMotion && !geometryDisablesAutoRotate
-    }
-    private var autoRotateBinding: Binding<Bool> {
-        isHost ? $settingsAutoRotate : $qlAutoRotate
-    }
-    private var showFloorBinding: Binding<Bool> {
-        isHost ? $settingsShowFloor : $qlShowFloor
     }
 
     private var useSystemOrbit: Bool {
@@ -112,7 +212,7 @@ struct PreviewScene: View {
     }
 
     private var backdropColor: Color {
-        PreviewBackground.at(backdropIndex).color
+        PreviewBackground.at(backdropIndex.wrappedValue).color
     }
 
     private var tickWhileActive: Bool {
@@ -120,18 +220,23 @@ struct PreviewScene: View {
     }
 
     var body: some View {
-        let _ = sidebar?.overlayRevision
+        let _ = overlayRevision
         let _ = lookStore.look
         ZStack {
             RealityView { content in
                 content.camera = .virtual
-                let assembled = PreviewCamera.makeTurntable(for: entity)
+                // Capture once for this make — do not write @State from make/update.
+                let centerModel = centerModelValue
+                let assembled = PreviewCamera.makeTurntable(for: entity, center: centerModel)
                 frame.bounds = assembled.bounds
                 frame.pivot = assembled.pivot
                 frame.spin = assembled.spin
+                frame.autoRotateYaw = 0
+                frame.didLayoutFit = false
+                frame.needsLayoutFit = true
                 let floor = PreviewFloor.make(
                     bounds: assembled.bounds,
-                    lineColor: PreviewBackground.at(backdropIndex).gridLineNSColor(systemDark: isDark)
+                    lineColor: PreviewBackground.at(backdropIndex.wrappedValue).gridLineNSColor(systemDark: isDark)
                 )
                 frame.floor = floor
                 assembled.pivot.addChild(floor)
@@ -141,9 +246,11 @@ struct PreviewScene: View {
                     minBound: assembled.bounds.min,
                     maxBound: assembled.bounds.max,
                     padding: PreviewCamera.previewFitPadding,
-                    aspect: aspect(of: viewport)
+                    aspect: aspect(of: viewport),
+                    fieldOfViewInDegrees: fieldOfViewValue
                 )
                 frame.camera = camera
+                frame.appliedFieldOfViewDegrees = fieldOfViewValue
                 // Pivot carries the model (real bounds) — system `.orbit` frames from it.
                 // A separate empty focus entity was nose-diving the camera on open.
                 content.cameraTarget = assembled.pivot
@@ -155,15 +262,19 @@ struct PreviewScene: View {
                 content.add(assembled.pivot)
                 content.add(camera)
                 content.add(lookRoot)
+                let intensity = effectiveIBLExponent
+                let yaw = environmentYawValue
                 PreviewLighting.applyLook(
                     lookRoot: lookRoot,
                     pivot: assembled.pivot,
                     look: lookStore.look,
-                    intensityExponent: studioIBLExponent
+                    intensityExponent: intensity,
+                    environmentYaw: yaw
                 )
+                frame.appliedIntensityExponent = intensity
+                frame.appliedEnvironmentYaw = yaw
                 sidebar?.applyIfNeeded(to: assembled.pivot)
-                frame.needsLayoutFit = true
-                let usable = Self.usableClips(on: entity)
+                let usable = PreviewClip.usable(on: entity, document: document)
                 let look = lookStore.look
                 Task { @MainActor in
                     interaction.bind(camera: camera, orbitFocus: assembled.pivot)
@@ -173,6 +284,12 @@ struct PreviewScene: View {
                         clipIndex = 0
                         isPlaying = false
                         startClip(at: 0, playing: false)
+                    }
+                    if !usable.isEmpty {
+                        let summary = usable
+                            .map { "\($0.title) (\((($0.duration * 100).rounded() / 100))s)" }
+                            .joined(separator: ", ")
+                        AppLog.info(AppLog.load, "animation clips: \(summary)")
                     }
                 }
             } update: { content in
@@ -186,38 +303,68 @@ struct PreviewScene: View {
                         to: camera,
                         bounds: frame.bounds,
                         aspect: aspect(of: viewport),
-                        orbitFocus: pivot
+                        orbitFocus: pivot,
+                        orthographic: useSystemOrbit && orthographicValue,
+                        fieldOfViewInDegrees: fieldOfViewValue
                     )
                     frame.needsLayoutFit = false
+                    frame.needsOrthoScale = false
                     frame.didLayoutFit = true
+                    if useSystemOrbit {
+                        frame.appliedSessionOrthographic = orthographicValue
+                        frame.appliedFieldOfViewDegrees = fieldOfViewValue
+                    }
                     Task { @MainActor in interaction.markFitted() }
+                } else if frame.needsOrthoScale, useSystemOrbit, orthographicValue,
+                          let camera = frame.camera
+                {
+                    PreviewCamera.updateOrthographicScale(
+                        on: camera,
+                        bounds: frame.bounds,
+                        aspect: aspect(of: viewport)
+                    )
+                    frame.needsOrthoScale = false
                 }
                 var lookToMarkApplied: AppLook?
-                if let pending = pendingReady, pending != appliedLook,
-                   let lookRoot = frame.lookRoot, let pivot = frame.pivot
-                {
-                    PreviewLighting.applyLook(
-                        lookRoot: lookRoot,
-                        pivot: pivot,
-                        look: pending,
-                        intensityExponent: studioIBLExponent
-                    )
-                    lookToMarkApplied = pending
+                if let lookRoot = frame.lookRoot, let pivot = frame.pivot {
+                    let intensity = effectiveIBLExponent
+                    let yaw = environmentYawValue
+                    let lookChanged = pendingReady != nil && pendingReady != appliedLook
+                    let lightingChanged =
+                        frame.appliedIntensityExponent != intensity
+                        || frame.appliedEnvironmentYaw != yaw
+                    if lookChanged || lightingChanged {
+                        let look = pendingReady ?? appliedLook ?? lookStore.look
+                        PreviewLighting.applyLook(
+                            lookRoot: lookRoot,
+                            pivot: pivot,
+                            look: look,
+                            intensityExponent: intensity,
+                            environmentYaw: yaw
+                        )
+                        frame.appliedIntensityExponent = intensity
+                        frame.appliedEnvironmentYaw = yaw
+                        if lookChanged {
+                            lookToMarkApplied = pendingReady
+                        }
+                    }
                 }
                 var floorIndexToMarkApplied: Int?
                 if let pivot = frame.pivot {
                     if let floor = frame.floor {
                         floor.isEnabled = showFloorValue
-                        if appliedFloorLineIndex != backdropIndex {
+                        let index = backdropIndex.wrappedValue
+                        if appliedFloorLineIndex != index {
                             PreviewFloor.applyLineColor(
-                                PreviewBackground.at(backdropIndex).gridLineNSColor(systemDark: isDark),
+                                PreviewBackground.at(index).gridLineNSColor(systemDark: isDark),
                                 to: floor
                             )
-                            floorIndexToMarkApplied = backdropIndex
+                            floorIndexToMarkApplied = index
                         }
                     }
                     sidebar?.applyIfNeeded(to: pivot)
                     applyDebugIfNeeded(to: pivot)
+                    applySkeletonOverlayIfNeeded(to: pivot)
                 }
                 if lookToMarkApplied != nil || floorIndexToMarkApplied != nil {
                     let look = lookToMarkApplied
@@ -228,7 +375,12 @@ struct PreviewScene: View {
                     }
                 }
                 if sidebar?.selectedCameraIndex != nil {
+                    frame.appliedSessionOrthographic = nil
+                    frame.appliedFieldOfViewDegrees = nil
                     applyFileCamera()
+                } else if useSystemOrbit {
+                    syncSessionProjectionIfNeeded()
+                    syncSessionFieldOfViewIfNeeded()
                 }
             } placeholder: {
                 // RealityView's default ProgressView is unframed and sits at the
@@ -236,6 +388,8 @@ struct PreviewScene: View {
                 Color.clear
             }
             .realityViewCameraControls(useSystemOrbit ? .orbit : .none)
+            // Remount when Center toggles so `make` rebuilds the turntable (no @State writes from make).
+            .id(centerModelValue)
             .backgroundStyle(backdropColor)
             .background {
                 GeometryReader { proxy in
@@ -254,7 +408,7 @@ struct PreviewScene: View {
 
             if showToolbar, isHost || chromeVisible {
                 PreviewChromeBar(
-                    backdropIndex: $backdropIndex,
+                    backdropIndex: backdropIndex,
                     debugModeIndex: $debugModeIndex,
                     autoRotate: autoRotateBinding,
                     showFloor: showFloorBinding,
@@ -265,11 +419,18 @@ struct PreviewScene: View {
                 .transition(.opacity)
             }
 
+            // P7 — camera-orbit XYZ; not the Center-off world-origin gizmo.
+            PreviewOrientationGizmo(interaction: interaction)
+                .padding(.leading, 16)
+                .padding(.bottom, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .allowsHitTesting(false)
+
             if !isHost, chromeVisible, let facts = stats?.overlayFacts, !facts.isEmpty {
                 PreviewOverlayFacts(facts: facts, tint: chromeTint(active: true))
                     .allowsHitTesting(false)
                     .padding(.leading, 14)
-                    .padding(.bottom, 14)
+                    .padding(.bottom, 86)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     .transition(.opacity)
             }
@@ -297,18 +458,6 @@ struct PreviewScene: View {
             // Lighting is never part of open — warm HDR after the model is on screen.
             prefetchLook(lookStore.look)
         }
-        .onChange(of: backdropIndex) { _, index in
-            guard isHost else { return }
-            let backgrounds = PreviewBackground.allCases
-            backgroundRaw = backgrounds[index % backgrounds.count].rawValue
-        }
-        .onChange(of: backgroundRaw) { _, raw in
-            guard isHost,
-                  let background = PreviewBackground(rawValue: raw),
-                  let index = PreviewBackground.allCases.firstIndex(of: background)
-            else { return }
-            backdropIndex = index
-        }
         .onChange(of: isDark) { _, _ in
             appliedFloorLineIndex = -1
         }
@@ -333,6 +482,23 @@ struct PreviewScene: View {
         }
         .onChange(of: lookStore.look) { _, look in
             prefetchLook(look)
+        }
+        .onChange(of: orthographicValue) { _, _ in
+            // Toggle from View menu — apply when system orbit owns the camera.
+            guard useSystemOrbit else { return }
+            frame.appliedSessionOrthographic = nil
+            syncSessionProjectionIfNeeded()
+        }
+        .onChange(of: interaction.openingFitResetID) { _, id in
+            // Menu / Task MainActor only — not RealityView update (AGENTS.md pitfall 4).
+            guard id > 0 else { return }
+            resetOpeningFit()
+        }
+        .onChange(of: overlayRevision) { _, _ in
+            // Host selection/hide: NSHostingView + `any PreviewOverlay` do not reliably
+            // drive RealityView `update`; apply on the pivot from MainActor here.
+            guard let pivot = frame.pivot else { return }
+            sidebar?.applyIfNeeded(to: pivot)
         }
         .task(id: tickWhileActive) {
             guard tickWhileActive else { return }
@@ -362,6 +528,30 @@ struct PreviewScene: View {
         }
     }
 
+    /// P4 — undo Shift-pan, clear auto-rotate yaw, re-apply opening front-3/4 fit.
+    private func resetOpeningFit() {
+        frame.pivot?.setPosition(.zero, relativeTo: nil)
+        frame.autoRotateYaw = 0
+        frame.spin?.orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
+        guard let camera = frame.camera else {
+            interaction.markFitted()
+            return
+        }
+        PreviewCamera.applyFit(
+            to: camera,
+            bounds: frame.bounds,
+            aspect: aspect(of: viewport),
+            orbitFocus: frame.pivot,
+            orthographic: useSystemOrbit && orthographicValue,
+            fieldOfViewInDegrees: fieldOfViewValue
+        )
+        if useSystemOrbit {
+            frame.appliedSessionOrthographic = orthographicValue
+            frame.appliedFieldOfViewDegrees = fieldOfViewValue
+        }
+        interaction.markFitted()
+    }
+
     private func applyFileCamera() {
         guard let sidebar, let index = sidebar.selectedCameraIndex,
               sidebar.document.cameras.indices.contains(index),
@@ -376,6 +566,34 @@ struct PreviewScene: View {
             cameraNode: cameraNode,
             spec: sidebar.document.cameras[index]
         )
+    }
+
+    /// Preview ortho toggle only while `useSystemOrbit` — file cameras own projection via
+    /// `applyFileView`. Keeps pose; swaps projection components.
+    private func syncSessionProjectionIfNeeded() {
+        guard useSystemOrbit, let camera = frame.camera else { return }
+        let want = orthographicValue
+        guard frame.appliedSessionOrthographic != want else { return }
+        if want {
+            PreviewCamera.applyOrthographicProjection(
+                to: camera,
+                bounds: frame.bounds,
+                aspect: aspect(of: viewport)
+            )
+        } else {
+            PreviewCamera.restoreFitPerspective(on: camera, fieldOfViewInDegrees: fieldOfViewValue)
+            frame.appliedFieldOfViewDegrees = fieldOfViewValue
+        }
+        frame.appliedSessionOrthographic = want
+    }
+
+    /// P8 — live FOV while perspective; no-op while ortho / file camera.
+    private func syncSessionFieldOfViewIfNeeded() {
+        guard useSystemOrbit, !orthographicValue, let camera = frame.camera else { return }
+        let want = fieldOfViewValue
+        guard frame.appliedFieldOfViewDegrees != want else { return }
+        PreviewCamera.applyFieldOfView(to: camera, degrees: want)
+        frame.appliedFieldOfViewDegrees = want
     }
 
     private func prefetchLook(_ look: AppLook) {
@@ -393,7 +611,7 @@ struct PreviewScene: View {
     }
 
     private func chromeTint(active: Bool) -> Color {
-        PreviewBackground.iconColor(at: backdropIndex, systemDark: isDark, active: active)
+        PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: active)
     }
 
     private func seek(to time: TimeInterval) {
@@ -417,22 +635,38 @@ struct PreviewScene: View {
         }
     }
 
-    private static func usableClips(on entity: Entity) -> [PreviewClip] {
-        var result: [PreviewClip] = []
-        for (offset, resource) in entity.availableAnimations.enumerated() {
-            guard let duration = EntityLoader.clipDuration(resource, on: entity) else { continue }
-            let name = resource.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let title = name.isEmpty ? "Clip \(result.count + 1)" : name
-            result.append(PreviewClip(id: offset, resource: resource, title: title, duration: duration))
-        }
-        return result
-    }
-
     private func applyDebugIfNeeded(to root: Entity) {
         let index = debugModes.indices.contains(debugModeIndex) ? debugModeIndex : 0
-        guard frame.debugApplied.index != index else { return }
-        PreviewDebugMode.apply(debugModes[index], to: root, store: frame.debugStore)
+        let doubleSided = doubleSidedValue
+        guard frame.debugApplied.index != index || frame.debugApplied.doubleSided != doubleSided
+        else { return }
+        PreviewDebugMode.apply(
+            debugModes[index],
+            doubleSided: doubleSided,
+            to: root,
+            store: frame.debugStore
+        )
         frame.debugApplied.index = index
+        frame.debugApplied.doubleSided = doubleSided
+    }
+
+    private func applySkeletonOverlayIfNeeded(to pivot: Entity) {
+        let want = showSkeletonValue && !documentSkins.isEmpty
+        if frame.appliedShowSkeleton != want {
+            PreviewSkeletonOverlay.apply(
+                show: want,
+                skins: documentSkins,
+                to: entity,
+                relativeTo: pivot
+            )
+            frame.appliedShowSkeleton = want
+        } else if want {
+            PreviewSkeletonOverlay.updateBones(
+                skins: documentSkins,
+                root: entity,
+                pivot: pivot
+            )
+        }
     }
 
     private func applyViewport(_ size: CGSize) {
@@ -441,6 +675,10 @@ struct PreviewScene: View {
             abs(size.width - viewport.width) > 0.5 || abs(size.height - viewport.height) > 0.5
         if sizeChanged {
             viewport = size
+            // Ortho scale is fixed world height — recompute when the pane aspect changes.
+            if useSystemOrbit, orthographicValue, frame.didLayoutFit {
+                frame.needsOrthoScale = true
+            }
         }
         // Refit once after the real pane size is known (make used a placeholder aspect).
         if frame.camera != nil, !frame.didLayoutFit {
@@ -455,11 +693,5 @@ struct PreviewScene: View {
 
 private final class DebugAppliedIndex {
     var index: Int?
-}
-
-private struct PreviewClip {
-    let id: Int
-    let resource: AnimationResource
-    let title: String
-    let duration: TimeInterval
+    var doubleSided: Bool?
 }

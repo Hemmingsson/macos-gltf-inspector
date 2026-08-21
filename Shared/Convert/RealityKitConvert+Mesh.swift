@@ -106,6 +106,8 @@ extension RealityKitConvert {
             let normals: GLTFAccessor?
             let tangents: GLTFAccessor?
             let bakedUVs: [SIMD2<Float>]?
+            /// Packed RGBA; RealityKit has no MeshBuffers.colors — only LowLevelMesh `.color`.
+            let colors: [SIMD4<Float>]?
             let indices: [UInt32]
             let bounds: BoundingBox
             var vertexCount: Int { positions.count }
@@ -119,6 +121,7 @@ extension RealityKitConvert {
         var anyNormals = false
         var anyTangents = false
         var anyUVs = false
+        var anyColors = false
 
         for primitive in gltfMesh.primitives {
             guard primitive.primitiveType == .triangles,
@@ -158,6 +161,17 @@ extension RealityKitConvert {
                 anyUVs = true
             }
 
+            let colors: [SIMD4<Float>]?
+            if let colorAttr = primitive.attribute(forName: "COLOR_0") {
+                guard let packed = Packed.color4Array(for: colorAttr.accessor),
+                      packed.count == positionAttr.accessor.count
+                else { return nil }
+                colors = packed
+                anyColors = true
+            } else {
+                colors = nil
+            }
+
             let indices: [UInt32]
             if let indexAccessor = primitive.indices {
                 guard let packed = Packed.uint32Array(for: indexAccessor), !packed.isEmpty else { return nil }
@@ -175,6 +189,7 @@ extension RealityKitConvert {
                     normals: normalsAccessor,
                     tangents: tangentsAccessor,
                     bakedUVs: bakedUVs,
+                    colors: colors,
                     indices: indices,
                     bounds: bounds
                 )
@@ -194,6 +209,7 @@ extension RealityKitConvert {
         var normalBufferIndex: Int?
         var tangentBufferIndex: Int?
         var uvBufferIndex: Int?
+        var colorBufferIndex: Int?
         if anyNormals {
             let idx = layouts.count
             normalBufferIndex = idx
@@ -211,6 +227,12 @@ extension RealityKitConvert {
             uvBufferIndex = idx
             attributes.append(.init(semantic: .uv0, format: .float2, layoutIndex: idx, offset: 0))
             layouts.append(.init(bufferIndex: idx, bufferStride: 8))
+        }
+        if anyColors {
+            let idx = layouts.count
+            colorBufferIndex = idx
+            attributes.append(.init(semantic: .color, format: .float4, layoutIndex: idx, offset: 0))
+            layouts.append(.init(bufferIndex: idx, bufferStride: 16))
         }
 
         let descriptor = LowLevelMesh.Descriptor(
@@ -273,6 +295,29 @@ extension RealityKitConvert {
                         }
                     } else {
                         memset(dest.baseAddress! + byteOffset, 0, nbytes)
+                    }
+                    byteOffset += nbytes
+                }
+            }
+        }
+
+        if let colorBufferIndex {
+            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: colorBufferIndex) { dest in
+                var byteOffset = 0
+                for plan in plans {
+                    let nbytes = plan.vertexCount * 16
+                    if let colors = plan.colors {
+                        colors.withUnsafeBytes { src in
+                            guard let base = src.baseAddress else { return }
+                            memcpy(dest.baseAddress! + byteOffset, base, min(nbytes, src.count))
+                        }
+                    } else {
+                        // Missing COLOR on a sibling primitive → opaque white.
+                        let white = SIMD4<Float>(1, 1, 1, 1)
+                        let out = (dest.baseAddress! + byteOffset).assumingMemoryBound(to: SIMD4<Float>.self)
+                        for i in 0..<plan.vertexCount {
+                            out[i] = white
+                        }
                     }
                     byteOffset += nbytes
                 }
@@ -470,6 +515,7 @@ extension RealityKitConvert {
             part.setBlendShapeOffsets(named: name, buffer: MeshBuffers.BlendShapeOffsets(offsets))
         }
     }
+
     /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), wrap a single
     /// UDIM tile into 0–1, then flip V for RealityKit.
     private func bakedTextureCoordinates(for primitive: GLTFPrimitive) -> [SIMD2<Float>]? {

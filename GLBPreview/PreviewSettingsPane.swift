@@ -19,7 +19,7 @@ struct PreviewSettingsPane: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Auto-rotate")
-                        Text("Orbit the model when using the Fit camera. Reduced Motion turns this off.")
+                        Text("Default for new windows. Open windows keep their own View-menu / toolbar toggle.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -31,7 +31,7 @@ struct PreviewSettingsPane: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Polar floor")
-                        Text("Ground plate under the model (visual only — does not change orbit).")
+                        Text("Default for new windows. Visual only — does not change orbit. Open windows keep their own toggle.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -48,7 +48,7 @@ struct PreviewSettingsPane: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                 }
-                Text("Used by the app and as the initial Quick Look backdrop. Both can cycle colors from the preview icons.")
+                Text("Default backdrop for new windows and the initial Quick Look backdrop. Open windows keep their own cycle.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

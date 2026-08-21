@@ -46,7 +46,8 @@ enum PreviewLighting {
         lookRoot: Entity,
         pivot: Entity,
         look: AppLook = .current,
-        intensityExponent: Float
+        intensityExponent: Float,
+        environmentYaw: Float = 0
     ) {
         // Drop receivers before removing IBL entities — leaving receivers aimed at
         // torn-down lights traps RealityKit (`EXC_BREAKPOINT` during updates).
@@ -55,15 +56,17 @@ enum PreviewLighting {
         for entity in stale {
             entity.removeFromParent()
         }
-        if look.useEnvironmentMap {
-            if let ibl = makeIBLEntity(receiver: pivot, resource: cachedResource(for: look) ?? cachedProbe, intensityExponent: intensityExponent) {
-                lookRoot.addChild(ibl)
-            } else {
-                // HDR still loading — temporary key+fill so first paint isn't black.
-                lookRoot.addChild(makeDirectional(name: "lookKey", intensity: 2_500, from: [4, 7, 6], castsShadow: true))
-                lookRoot.addChild(makeDirectional(name: "lookFill", intensity: 900, from: [-5, 3, 2], castsShadow: false))
-            }
+        if look.useEnvironmentMap,
+           let ibl = makeIBLEntity(
+            receiver: pivot,
+            resource: cachedResource(for: look) ?? cachedProbe,
+            intensityExponent: intensityExponent,
+            environmentYaw: environmentYaw
+           )
+        {
+            lookRoot.addChild(ibl)
         } else {
+            // No env map, or HDR still loading — key+fill so first paint isn't black.
             lookRoot.addChild(makeDirectional(name: "lookKey", intensity: 2_500, from: [4, 7, 6], castsShadow: true))
             lookRoot.addChild(makeDirectional(name: "lookFill", intensity: 900, from: [-5, 3, 2], castsShadow: false))
         }
@@ -112,13 +115,16 @@ enum PreviewLighting {
     private static func makeIBLEntity(
         receiver: Entity,
         resource: EnvironmentResource?,
-        intensityExponent: Float
+        intensityExponent: Float,
+        environmentYaw: Float
     ) -> Entity? {
         guard let resource else { return nil }
         let ibl = Entity()
         ibl.name = "lookIBL"
         var light = ImageBasedLightComponent(source: .single(resource), intensityExponent: intensityExponent)
-        light.inheritsRotation = false
+        // Session env yaw rotates the probe; re-applied whenever `applyLook` rebuilds.
+        light.inheritsRotation = true
+        ibl.orientation = simd_quatf(angle: environmentYaw, axis: [0, 1, 0])
         ibl.components.set(light)
         applyReceivers(from: ibl, to: receiver)
         return ibl

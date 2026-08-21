@@ -41,10 +41,19 @@ final class PreviewInteraction {
         endPointerGesture()
     }
 
+    @MainActor
     func markFitted() {
         didFit = true
         endPointerGesture()
         resetFOV()
+    }
+
+    /// Bumped from the View menu. `PreviewScene` applies opening fit on MainActor —
+    /// never from RealityView `update`.
+    private(set) var openingFitResetID = 0
+
+    func requestOpeningFitReset() {
+        openingFitResetID += 1
     }
 
     func bind(camera: Entity, orbitFocus: Entity) {
@@ -117,10 +126,10 @@ final class PreviewInteraction {
         lastPanWindowPoint = nil
     }
 
+    @MainActor
     private func resetFOV() {
-        guard let camera, var perspective = camera.components[PerspectiveCameraComponent.self] else { return }
-        perspective.fieldOfViewInDegrees = PreviewCamera.defaultFieldOfViewDegrees
-        camera.components.set(perspective)
+        guard let camera else { return }
+        PreviewCamera.applyFieldOfView(to: camera, degrees: PreviewCamera.defaultFieldOfViewDegrees)
     }
 
     /// Dolly along the camera look axis (not eye→target). Factor &lt; 1 advances;
