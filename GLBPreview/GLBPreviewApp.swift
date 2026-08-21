@@ -55,6 +55,7 @@ struct GLBPreviewApp: App {
     init() {
         UserDefaults.standard.register(defaults: [
             SettingsKeys.background: PreviewBackground.window.rawValue,
+            SettingsKeys.autoRotate: true,
             SettingsKeys.showFloor: true,
             "NSQuitAlwaysKeepsWindows": false,
         ])

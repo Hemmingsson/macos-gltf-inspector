@@ -9,7 +9,6 @@ struct PreviewChromeBar: View {
     var debugModes: [PreviewDebugMode]
     var isDark: Bool
     var isHost: Bool
-    var onAutoRotateChanged: (Bool) -> Void
 
     var body: some View {
         GlassEffectContainer(spacing: 10) {
@@ -44,7 +43,6 @@ struct PreviewChromeBar: View {
                 }
                 Button {
                     autoRotate.toggle()
-                    onAutoRotateChanged(autoRotate)
                 } label: {
                     Image(systemName: "arrow.trianglehead.counterclockwise.rotate.90")
                         .font(.system(size: 14, weight: .regular))

@@ -35,8 +35,13 @@ struct PreviewScene: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var backdropIndex: Int
-    @State private var autoRotate: Bool
-    @State private var showFloor: Bool
+    /// Quick Look toggles live only here and never persist. The host reads/writes the
+    /// @AppStorage settings above as the single source of truth — no mirror to sync.
+    @State private var qlAutoRotate: Bool
+    @State private var qlShowFloor: Bool
+    /// Huge/flat models veto auto-rotate. Computed once per entity in `init` (cheap to read
+    /// in the 16ms tick, unlike re-deriving bounds each frame).
+    private let geometryDisablesAutoRotate: Bool
     @State private var playback: AnimationPlaybackController?
     @State private var clips: [PreviewClip] = []
     @State private var clipIndex = 0
@@ -73,16 +78,34 @@ struct PreviewScene: View {
         self.sidebar = sidebar
         let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
-        let settingsOn = UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
-        _autoRotate = State(
-            initialValue: PreviewCamera.disablesAutoRotate(extent) ? false : settingsOn
+        geometryDisablesAutoRotate = PreviewCamera.disablesAutoRotate(extent)
+        // Seed the Quick Look overrides from saved prefs; the host ignores these.
+        _qlAutoRotate = State(
+            initialValue: UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
         )
-        let floorOn = UserDefaults.standard.object(forKey: SettingsKeys.showFloor) as? Bool ?? true
-        _showFloor = State(initialValue: floorOn)
+        _qlShowFloor = State(
+            initialValue: UserDefaults.standard.object(forKey: SettingsKeys.showFloor) as? Bool ?? true
+        )
         _backdropIndex = State(initialValue: PreviewBackground.storedIndex)
     }
 
     private var isHost: Bool { sidebar != nil }
+
+    // Auto-rotate / floor: the host binds straight to @AppStorage (single source of truth);
+    // Quick Look uses the ephemeral @State overrides. `autoRotateActive` layers the runtime
+    // vetoes (Reduced Motion, geometry) on top of the saved intent without ever writing them
+    // back — so a flat model or Reduced Motion can't clobber the saved preference.
+    private var showFloorValue: Bool { isHost ? settingsShowFloor : qlShowFloor }
+    private var autoRotateIntent: Bool { isHost ? settingsAutoRotate : qlAutoRotate }
+    private var autoRotateActive: Bool {
+        autoRotateIntent && !reduceMotion && !geometryDisablesAutoRotate
+    }
+    private var autoRotateBinding: Binding<Bool> {
+        isHost ? $settingsAutoRotate : $qlAutoRotate
+    }
+    private var showFloorBinding: Binding<Bool> {
+        isHost ? $settingsShowFloor : $qlShowFloor
+    }
 
     private var useSystemOrbit: Bool {
         sidebar?.selectedCameraIndex == nil
@@ -93,7 +116,7 @@ struct PreviewScene: View {
     }
 
     private var tickWhileActive: Bool {
-        autoRotate || (isPlaying && playback != nil && (isHost || chromeVisible))
+        autoRotateActive || (isPlaying && playback != nil && (isHost || chromeVisible))
     }
 
     var body: some View {
@@ -184,7 +207,7 @@ struct PreviewScene: View {
                 var floorIndexToMarkApplied: Int?
                 if let pivot = frame.pivot {
                     if let floor = frame.floor {
-                        floor.isEnabled = showFloor
+                        floor.isEnabled = showFloorValue
                         if appliedFloorLineIndex != backdropIndex {
                             PreviewFloor.applyLineColor(
                                 PreviewBackground.at(backdropIndex).gridLineNSColor(systemDark: isDark),
@@ -233,16 +256,11 @@ struct PreviewScene: View {
                 PreviewChromeBar(
                     backdropIndex: $backdropIndex,
                     debugModeIndex: $debugModeIndex,
-                    autoRotate: $autoRotate,
-                    showFloor: $showFloor,
+                    autoRotate: autoRotateBinding,
+                    showFloor: showFloorBinding,
                     debugModes: debugModes,
                     isDark: isDark,
-                    isHost: isHost,
-                    onAutoRotateChanged: { enabled in
-                        if isHost {
-                            settingsAutoRotate = enabled
-                        }
-                    }
+                    isHost: isHost
                 )
                 .transition(.opacity)
             }
@@ -276,20 +294,8 @@ struct PreviewScene: View {
         }
         .animation(.easeInOut(duration: 0.15), value: chromeVisible)
         .onAppear {
-            applyAutoRotateSetting()
             // Lighting is never part of open — warm HDR after the model is on screen.
             prefetchLook(lookStore.look)
-        }
-        .onChange(of: settingsAutoRotate) { _, _ in
-            applyAutoRotateSetting()
-        }
-        .onChange(of: settingsShowFloor) { _, value in
-            guard isHost else { return }
-            showFloor = value
-        }
-        .onChange(of: showFloor) { _, value in
-            guard isHost else { return }
-            settingsShowFloor = value
         }
         .onChange(of: backdropIndex) { _, index in
             guard isHost else { return }
@@ -335,7 +341,7 @@ struct PreviewScene: View {
                 let now = Date()
                 let dt = now.timeIntervalSince(lastTick)
                 lastTick = now
-                if autoRotate, useSystemOrbit {
+                if autoRotateActive, useSystemOrbit {
                     interaction.refreshPointerTimeout()
                     if !interaction.suppressesAutoRotate {
                         // Keep yaw on `frame` (not `@State`) so the tick does not
@@ -384,16 +390,6 @@ struct PreviewScene: View {
             guard generation == prefetchGeneration else { return }
             pendingReady = look
         }
-    }
-
-    private func applyAutoRotateSetting() {
-        let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
-        let extent = bounds.max - bounds.min
-        if PreviewCamera.disablesAutoRotate(extent) {
-            autoRotate = false
-            return
-        }
-        autoRotate = settingsAutoRotate && !reduceMotion
     }
 
     private func chromeTint(active: Bool) -> Color {
