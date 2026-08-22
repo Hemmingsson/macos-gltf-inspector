@@ -17,21 +17,15 @@ This plan is in **two parts**, as requested:
 
 Read this first — branch reality has moved; treat older "untracked UI" notes as historical.
 
-1. **UI is committed on `ui-rebuild` (A0 done).** Tip `ab16854` — `PreviewUI/` + `PreviewUIShell/`
-   are in history (`e7f2e69`…`ab16854`). **Still not safe for cutover:** `ui-rebuild` does **not**
-   contain Track B. It is **behind `main`** by (at least) `a7e9199` (engine packs) + two Peekaboo
-   doc commits (`main` tip `1c3018a`). Next gate: **merge/rebase `main` into `ui-rebuild`**, resolve
-   `project.yml` + doc drift, prove both schemes build. Push if not already remote.
+1. **Cutover complete on `main` (2026-08-22).** `ui-rebuild` merged: PreviewUI shell, `GLBPreview/Engine/` adapters, host injection, host-bare `PreviewScene`, minimal Quick Look chrome. `PreviewUIShell` kept (never ships).
 
-2. **Track B engine packs are on `main` (not equal to `engine-features` tip).** `engine-features`
-   is still parked at `a7e9199`; `main` has moved past it. Pack code tagged "DONE (features)" lives
-   on `main`. The `engine-features` branch / `.worktrees/features` remain redundant cleanup (A5/B7).
+2. **Track B engine packs are on `main`.** The `engine-features` branch / `.worktrees/features` are redundant and can be deleted.
 
 3. **The shell is done and green.** All 8 slices are implemented; `PreviewUIShell` builds, and
    carries **no TODO/FIXME/`fatalError`** (mocks may `preconditionFailure` on type mismatch — fine).
    UI proof is Peekaboo on a live window (no headless `--snapshot` / flatten-glass harness). The
-   seam is **5 protocols** (`SceneModel`, `ViewportController`, `SelectionModel`, `SettingsStore`,
-   `Availability`) + value types — **no `AnimationPlaybackController` yet** (A2).
+   seam is **6 protocols** (`SceneModel`, `ViewportController`, `SelectionModel`, `SettingsStore`,
+   `Availability`, `AnimationPlaybackController`) + value types.
 
 **Two stale docs to correct (they will mislead whoever executes this):**
 - `ENGINE-FEATURE-PACKS.md` on **`main`** still says P17 is *"still absent — cherry-pick…"*

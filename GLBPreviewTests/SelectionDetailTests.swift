@@ -18,7 +18,8 @@ struct SelectionDetailTests {
                 meshIndex: 0,
                 cameraIndex: nil,
                 lightIndex: nil,
-                skinIndex: 1
+                skinIndex: 1,
+                materialIndices: [0]
             ),
         ]
         doc.materials = [
@@ -36,9 +37,8 @@ struct SelectionDetailTests {
         #expect(detail.kind == .mesh)
         #expect(detail.kindLabel == "Mesh")
         #expect(detail.geometryChips == ["Mesh 0", "Skin 1"])
-        #expect(detail.materials.map(\.name) == ["Duck_Mat", "Plain"])
+        #expect(detail.materials.map(\.name) == ["Duck_Mat"])
         #expect(detail.materials[0].maps == ["Base Color", "Normal"])
-        #expect(detail.materials[1].maps.isEmpty)
         #expect(detail.camera == nil)
         #expect(detail.light == nil)
         #expect(abs(detail.translation.x - 0.42) < 0.0001)

@@ -4,12 +4,11 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 **Each pack is independent and testable in the CURRENT UI now** — add a throwaway control
 (menu item, toggle, print, or test) to prove it, then bind to the seam later.
 
-> **Status on `engine-features` (pre-merge cleanup 2026-08-22).** Legend: **DONE** = on disk
-> (throwaway View menu / sidebar until UI cutover) · **DECISION** = still needs a product call.
-> Older "against `main`" notes below were for the slim post-reduction tree; this branch extended
-> `makeDocument` + host wiring. Prefer pack headers over stale body copy.
+> **Status on `main` (merged).** Legend: **DONE** = on disk (throwaway View menu / sidebar until
+> UI cutover). Packs tagged "DONE (features)" live on `main`. Prefer pack headers over stale body
+> copy. The one remaining product call was **P34** — decided in CUTOVER-PLAN (per-window lazy overlay).
 >
-> **Headline (features / lands on main with this branch):**
+> **Headline (on `main`):**
 > - `GLTFSessionDocument` stores scenes, typed nodes (kind/TRS/mesh/camera/light/skin indices),
 >   cameras, lights, materials (+ map presence), skins, morphs, animations — stamped in
 >   `RealityKitConvert.makeDocument`. Still not a full glTF mirror (mesh payloads stay on the
@@ -146,17 +145,15 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 
 ## C. Inspector honesty
 
-### P17 — glTF validation · DONE (features / `engine-features`)
+### P17 — glTF validation · DONE (on `main`)
 - **Now:** Khronos `gltf-validator` (Dart→JS) via `JavaScriptCore` after first paint.
   Types: `GLTFValidationReport` / `GLTFValidationIssue` / `GLTFValidationState` in
   `Shared/GLTFValidator.swift`. Vendor: `Vendor/gltf-validator/gltf_validator.dart.js`.
   Fixture: `scripts/testdata/invalid/unresolved-mesh.gltf`. Host badge in `HostOutlinerView`;
-  Thumbnail excludes the validator source.
+  Thumbnail excludes the validator source. Present on `main` — do not cherry-pick.
 - **Hardening:** cancellable in-flight Task on reopen; failures/skips surface as sidebar copy
   (`failed` / `skipped`); soft-skip above `GLTFValidator.maxRawAssetBytes` (48 MB) to avoid
   base64→JSC OOM. Does **not** block open / first paint.
-- **Main checkout:** still absent — cherry-pick `Shared/GLTFValidator.swift` + vendor + host
-  wiring + tests from `engine-features` when porting; do not re-implement.
 - **Test now:** `GLBPreviewTests/GLTFValidatorTests` (invalid fixture + size-guard soft-fail).
 
 ### P18 — Pipeline report · DONE (features)
@@ -194,12 +191,10 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 - **Now:** storage is source of truth (`PreviewScene.swift`); `autoRotate` is registered
   (`GLBPreviewApp.swift`). Do not redo P33. P34 (per-window vs sticky) is the remaining call.
 
-### P34 — Multi-window independence · DECISION
-- **Now:** cross-window bleed **confirmed** — host controls share `UserDefaults.standard`;
-  toggling in one window fires the other's `onChange`. Decide sticky vs per-window (DESIGN.md).
-- **If per-window:** seed session from defaults at open, never write back (drops the `isHost`
-  persistence branch).
-- **Test now:** two windows, toggle in one, watch the other.
+### P34 — Multi-window independence · DECIDED (lazy overlay)
+- **Decision:** per-window lazy overlay (CUTOVER-PLAN A3c / A4-1). Untouched keys track the
+  app default live; a window gains an override only when the user changes that control.
+  Do **not** eagerly seed all defaults into the session (that pins the window and kills live tracking).
 
 ## E. New capabilities the audit surfaced (optional)
 
@@ -214,5 +209,6 @@ Backs [DESIGN.md](DESIGN.md); feeds the seam in [UI-BUILD.md](UI-BUILD.md) §0.
 ---
 
 ## Remaining before / with UI cutover
-Engine packs above are **DONE on features** (throwaway View menu / sidebar). Still open:
-**P34** sticky vs per-window · PreviewUI seam binding · keep View menu until cutover.
+Engine packs above are **DONE on `main`** (throwaway View menu / sidebar). P34 is decided
+(lazy overlay). Still open: PreviewUI seam binding (CUTOVER-PLAN Part B) · keep View menu
+until cutover.

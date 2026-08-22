@@ -10,8 +10,12 @@ extension RealityKitConvert {
                 rootNodeIndices: scene.nodes.compactMap { identityIndex($0, in: asset.nodes) }
             )
         }
+        let materialIndicesByMesh = asset.meshes.enumerated().map { index, mesh in
+            (index, materialIndices(for: mesh, in: asset))
+        }
+        let materialIndicesLookup = Dictionary(uniqueKeysWithValues: materialIndicesByMesh)
         document.nodes = asset.nodes.enumerated().map { index, node in
-            makeNode(node, index: index, asset: asset)
+            makeNode(node, index: index, asset: asset, materialIndicesByMesh: materialIndicesLookup)
         }
         document.cameras = asset.cameras.map(makeCamera)
         document.lights = asset.lights.map(makeLight)
@@ -26,11 +30,17 @@ extension RealityKitConvert {
         return document
     }
 
-    static func makeNode(_ node: GLTFNode, index: Int, asset: GLTFAsset) -> GLTFSessionDocument.Node {
+    static func makeNode(
+        _ node: GLTFNode,
+        index: Int,
+        asset: GLTFAsset,
+        materialIndicesByMesh: [Int: [Int]] = [:]
+    ) -> GLTFSessionDocument.Node {
         let meshIndex = identityIndex(node.mesh, in: asset.meshes)
         let cameraIndex = identityIndex(node.camera, in: asset.cameras)
         let lightIndex = identityIndex(node.light, in: asset.lights)
         let skinIndex = identityIndex(node.skin, in: asset.skins)
+        let materialIndices = meshIndex.flatMap { materialIndicesByMesh[$0] } ?? []
         return GLTFSessionDocument.Node(
             index: index,
             name: node.name ?? "",
@@ -47,8 +57,35 @@ extension RealityKitConvert {
             meshIndex: meshIndex,
             cameraIndex: cameraIndex,
             lightIndex: lightIndex,
-            skinIndex: skinIndex
+            skinIndex: skinIndex,
+            materialIndices: materialIndices
         )
+    }
+
+    /// Unique file material indices for a mesh's primitives (order preserved).
+    private static func materialIndices(for mesh: GLTFMesh, in asset: GLTFAsset) -> [Int] {
+        var seen = Set<Int>()
+        var indices: [Int] = []
+        for primitive in mesh.primitives {
+            guard let materialIndex = resolvedMaterialIndex(primitive.material, in: asset.materials) else {
+                continue
+            }
+            if seen.insert(materialIndex).inserted {
+                indices.append(materialIndex)
+            }
+        }
+        return indices
+    }
+
+    private static func resolvedMaterialIndex(
+        _ material: GLTFMaterial?,
+        in materials: [GLTFMaterial]
+    ) -> Int? {
+        if let index = identityIndex(material, in: materials) {
+            return index
+        }
+        guard let material, let name = material.name, !name.isEmpty else { return nil }
+        return materials.firstIndex { $0.name == name }
     }
 
     static func makeCamera(_ camera: GLTFCamera) -> GLTFSessionDocument.Camera {
@@ -97,9 +134,28 @@ extension RealityKitConvert {
     }
 
     static func makeMaterial(_ material: GLTFMaterial) -> GLTFSessionDocument.Material {
-        GLTFSessionDocument.Material(
+        let workflow: GLTFSessionDocument.Material.Workflow
+        if material.isUnlit {
+            workflow = .unlit
+        } else {
+            workflow = .metallicRoughness
+        }
+        let alphaMode: GLTFSessionDocument.Material.AlphaMode
+        switch material.alphaMode {
+        case .mask: alphaMode = .mask
+        case .blend: alphaMode = .blend
+        default: alphaMode = .opaque
+        }
+        let metallic = material.metallicRoughness
+        return GLTFSessionDocument.Material(
             name: material.name ?? "",
-            maps: MaterialMapPresence.from(gltf: material)
+            maps: MaterialMapPresence.from(gltf: material),
+            workflow: workflow,
+            alphaMode: alphaMode,
+            isDoubleSided: material.isDoubleSided,
+            metallicFactor: metallic?.metallicFactor,
+            roughnessFactor: metallic?.roughnessFactor,
+            alphaCutoff: alphaMode == .mask ? material.alphaCutoff : nil
         )
     }
 

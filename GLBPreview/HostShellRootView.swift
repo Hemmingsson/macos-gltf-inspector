@@ -3,52 +3,67 @@ import RealityKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct ContentView: View {
+/// Document window root: PreviewUI `ShellRootView` + engine adapters + real `PreviewView` canvas.
+///
+/// Pills / selection / screenshot / playback / scene+variant write through the engine adapters into
+/// host session + `HostSidebarModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
+/// (untouched keys track defaults live). Old in-canvas chrome may still double-overlay until bare mode.
+struct HostShellRootView: View {
     let documentURL: URL?
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openDocument) private var openDocument
     @Environment(\.dismissWindow) private var dismissWindow
+
     @State private var previewState: PreviewView.State = .loading
     @State private var interaction = PreviewInteraction()
     @State private var sidebar: HostSidebarModel?
     @State private var loadGeneration = 0
     @State private var loadingURL: URL?
     @State private var blenderLaunchError: String?
-    /// P34 per-window session — seeded from Settings; never written back.
-    @State private var sessionAutoRotate =
-        UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
-    @State private var sessionShowFloor =
-        UserDefaults.standard.object(forKey: SettingsKeys.showFloor) as? Bool ?? true
-    @State private var sessionBackdropIndex = PreviewBackground.storedIndex
-    /// P1 — Center on by default; per-window only, never UserDefaults.
-    @State private var sessionCenterModel = true
-    /// P2 — Orthographic preview projection; session-only, never UserDefaults.
-    @State private var sessionOrthographic = false
-    /// P5 — session lighting; never UserDefaults.
+    @State private var panels = ShellPanelChrome()
+    @State private var placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
+
+    /// Per-window lazy overlay — not seed-once `@State` from UserDefaults.
+    @State private var settings = EngineSettingsStore()
+    @State private var engineViewport: EngineViewportController
+
+    /// Session-only canvas extras (not SettingsStore keys yet).
     @State private var sessionExposureEV: Float = 0
     @State private var sessionDimStudioForFileLights = false
     @State private var sessionEnvironmentYaw: Float = 0
-    /// P6 — force double-sided materials; session-only, never UserDefaults.
     @State private var sessionDoubleSided = false
-    /// P16 — skeleton overlay; session-only, never UserDefaults.
     @State private var sessionShowSkeleton = false
-    /// P8 — perspective FOV; session-only, never UserDefaults.
     @State private var sessionFieldOfViewDegrees = PreviewCamera.defaultFieldOfViewDegrees
-    /// P17 — filled async after open; never blocks first paint.
+    @State private var sessionDebugModeIndex = 0
+    /// Mirror of settings-backed + session-only keys for `PreviewView` / RealityKit.
+    @State private var canvasAutoRotate = true
+    @State private var canvasShowFloor = true
+    @State private var canvasBackdropIndex = 0
+    @State private var canvasCenterModel = true
+    @State private var canvasOrthographic = false
+
     @State private var validation: GLTFValidationState?
     @State private var validationGeneration = 0
     @State private var validationTask: Task<Void, Never>?
+    /// Inspector morph sliders — mirrored from `PreviewMorph` on the loaded entity.
+    @State private var morphTargets: [MorphTargetControl] = []
 
-    private static let sidebarMinWidth: CGFloat = 200
-    private static let sidebarIdealWidth: CGFloat = 252
-    private static let sidebarMaxWidth: CGFloat = 480
+    init(documentURL: URL?) {
+        self.documentURL = documentURL
+        let placeholder = HostSidebarModel(document: GLTFSessionDocument())
+        _placeholderSidebar = State(wrappedValue: placeholder)
+        _engineViewport = State(
+            wrappedValue: EngineViewportController(sidebar: placeholder)
+        )
+    }
 
     var body: some View {
-        documentRoot
+        shellRoot
             .focusedSceneValue(\.previewCommands, focusedPreviewCommands)
             .focusedSceneValue(\.previewSession, loadedModel == nil ? nil : previewSession.focusedMenu)
-            .frame(minWidth: 560, minHeight: 360)
+            .focusedSceneValue(\.engineViewport, loadedModel == nil ? nil : engineViewport)
+            .focusedSceneValue(\.shellPanelChrome, panels)
             .alert(
                 "Couldn’t open in Blender",
                 isPresented: Binding(
@@ -62,8 +77,11 @@ struct ContentView: View {
             }
             .onAppear {
                 dismissWindow(id: WelcomeWindow.id)
+                wireViewportHostSession()
                 if let documentURL {
                     loadDocument(documentURL)
+                } else {
+                    previewState = .failed("The document URL is missing.")
                 }
             }
             .onChange(of: documentURL) { _, url in
@@ -72,14 +90,16 @@ struct ContentView: View {
                 }
             }
             .onChange(of: sidebar?.activeSceneIndex) { previous, index in
-                // Initial sidebar assign is nil → defaultSceneIndex; that must not re-convert.
                 guard previous != nil else { return }
                 reloadScene(index)
             }
             .onChange(of: sidebar?.selectedMaterialVariantIndex) { previous, _ in
-                // Skip the initial sidebar assign (nil → nil) and only reload after user picks.
                 guard previous != nil || sidebar?.selectedMaterialVariantIndex != nil else { return }
                 reloadMaterialVariant()
+            }
+            .onChange(of: settings.defaultsStore.revision) { _, _ in
+                // Live-track canvas for keys that still have no session override.
+                syncCanvasFromSettings()
             }
             .onDrop(of: [.fileURL], isTargeted: nil) {
                 GLBDocumentOpening.handleDrop($0, openDocument: openDocument)
@@ -87,121 +107,89 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private var documentRoot: some View {
-        if documentURL != nil {
-            hostViewer
-                .id(documentURL)
-        } else {
-            missingDocumentState
-        }
-    }
-
-    private var missingDocumentState: some View {
-        VStack(spacing: 12) {
-            Text("Couldn’t open this file")
-                .font(.title2)
-            Text("The document URL is missing.")
-                .foregroundStyle(.secondary)
-        }
-        .padding(40)
-        .frame(minWidth: 400, minHeight: 300)
-    }
-
-    private var hostViewer: some View {
-        NavigationSplitView {
-            sidebarColumn
-                .navigationSplitViewColumnWidth(
-                    min: Self.sidebarMinWidth,
-                    ideal: Self.sidebarIdealWidth,
-                    max: Self.sidebarMaxWidth
-                )
-        } detail: {
-            detailColumn
-        }
-        .navigationSplitViewStyle(.balanced)
-        .navigationTitle(documentURL?.lastPathComponent ?? "GLB Preview")
-    }
-
-    @ViewBuilder
-    private var sidebarColumn: some View {
-        if let sidebar {
-            HostOutlinerView(
-                model: loadedModel,
-                documentURL: documentURL,
-                validation: validation,
-                sidebar: sidebar,
-                showSkeleton: $sessionShowSkeleton,
-                fieldOfViewDegrees: $sessionFieldOfViewDegrees,
-                orthographic: sessionOrthographic,
-                onBlenderError: { blenderLaunchError = $0 }
-            )
-        } else if case .failed(let message) = previewState {
-            VStack(spacing: 6) {
-                Text("Couldn’t load model")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                Text(message)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                if let validation {
-                    validationSidebarBadge(validation)
-                        .padding(.top, 8)
-                }
+    private var shellRoot: some View {
+        let activeSidebar = sidebar ?? placeholderSidebar
+        let model = engineSceneModel
+        let availability = EngineAvailability.make(model: model, debugModes: loadedDebugModes)
+        let playback: EngineAnimationPlaybackController = {
+            if case .ready(let loaded) = previewState {
+                return EngineAnimationPlaybackController(loaded: loaded)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            ProgressView()
-                .controlSize(.small)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            return EngineAnimationPlaybackController(entity: Entity(), clips: [])
+        }()
+
+        ShellRootView(
+            model: model,
+            availability: availability,
+            documentState: shellDocumentState,
+            selection: EngineSelectionModel(sidebar: activeSidebar),
+            viewport: engineViewport,
+            settings: settings,
+            playback: playback,
+            panels: panels,
+            morphTargets: morphTargets,
+            onSetMorphWeight: applyMorphWeight,
+            seedSession: seedSession
+        ) {
+            HostPreviewContainer(
+                state: previewState,
+                interaction: interaction,
+                isDark: colorScheme == .dark,
+                sidebar: sidebar,
+                overlayRevision: sidebar?.overlayRevision ?? 0,
+                session: previewSession
+            )
+        }
+        // Remount adapters that capture sidebar/entity once; keep settings + viewport identity.
+        .id(shellMountID)
+    }
+
+    private var shellMountID: String {
+        switch previewState {
+        case .loading:
+            "loading-\(loadGeneration)"
+        case .ready:
+            "ready-\(loadGeneration)"
+        case .failed(let message):
+            "failed-\(loadGeneration)-\(message)"
         }
     }
 
-    @ViewBuilder
-    private func validationSidebarBadge(_ state: GLTFValidationState) -> some View {
-        let style = validationBadgeStyle(state)
-        HStack(spacing: 6) {
-            Image(systemName: style.symbol)
-                .foregroundStyle(style.color)
-            Text(state.badgeTitle)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(style.color)
-                .lineLimit(3)
+    private var shellDocumentState: ShellDocumentState {
+        if documentURL == nil {
+            return .failed("The document URL is missing.")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(style.color.opacity(0.12))
+        switch previewState {
+        case .loading:
+            return .loading
+        case .ready:
+            return .ready
+        case .failed(let message):
+            return .failed(message)
+        }
+    }
+
+    private var engineSceneModel: EngineSceneModel {
+        let fileName = (loadingURL ?? documentURL)?.lastPathComponent ?? "Model"
+        if case .ready(let loaded) = previewState {
+            return EngineSceneModel(loaded: loaded, fileName: fileName, validation: validation)
+        }
+        return EngineSceneModel(
+            fileName: fileName,
+            document: GLTFSessionDocument(),
+            stats: Self.emptyStats,
+            dimensions: Dimensions(width: 0, height: 0, depth: 0, authoredOrigin: .zero),
+            validation: validation,
+            pipelineReport: PreparePipelineReport(),
+            materialVariantNames: []
         )
     }
 
-    private func validationBadgeStyle(_ state: GLTFValidationState) -> (symbol: String, color: Color) {
-        switch state {
-        case .success(let report):
-            report.isClean
-                ? ("checkmark.seal.fill", Color.green)
-                : ("exclamationmark.triangle.fill", Color.orange)
-        case .failed:
-            ("exclamationmark.circle.fill", Color.secondary)
-        case .skipped:
-            ("slash.circle.fill", Color.secondary)
+    private var loadedDebugModes: [PreviewDebugMode] {
+        if case .ready(let loaded) = previewState {
+            return loaded.debugModes
         }
-    }
-
-    private var detailColumn: some View {
-        HostPreviewContainer(
-            state: previewState,
-            interaction: interaction,
-            isDark: colorScheme == .dark,
-            sidebar: sidebar,
-            // Read revision here so `@Observable` selection/hide invalidates this representable
-            // (passing the model reference alone does not).
-            overlayRevision: sidebar?.overlayRevision ?? 0,
-            session: previewSession
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        return []
     }
 
     private var loadedModel: EntityLoader.LoadedModel? {
@@ -209,21 +197,20 @@ struct ContentView: View {
         return nil
     }
 
-    /// Single P34 bag for RealityView (seed from Settings; never write back).
-    /// View menu uses `focusedMenu` (no backdrop).
     private var previewSession: PreviewSessionBindings {
         PreviewSessionBindings(
-            autoRotate: $sessionAutoRotate,
-            showFloor: $sessionShowFloor,
-            backdropIndex: $sessionBackdropIndex,
-            centerModel: $sessionCenterModel,
-            orthographic: $sessionOrthographic,
+            autoRotate: $canvasAutoRotate,
+            showFloor: $canvasShowFloor,
+            backdropIndex: $canvasBackdropIndex,
+            centerModel: $canvasCenterModel,
+            orthographic: $canvasOrthographic,
             exposureEV: $sessionExposureEV,
             dimStudioForFileLights: $sessionDimStudioForFileLights,
             environmentYaw: $sessionEnvironmentYaw,
             doubleSided: $sessionDoubleSided,
             showSkeleton: $sessionShowSkeleton,
-            fieldOfViewDegrees: $sessionFieldOfViewDegrees
+            fieldOfViewDegrees: $sessionFieldOfViewDegrees,
+            debugModeIndex: $sessionDebugModeIndex
         )
     }
 
@@ -237,7 +224,60 @@ struct ContentView: View {
         )
     }
 
-    /// Fit or P3 preset — session-only camera (never UserDefaults).
+    /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
+    /// Does **not** pin every key into session — only reads effective values (P34).
+    @MainActor
+    private func seedSession(settings: EngineSettingsStore, viewport: EngineViewportController) {
+        // ShellRootView may have constructed a fresh viewport via autoclosure after `.id` remount;
+        // keep the window-owned controller as the FocusedValues / pill source of truth.
+        engineViewport.sidebar = sidebar ?? placeholderSidebar
+        engineViewport.settings = settings
+        engineViewport.commands = focusedPreviewCommands
+        engineViewport.screenshotHandler = screenshotCurrentCameraPose
+        wireViewportHostSession()
+        engineViewport.applySession(from: settings)
+        syncCanvasFromSettings()
+        // If ShellRootView's @State viewport is a different instance, mirror settings onto it too.
+        if viewport !== engineViewport {
+            viewport.sidebar = engineViewport.sidebar
+            viewport.settings = settings
+            viewport.hostSession = engineViewport.hostSession
+            viewport.commands = engineViewport.commands
+            viewport.screenshotHandler = engineViewport.screenshotHandler
+            viewport.applySession(from: settings)
+        }
+    }
+
+    private func wireViewportHostSession() {
+        engineViewport.hostSession = EngineViewportHostSession(
+            backdropIndex: $canvasBackdropIndex,
+            showFloor: $canvasShowFloor,
+            autoRotate: $canvasAutoRotate,
+            centerModel: $canvasCenterModel,
+            orthographic: $canvasOrthographic,
+            exposureEV: $sessionExposureEV,
+            dimStudioForFileLights: $sessionDimStudioForFileLights,
+            environmentYaw: $sessionEnvironmentYaw,
+            debugModeIndex: $sessionDebugModeIndex,
+            debugModes: loadedDebugModes.isEmpty ? [.none] : loadedDebugModes
+        )
+        engineViewport.settings = settings
+        engineViewport.commands = focusedPreviewCommands
+        engineViewport.screenshotHandler = screenshotCurrentCameraPose
+    }
+
+    /// Push effective settings values into canvas mirrors without writing session overrides.
+    private func syncCanvasFromSettings() {
+        let style = settings.sessionValue(for: .backdrop)
+        let background = PreviewBackground(rawValue: style.rawValue) ?? .window
+        canvasBackdropIndex = PreviewBackground.allCases.firstIndex(of: background) ?? 0
+        canvasShowFloor = settings.sessionValue(for: .showFloor)
+        canvasAutoRotate = settings.sessionValue(for: .autoRotate)
+        canvasCenterModel = settings.sessionValue(for: .center)
+        canvasOrthographic = settings.sessionValue(for: .projection) == .orthographic
+        engineViewport.syncHostCanvasFromStored()
+    }
+
     private func reframingCamera(preset: PreviewCamera.CameraPreset? = nil) {
         sidebar?.selectedCameraIndex = nil
         guard let camera = interaction.camera,
@@ -256,7 +296,7 @@ struct ContentView: View {
                 to: camera,
                 bounds: bounds,
                 orbitFocus: interaction.orbitFocus,
-                orthographic: sessionOrthographic,
+                orthographic: canvasOrthographic,
                 preset: preset,
                 fieldOfViewInDegrees: sessionFieldOfViewDegrees
             )
@@ -265,7 +305,7 @@ struct ContentView: View {
                 to: camera,
                 bounds: bounds,
                 orbitFocus: interaction.orbitFocus,
-                orthographic: sessionOrthographic,
+                orthographic: canvasOrthographic,
                 fieldOfViewInDegrees: sessionFieldOfViewDegrees
             )
         }
@@ -273,13 +313,10 @@ struct ContentView: View {
         sidebar?.overlayRevision += 1
     }
 
-    /// P4 — restore opening front-3/4 framing. Session Center is turned back on when
-    /// off (remount rebuilds the turntable); otherwise PreviewScene clears pan/yaw + fit.
     private func resetPreviewView() {
         sidebar?.selectedCameraIndex = nil
-        if !sessionCenterModel {
-            // Remount via `.id(centerModel)` — make zeros yaw and layout-fits.
-            sessionCenterModel = true
+        if !canvasCenterModel {
+            engineViewport.setCenter(true)
             sidebar?.overlayRevision += 1
             return
         }
@@ -289,52 +326,25 @@ struct ContentView: View {
         }
     }
 
-    /// P19 — offscreen re-render at the live camera pose + NSSavePanel.
-    /// Clones the turntable pivot; does **not** grab the RealityView framebuffer.
     private func screenshotCurrentCameraPose() {
-        Task { @MainActor in
-            guard let camera = interaction.camera,
-                  let pivot = interaction.orbitFocus,
-                  let pose = StillCameraPose.capturing(from: camera)
-            else {
-                AppLog.error(AppLog.host, "screenshot skipped — no live camera pose")
-                return
-            }
-            let root = pivot.clone(recursive: true)
-            let intensity = PreviewEmissive.sessionIBLExponent(
-                dimStudioForFileLights: sessionDimStudioForFileLights,
-                exposureEV: sessionExposureEV
-            )
-            let background = PreviewBackground.at(sessionBackdropIndex).stillBackgroundCGColor
-            let suggested = (loadingURL ?? documentURL)?
-                .deletingPathExtension()
-                .lastPathComponent ?? "screenshot"
-            let aspect: Float = {
-                if let view = NSApp.keyWindow?.contentView, view.bounds.height > 1 {
-                    return Float(view.bounds.width / view.bounds.height)
-                }
-                return 16 / 9
-            }()
-            do {
-                let url = try await StillRenderer.exportPNGViaSavePanel(
-                    root: root,
-                    cameraPose: pose,
-                    background: background,
-                    intensityExponent: intensity,
-                    environmentYaw: sessionEnvironmentYaw,
-                    suggestedName: suggested,
-                    aspect: aspect
-                )
-                if let url {
-                    AppLog.info(
-                        AppLog.host,
-                        "screenshot wrote \(url.path) (offscreen re-render at live camera pose)"
-                    )
-                }
-            } catch {
-                AppLog.error(AppLog.host, "screenshot failed: \(error.localizedDescription)")
-            }
+        guard let camera = interaction.camera,
+              let pivot = interaction.orbitFocus
+        else {
+            AppLog.error(AppLog.host, "screenshot skipped — no live camera pose")
+            return
         }
+        let suggested = (loadingURL ?? documentURL)?
+            .deletingPathExtension()
+            .lastPathComponent ?? "screenshot"
+        ScreenshotCameraPose.capture(
+            camera: camera,
+            pivot: pivot,
+            dimStudioForFileLights: sessionDimStudioForFileLights,
+            exposureEV: sessionExposureEV,
+            backdropIndex: canvasBackdropIndex,
+            environmentYaw: sessionEnvironmentYaw,
+            suggestedName: suggested
+        )
     }
 
     private func loadDocument(_ url: URL) {
@@ -346,19 +356,21 @@ struct ContentView: View {
             loadingURL = url
             return
         }
-        // Tab/chrome remounts can re-fire onAppear — don't restart an in-flight or finished open.
         if loadingURL == url, case .loading = previewState { return }
         if case .ready = previewState, loadingURL == url, sidebar != nil { return }
 
         previewState = .loading
         sidebar = nil
+        morphTargets = []
         validation = nil
         interaction = PreviewInteraction()
         loadingURL = url
         loadGeneration += 1
+        // New document in this window: drop session overrides and re-track defaults.
+        settings.clearSession()
+        syncCanvasFromSettings()
         let generation = loadGeneration
         AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
-        // P17: validate in parallel with convert — do not wait on open / first paint.
         startValidation(of: url, generation: generation)
         Task {
             let state = await PreviewView.State.loaded(from: url)
@@ -375,20 +387,50 @@ struct ContentView: View {
                     AppLog.host,
                     "open ready \(url.lastPathComponent) nodes=\(model.document.nodes.count) cameras=\(model.document.cameras.count) triangles=\(model.stats.triangleCount) dimensions=\(dims?.readout ?? "empty") emptyBounds=\(dims == nil) clips=\(clipSummary)"
                 )
-                // P5: seed file-vs-studio from the auto-dim the loader already computed.
                 sessionDimStudioForFileLights = model.studioIBLExponent < 0
                 sessionExposureEV = 0
                 sessionEnvironmentYaw = 0
-                sidebar = HostSidebarModel(document: model.document)
-                sidebar?.materialVariantNames = model.materialVariantNames
+                sessionDebugModeIndex = 0
+                let modelSidebar = HostSidebarModel(document: model.document)
+                modelSidebar.materialVariantNames = model.materialVariantNames
+                sidebar = modelSidebar
+                engineViewport.sidebar = modelSidebar
+                wireViewportHostSession()
+                refreshMorphTargets(from: model.entity)
                 AppLog.info(
                     AppLog.host,
                     "pipeline \(url.lastPathComponent) \(model.pipelineReport.entries.joined(separator: " | "))"
                 )
             } else if case .failed(let message) = state {
                 sidebar = nil
+                morphTargets = []
                 AppLog.error(AppLog.host, "open failed \(url.lastPathComponent): \(message)")
             }
+        }
+    }
+
+    private func refreshMorphTargets(from entity: Entity) {
+        morphTargets = PreviewMorph.targets(in: entity).map { target in
+            MorphTargetControl(
+                id: target.id,
+                name: target.name,
+                weight: Double(target.weight)
+            )
+        }
+    }
+
+    private func applyMorphWeight(id: String, value: Double) {
+        guard let entity = loadedModel?.entity,
+              let target = PreviewMorph.targets(in: entity).first(where: { $0.id == id })
+        else { return }
+        PreviewMorph.setWeight(
+            nodeIndex: target.nodeIndex,
+            targetIndex: target.targetIndex,
+            value: Float(value),
+            in: entity
+        )
+        if let index = morphTargets.firstIndex(where: { $0.id == id }) {
+            morphTargets[index].weight = value
         }
     }
 
@@ -461,18 +503,17 @@ struct ContentView: View {
                 )
                 if case .ready(let loaded) = previewState {
                     sessionDimStudioForFileLights = loaded.studioIBLExponent < 0
+                    refreshMorphTargets(from: loaded.entity)
                 }
                 sidebar.overlayRevision += 1
             } catch {
                 guard generation == loadGeneration else { return }
                 let message = error.localizedDescription
                 AppLog.error(AppLog.host, "scene switch failed: \(message)")
-                // Keep the current mesh and sidebar so the user can pick another scene.
             }
         }
     }
 
-    /// P40 spike — re-convert with `KHR_materials_variants` mapping stamped onto primitives.
     private func reloadMaterialVariant() {
         guard let url = documentURL, let sidebar else { return }
         loadGeneration += 1
@@ -511,6 +552,7 @@ struct ContentView: View {
                 )
                 sidebar.materialVariantNames = model.materialVariantNames
                 sessionDimStudioForFileLights = model.studioIBLExponent < 0
+                refreshMorphTargets(from: entity)
                 sidebar.overlayRevision += 1
                 AppLog.info(
                     AppLog.host,
@@ -523,52 +565,21 @@ struct ContentView: View {
         }
     }
 
+    private static let emptyStats = PreviewStats(
+        triangleCount: 0,
+        vertexCount: 0,
+        materialCount: 0,
+        pbrLabel: "—",
+        animationCount: 0,
+        textureCount: 0,
+        maxTextureEdge: nil,
+        hasVertexColors: false,
+        isRigged: false,
+        morphGeometryCount: 0,
+        fileSizeBytes: nil
+    )
 }
 
 private func fileSize(_ url: URL) -> Int64 {
     (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? -1
-}
-
-private struct HostPreviewContainer: NSViewRepresentable {
-    var state: PreviewView.State
-    var interaction: PreviewInteraction
-    var isDark: Bool
-    var sidebar: HostSidebarModel?
-    /// Mirrors `HostSidebarModel.overlayRevision` so selection/hide triggers `updateNSView`.
-    var overlayRevision: Int
-    var session: PreviewSessionBindings
-
-    func makeNSView(context: Context) -> PreviewHostingView {
-        let view = PreviewHostingView(
-            rootView: PreviewView(
-                state: state,
-                interaction: interaction,
-                isDark: isDark,
-                sidebar: sidebar,
-                overlayRevision: overlayRevision,
-                session: session
-            )
-        )
-        view.interaction = interaction
-        return view
-    }
-
-    func updateNSView(_ nsView: PreviewHostingView, context: Context) {
-        nsView.interaction = interaction
-        nsView.rootView = PreviewView(
-            state: state,
-            interaction: interaction,
-            isDark: isDark,
-            sidebar: sidebar,
-            overlayRevision: overlayRevision,
-            session: session
-        )
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PreviewHostingView, context: Context) -> CGSize? {
-        CGSize(
-            width: proposal.width ?? nsView.bounds.width,
-            height: proposal.height ?? nsView.bounds.height
-        )
-    }
 }

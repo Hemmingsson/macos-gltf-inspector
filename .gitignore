@@ -53,3 +53,6 @@ ICON.zip
 # Python
 __pycache__/
 *.pyc
+
+# Accidental Peekaboo window captures at worktree root
+/window-*.png

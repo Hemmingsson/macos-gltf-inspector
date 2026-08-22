@@ -2,8 +2,7 @@ import Foundation
 import simd
 
 /// Inspector fields for one selected node — only what `GLTFSessionDocument` already stores.
-/// Mesh → material indices are not on the document (P14 is file-level materials), so material
-/// map chips appear only when `kind == .mesh` and the file lists materials (inventory, not bind).
+/// Mesh materials are the node's bound `materialIndices`, not the file-level inventory.
 struct SelectionDetail: Sendable, Equatable {
     struct MaterialChip: Sendable, Equatable {
         var name: String
@@ -61,8 +60,10 @@ struct SelectionDetail: Sendable, Equatable {
 
         let materials: [MaterialChip] =
             node.kind == .mesh
-            ? document.materials.map { material in
-                MaterialChip(
+            ? node.materialIndices.compactMap { index in
+                guard document.materials.indices.contains(index) else { return nil }
+                let material = document.materials[index]
+                return MaterialChip(
                     name: material.name.isEmpty ? "Material" : material.name,
                     maps: material.maps.chipLabels
                 )

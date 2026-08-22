@@ -96,7 +96,8 @@ struct AppLook: Codable, Equatable, Sendable {
 final class AppLookStore {
     static let shared = AppLookStore(directory: AppLook.supportDirectory())
 
-    private let directory: URL
+    /// Application Support (or test) directory that holds `look.json` + `ibl/`.
+    let directory: URL
     var look: AppLook
 
     init(directory: URL) {

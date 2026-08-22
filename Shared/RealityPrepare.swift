@@ -33,11 +33,11 @@ enum RealityPrepare {
     /// Float positions, PNG textures, expanded GPU instances — in memory. Serialization
     /// happens once at the end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
-        var report = PipelineReport()
+        var report = PreparePipelineReport()
         return try transformed(glb, report: &report)
     }
 
-    static func transformed(_ glb: GLBBox, report: inout PipelineReport) throws -> GLBBox {
+    static func transformed(_ glb: GLBBox, report: inout PreparePipelineReport) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
         if dequantizeAccessors(&json, bin: &bin) { report.dequantized = true }

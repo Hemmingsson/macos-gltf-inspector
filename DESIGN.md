@@ -9,6 +9,10 @@ stays in control of how it's shown. Native macOS, slim, honest.
 
 - Transparent titlebar, hidden title, full-size content — traffic lights sit over the
   sidebar; the file name lives in the sidebar, not a title band.
+- **Unified top chrome baseline** across columns: traffic lights, sidebar toggle, canvas
+  tool pills, and inspector actions (screenshot · Open in… · inspector) share one
+  horizontal band; selection identity (icon + name + kind) sits **under** the right
+  action cluster — not beside it.
 - **Distributed toolbar**: floating glass pills over the canvas, grouped leading / center /
   trailing — never one crammed bar.
 - The **menu bar is the complete set** (every control, with a shortcut); the canvas pills
