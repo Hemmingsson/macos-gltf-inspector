@@ -29,7 +29,7 @@ final class EngineViewportController: ViewportController {
     var screenshotHandler: (() -> Void)?
 
     /// Live host canvas session. Nil in unit tests.
-    var hostSession: EngineViewportHostSession?
+    var hostSession: PreviewSessionBindings?
 
     private var storedBackdrop: BackdropStyle
     private var storedShowsFloor: Bool
@@ -66,7 +66,7 @@ final class EngineViewportController: ViewportController {
         showSkeleton: Bool = false,
         fieldOfViewDegrees: Float = PreviewCamera.defaultFieldOfViewDegrees,
         settings: EngineSettingsStore? = nil,
-        hostSession: EngineViewportHostSession? = nil,
+        hostSession: PreviewSessionBindings? = nil,
         commands: FocusedPreviewCommands? = nil,
         screenshotHandler: (() -> Void)? = nil
     ) {

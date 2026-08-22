@@ -147,10 +147,10 @@ struct EngineViewportControllerTests {
         var doubleSided = false
         var showSkeleton = false
         var fieldOfView: Float = PreviewCamera.defaultFieldOfViewDegrees
-        let host = EngineViewportHostSession(
-            backdropIndex: Binding(get: { backdropIndex }, set: { backdropIndex = $0 }),
-            showFloor: Binding(get: { showFloor }, set: { showFloor = $0 }),
+        let host = PreviewSessionBindings(
             autoRotate: Binding(get: { autoRotate }, set: { autoRotate = $0 }),
+            showFloor: Binding(get: { showFloor }, set: { showFloor = $0 }),
+            backdropIndex: Binding(get: { backdropIndex }, set: { backdropIndex = $0 }),
             centerModel: Binding(get: { centerModel }, set: { centerModel = $0 }),
             orthographic: Binding(get: { orthographic }, set: { orthographic = $0 }),
             exposureEV: Binding(get: { exposureEV }, set: { exposureEV = $0 }),

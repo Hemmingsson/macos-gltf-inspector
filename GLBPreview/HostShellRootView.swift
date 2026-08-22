@@ -212,7 +212,8 @@ struct HostShellRootView: View {
             doubleSided: $sessionDoubleSided,
             showSkeleton: $sessionShowSkeleton,
             fieldOfViewDegrees: $sessionFieldOfViewDegrees,
-            debugModeIndex: $sessionDebugModeIndex
+            debugModeIndex: $sessionDebugModeIndex,
+            debugModes: loadedDebugModes.isEmpty ? [.none] : loadedDebugModes
         )
     }
 
@@ -242,21 +243,7 @@ struct HostShellRootView: View {
     }
 
     private func wireViewportHostSession() {
-        engineViewport.hostSession = EngineViewportHostSession(
-            backdropIndex: $canvasBackdropIndex,
-            showFloor: $canvasShowFloor,
-            autoRotate: $canvasAutoRotate,
-            centerModel: $canvasCenterModel,
-            orthographic: $canvasOrthographic,
-            exposureEV: $sessionExposureEV,
-            dimStudioForFileLights: $sessionDimStudioForFileLights,
-            environmentYaw: $sessionEnvironmentYaw,
-            doubleSided: $sessionDoubleSided,
-            showSkeleton: $sessionShowSkeleton,
-            fieldOfViewDegrees: $sessionFieldOfViewDegrees,
-            debugModeIndex: $sessionDebugModeIndex,
-            debugModes: loadedDebugModes.isEmpty ? [.none] : loadedDebugModes
-        )
+        engineViewport.hostSession = previewSession
         engineViewport.settings = settings
         engineViewport.commands = focusedPreviewCommands
         engineViewport.screenshotHandler = screenshotCurrentCameraPose

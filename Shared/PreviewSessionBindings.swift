@@ -16,4 +16,6 @@ struct PreviewSessionBindings {
     var fieldOfViewDegrees: Binding<Float>
     /// Look / view-mode cycle index into `PreviewScene.debugModes` (host pills + old chrome).
     var debugModeIndex: Binding<Int>
+    /// Host ViewMode ↔ index map. Quick Look leaves `session` nil.
+    var debugModes: [PreviewDebugMode] = [.none]
 }
