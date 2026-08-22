@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct GeneralSettingsPane: View {
+struct HostGeneralSettingsPane: View {
     @AppStorage(SettingsKeys.appearance) private var appearance = SettingsAppearance.system.rawValue
     @State private var isDefaultApplication = false
     @State private var defaultAppName: String?

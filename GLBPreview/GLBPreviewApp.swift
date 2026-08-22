@@ -58,11 +58,11 @@ struct GLBPreviewApp: App {
 
     var body: some Scene {
         DocumentGroup(viewing: GLBPreviewFileDocument.self) { file in
-            ContentView(documentURL: file.fileURL)
+            HostShellRootView(documentURL: file.fileURL)
         }
-        .defaultSize(width: 1200, height: 740)
+        .defaultSize(width: 1280, height: 820)
         .windowResizability(.contentMinSize)
-        .windowToolbarStyle(.unifiedCompact)
+        .windowStyle(.hiddenTitleBar)
         .restorationBehavior(.disabled)
         .commands {
             SidebarCommands()

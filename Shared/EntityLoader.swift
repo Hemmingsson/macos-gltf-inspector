@@ -12,7 +12,7 @@ enum EntityLoader {
         /// Computed once at load; avoid re-walking the entity tree on every host view refresh.
         let studioIBLExponent: Float
         /// What prepare/convert did (P18). Empty for plain metal-rough assets.
-        let pipelineReport: PipelineReport
+        let pipelineReport: PreparePipelineReport
         /// `KHR_materials_variants` names from GLTFKit2 (`materialVariants`). Empty when absent.
         let materialVariantNames: [String]
     }
@@ -42,7 +42,7 @@ enum EntityLoader {
         let fallbackDirectory: URL
         let sourceJSON: [String: Any]
         let fileSize: Int64?
-        var pipelineReport: PipelineReport
+        var pipelineReport: PreparePipelineReport
     }
 
     /// Loads a self-contained `.glb` or a sidecar `.gltf` (buffers/textures next to the JSON).
@@ -227,7 +227,7 @@ enum EntityLoader {
         json: [String: Any],
         fileSizeBytes: Int64?,
         resourceURL: URL,
-        pipelineReport: PipelineReport,
+        pipelineReport: PreparePipelineReport,
         materialVariantNames: [String]
     ) -> LoadedModel {
         var report = pipelineReport
@@ -256,7 +256,7 @@ enum EntityLoader {
     /// Fully best-effort: if neither rewrite applies, or any step (parse, a rewrite, the
     /// final serialize/write) fails, the original URL is returned so `convertAsset` still
     /// gets a chance on the untouched bytes.
-    private static func prepareGLB(_ url: URL, json: [String: Any]) -> (url: URL, json: [String: Any], report: PipelineReport) {
+    private static func prepareGLB(_ url: URL, json: [String: Any]) -> (url: URL, json: [String: Any], report: PreparePipelineReport) {
         var report = seedPipelineReport(from: json)
         guard MetalRoughPrepare.needsConversion(json) || RealityPrepare.needsPrepare(json) else {
             return (url, json, report)
@@ -271,7 +271,7 @@ enum EntityLoader {
         }
     }
 
-    private static func applyPrepares(_ glb: GLBBox, report: inout PipelineReport) -> GLBBox {
+    private static func applyPrepares(_ glb: GLBBox, report: inout PreparePipelineReport) -> GLBBox {
         var out = glb
         if MetalRoughPrepare.needsConversion(out.json) {
             do {
@@ -291,10 +291,10 @@ enum EntityLoader {
     }
 
     /// Source extensions + Draco flag before prepare strips lists (P18 / P41).
-    private static func seedPipelineReport(from json: [String: Any]) -> PipelineReport {
-        var report = PipelineReport()
-        report.extensionsUsed = PipelineReport.captureExtensions(from: json)
-        report.decompressedDraco = PipelineReport.sourceHadDraco(json)
+    private static func seedPipelineReport(from json: [String: Any]) -> PreparePipelineReport {
+        var report = PreparePipelineReport()
+        report.extensionsUsed = PreparePipelineReport.captureExtensions(from: json)
+        report.decompressedDraco = PreparePipelineReport.sourceHadDraco(json)
         return report
     }
 
@@ -304,7 +304,7 @@ enum EntityLoader {
         from url: URL,
         directoryURL: URL,
         json: [String: Any]
-    ) throws -> (url: URL, json: [String: Any], assetDirectory: URL, report: PipelineReport) {
+    ) throws -> (url: URL, json: [String: Any], assetDirectory: URL, report: PreparePipelineReport) {
         var report = seedPipelineReport(from: json)
         guard MetalRoughPrepare.needsConversion(json) || RealityPrepare.needsPrepare(json) else {
             return (url, json, directoryURL, report)

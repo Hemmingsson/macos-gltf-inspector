@@ -270,7 +270,7 @@ struct HostOutlinerView: View {
     }
 
     @ViewBuilder
-    private func pipelineBadge(_ report: PipelineReport) -> some View {
+    private func pipelineBadge(_ report: PreparePipelineReport) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !report.entries.isEmpty {
                 pipelineSection(title: "This model, our pipeline", lines: report.entries)

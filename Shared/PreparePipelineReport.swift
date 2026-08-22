@@ -3,7 +3,7 @@ import Foundation
 /// What our prepare/convert pipeline did to this file (inspector honesty / P18).
 /// Flags are set while transforms run — not re-inferred from post-prepare JSON
 /// (those extensions are stripped).
-struct PipelineReport: Equatable, Sendable {
+struct PreparePipelineReport: Equatable, Sendable {
     var dequantized = false
     var webpToPng = false
     var gpuInstancesExpanded = false

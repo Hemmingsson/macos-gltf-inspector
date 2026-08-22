@@ -23,7 +23,7 @@ struct PreviewCycleMenu<Icon: View>: View {
                                     .font(.system(size: 11, weight: item.offset == index ? .semibold : .regular))
                                     .foregroundStyle(tint(item.offset == index))
                             }
-                            .previewGlassButtonStyle(prominent: item.offset == index)
+                            .hostChromeGlassButtonStyle(prominent: item.offset == index)
                         }
                     }
                 }
@@ -37,7 +37,7 @@ struct PreviewCycleMenu<Icon: View>: View {
                     .opacity(isNoneSelected ? PreviewBackground.inactiveIconOpacity : 1)
                     .contentShape(Rectangle())
             }
-            .previewGlassButtonStyle(prominent: !isNoneSelected)
+            .hostChromeGlassButtonStyle(prominent: !isNoneSelected)
             .help(currentTitle)
         }
         .onHover { hovering = $0 }

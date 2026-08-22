@@ -5,7 +5,7 @@ import Testing
 struct PipelineReportTests {
     @Test func shortTriangleMarksDequantized() throws {
         let glb = try GLBBox.parse(shortTriangleGLB())
-        var report = PipelineReport()
+        var report = PreparePipelineReport()
         _ = try RealityPrepare.transformed(glb, report: &report)
         #expect(report.dequantized)
         #expect(!report.webpToPng)
@@ -14,7 +14,7 @@ struct PipelineReportTests {
 
     @Test func instancedGLBMarksExpansion() throws {
         let glb = try GLBBox.parse(instancedGLB(count: 2))
-        var report = PipelineReport()
+        var report = PreparePipelineReport()
         _ = try RealityPrepare.transformed(glb, report: &report)
         #expect(report.gpuInstancesExpanded)
     }
@@ -65,7 +65,7 @@ struct PipelineReportTests {
     }
 
     @Test func captureExtensionsDedupesAndSorts() {
-        let names = PipelineReport.captureExtensions(from: [
+        let names = PreparePipelineReport.captureExtensions(from: [
             "extensionsUsed": ["KHR_materials_unlit", "EXT_mesh_gpu_instancing", "KHR_materials_unlit"],
         ])
         #expect(names == ["EXT_mesh_gpu_instancing", "KHR_materials_unlit"])

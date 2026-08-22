@@ -51,7 +51,7 @@ struct PreviewChromeBar: View {
                         .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                 }
-                .previewGlassButtonStyle(prominent: autoRotate)
+                .hostChromeGlassButtonStyle(prominent: autoRotate)
                 .help("Auto-rotate")
                 Button {
                     showFloor.toggle()
@@ -63,7 +63,7 @@ struct PreviewChromeBar: View {
                         .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                 }
-                .previewGlassButtonStyle(prominent: showFloor)
+                .hostChromeGlassButtonStyle(prominent: showFloor)
                 .help(showFloor ? "Hide polar floor" : "Show polar floor")
             }
         }
@@ -110,7 +110,7 @@ struct PreviewPlaybackBar: View {
                     .frame(width: 22, height: 22)
                     .contentShape(Rectangle())
             }
-            .previewGlassButtonStyle(prominent: isPlaying)
+            .hostChromeGlassButtonStyle(prominent: isPlaying)
             .help(isPlaying ? "Pause" : "Play")
 
             Slider(
@@ -137,8 +137,10 @@ struct PreviewPlaybackBar: View {
 }
 
 extension View {
+    /// Host chrome glass button style. Named apart from PreviewUI's
+    /// `previewGlassButtonStyle` so both can compile into the GLBPreview target.
     @ViewBuilder
-    func previewGlassButtonStyle(prominent: Bool) -> some View {
+    func hostChromeGlassButtonStyle(prominent: Bool) -> some View {
         if prominent {
             buttonStyle(.glassProminent)
         } else {

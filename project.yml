@@ -54,6 +54,7 @@ targets:
     platform: macOS
     sources:
       - GLBPreview
+      - PreviewUI
       - path: assets/ICON.icon
         type: file
         buildPhase: resources

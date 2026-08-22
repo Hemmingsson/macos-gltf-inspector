@@ -34,24 +34,16 @@ struct SettingsRootView: View {
     var body: some View {
         TabView {
             Tab("General", systemImage: "gearshape") {
-                GeneralSettingsPane()
+                HostGeneralSettingsPane()
             }
             Tab("Preview", systemImage: "cube.transparent") {
                 PreviewSettingsPane()
             }
             Tab("About", systemImage: "info.circle") {
-                AboutSettingsPane()
+                HostAboutSettingsPane()
             }
         }
         .scenePadding()
         .frame(maxWidth: 520, minHeight: 240)
-    }
-}
-
-extension View {
-    func settingsFormChrome() -> some View {
-        formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .contentMargins(.top, 8, for: .scrollContent)
     }
 }

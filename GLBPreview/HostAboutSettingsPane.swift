@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-struct AboutSettingsPane: View {
+struct HostAboutSettingsPane: View {
     var body: some View {
         Form {
             Section {

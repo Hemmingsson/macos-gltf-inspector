@@ -70,7 +70,7 @@ struct PreviewScene: View {
     /// Huge/flat models veto auto-rotate. Computed once per entity in `init` (cheap to read
     /// in the 16ms tick, unlike re-deriving bounds each frame).
     private let geometryDisablesAutoRotate: Bool
-    @State private var playback: AnimationPlaybackController?
+    @State private var playback: RealityKit.AnimationPlaybackController?
     @State private var clips: [PreviewClip] = []
     @State private var clipIndex = 0
     @State private var clipDuration: TimeInterval = 0

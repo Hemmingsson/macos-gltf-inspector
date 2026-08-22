@@ -22,11 +22,11 @@ enum MetalRoughPrepare {
     /// Spec/gloss → metal/rough rewrite, in memory. Serialization happens once at the
     /// end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
-        var report = PipelineReport()
+        var report = PreparePipelineReport()
         return try transformed(glb, report: &report)
     }
 
-    static func transformed(_ glb: GLBBox, report: inout PipelineReport) throws -> GLBBox {
+    static func transformed(_ glb: GLBBox, report: inout PreparePipelineReport) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
         var images = json["images"] as? [[String: Any]] ?? []
