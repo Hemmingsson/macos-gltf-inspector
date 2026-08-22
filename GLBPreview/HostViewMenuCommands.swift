@@ -1,22 +1,19 @@
 import SwiftUI
 
-/// Host View menu: drives `EngineViewportController` + panel chrome via `FocusedValues`,
-/// and keeps double-sided / skeleton / FOV / lighting on `FocusedPreviewSession`.
+/// Host View menu: drives `EngineViewportController` + panel chrome via `FocusedValues`.
 ///
 /// Lives in `CommandGroup(after: .sidebar)` — never `CommandMenu("View")`.
 struct HostViewMenuCommands: View {
     @FocusedValue(\.engineViewport) private var viewport
     @FocusedValue(\.shellPanelChrome) private var panels
     @FocusedValue(\.previewCommands) private var previewCommands
-    @FocusedValue(\.previewSession) private var previewSession
 
     var body: some View {
         if let viewport {
             HostViewMenuBody(
                 viewport: viewport,
                 panels: panels,
-                previewCommands: previewCommands,
-                previewSession: previewSession
+                previewCommands: previewCommands
             )
         } else {
             Text("No focused window")
@@ -29,7 +26,6 @@ private struct HostViewMenuBody: View {
     @Bindable var viewport: EngineViewportController
     var panels: ShellPanelChrome?
     var previewCommands: FocusedPreviewCommands?
-    var previewSession: FocusedPreviewSession?
 
     var body: some View {
         if let panels {
@@ -59,28 +55,22 @@ private struct HostViewMenuBody: View {
         Toggle("Orthographic", systemImage: "perspective", isOn: orthographic)
             .keyboardShortcut("o", modifiers: [.command, .shift])
 
-        if let previewSession {
-            Toggle("Double-Sided", systemImage: "square.on.square", isOn: previewSession.doubleSided)
-            Toggle(
-                "Show Skeleton",
-                systemImage: "point.3.connected.trianglepath.dotted",
-                isOn: previewSession.showSkeleton
-            )
-            Button("Widen FOV", systemImage: "plus.magnifyingglass") {
-                previewSession.fieldOfViewDegrees.wrappedValue = PreviewCamera.clampedFieldOfView(
-                    previewSession.fieldOfViewDegrees.wrappedValue + 5
-                )
-            }
-            .disabled(previewSession.orthographic.wrappedValue)
-            Button("Narrow FOV", systemImage: "minus.magnifyingglass") {
-                previewSession.fieldOfViewDegrees.wrappedValue = PreviewCamera.clampedFieldOfView(
-                    previewSession.fieldOfViewDegrees.wrappedValue - 5
-                )
-            }
-            .disabled(previewSession.orthographic.wrappedValue)
-            Button("Reset FOV", systemImage: "arrow.counterclockwise") {
-                previewSession.fieldOfViewDegrees.wrappedValue = PreviewCamera.defaultFieldOfViewDegrees
-            }
+        Toggle("Double-Sided", systemImage: "square.on.square", isOn: doubleSided)
+        Toggle(
+            "Show Skeleton",
+            systemImage: "point.3.connected.trianglepath.dotted",
+            isOn: skeleton
+        )
+        Button("Widen FOV", systemImage: "plus.magnifyingglass") {
+            viewport.setFieldOfViewDegrees(viewport.fieldOfViewDegrees + 5)
+        }
+        .disabled(viewport.projection == .orthographic)
+        Button("Narrow FOV", systemImage: "minus.magnifyingglass") {
+            viewport.setFieldOfViewDegrees(viewport.fieldOfViewDegrees - 5)
+        }
+        .disabled(viewport.projection == .orthographic)
+        Button("Reset FOV", systemImage: "arrow.counterclockwise") {
+            viewport.setFieldOfViewDegrees(PreviewCamera.defaultFieldOfViewDegrees)
         }
 
         Divider()
@@ -109,28 +99,26 @@ private struct HostViewMenuBody: View {
             .disabled(previewCommands == nil)
         }
 
-        if let previewSession {
-            Divider()
-            Button("Increase Exposure", systemImage: "sun.max") {
-                previewSession.exposureEV.wrappedValue += 0.5
-            }
-            Button("Decrease Exposure", systemImage: "sun.min") {
-                previewSession.exposureEV.wrappedValue -= 0.5
-            }
-            Button("Reset Exposure", systemImage: "sun.max.circle") {
-                previewSession.exposureEV.wrappedValue = 0
-            }
-            Toggle(
-                "Dim Studio for File Lights",
-                systemImage: "lightbulb.min",
-                isOn: previewSession.dimStudioForFileLights
-            )
-            Button("Rotate Environment 45°", systemImage: "rotate.3d") {
-                previewSession.environmentYaw.wrappedValue += .pi / 4
-            }
-            Button("Reset Environment Rotation", systemImage: "arrow.counterclockwise") {
-                previewSession.environmentYaw.wrappedValue = 0
-            }
+        Divider()
+        Button("Increase Exposure", systemImage: "sun.max") {
+            nudgeExposure(0.5)
+        }
+        Button("Decrease Exposure", systemImage: "sun.min") {
+            nudgeExposure(-0.5)
+        }
+        Button("Reset Exposure", systemImage: "sun.max.circle") {
+            applyLighting { $0.exposure = 0 }
+        }
+        Toggle(
+            "Dim Studio for File Lights",
+            systemImage: "lightbulb.min",
+            isOn: dimStudio
+        )
+        Button("Rotate Environment 45°", systemImage: "rotate.3d") {
+            applyLighting { $0.environmentRotationDegrees += 45 }
+        }
+        Button("Reset Environment Rotation", systemImage: "arrow.counterclockwise") {
+            applyLighting { $0.environmentRotationDegrees = 0 }
         }
     }
 
@@ -167,6 +155,37 @@ private struct HostViewMenuBody: View {
             get: { viewport.projection == .orthographic },
             set: { viewport.setProjection($0 ? .orthographic : .perspective) }
         )
+    }
+
+    private var doubleSided: Binding<Bool> {
+        Binding(
+            get: { viewport.doubleSided },
+            set: { viewport.setDoubleSided($0) }
+        )
+    }
+
+    private var skeleton: Binding<Bool> {
+        Binding(
+            get: { viewport.showSkeleton },
+            set: { viewport.setShowSkeleton($0) }
+        )
+    }
+
+    private var dimStudio: Binding<Bool> {
+        Binding(
+            get: { viewport.lighting.usesFileLights },
+            set: { isOn in applyLighting { $0.usesFileLights = isOn } }
+        )
+    }
+
+    private func nudgeExposure(_ delta: Double) {
+        applyLighting { $0.exposure += delta }
+    }
+
+    private func applyLighting(_ mutate: (inout LightingSettings) -> Void) {
+        var lighting = viewport.lighting
+        mutate(&lighting)
+        viewport.setLighting(lighting)
     }
 
     private func hostPresetSymbol(_ preset: CameraPreset) -> String {

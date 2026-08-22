@@ -44,6 +44,10 @@ final class EngineViewportController: ViewportController {
     private var storedDimStudioForFileLights: Bool
     /// Host `sessionEnvironmentYaw` (radians).
     private var storedEnvironmentYawRadians: Float
+    /// Host-only extras (not on `ViewportController` — the shell has no these controls).
+    private var storedDoubleSided: Bool
+    private var storedShowSkeleton: Bool
+    private var storedFieldOfViewDegrees: Float
 
     init(
         sidebar: HostSidebarModel,
@@ -57,6 +61,9 @@ final class EngineViewportController: ViewportController {
         exposureEV: Float = 0,
         dimStudioForFileLights: Bool = false,
         environmentYawRadians: Float = 0,
+        doubleSided: Bool = false,
+        showSkeleton: Bool = false,
+        fieldOfViewDegrees: Float = PreviewCamera.defaultFieldOfViewDegrees,
         settings: EngineSettingsStore? = nil,
         hostSession: EngineViewportHostSession? = nil,
         commands: FocusedPreviewCommands? = nil,
@@ -73,6 +80,9 @@ final class EngineViewportController: ViewportController {
         self.storedExposureEV = exposureEV
         self.storedDimStudioForFileLights = dimStudioForFileLights
         self.storedEnvironmentYawRadians = environmentYawRadians
+        self.storedDoubleSided = doubleSided
+        self.storedShowSkeleton = showSkeleton
+        self.storedFieldOfViewDegrees = PreviewCamera.clampedFieldOfView(fieldOfViewDegrees)
         self.settings = settings
         self.hostSession = hostSession
         self.commands = commands
@@ -208,6 +218,9 @@ final class EngineViewportController: ViewportController {
                 usesStudioEnvironment: lookStore.look.useEnvironmentMap
             )
         )
+        setDoubleSided(false)
+        setShowSkeleton(false)
+        setFieldOfViewDegrees(PreviewCamera.defaultFieldOfViewDegrees)
         sidebar.selectedCameraIndex = nil
         activeCameraPreset = nil
         commands?.reset()
@@ -265,6 +278,27 @@ final class EngineViewportController: ViewportController {
 
     var hostEnvironmentYawRadians: Float { storedEnvironmentYawRadians }
 
+    var doubleSided: Bool { storedDoubleSided }
+
+    var showSkeleton: Bool { storedShowSkeleton }
+
+    var fieldOfViewDegrees: Float { storedFieldOfViewDegrees }
+
+    func setDoubleSided(_ isOn: Bool) {
+        storedDoubleSided = isOn
+        hostSession?.doubleSided.wrappedValue = isOn
+    }
+
+    func setShowSkeleton(_ isOn: Bool) {
+        storedShowSkeleton = isOn
+        hostSession?.showSkeleton.wrappedValue = isOn
+    }
+
+    func setFieldOfViewDegrees(_ degrees: Float) {
+        storedFieldOfViewDegrees = PreviewCamera.clampedFieldOfView(degrees)
+        hostSession?.fieldOfViewDegrees.wrappedValue = storedFieldOfViewDegrees
+    }
+
     /// Push stored settings-backed values into the RealityKit session bindings (open / clearSession).
     func syncHostCanvasFromStored() {
         guard let hostSession else { return }
@@ -275,6 +309,12 @@ final class EngineViewportController: ViewportController {
         hostSession.autoRotate.wrappedValue = autoRotates
         hostSession.centerModel.wrappedValue = isCentered
         hostSession.orthographic.wrappedValue = projection == .orthographic
+        hostSession.exposureEV.wrappedValue = storedExposureEV
+        hostSession.dimStudioForFileLights.wrappedValue = storedDimStudioForFileLights
+        hostSession.environmentYaw.wrappedValue = storedEnvironmentYawRadians
+        hostSession.doubleSided.wrappedValue = storedDoubleSided
+        hostSession.showSkeleton.wrappedValue = storedShowSkeleton
+        hostSession.fieldOfViewDegrees.wrappedValue = storedFieldOfViewDegrees
     }
 
     // MARK: - ViewMode ↔ PreviewDebugMode

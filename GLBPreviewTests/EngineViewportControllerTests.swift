@@ -147,6 +147,9 @@ struct EngineViewportControllerTests {
         var dimStudio = false
         var environmentYaw: Float = 0
         var debugModeIndex = 0
+        var doubleSided = false
+        var showSkeleton = false
+        var fieldOfView: Float = PreviewCamera.defaultFieldOfViewDegrees
         let host = EngineViewportHostSession(
             backdropIndex: Binding(get: { backdropIndex }, set: { backdropIndex = $0 }),
             showFloor: Binding(get: { showFloor }, set: { showFloor = $0 }),
@@ -156,6 +159,9 @@ struct EngineViewportControllerTests {
             exposureEV: Binding(get: { exposureEV }, set: { exposureEV = $0 }),
             dimStudioForFileLights: Binding(get: { dimStudio }, set: { dimStudio = $0 }),
             environmentYaw: Binding(get: { environmentYaw }, set: { environmentYaw = $0 }),
+            doubleSided: Binding(get: { doubleSided }, set: { doubleSided = $0 }),
+            showSkeleton: Binding(get: { showSkeleton }, set: { showSkeleton = $0 }),
+            fieldOfViewDegrees: Binding(get: { fieldOfView }, set: { fieldOfView = $0 }),
             debugModeIndex: Binding(get: { debugModeIndex }, set: { debugModeIndex = $0 }),
             debugModes: [.none, .wire]
         )
@@ -187,6 +193,24 @@ struct EngineViewportControllerTests {
         #expect(abs(environmentYaw - Float.pi / 4) < 0.0001)
         #expect(viewport.showsFloor == false)
         #expect(viewport.viewMode == .wireframe)
+
+        viewport.setDoubleSided(true)
+        viewport.setShowSkeleton(true)
+        viewport.setFieldOfViewDegrees(90)
+        #expect(doubleSided == true)
+        #expect(showSkeleton == true)
+        #expect(fieldOfView == 90)
+        #expect(viewport.doubleSided == true)
+        #expect(viewport.showSkeleton == true)
+        #expect(viewport.fieldOfViewDegrees == 90)
+
+        viewport.setFieldOfViewDegrees(5)
+        #expect(fieldOfView == PreviewCamera.clampedFieldOfView(5))
+        viewport.reset()
+        #expect(doubleSided == false)
+        #expect(showSkeleton == false)
+        #expect(fieldOfView == PreviewCamera.defaultFieldOfViewDegrees)
+        #expect(exposureEV == 0)
     }
 }
 

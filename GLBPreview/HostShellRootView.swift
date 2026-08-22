@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 ///
 /// Pills / selection / screenshot / playback / scene+variant write through the engine adapters into
 /// host session + `HostSidebarModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
-/// (untouched keys track defaults live). Old in-canvas chrome may still double-overlay until bare mode.
+/// (untouched keys track defaults live). Host canvas is bare (`showsInlineChrome == false`).
 struct HostShellRootView: View {
     let documentURL: URL?
 
@@ -61,7 +61,6 @@ struct HostShellRootView: View {
     var body: some View {
         shellRoot
             .focusedSceneValue(\.previewCommands, focusedPreviewCommands)
-            .focusedSceneValue(\.previewSession, loadedModel == nil ? nil : previewSession.focusedMenu)
             .focusedSceneValue(\.engineViewport, loadedModel == nil ? nil : engineViewport)
             .focusedSceneValue(\.shellPanelChrome, panels)
             .alert(
@@ -258,6 +257,9 @@ struct HostShellRootView: View {
             exposureEV: $sessionExposureEV,
             dimStudioForFileLights: $sessionDimStudioForFileLights,
             environmentYaw: $sessionEnvironmentYaw,
+            doubleSided: $sessionDoubleSided,
+            showSkeleton: $sessionShowSkeleton,
+            fieldOfViewDegrees: $sessionFieldOfViewDegrees,
             debugModeIndex: $sessionDebugModeIndex,
             debugModes: loadedDebugModes.isEmpty ? [.none] : loadedDebugModes
         )

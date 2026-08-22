@@ -66,8 +66,6 @@ struct GLBPreviewApp: App {
         .commands {
             SidebarCommands()
             // Seam-driven View menu (pills twin). Do **not** add `CommandMenu("View")`.
-            // Old inline body removed from here; `FocusedPreviewSession` plumbing stays for
-            // double-sided / skeleton / FOV until `vfcn76gm` strips leftovers.
             CommandGroup(after: .sidebar) {
                 HostViewMenuCommands()
             }
