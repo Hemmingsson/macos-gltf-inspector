@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/deny-parallel-load-bench.sh",
+        "matcher": "(?:^|/)(?:scripts/)?load-bench\\.sh|LoadTimeBenchTests",
+        "failClosed": false
+      }
+    ]
+  }
+}
