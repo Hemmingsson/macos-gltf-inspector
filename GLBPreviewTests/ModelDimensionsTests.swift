@@ -19,10 +19,7 @@ struct ModelDimensionsTests {
     }
 
     @Test @MainActor func cubeMatchesLoggedUnitExtent() async throws {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("scripts/testdata/cube/cube.gltf")
+        let url = TestFixtures.cube
         let model = try await EntityLoader.load(from: url, includeAnimations: false)
         let dims = PreviewCamera.dimensions(of: model.entity, relativeTo: model.entity)
         #expect(dims != nil)

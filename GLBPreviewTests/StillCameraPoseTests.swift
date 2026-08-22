@@ -65,10 +65,7 @@ struct StillCameraPoseTests {
     }
 
     @Test @MainActor func poseBasedStillRendererWritesPNG() async throws {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let url = repoRoot.appendingPathComponent("scripts/testdata/cube/cube.gltf")
+        let url = TestFixtures.cube
         try #require(FileManager.default.fileExists(atPath: url.path))
 
         let model = try await EntityLoader.loadThumbnail(from: url)

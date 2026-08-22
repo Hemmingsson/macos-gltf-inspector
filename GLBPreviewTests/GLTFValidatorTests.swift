@@ -4,7 +4,7 @@ import Testing
 
 struct GLTFValidatorTests {
     @Test func invalidUnresolvedMeshReportsErrors() async throws {
-        let url = fixtureURL("invalid/unresolved-mesh.gltf")
+        let url = TestFixtures.invalid
         let report = try await GLTFValidator.validate(fileAt: url)
         #expect(report.errorCount >= 1)
         #expect(report.badgeCount >= 1)
@@ -14,7 +14,7 @@ struct GLTFValidatorTests {
     }
 
     @Test func cubeFixtureIsCleanOrInfoOnly() async throws {
-        let url = fixtureURL("cube/cube.gltf")
+        let url = TestFixtures.cube
         let report = try await GLTFValidator.validate(fileAt: url)
         #expect(report.errorCount == 0)
         #expect(report.isClean || report.warningCount == 0)
@@ -33,12 +33,5 @@ struct GLTFValidatorTests {
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
-    }
-
-    private func fixtureURL(_ relative: String) -> URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("scripts/testdata/\(relative)")
     }
 }

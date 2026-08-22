@@ -8,10 +8,7 @@ import Testing
 struct StillRenderProofTests {
     @MainActor
     @Test func stillRendererWritesTinyPNG() async throws {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let url = repoRoot.appendingPathComponent("scripts/tiny.glb")
+        let url = TestFixtures.tiny
         try #require(FileManager.default.fileExists(atPath: url.path))
 
         let model = try await EntityLoader.loadThumbnail(from: url)
@@ -47,10 +44,7 @@ struct StillRenderProofTests {
     /// the flat `tiny.glb` triangle. Regenerate with `scripts/testdata/cube/make_cube.py`.
     @MainActor
     @Test func cubeSidecarRendersFromCommittedFiles() async throws {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let url = repoRoot.appendingPathComponent("scripts/testdata/cube/cube.gltf")
+        let url = TestFixtures.cube
         try #require(FileManager.default.fileExists(atPath: url.path))
 
         // Confirm the committed file really lands on the no-pack path.

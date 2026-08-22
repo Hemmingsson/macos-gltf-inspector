@@ -39,7 +39,7 @@ struct PreviewClipTests {
 
     @MainActor
     @Test func boxAnimatedExposesUsableClips() async throws {
-        let url = BoxAnimatedFixture.url
+        let url = TestFixtures.boxAnimated
         #expect(FileManager.default.fileExists(atPath: url.path))
 
         let model = try await EntityLoader.load(from: url, includeAnimations: true)
@@ -54,14 +54,6 @@ struct PreviewClipTests {
     }
 }
 
-private enum BoxAnimatedFixture {
-    static var url: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("scripts/testdata/BoxAnimated/BoxAnimated.glb")
-    }
-}
 
 private func writePreviewClipTwoClipGLB() throws -> URL {
     var bin = Data()

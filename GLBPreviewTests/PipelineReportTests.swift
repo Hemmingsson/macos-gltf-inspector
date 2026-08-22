@@ -20,10 +20,7 @@ struct PipelineReportTests {
     }
 
     @Test func cubePipelineIsStudioOnly() async throws {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("scripts/testdata/cube/cube.gltf")
+        let url = TestFixtures.cube
         let model = try await EntityLoader.load(from: url)
         #expect(!model.pipelineReport.dequantized)
         #expect(!model.pipelineReport.specGlossToMetalRough)

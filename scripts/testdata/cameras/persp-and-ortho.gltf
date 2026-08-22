@@ -1,0 +1,106 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "glb-preview make_fixtures.py"
+  },
+  "buffers": [
+    {
+      "byteLength": 36,
+      "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAA"
+    }
+  ],
+  "cameras": [
+    {
+      "name": "Persp",
+      "type": "perspective",
+      "perspective": {
+        "yfov": 0.7,
+        "znear": 0.1,
+        "zfar": 100
+      }
+    },
+    {
+      "name": "Ortho",
+      "type": "orthographic",
+      "orthographic": {
+        "xmag": 1,
+        "ymag": 1,
+        "znear": 0.1,
+        "zfar": 100
+      }
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 36
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "max": [
+        1,
+        1,
+        0
+      ],
+      "min": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Framed",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0
+          }
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Mesh",
+      "mesh": 0
+    },
+    {
+      "name": "CamPersp",
+      "camera": 0,
+      "translation": [
+        0,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "CamOrtho",
+      "camera": 1,
+      "translation": [
+        3,
+        0,
+        0
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Default",
+      "nodes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "scene": 0
+}
