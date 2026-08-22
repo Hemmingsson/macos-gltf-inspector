@@ -11,7 +11,7 @@ import SwiftUI
 /// `AppLook.useEnvironmentMap` and is never written here — Settings owns that key.
 ///
 /// Settings-backed keys (backdrop / floor / auto-rotate / center / projection) read through
-/// `EngineSettingsStore` when set — untouched keys track app defaults live (P34). Mutators
+/// `EngineSettingsStore` when set — untouched keys track app defaults live. Mutators
 /// pin only the key they touch. `hostSession` keeps the RealityKit canvas in sync.
 @MainActor
 @Observable

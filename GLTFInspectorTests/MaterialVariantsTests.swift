@@ -14,7 +14,6 @@ struct MaterialVariantsTests {
             options: [GLTFAssetLoadingOption.assetDirectoryURLKey: url.deletingLastPathComponent()]
         )
         #expect(MaterialVariants.names(from: asset) == ["Red", "Blue"])
-        #expect(MaterialVariants.hasMappings(in: asset))
 
         let primitive = try #require(asset.meshes.first?.primitives.first)
         #expect((primitive.materialMappings ?? []).count == 2)

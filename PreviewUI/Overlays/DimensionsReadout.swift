@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Bottom-trailing W×H×D pill (`Main-html` dimensions readout).
+/// Bottom-trailing W×H×D pill.
 struct DimensionsReadout: View {
     var dimensions: Dimensions
 

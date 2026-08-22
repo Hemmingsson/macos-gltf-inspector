@@ -19,6 +19,7 @@ struct EngineSceneModel: SceneModel {
     var dimensions: Dimensions
     var validation: ValidationResult
     var pipelineReport: PipelineReport
+    var convertProblems: ConvertProblemList
 
     /// Build from a loaded model. Pass `validation: nil` while the Khronos run is pending;
     /// call again with `.success` / `.failed` / `.skipped` when it resolves.
@@ -35,6 +36,7 @@ struct EngineSceneModel: SceneModel {
             dimensions: Self.mapDimensions(entity: loaded.entity),
             validation: validation,
             pipelineReport: loaded.pipelineReport,
+            convertProblems: loaded.convertProblems,
             materialVariantNames: loaded.materialVariantNames
         )
     }
@@ -46,12 +48,14 @@ struct EngineSceneModel: SceneModel {
         dimensions: Dimensions,
         validation: GLTFValidationState? = nil,
         pipelineReport: PreparePipelineReport,
+        convertProblems: ConvertProblemReport = ConvertProblemReport(),
         materialVariantNames: [String] = []
     ) {
         let displayName = fileName.isEmpty ? "Model" : fileName
         self.fileName = displayName
         self.materialVariantNames = materialVariantNames
         self.pipelineReport = Self.mapPipelineReport(pipelineReport)
+        self.convertProblems = Self.mapConvertProblems(convertProblems)
         self.validation = Self.mapValidation(validation)
 
         let scenes = Self.mapScenes(document)
@@ -86,7 +90,7 @@ struct EngineSceneModel: SceneModel {
 extension EngineSceneModel {
     static func mapValidation(_ state: GLTFValidationState?) -> ValidationResult {
         guard let state else {
-            return ValidationResult()
+            return ValidationResult(status: .pending)
         }
         switch state {
         case .success(let report):
@@ -98,21 +102,36 @@ extension EngineSceneModel {
                         pointer: message.pointer
                     )
                 },
-                formatLabel: "glTF 2.0"
+                formatLabel: "glTF 2.0",
+                status: .ready
             )
         case .failed(let message):
             return ValidationResult(
                 issues: [
-                    ValidationResult.Issue(severity: .info, message: message)
-                ]
+                    ValidationResult.Issue(severity: .warning, message: message)
+                ],
+                status: .unavailable
             )
         case .skipped(let message):
             return ValidationResult(
                 issues: [
-                    ValidationResult.Issue(severity: .info, message: message)
-                ]
+                    ValidationResult.Issue(severity: .warning, message: message)
+                ],
+                status: .unavailable
             )
         }
+    }
+
+    static func mapConvertProblems(_ report: ConvertProblemReport) -> ConvertProblemList {
+        ConvertProblemList(
+            entries: report.items.map { item in
+                ConvertProblemList.Entry(
+                    severity: item.severity == .error ? .error : .warning,
+                    title: item.message,
+                    code: item.code.rawValue
+                )
+            }
+        )
     }
 
     static func mapPipelineReport(_ report: PreparePipelineReport) -> PipelineReport {

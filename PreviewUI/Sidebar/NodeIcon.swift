@@ -8,8 +8,8 @@ import SwiftUI
 /// one place, so every icon in the app comes from here rather than from a literal at the call site.
 struct NodeIcon: View {
     var kind: NodeKind
-    /// A selected row recolours icon *and* label to the selection blue (Main-html `.row.sel`), so
-    /// the type tint yields to the selection instead of fighting it for the same 16 pt.
+    /// A selected row recolours icon *and* label to the selection blue, so the type tint yields
+    /// to the selection instead of fighting it for the same 16 pt.
     var isSelected: Bool = false
 
     var body: some View {

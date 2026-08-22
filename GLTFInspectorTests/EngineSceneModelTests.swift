@@ -19,6 +19,7 @@ struct EngineSceneModelTests {
         #expect(!availability.isMultiScene)
         #expect(model.scenes.count == 1)
         #expect(model.animations.isEmpty)
+        #expect(model.convertProblems.isEmpty)
         #expect(!model.nodeTree.isEmpty)
         #expect(model.pipelineReport.entries.contains { $0.kind == .lighting })
     }
@@ -36,6 +37,7 @@ struct EngineSceneModelTests {
         #expect(!availability.hasMorphs)
         #expect(!availability.isMultiScene)
         #expect(model.animations.isEmpty)
+        #expect(model.convertProblems.isEmpty)
     }
 
     @Test func boxAnimatedHasClipsAndPlayback() async throws {
@@ -145,6 +147,8 @@ struct EngineSceneModelTests {
         let loaded = try await EntityLoader.load(from: TestFixtures.cube, includeAnimations: false)
         let report = try await GLTFValidator.validate(fileAt: TestFixtures.invalid)
         let pending = EngineSceneModel(loaded: loaded, fileName: "unresolved-mesh.gltf", validation: nil)
+        #expect(pending.validation.status == .pending)
+        #expect(!pending.validation.isClean)
         #expect(pending.validation.issues.isEmpty)
 
         let model = EngineSceneModel(
@@ -154,12 +158,16 @@ struct EngineSceneModelTests {
         )
         #expect(!model.validation.issues.isEmpty)
         #expect(model.validation.errorCount >= 1)
+        #expect(model.validation.status == .ready)
 
         let failed = pending.replacingValidation(.failed("Validation unavailable: test"))
-        #expect(failed.validation.issues.contains { $0.severity == .info && $0.message.contains("unavailable") })
+        #expect(failed.validation.status == .unavailable)
+        #expect(!failed.validation.isClean)
+        #expect(failed.validation.issues.contains { $0.severity == .warning && $0.message.contains("unavailable") })
 
         let skipped = pending.replacingValidation(.skipped("Validation skipped: test"))
-        #expect(skipped.validation.issues.contains { $0.severity == .info && $0.message.contains("skipped") })
+        #expect(skipped.validation.status == .unavailable)
+        #expect(skipped.validation.issues.contains { $0.severity == .warning && $0.message.contains("skipped") })
     }
 
     @Test func offcenterAuthoredOriginIsNonZero() async throws {

@@ -6,8 +6,8 @@ import SwiftUI
 /// One outliner row, flattened out of whatever the model calls its own hierarchy.
 ///
 /// The views never touch `SceneModel` directly: they render `OutlinerSection`s. That keeps the
-/// "which glTF array does this row come from" question in one function, and means Slice 3's
-/// inspector and any later engine adapter bind to the same small value type.
+/// "which glTF array does this row come from" question in one function, and lets the inspector
+/// and any engine adapter bind to the same small value type.
 ///
 /// Meshes may carry nested `children` for fold/unfold; flat sections leave `children` empty.
 struct OutlinerItem: Identifiable, Hashable, Sendable {
@@ -96,7 +96,7 @@ extension OutlinerSection {
 
 // MARK: - View
 
-/// A quiet uppercase header with its rows under it (Main-html `.sec` + `.row`).
+/// A quiet uppercase header with its rows under it.
 ///
 /// Takes an already-non-empty section: the decision about whether a section exists belongs to
 /// `OutlinerSection.sections(of:)`, not to the thing drawing it.
@@ -104,8 +104,8 @@ struct OutlinerSectionView<Selection: SelectionModel>: View {
     var section: OutlinerSection
     var selection: Selection
     var onSelect: ((OutlinerItem) -> Void)? = nil
-    /// Optional external expand set (shell proofs). Production sidebar leaves this `nil` and owns
-    /// expansion in `@State` — never written from `View.init`.
+    /// Optional external expand set for previews/tests. The app sidebar leaves this `nil` and
+    /// owns expansion in `@State` — never written from `View.init`.
     var expanded: Binding<Set<NodeID>>? = nil
 
     @State private var ownedExpanded = Set<NodeID>()

@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// Bottom-leading corner axes — camera-orientation cue (`Main-html` orientation gizmo).
-///
-/// Drawn as a fixed iso triad for the shell; the real app later rotates it with the camera (P7).
+/// Bottom-leading corner axes — a fixed isometric triad giving a camera-orientation cue.
 /// Not glass: the wireframe paints bare strokes over the canvas.
 struct OrientationGizmo: View {
     var body: some View {

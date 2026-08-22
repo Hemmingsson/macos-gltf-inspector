@@ -25,7 +25,7 @@ fi
 echo "ok $OUT ($(wc -c < "$OUT") bytes)"
 
 echo "qlmanage (12s timeout, optional):"
-if perl -e 'alarm 12; exec @ARGV' -- qlmanage -t -o "$QL_DIR" "$ROOT/scripts/tiny.glb"; then
+if perl -e 'alarm 12; exec @ARGV' -- qlmanage -t -o "$QL_DIR" "$ROOT/TestModels/Fixture Models/tiny.glb"; then
   find "$QL_DIR" -type f -print
 else
   echo "qlmanage timed out or failed — use $OUT as proof"

@@ -1,7 +1,7 @@
 import RealityKit
 import simd
 
-/// Runtime morph-target weights via `BlendShapeWeightsComponent` (P16).
+/// Runtime morph-target weights via `BlendShapeWeightsComponent`.
 enum PreviewMorph {
     /// One adjustable target on a morph mesh entity.
     struct Target: Equatable, Identifiable, Sendable {

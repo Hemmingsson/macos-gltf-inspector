@@ -28,7 +28,7 @@ struct PreviewView: View {
     /// Host passes `HostSidebarModel.overlayRevision` so RealityView updates on select/hide.
     /// Reading it through `any PreviewOverlay` alone is not a reliable SwiftUI dependency.
     var overlayRevision: Int = 0
-    /// Host-owned P34 session; nil in Quick Look (PreviewScene seeds local `@State`).
+    /// Host-owned session; nil in Quick Look (PreviewScene seeds local `@State`).
     var session: PreviewSessionBindings? = nil
 
     var body: some View {

@@ -47,6 +47,8 @@ public class RealityKitConvert {
     var ignoreBakedEmissive = false
     /// Last convert’s baked-emissive drop decision (MainActor convert path only).
     @MainActor static var lastDroppedBakedEmissive = false
+    /// Last convert’s structured losses (MainActor convert path only).
+    @MainActor static var lastProblems = ConvertProblemReport()
 
     @MainActor static func convert(
         scene: GLTFScene,
@@ -76,6 +78,7 @@ public class RealityKitConvert {
         let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))
         ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(emissiveHints)
         Self.lastDroppedBakedEmissive = ignoreBakedEmissive
+        Self.lastProblems = ConvertProblemReport()
         if ignoreBakedEmissive {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
@@ -102,6 +105,7 @@ public class RealityKitConvert {
             }
         }
 
+        Self.lastProblems = context.problems
         return rootEntity
     }
 

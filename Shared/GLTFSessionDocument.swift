@@ -107,7 +107,7 @@ struct GLTFSessionDocument: Sendable, Equatable {
         var alphaCutoff: Float?
     }
 
-    /// Skin joint list stamped at convert (P16). `jointParentIndices` indexes this
+    /// Skin joint list stamped at convert. `jointParentIndices` indexes this
     /// skin’s joint array (`nil` = root). Overlay looks up entities via `jointNodeIndices`.
     struct Skin: Sendable, Equatable {
         var name: String
@@ -116,7 +116,7 @@ struct GLTFSessionDocument: Sendable, Equatable {
         var jointParentIndices: [Int?]
     }
 
-    /// Morph targets for one mesh (P16). Names match RealityKit blend-shape offsets.
+    /// Morph targets for one mesh. Names match RealityKit blend-shape offsets.
     struct Morph: Sendable, Equatable {
         var meshIndex: Int
         var meshName: String

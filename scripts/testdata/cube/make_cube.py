@@ -15,6 +15,7 @@ import zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+DEST = HERE.parents[2] / "TestModels" / "Fixture Models" / "cube"
 
 # Face table: center, u (right), v (up); normal = u x v points outward.
 # Colours follow the axis convention (+X red, -X cyan, +Y green, -Y magenta,
@@ -152,11 +153,12 @@ def main():
         "buffers": [{"uri": "cube.bin", "byteLength": len(bin_data)}],
     }
 
-    (HERE / "cube.bin").write_bytes(bin_data)
-    write_png(HERE / "cube.png", [(f[4], f[5]) for f in FACES])
-    (HERE / "cube.gltf").write_text(json.dumps(gltf, indent=1) + "\n")
+    DEST.mkdir(parents=True, exist_ok=True)
+    (DEST / "cube.bin").write_bytes(bin_data)
+    write_png(DEST / "cube.png", [(f[4], f[5]) for f in FACES])
+    (DEST / "cube.gltf").write_text(json.dumps(gltf, indent=1) + "\n")
     print(f"wrote cube.gltf ({len(json.dumps(gltf))} B json), "
-          f"cube.bin ({len(bin_data)} B), cube.png ({(HERE / 'cube.png').stat().st_size} B)")
+          f"cube.bin ({len(bin_data)} B), cube.png ({(DEST / 'cube.png').stat().st_size} B)")
 
 
 if __name__ == "__main__":

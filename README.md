@@ -43,7 +43,7 @@
 
 ## Build
 
-Requires Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Set `DEVELOPMENT_TEAM` in `project.yml`.
+Requires macOS 26+ on Apple Silicon, Xcode, and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Set `DEVELOPMENT_TEAM` in `project.yml` to your own Apple Developer team.
 
 1. `brew install xcodegen`
 2. `./scripts/build.sh`
@@ -75,4 +75,8 @@ Prepare rewrites materials and meshes RealityKit will not ingest, then the defau
 The host app window is **`PreviewUI`** chrome (sidebar, inspector, pills, settings) over a real **`PreviewView`** canvas. Thin **`GLTFInspector/Engine/`** adapters map the existing engine (`HostSidebarModel`, `EntityLoader`, `AppLook`) onto the UI seam.
 
 App and Quick Look show that entity in a `RealityView` with studio IBL for light and reflections — not a skybox. Quick Look is a light canvas (orbit, bottom-left facts, backdrop + auto-rotate). Finder thumbnails are a still from `RealityRenderer`.
+
+## License
+
+Released under the [MIT License](LICENSE). Bundled dependencies — [GLTFKit2](https://github.com/warrenm/GLTFKit2), [DracoSwift](https://github.com/warrenm/DracoSwift), and [Sparkle](https://github.com/sparkle-project/Sparkle) — are MIT-licensed; the vendored [Khronos glTF-Validator](Vendor/gltf-validator) and IBL environments carry their own licenses in-tree.
 

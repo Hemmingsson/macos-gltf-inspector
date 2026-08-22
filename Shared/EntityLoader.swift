@@ -11,8 +11,10 @@ enum EntityLoader {
         let debugModes: [PreviewDebugMode]
         /// Computed once at load; avoid re-walking the entity tree on every host view refresh.
         let studioIBLExponent: Float
-        /// What prepare/convert did (P18). Empty for plain metal-rough assets.
+        /// What prepare/convert did. Empty for plain metal-rough assets.
         let pipelineReport: PreparePipelineReport
+        /// Convert losses (missing textures, dropped primitives, ignored extensions).
+        let convertProblems: ConvertProblemReport
         /// `KHR_materials_variants` names from GLTFKit2 (`materialVariants`). Empty when absent.
         let materialVariantNames: [String]
     }
@@ -236,6 +238,8 @@ enum EntityLoader {
         )
         report.dimmedStudioIBL = exponent < 0
         report.droppedBakedEmissive = RealityKitConvert.lastDroppedBakedEmissive
+        let convertProblems = RealityKitConvert.lastProblems
+            .mergingIgnoredExtensions(from: report.extensionsUsed)
         return LoadedModel(
             entity: entity,
             stats: PreviewStats.from(
@@ -248,6 +252,7 @@ enum EntityLoader {
             debugModes: PreviewDebugMode.available(from: json),
             studioIBLExponent: exponent,
             pipelineReport: report,
+            convertProblems: convertProblems,
             materialVariantNames: materialVariantNames
         )
     }
@@ -290,7 +295,7 @@ enum EntityLoader {
         return out
     }
 
-    /// Source extensions + Draco flag before prepare strips lists (P18 / P41).
+    /// Source extensions + Draco flag before prepare strips lists.
     private static func seedPipelineReport(from json: [String: Any]) -> PreparePipelineReport {
         var report = PreparePipelineReport()
         report.extensionsUsed = PreparePipelineReport.captureExtensions(from: json)

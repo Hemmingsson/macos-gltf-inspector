@@ -9,6 +9,10 @@ class ThumbnailProvider: QLThumbnailProvider {
         let pixel = max(64, Int(max(request.maximumSize.width, request.maximumSize.height) * scale))
         let url = request.fileURL
 
+        // Quick Look copies the image from the handed-off URL but never deletes it, and the
+        // extension gets no completion callback — so clear PNGs left by earlier requests.
+        Self.sweepStaleThumbnails()
+
         // Detached like Quick Look: prepare/parse off the main actor; RealityKit
         // convert and StillRenderer hop to MainActor inside EntityLoader / capture.
         Task.detached {
@@ -35,8 +39,28 @@ class ThumbnailProvider: QLThumbnailProvider {
                 // QLThumbnailError 102 for the generator path Finder uses.
                 handler(QLThumbnailReply(imageFileURL: fileURL), nil)
             } catch {
-                AppLog.error(AppLog.thumbnail, "thumbnail failed \(url.path) \(error)")
+                AppLog.error(AppLog.thumbnail, "thumbnail failed \(url.lastPathComponent) \(error)")
                 handler(nil, error)
+            }
+        }
+    }
+
+    /// Remove `glb-thumb-*.png` files older than a minute. Best-effort: the age guard keeps a
+    /// concurrent request's just-written file from being deleted before Quick Look reads it.
+    private static func sweepStaleThumbnails() {
+        let tmp = FileManager.default.temporaryDirectory
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: tmp,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return }
+        let cutoff = Date(timeIntervalSinceNow: -60)
+        for entry in entries
+        where entry.lastPathComponent.hasPrefix("glb-thumb-") && entry.pathExtension == "png" {
+            let modified = (try? entry.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate
+            if let modified, modified < cutoff {
+                try? FileManager.default.removeItem(at: entry)
             }
         }
     }

@@ -20,7 +20,7 @@ struct ModelDimensions: Equatable, Sendable {
         depth = extent.z
     }
 
-    /// Main-html style bottom-right readout: `1.24 × 0.86 × 1.10 m`.
+    /// Bottom-right readout, e.g. `1.24 × 0.86 × 1.10 m`.
     var readout: String {
         String(format: "%.2f × %.2f × %.2f m", width, height, depth)
     }

@@ -18,8 +18,8 @@ struct GeometrySection: View {
     }
 
     private var chips: [String] {
-        // Main-html shows tris / verts / UV only. Extra authored attributes appear when present
-        // so a missing-tangents warning in Validation still has a geometry counterpart.
+        // Tris / verts / UV always; extra authored attributes appear only when present, so a
+        // missing-tangents warning in Validation still has a geometry counterpart.
         var items = [
             "\(geometry.triangleCount.formatted()) tris",
             "\(geometry.vertexCount.formatted()) verts"

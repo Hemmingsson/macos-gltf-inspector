@@ -23,8 +23,8 @@ struct CanvasRegion<
     var model: Model
     /// Read-only capability snapshot — the Look pill and playback bar offer only what the file has.
     var availability: Capabilities
-    /// The window's live view state. Injected, not owned: `ShellRootView` owns it and the View
-    /// menu will drive the same instance in Slice 7.
+    /// The window's live view state. Injected, not owned: the host owns it and the View menu
+    /// drives the same instance.
     var viewport: Viewport
     var playback: Playback
     /// Empty / loading / failed hide the model chrome; ready shows pills + overlays.
@@ -69,15 +69,15 @@ struct CanvasRegion<
                     .padding(.trailing, cameraTrailingInset)
                     .chromeBandAligned()
             }
-            // World-origin cue: Center off (DESIGN.md / Inspect), or an uncentered file
-            // (Debug → Uncentered / `authoredOrigin != .zero`) so Slice 6 is one-toggle-one-effect.
+            // World-origin cue: shown when Center is off, or when the file is uncentered
+            // (`authoredOrigin != .zero`), so the Center toggle has one clear effect.
             .overlay {
                 if !viewport.isCentered || model.dimensions.authoredOrigin != .zero {
                     OriginGizmo(authoredOrigin: model.dimensions.authoredOrigin)
                         .transition(reduceMotion ? .identity : .opacity)
                 }
             }
-            // Bottom overlays (Slice 5).
+            // Bottom overlays.
             .overlay(alignment: .bottomLeading) {
                 OrientationGizmo()
                     .padding(OverlayMetrics.inset)

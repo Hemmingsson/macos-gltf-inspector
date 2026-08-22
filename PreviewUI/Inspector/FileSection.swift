@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// File-level stats rows (Main-html File section). Always shown for a loaded model —
-/// selection does not hide the document facts.
+/// File-level stats rows. Always shown for a loaded model — selection does not hide the
+/// document facts.
 struct FileSection: View {
     var stats: Stats
     var fileName: String

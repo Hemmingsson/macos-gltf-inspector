@@ -1,0 +1,1 @@
+../../.cursor/agents/glb-load-implementer.md

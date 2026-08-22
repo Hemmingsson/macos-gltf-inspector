@@ -14,15 +14,6 @@ enum MaterialVariants {
         }
     }
 
-    /// True when any primitive carries `materialMappings` (loader exposed the extension).
-    static func hasMappings(in asset: GLTFAsset) -> Bool {
-        asset.meshes.contains { mesh in
-            mesh.primitives.contains { primitive in
-                !(primitive.materialMappings ?? []).isEmpty
-            }
-        }
-    }
-
     /// Replace each primitive’s default material with the mapped variant material when present.
     static func apply(variantIndex: Int, to asset: GLTFAsset) {
         guard let variants = asset.materialVariants, variants.indices.contains(variantIndex) else {

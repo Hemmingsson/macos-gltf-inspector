@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Host-owned preview chrome bindings (P34). Quick Look leaves `session` nil and
+/// Host-owned preview chrome bindings. Quick Look leaves `session` nil and
 /// uses local `@State` in `PreviewScene` instead.
 struct PreviewSessionBindings {
     var autoRotate: Binding<Bool>

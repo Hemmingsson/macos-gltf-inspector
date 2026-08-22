@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Bottom-centre animation controls (`Main-html` playback bar).
+/// Bottom-centre animation controls.
 ///
 /// Shown only when `Availability.hasAnimations`. Transport lives on
 /// `AnimationPlaybackController` — the bar never owns a local clock.

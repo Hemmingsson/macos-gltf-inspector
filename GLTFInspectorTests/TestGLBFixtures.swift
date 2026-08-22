@@ -52,6 +52,43 @@ func primitiveModeGLB(mode: Int) throws -> Data {
     return try GLBBox.serialize(json: json, bin: bin)
 }
 
+/// One TRIANGLES primitive plus one LINES primitive sharing positions — loads, but
+/// convert must omit the lines and record `droppedPrimitive`.
+func mixedTrianglesAndLinesGLB() throws -> Data {
+    var bin = Data()
+    for value: Float in [0, 0, 0, 1, 0, 0, 0, 1, 0] {
+        var bits = value.bitPattern.littleEndian
+        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    }
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+        "accessors": [[
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": 3,
+            "type": "VEC3",
+            "min": [0, 0, 0],
+            "max": [1, 1, 0],
+        ]],
+        "meshes": [["primitives": [
+            [
+                "attributes": ["POSITION": 0],
+                "mode": 4,
+            ],
+            [
+                "attributes": ["POSITION": 0],
+                "mode": 1,
+            ],
+        ]]],
+        "nodes": [["mesh": 0]],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try GLBBox.serialize(json: json, bin: bin)
+}
+
 func shortTriangleGLB() throws -> Data {
     var bin = Data()
     // 3 SHORT VEC3 positions: (0,0,0) (100,0,0) (0,100,0)

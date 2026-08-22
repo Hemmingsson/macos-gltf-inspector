@@ -2,7 +2,9 @@ import Foundation
 import os
 
 /// Failures and rare framing/lighting notes. Do not add per-frame or load-path chatter —
-/// that made Spacebar hitch.
+/// that made Spacebar hitch. Messages log `.public`, so keep them to diagnostics and file
+/// *names* (`lastPathComponent`) — never full paths or file contents; the unified log is
+/// world-readable.
 enum AppLog {
     static let subsystem = "lol.mattias.gltf-inspector"
 

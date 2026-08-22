@@ -76,7 +76,7 @@ enum PreviewDebugMode: Equatable, Hashable {
     }
 
     /// Rebuild material overrides from the store baseline so wire + double-sided don't stack.
-    /// P6 — `doubleSided` forces `faceCulling = .none`; leaving it restores via `store`.
+    /// `doubleSided` forces `faceCulling = .none`; leaving it restores via `store`.
     static func apply(
         _ mode: PreviewDebugMode,
         doubleSided: Bool,

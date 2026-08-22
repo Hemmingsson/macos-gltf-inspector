@@ -33,11 +33,14 @@ protocol SceneModel: Sendable {
     var validation: ValidationResult { get }
     /// Everything our import changed, so nothing is silently altered.
     var pipelineReport: PipelineReport { get }
+    /// Convert losses — missing textures, dropped primitives, ignored extensions.
+    var convertProblems: ConvertProblemList { get }
 }
 
 extension SceneModel {
     var defaultSceneID: NodeID? { scenes.first?.id }
     var materialVariantNames: [String] { [] }
+    var convertProblems: ConvertProblemList { ConvertProblemList() }
 
     /// Depth-first lookup without allocating a full flatten.
     func node(_ id: NodeID) -> SceneNode? {

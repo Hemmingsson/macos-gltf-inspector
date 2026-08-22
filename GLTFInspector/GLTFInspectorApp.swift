@@ -25,8 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
-        // Viewer: prefer welcome on cold launch over restoring prior document windows.
-        false
+        // Cold-launch-to-welcome is enforced by `.restorationBehavior(.disabled)` on the scenes;
+        // opt into secure coding so AppKit doesn't fall back to the legacy path.
+        true
     }
 
     private func wasLaunchedToOpenDocuments() -> Bool {
@@ -64,8 +65,9 @@ struct GLTFInspectorApp: App {
         .windowStyle(.hiddenTitleBar)
         .restorationBehavior(.disabled)
         .commands {
-            SidebarCommands()
-            // Seam-driven View menu (pills twin). Do **not** add `CommandMenu("View")`.
+            // Seam-driven View menu (pills twin). Do **not** add `CommandMenu("View")` or
+            // `SidebarCommands()` — the app is not a `NavigationSplitView`, so the system sidebar
+            // command would be inert and its ⌃⌘S would collide with the toggle below.
             CommandGroup(after: .sidebar) {
                 HostViewMenuCommands()
             }

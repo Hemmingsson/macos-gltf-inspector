@@ -3,7 +3,7 @@ import SwiftUI
 
 /// UserDefaults keys. **Writable from Settings only** for canvas defaults
 /// (`autoRotate` / `showFloor` / `background`). Open windows seed once and never write these
-/// back (P34 / DESIGN.md three-job rule). `appearance` and `showToolbar` remain app-wide.
+/// back (DESIGN.md three-job rule). `appearance` and `showToolbar` remain app-wide.
 enum SettingsKeys {
     static let autoRotate = "settings.preview.autoRotate"
     static let background = "settings.preview.background"

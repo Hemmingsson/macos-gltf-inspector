@@ -229,16 +229,6 @@ enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Identifiabl
         case .transmission: "Trans"
         }
     }
-
-    /// True for extension maps beyond core metallic-roughness PBR.
-    var isExtraLayer: Bool {
-        switch self {
-        case .clearcoat, .clearcoatRoughness, .clearcoatNormal, .specular, .transmission:
-            true
-        case .baseColor, .normal, .metallicRoughness, .occlusion, .emissive:
-            false
-        }
-    }
 }
 
 /// One *present* texture binding on a material. Width/height and preview tint are optional —
@@ -554,15 +544,29 @@ struct ValidationResult: Sendable, Hashable {
     var issues: [Issue]
     /// "glTF 2.0" — shown next to the clean badge.
     var formatLabel: String
+    /// Pending means the Khronos run has not finished; unavailable is a hard skip/fail.
+    var status: Status
 
-    init(issues: [Issue] = [], formatLabel: String = "glTF 2.0") {
+    enum Status: String, Sendable, Hashable {
+        case pending
+        case ready
+        case unavailable
+    }
+
+    init(
+        issues: [Issue] = [],
+        formatLabel: String = "glTF 2.0",
+        status: Status = .ready
+    ) {
         self.issues = issues
         self.formatLabel = formatLabel
+        self.status = status
     }
 
     var errorCount: Int { issues.filter { $0.severity == .error }.count }
     var warningCount: Int { issues.filter { $0.severity == .warning }.count }
-    var isClean: Bool { errorCount == 0 && warningCount == 0 }
+    /// Green “Valid” only after a successful run with no errors or warnings.
+    var isClean: Bool { status == .ready && errorCount == 0 && warningCount == 0 }
 }
 
 /// "What our pipeline did" — every silent change we made on import.
@@ -595,6 +599,38 @@ struct PipelineReport: Sendable, Hashable {
     }
 
     var isEmpty: Bool { entries.isEmpty }
+}
+
+/// Convert losses — “not rendered as authored”. Separate from Khronos validation.
+struct ConvertProblemList: Sendable, Hashable {
+    struct Entry: Sendable, Hashable, Identifiable {
+        enum Severity: String, Sendable, Hashable {
+            case error
+            case warning
+        }
+
+        var severity: Severity
+        var title: String
+        var code: String
+
+        var id: String { "\(code)|\(severity.rawValue)|\(title)" }
+
+        init(severity: Severity, title: String, code: String) {
+            self.severity = severity
+            self.title = title
+            self.code = code
+        }
+    }
+
+    var entries: [Entry]
+
+    init(entries: [Entry] = []) {
+        self.entries = entries
+    }
+
+    var isEmpty: Bool { entries.isEmpty }
+    var errorCount: Int { entries.filter { $0.severity == .error }.count }
+    var warningCount: Int { entries.filter { $0.severity == .warning }.count }
 }
 
 // MARK: - Viewport vocabulary

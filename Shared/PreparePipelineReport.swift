@@ -1,6 +1,6 @@
 import Foundation
 
-/// What our prepare/convert pipeline did to this file (inspector honesty / P18).
+/// What our prepare/convert pipeline did to this file (inspector honesty).
 /// Flags are set while transforms run — not re-inferred from post-prepare JSON
 /// (those extensions are stripped).
 struct PreparePipelineReport: Equatable, Sendable {
@@ -12,7 +12,7 @@ struct PreparePipelineReport: Equatable, Sendable {
     var droppedBakedEmissive = false
     var dimmedStudioIBL = false
     var decompressedDraco = false
-    /// Source `extensionsUsed` captured before prepare rewrites strip them (P41).
+    /// Source `extensionsUsed` captured before prepare rewrites strip them.
     var extensionsUsed: [String] = []
 
     var isEmpty: Bool {
@@ -21,7 +21,7 @@ struct PreparePipelineReport: Equatable, Sendable {
             || decompressedDraco)
     }
 
-    /// Host sidebar shows transform honesty and/or source extensions (P18 / P41).
+    /// Host sidebar shows transform honesty and/or source extensions.
     var showsInSidebar: Bool { !entries.isEmpty || !extensionEntries.isEmpty }
 
     /// Sidebar / Inspect-mock style lines.
@@ -47,7 +47,7 @@ struct PreparePipelineReport: Equatable, Sendable {
         return lines
     }
 
-    /// Throwaway "what's in this file" list (P41). Same source as prepare gates.
+    /// Throwaway "what's in this file" list. Same source as prepare gates.
     var extensionEntries: [String] { extensionsUsed }
 
     static func captureExtensions(from json: [String: Any]) -> [String] {

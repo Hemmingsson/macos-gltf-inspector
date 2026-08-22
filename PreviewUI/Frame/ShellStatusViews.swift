@@ -2,13 +2,13 @@ import SwiftUI
 
 /// Canvas / panel copy for non-ready document states.
 ///
-/// Shell-appropriate: quiet chrome, Theme tokens, no fake progress on `.failed` (AGENTS.md).
+/// Quiet chrome, Theme tokens, no fake progress on `.failed` (AGENTS.md).
 enum ShellStatusCopy {
     static let emptyTitle = "Open a glTF file"
     static let emptyDetail = "Drop a .glb or .gltf here, or choose File → Open…"
     static let loadingTitle = "Loading model…"
     static let failedTitle = "Couldn’t load model"
-    /// Debug fixture for `.failed` — keep one string so shell proofs stay in sync.
+    /// Debug fixture for `.failed` — keep one string so previews and tests stay in sync.
     static let invalidFileDetail = "The file isn’t a valid glTF / GLB."
 }
 

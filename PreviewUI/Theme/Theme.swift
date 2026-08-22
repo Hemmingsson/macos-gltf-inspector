@@ -120,9 +120,9 @@ enum Theme {
 
     // MARK: Frame metrics
 
-    /// Left column, fixed (Main-html `aside` width).
+    /// Left column, fixed width.
     static let sidebarWidth: CGFloat = 248
-    /// Right column, fixed (Main-html trailing `aside` width).
+    /// Right column, fixed width.
     static let inspectorWidth: CGFloat = 288
     /// Column separator. A `Divider()` reads far heavier than this on macOS.
     static let hairlineWidth: CGFloat = 1

@@ -25,11 +25,12 @@ Closest practical **1:1** glTF rendering via **native RealityKit** on Mac. Prefe
 ./scripts/proof.sh            # StillRenderProofTests (+ optional qlmanage)
 ./scripts/release.sh          # Developer ID + notary + Sparkle appcast + gh release
 ./scripts/vendor-khronos-environments.sh  # refresh bundled IBL HDRs
+./scripts/fetch-test-models.sh            # optional native Khronos GLBs → TestModels/Khronos samples
 ```
 
 Signing team: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof is still PNG via `StillRenderProofTests`.
 
-Test fixtures: reach on-disk models through `GLTFInspectorTests/TestFixtures.swift` (not the bundle — read via `#filePath`); catalogue + regen in `scripts/testdata/README.md`.
+Test models live under `TestModels/`. Committed fixtures: `TestModels/Fixture Models/` via `GLTFInspectorTests/TestFixtures.swift` (`#filePath`, not the bundle). Regen: `scripts/testdata/README.md`. Optional Khronos samples: `./scripts/fetch-test-models.sh` (gitignored).
 
 ```bash
 xcodegen generate   # required: GLTFInspector.xcodeproj is gitignored

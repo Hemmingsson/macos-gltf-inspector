@@ -10,7 +10,7 @@ private final class PreviewFrame {
     /// Set when the real pane size is known so `update` can refit once.
     var needsLayoutFit = false
     var didLayoutFit = false
-    /// Ortho `scale` is fixed world height — recompute on viewport change (P2).
+    /// Ortho `scale` is fixed world height — recompute on viewport change.
     var needsOrthoScale = false
     /// Last session projection applied while `useSystemOrbit` (nil after file camera).
     var appliedSessionOrthographic: Bool?
@@ -22,9 +22,9 @@ private final class PreviewFrame {
     /// Last IBL intensity / yaw applied via `applyLook` (session lighting, not @State).
     var appliedIntensityExponent: Float?
     var appliedEnvironmentYaw: Float?
-    /// P16 — last skeleton overlay visibility applied to the turntable.
+    /// Last skeleton overlay visibility applied to the turntable.
     var appliedShowSkeleton: Bool?
-    /// P8 — last session FOV applied to the preview camera (nil after file camera).
+    /// Last session FOV applied to the preview camera (nil after file camera).
     var appliedFieldOfViewDegrees: Float?
     let debugStore = DebugMaterialStore()
     let debugApplied = DebugAppliedIndex()
@@ -42,26 +42,26 @@ struct PreviewScene: View {
     var sidebar: (any PreviewOverlay)?
     /// Concrete Int from the host — reliable RealityView dependency for select/hide.
     var overlayRevision: Int
-    /// Host passes window-owned bindings (P34). Quick Look leaves this nil and uses local `@State`.
+    /// Host passes window-owned bindings. Quick Look leaves this nil and uses local `@State`.
     var session: PreviewSessionBindings?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var localBackdropIndex: Int
     @State private var localAutoRotate: Bool
     @State private var localShowFloor: Bool
-    /// P1 — Center on by default; ephemeral, never UserDefaults.
+    /// Center on by default; ephemeral, never UserDefaults.
     @State private var localCenterModel: Bool
-    /// P2 — Orthographic projection; ephemeral, never UserDefaults.
+    /// Orthographic projection; ephemeral, never UserDefaults.
     @State private var localOrthographic: Bool
-    /// P5 — session lighting; ephemeral, never UserDefaults.
+    /// Session lighting; ephemeral, never UserDefaults.
     @State private var localExposureEV: Float
     @State private var localDimStudioForFileLights: Bool
     @State private var localEnvironmentYaw: Float
-    /// P6 — force double-sided materials; ephemeral, never UserDefaults.
+    /// Force double-sided materials; ephemeral, never UserDefaults.
     @State private var localDoubleSided: Bool
-    /// P16 — skeleton overlay; ephemeral, never UserDefaults.
+    /// Skeleton overlay; ephemeral, never UserDefaults.
     @State private var localShowSkeleton: Bool
-    /// P8 — perspective FOV; ephemeral, never UserDefaults.
+    /// Perspective FOV; ephemeral, never UserDefaults.
     @State private var localFieldOfViewDegrees: Float
     /// Huge/flat models veto auto-rotate. Computed once per entity in `init` (cheap to read
     /// in the 16ms tick, unlike re-deriving bounds each frame).
@@ -108,7 +108,7 @@ struct PreviewScene: View {
         let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
         let extent = bounds.max - bounds.min
         geometryDisablesAutoRotate = PreviewCamera.disablesAutoRotate(extent)
-        // P34: seed local session from defaults when the host did not pass bindings (Quick Look).
+        // Seed local session from defaults when the host did not pass bindings (Quick Look).
         // Only `_State(initialValue:)` here — never touch `@Observable` / other `@State` (AGENTS.md).
         _localAutoRotate = State(
             initialValue: UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
@@ -500,7 +500,7 @@ struct PreviewScene: View {
         }
     }
 
-    /// P4 — undo Shift-pan, clear auto-rotate yaw, re-apply opening front-3/4 fit.
+    /// Undo Shift-pan, clear auto-rotate yaw, re-apply opening front-3/4 fit.
     private func resetOpeningFit() {
         frame.pivot?.setPosition(.zero, relativeTo: nil)
         frame.autoRotateYaw = 0
@@ -559,7 +559,7 @@ struct PreviewScene: View {
         frame.appliedSessionOrthographic = want
     }
 
-    /// P8 — live FOV while perspective; no-op while ortho / file camera.
+    /// Live FOV while perspective; no-op while ortho / file camera.
     private func syncSessionFieldOfViewIfNeeded() {
         guard useSystemOrbit, !orthographicValue, let camera = frame.camera else { return }
         let want = fieldOfViewValue

@@ -41,6 +41,8 @@ struct RightInspector<
 
                         ValidationSection(validation: model.validation)
 
+                        ConvertProblemsSection(problems: model.convertProblems)
+
                         if !model.pipelineReport.isEmpty {
                             PipelineSection(report: model.pipelineReport)
                         }

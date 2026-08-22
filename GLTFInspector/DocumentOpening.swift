@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum DocumentOpening {
-    static func isGLBFile(_ url: URL) -> Bool {
+    static func isGLTFFile(_ url: URL) -> Bool {
         let ext = url.pathExtension.lowercased()
         return ext == "glb" || ext == "gltf"
     }
@@ -23,7 +23,7 @@ enum DocumentOpening {
             if let error {
                 AppLog.error(AppLog.host, "drop URL load failed \(error)")
             }
-            guard let url, isGLBFile(url) else { return }
+            guard let url, isGLTFFile(url) else { return }
             Task { @MainActor in
                 do {
                     try await open(url)

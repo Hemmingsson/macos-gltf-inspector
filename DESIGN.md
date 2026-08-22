@@ -68,7 +68,10 @@ multi-scene file reveals more. Complexity scales with the asset — never the ot
 
 The inspector answers *"is the file wrong, or are we?"*
 
-- **Validation** warnings surfaced from the glTF validator.
+- **Validation** warnings from the Khronos glTF validator (is the *file* wrong).
+- **Not rendered as authored** — convert losses (missing textures, dropped primitives,
+  ignored extensions). Separate from validation; the file can be spec-valid and still
+  fail to render as authored.
 - A **"what our pipeline did"** list — converted spec-gloss, dequantized, file-lights on/off —
   so nothing is silently changed.
 - **Center off** reveals the authored origin with an axis gizmo.

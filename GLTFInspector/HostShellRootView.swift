@@ -19,7 +19,7 @@ struct HostShellRootView: View {
     @State private var loadGeneration = 0
     @State private var loadingURL: URL?
     @State private var panels = ShellPanelChrome()
-    @State private var placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
+    @State private var placeholderSidebar: HostSidebarModel
 
     /// Per-window lazy overlay — not seed-once `@State` from UserDefaults.
     @State private var settings = EngineSettingsStore()
@@ -45,6 +45,11 @@ struct HostShellRootView: View {
     @State private var validationTask: Task<Void, Never>?
     /// Inspector morph sliders — mirrored from `PreviewMorph` on the loaded entity.
     @State private var morphTargets: [MorphTargetControl] = []
+    /// Built once per loaded model, not per render: rebuilding `EngineSceneModel` re-walks the
+    /// document and rebuilding the playback controller re-touches the live entity's animations.
+    /// Async validation is folded back in live via `replacingValidation`.
+    @State private var loadedSceneModel: EngineSceneModel?
+    @State private var playbackController: EngineAnimationPlaybackController?
 
     init(documentURL: URL?) {
         self.documentURL = documentURL
@@ -99,12 +104,7 @@ struct HostShellRootView: View {
             model: model,
             channels: EngineSceneModel.mapDebugChannels(loadedDebugModes)
         )
-        let playback: EngineAnimationPlaybackController = {
-            if case .ready(let loaded) = previewState {
-                return EngineAnimationPlaybackController(loaded: loaded)
-            }
-            return EngineAnimationPlaybackController(entity: Entity(), clips: [])
-        }()
+        let playback = playbackController ?? EngineAnimationPlaybackController(entity: Entity(), clips: [])
 
         ShellRootView(
             model: model,
@@ -158,10 +158,10 @@ struct HostShellRootView: View {
     }
 
     private var engineSceneModel: EngineSceneModel {
-        let fileName = (loadingURL ?? documentURL)?.lastPathComponent ?? "Model"
-        if case .ready(let loaded) = previewState {
-            return EngineSceneModel(loaded: loaded, fileName: fileName, validation: validation)
+        if let loadedSceneModel {
+            return loadedSceneModel.replacingValidation(validation)
         }
+        let fileName = (loadingURL ?? documentURL)?.lastPathComponent ?? "Model"
         return EngineSceneModel(
             fileName: fileName,
             document: GLTFSessionDocument(),
@@ -298,12 +298,14 @@ struct HostShellRootView: View {
     }
 
     private func loadDocument(_ url: URL) {
-        guard DocumentOpening.isGLBFile(url) else {
+        guard DocumentOpening.isGLTFFile(url) else {
             let message = "Not a .glb / .gltf file"
             AppLog.error(AppLog.host, "open rejected \(url.lastPathComponent)")
             previewState = .failed(message)
             sidebar = nil
             loadingURL = url
+            loadedSceneModel = nil
+            playbackController = nil
             return
         }
         if loadingURL == url, case .loading = previewState { return }
@@ -313,6 +315,8 @@ struct HostShellRootView: View {
         sidebar = nil
         morphTargets = []
         validation = nil
+        loadedSceneModel = nil
+        playbackController = nil
         interaction = PreviewInteraction()
         loadingURL = url
         loadGeneration += 1
@@ -347,13 +351,22 @@ struct HostShellRootView: View {
                 )
                 engineViewport.setViewMode(.shaded)
                 refreshMorphTargets(from: model.entity)
+                loadedSceneModel = EngineSceneModel(
+                    loaded: model,
+                    fileName: url.lastPathComponent,
+                    validation: validation
+                )
+                playbackController = EngineAnimationPlaybackController(entity: model.entity, clips: clips)
                 AppLog.info(
                     AppLog.host,
                     "pipeline \(url.lastPathComponent) \(model.pipelineReport.entries.joined(separator: " | "))"
                 )
+                AppLog.info(AppLog.host, model.convertProblems.hostSummary)
             } else if case .failed(let message) = state {
                 sidebar = nil
                 morphTargets = []
+                loadedSceneModel = nil
+                playbackController = nil
                 AppLog.error(AppLog.host, "open failed \(url.lastPathComponent): \(message)")
             }
             previewState = state
@@ -401,26 +414,40 @@ struct HostShellRootView: View {
                 )
             } catch is CancellationError {
                 return
-            } catch let error as GLTFValidator.Error {
-                guard !Task.isCancelled else { return }
-                guard generation == loadGeneration, validationGen == validationGeneration else { return }
-                if error.isSoftSkip {
-                    let message = "Validation skipped: \(error.localizedDescription)"
-                    validation = .skipped(message)
-                    AppLog.info(AppLog.host, "validation skipped \(url.lastPathComponent): \(error.localizedDescription)")
-                } else {
-                    let message = "Validation unavailable: \(error.localizedDescription)"
-                    validation = .failed(message)
-                    AppLog.error(AppLog.host, "validation failed \(url.lastPathComponent): \(error.localizedDescription)")
-                }
             } catch {
                 guard !Task.isCancelled else { return }
                 guard generation == loadGeneration, validationGen == validationGeneration else { return }
-                let message = "Validation unavailable: \(error.localizedDescription)"
-                validation = .failed(message)
-                AppLog.error(AppLog.host, "validation failed \(url.lastPathComponent): \(error.localizedDescription)")
+                if let error = error as? GLTFValidator.Error, error.isSoftSkip {
+                    validation = .skipped("Validation skipped: \(error.localizedDescription)")
+                    AppLog.info(AppLog.host, "validation skipped \(url.lastPathComponent): \(error.localizedDescription)")
+                } else {
+                    validation = .failed("Validation unavailable: \(error.localizedDescription)")
+                    AppLog.error(AppLog.host, "validation failed \(url.lastPathComponent): \(error.localizedDescription)")
+                }
             }
         }
+    }
+
+    /// Shared tail of both reload paths: publish the new model, rebuild the per-load caches,
+    /// reapply lighting, and refresh morph sliders.
+    private func applyReloaded(
+        _ reloaded: EntityLoader.LoadedModel,
+        fileName: String,
+        sidebar: HostSidebarModel
+    ) {
+        previewState = .ready(reloaded)
+        loadedSceneModel = EngineSceneModel(
+            loaded: reloaded,
+            fileName: fileName,
+            validation: validation
+        )
+        playbackController = EngineAnimationPlaybackController(loaded: reloaded)
+        engineViewport.applyConvertedLighting(
+            dimStudioForFileLights: reloaded.studioIBLExponent < 0,
+            resetExposureAndYaw: false
+        )
+        refreshMorphTargets(from: reloaded.entity)
+        sidebar.overlayRevision += 1
     }
 
     private func reloadScene(_ index: Int?) {
@@ -439,27 +466,19 @@ struct HostShellRootView: View {
                 guard case .ready(let model) = previewState else { return }
                 sidebar.showAll()
                 interaction = PreviewInteraction()
-                previewState = .ready(
-                    EntityLoader.LoadedModel(
-                        entity: entity,
-                        stats: model.stats,
-                        document: model.document,
-                        debugModes: model.debugModes,
-                        studioIBLExponent: PreviewEmissive.studioIBLExponent(
-                            punctualLightCount: EntityLoader.punctualLightCount(in: entity)
-                        ),
-                        pipelineReport: model.pipelineReport,
-                        materialVariantNames: model.materialVariantNames
-                    )
+                let reloaded = EntityLoader.LoadedModel(
+                    entity: entity,
+                    stats: model.stats,
+                    document: model.document,
+                    debugModes: model.debugModes,
+                    studioIBLExponent: PreviewEmissive.studioIBLExponent(
+                        punctualLightCount: EntityLoader.punctualLightCount(in: entity)
+                    ),
+                    pipelineReport: model.pipelineReport,
+                    convertProblems: model.convertProblems,
+                    materialVariantNames: model.materialVariantNames
                 )
-                if case .ready(let loaded) = previewState {
-                    engineViewport.applyConvertedLighting(
-                        dimStudioForFileLights: loaded.studioIBLExponent < 0,
-                        resetExposureAndYaw: false
-                    )
-                    refreshMorphTargets(from: loaded.entity)
-                }
-                sidebar.overlayRevision += 1
+                applyReloaded(reloaded, fileName: url.lastPathComponent, sidebar: sidebar)
             } catch {
                 guard generation == loadGeneration else { return }
                 let message = error.localizedDescription
@@ -493,24 +512,18 @@ struct HostShellRootView: View {
                 }
                 guard generation == loadGeneration else { return }
                 interaction = PreviewInteraction()
-                previewState = .ready(
-                    EntityLoader.LoadedModel(
-                        entity: entity,
-                        stats: model.stats,
-                        document: model.document,
-                        debugModes: model.debugModes,
-                        studioIBLExponent: model.studioIBLExponent,
-                        pipelineReport: model.pipelineReport,
-                        materialVariantNames: model.materialVariantNames
-                    )
+                let reloaded = EntityLoader.LoadedModel(
+                    entity: entity,
+                    stats: model.stats,
+                    document: model.document,
+                    debugModes: model.debugModes,
+                    studioIBLExponent: model.studioIBLExponent,
+                    pipelineReport: model.pipelineReport,
+                    convertProblems: model.convertProblems,
+                    materialVariantNames: model.materialVariantNames
                 )
                 sidebar.materialVariantNames = model.materialVariantNames
-                engineViewport.applyConvertedLighting(
-                    dimStudioForFileLights: model.studioIBLExponent < 0,
-                    resetExposureAndYaw: false
-                )
-                refreshMorphTargets(from: entity)
-                sidebar.overlayRevision += 1
+                applyReloaded(reloaded, fileName: url.lastPathComponent, sidebar: sidebar)
                 AppLog.info(
                     AppLog.host,
                     "variant reload \(url.lastPathComponent) index=\(variantIndex.map(String.init) ?? "default")"

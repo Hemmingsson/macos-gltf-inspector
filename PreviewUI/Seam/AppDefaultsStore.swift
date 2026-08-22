@@ -4,7 +4,7 @@ import Observation
 /// App-wide defaults (UserDefaults). Every window reads this; Settings writes it.
 ///
 /// `revision` bumps on `UserDefaults.didChangeNotification` so windows still on a default
-/// (no session override) redraw live when Settings changes that key (P34 lazy overlay).
+/// (no session override) redraw live when Settings changes that key (lazy overlay).
 @MainActor
 @Observable
 final class AppDefaultsStore {

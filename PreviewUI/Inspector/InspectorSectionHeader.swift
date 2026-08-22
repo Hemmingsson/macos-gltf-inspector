@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Quiet uppercase section label (Main-html / Inspect-html `.sec`).
+/// Quiet uppercase section label.
 struct InspectorSectionHeader: View {
     var title: String
 

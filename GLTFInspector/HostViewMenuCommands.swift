@@ -9,13 +9,20 @@ struct HostViewMenuCommands: View {
     @FocusedValue(\.previewCommands) private var previewCommands
 
     var body: some View {
+        // Panel toggles depend only on the window chrome, so they stay available even before a
+        // model finishes loading (or after a failed load), when `viewport` is nil.
+        if let panels {
+            HostPanelChromeMenu(panels: panels)
+        }
         if let viewport {
+            if panels != nil {
+                Divider()
+            }
             HostViewMenuBody(
                 viewport: viewport,
-                panels: panels,
                 previewCommands: previewCommands
             )
-        } else {
+        } else if panels == nil {
             Text("No focused window")
                 .disabled(true)
         }
@@ -24,15 +31,9 @@ struct HostViewMenuCommands: View {
 
 private struct HostViewMenuBody: View {
     @Bindable var viewport: EngineViewportController
-    var panels: ShellPanelChrome?
     var previewCommands: FocusedPreviewCommands?
 
     var body: some View {
-        if let panels {
-            HostPanelChromeMenu(panels: panels)
-            Divider()
-        }
-
         Picker("Backdrop", selection: backdrop) {
             ForEach(BackdropStyle.allCases) { style in
                 Text(style.title).tag(style)

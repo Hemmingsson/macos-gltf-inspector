@@ -16,9 +16,10 @@ struct SettingKey<Value: Sendable>: Sendable {
 extension SettingKey where Value == Bool {
     /// Default on for a new window.
     static var autoRotate: SettingKey<Bool> { .init(name: "settings.preview.autoRotate", fallback: true) }
-    /// Wireframe resting state is floor off; Settings can promote a different app default.
-    static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: false) }
-    /// Session-only. Never registered as a persisted app default (P34 / A3c).
+    /// Floor on for a new window; Settings can promote a different app default.
+    /// Matches the fresh-install default registered in `GLTFInspectorApp.init`.
+    static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: true) }
+    /// Session-only. Never registered as a persisted app default.
     static var center: SettingKey<Bool> { .init(name: "settings.preview.center", fallback: true) }
     /// Host `showToolbar` — pills visible on open.
     static var showPills: SettingKey<Bool> { .init(name: "settings.preview.showToolbar", fallback: true) }
@@ -26,8 +27,9 @@ extension SettingKey where Value == Bool {
 }
 
 extension SettingKey where Value == BackdropStyle {
-    /// Wireframe resting backdrop is white (not the host's clear "None").
-    static var backdrop: SettingKey<BackdropStyle> { .init(name: "settings.preview.background", fallback: .white) }
+    /// Window backdrop ("None") for a new window.
+    /// Matches the fresh-install default registered in `GLTFInspectorApp.init`.
+    static var backdrop: SettingKey<BackdropStyle> { .init(name: "settings.preview.background", fallback: .window) }
 }
 
 extension SettingKey where Value == Projection {

@@ -3,7 +3,7 @@ import Observation
 
 /// Per-window lazy overlay on `AppDefaultsStore`, with environment keys routed to `AppLookStore`.
 ///
-/// Untouched keys track the observed app default live (A3c). `center` / `projection` are
+/// Untouched keys track the observed app default live. `center` / `projection` are
 /// session-only — never written as app defaults. Environment IBL keys have no host
 /// `UserDefaults` entry; they read/write `AppLook` via `AppLookStore.apply(_:)`.
 @MainActor

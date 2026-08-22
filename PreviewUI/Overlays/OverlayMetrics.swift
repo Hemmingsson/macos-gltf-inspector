@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared numbers for the canvas-bottom overlays, from `Main-html/Main.dc.html`.
+/// Shared numbers for the canvas-bottom overlays.
 enum OverlayMetrics {
     /// `bottom: 16px; left/right: 16px`.
     static let inset: CGFloat = 16

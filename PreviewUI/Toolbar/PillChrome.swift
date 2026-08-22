@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Every number the three canvas pills share, straight from `Main-html/Main.dc.html`.
+/// Every number the three canvas pills share.
 ///
 /// One place, because the pills only read as *one* distributed toolbar while they agree on
 /// height, radius and rhythm — a 2 pt drift between Stage and Camera is instantly visible when

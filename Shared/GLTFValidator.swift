@@ -14,7 +14,7 @@ struct GLTFValidationIssue: Sendable, Equatable, Identifiable {
     var isWarning: Bool { severity == 1 }
 }
 
-/// Mapped Khronos validation report for inspector honesty (P17).
+/// Mapped Khronos validation report for inspector honesty.
 struct GLTFValidationReport: Sendable, Equatable {
     var validatorVersion: String
     var errorCount: Int
@@ -26,7 +26,7 @@ struct GLTFValidationReport: Sendable, Equatable {
     /// Green badge when there are no errors or warnings (infos/hints OK).
     var isClean: Bool { errorCount == 0 && warningCount == 0 }
 
-    /// Orange badge count — errors + warnings (matches Inspect mock “N warnings”).
+    /// Orange badge count — errors + warnings.
     var badgeCount: Int { errorCount + warningCount }
 
     var badgeTitle: String {
@@ -38,7 +38,7 @@ struct GLTFValidationReport: Sendable, Equatable {
     }
 }
 
-/// Host sidebar outcome for P17 — success report, soft failure, or intentional skip.
+/// Host sidebar outcome — success report, soft failure, or intentional skip.
 enum GLTFValidationState: Sendable, Equatable {
     case success(GLTFValidationReport)
     case failed(String)

@@ -85,8 +85,38 @@ class RealityKitResourceContext {
     private var textureResourcesForImageIdentifiers = [UUID : [(RealityKit.TextureResource, ColorMask)]]()
     private var convertedMaterialsForIdentifiers = [ObjectIdentifier: any Material]()
 
+    var problems = ConvertProblemReport()
+
     var defaultMaterial: any Material {
         return RealityKit.SimpleMaterial(color: .init(white: 0.5, alpha: 1.0), isMetallic: false)
+    }
+
+    func record(
+        _ code: ConvertProblem.Code,
+        severity: ConvertProblem.Severity,
+        message: String,
+        materialName: String? = nil
+    ) {
+        problems.append(code, severity: severity, message: message, materialName: materialName)
+    }
+
+    /// Bind a referenced glTF texture; nil after a reference is a convert error.
+    @MainActor func requiredTexture(
+        for gltfTextureParams: GLTFTextureParams,
+        channels: ColorMask,
+        semantic: RealityKit.TextureResource.Semantic,
+        materialName: String?
+    ) -> RealityKit.PhysicallyBasedMaterial.Texture? {
+        if let bound = texture(for: gltfTextureParams, channels: channels, semantic: semantic) {
+            return bound
+        }
+        record(
+            .missingTexture,
+            severity: .error,
+            message: "Texture did not load",
+            materialName: materialName
+        )
+        return nil
     }
 
     @MainActor func cachedConvertedMaterial(for gltfMaterial: GLTFMaterial) -> (any Material)? {

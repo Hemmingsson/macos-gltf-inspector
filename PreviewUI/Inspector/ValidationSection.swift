@@ -7,27 +7,43 @@ struct ValidationSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Section title only when we have something to expand into — the clean badge is
-            // self-describing ("Valid glTF 2.0") and Main-html omits the header for it.
-            if !validation.isClean {
+            if validation.status != .ready || !validation.isClean {
                 InspectorSectionHeader(title: "Validation")
             }
 
             Group {
-                if validation.isClean {
+                if validation.status == .pending {
+                    pendingBadge
+                } else if validation.isClean {
                     cleanBadge
                 } else {
                     warningCard
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.top, validation.isClean ? 4 : 2)
+            .padding(.top, validation.isClean && validation.status == .ready ? 4 : 2)
             .padding(.bottom, 4)
         }
         .onAppear {
-            // Warnings start open so Slice 6's invalid fixture is immediately readable.
+            // Warnings start open so an invalid file's problems are immediately readable.
             if !validation.isClean { isExpanded = true }
         }
+    }
+
+    private var pendingBadge: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.text3)
+            Text("Checking validation…")
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(Theme.text2)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Checking validation")
     }
 
     private var cleanBadge: some View {
@@ -114,19 +130,18 @@ struct ValidationSection: View {
         return warnings == 1 ? "1 warning" : "\(warnings) warnings"
     }
 
-    // Main-html / Inspect-html inline greens and ambers — Theme has no validation tokens yet
-    // (and Theme.swift is owned by another slice).
-    private static let validFill = Color.dynamic(
+    // Inline greens and ambers — Theme has no dedicated validation colour tokens.
+    static let validFill = Color.dynamic(
         light: .init(srgbRed: 52 / 255, green: 199 / 255, blue: 89 / 255, alpha: 0.10),
         dark: .init(srgbRed: 52 / 255, green: 199 / 255, blue: 89 / 255, alpha: 0.18)
     )
-    private static let validStroke = Color.dynamic(light: 0x2CA24A, dark: 0x30D158)
-    private static let validText = Color.dynamic(light: 0x227A3A, dark: 0x6CE08A)
+    static let validStroke = Color.dynamic(light: 0x2CA24A, dark: 0x30D158)
+    static let validText = Color.dynamic(light: 0x227A3A, dark: 0x6CE08A)
 
-    private static let warnFill = Color.dynamic(
+    static let warnFill = Color.dynamic(
         light: .init(srgbRed: 245 / 255, green: 166 / 255, blue: 35 / 255, alpha: 0.10),
         dark: .init(srgbRed: 245 / 255, green: 166 / 255, blue: 35 / 255, alpha: 0.18)
     )
-    private static let warnStroke = Color.dynamic(light: 0xD6902A, dark: 0xFFC04D)
-    private static let warnText = Color.dynamic(light: 0xA86C1A, dark: 0xFFC04D)
+    static let warnStroke = Color.dynamic(light: 0xD6902A, dark: 0xFFC04D)
+    static let warnText = Color.dynamic(light: 0xA86C1A, dark: 0xFFC04D)
 }

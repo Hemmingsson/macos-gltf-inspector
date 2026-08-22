@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// One selectable outliner row: tinted type icon, name, and a visibility eye that fades in on
-/// hover (Main-html `.row` / `.row.sel` / `.row.child` / `.eye`).
+/// hover.
 ///
 /// When `treeFolding` is on (Meshes), a disclosure chevron + faint depth guides replace the
 /// binary child indent. Flat sections leave `treeFolding` false so they stay leaf lists.

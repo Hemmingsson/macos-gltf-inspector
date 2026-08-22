@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the adaptive-UI test fixtures under `scripts/testdata/`.
+"""Generate the adaptive-UI test fixtures under `TestModels/Fixture Models/`.
 
 One tiny, self-contained glTF per capability the new UI shows/hides (DESIGN.md
 "show only what the model has"). Geometry is the flat unit triangle used by the
@@ -19,6 +19,7 @@ import struct
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+DEST = HERE.parents[1] / "TestModels" / "Fixture Models"
 
 # Flat triangle: (0,0,0) (1,0,0) (0,1,0) — matches floatTrianglePositions() in the tests.
 TRI = [0, 0, 0, 1, 0, 0, 0, 1, 0]
@@ -37,10 +38,10 @@ def data_uri(raw: bytes) -> str:
 
 
 def write(rel: str, doc: dict) -> None:
-    out = HERE / rel
+    out = DEST / rel
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(doc, indent=2) + "\n")
-    print(f"wrote {out.relative_to(HERE.parent.parent)}  ({out.stat().st_size} B)")
+    print(f"wrote {out.relative_to(DEST.parents[1])}  ({out.stat().st_size} B)")
 
 
 def base_doc(bin_blob: bytes, extra: dict) -> dict:
@@ -159,6 +160,32 @@ def make_missing_channels():
     write("missing-channels/basecolor-only.gltf", doc)
 
 
+# --- missing-texture: valid JSON, image URI that does not exist -------------
+def make_missing_texture():
+    blob = floats(TRI)
+    doc = base_doc(blob, {
+        "images": [{"uri": "does-not-exist.png"}],
+        "textures": [{"source": 0}],
+        "materials": [{
+            "name": "MissingMap",
+            "pbrMetallicRoughness": {
+                "baseColorTexture": {"index": 0},
+                "metallicFactor": 0.0,
+                "roughnessFactor": 0.6,
+            },
+        }],
+        "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": len(blob)}],
+        "accessors": [tri_position_accessor()],
+        "meshes": [{"name": "Textured", "primitives": [
+            {"attributes": {"POSITION": 0}, "material": 0},
+        ]}],
+        "nodes": [{"name": "Mesh", "mesh": 0}],
+        "scenes": [{"name": "Default", "nodes": [0]}],
+        "scene": 0,
+    })
+    write("missing-texture/missing-image.gltf", doc)
+
+
 # --- rigged: two-joint skin (ports writeTempTwoJointSkinGLB) -----------------
 def make_rigged():
     positions = floats(TRI)                                   # 36 B
@@ -235,10 +262,10 @@ def make_corrupt():
     header += struct.pack("<I", 4096)       # total length — far larger than the file
     header += struct.pack("<I", 4096)       # JSON chunk length — also a lie
     header += b"JSON"
-    out = HERE / "corrupt/truncated.glb"
+    out = DEST / "corrupt/truncated.glb"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(header + body)
-    print(f"wrote {out.relative_to(HERE.parent.parent)}  ({out.stat().st_size} B, intentionally corrupt)")
+    print(f"wrote {out.relative_to(DEST.parents[1])}  ({out.stat().st_size} B, intentionally corrupt)")
 
 
 def main():
@@ -246,6 +273,7 @@ def main():
     make_lights()
     make_cameras()
     make_missing_channels()
+    make_missing_texture()
     make_rigged()
     make_morph()
     make_corrupt()

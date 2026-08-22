@@ -58,14 +58,20 @@ extension RealityKitConvert {
                 primitive: primitive,
                 materialIndex: primitiveMaterialIndex,
                 skeletonID: skeletonID,
-                targetNames: targetNames
+                targetNames: targetNames,
+                context: context
             )
             {
                 let material = try self.convert(material: primitive.material, context: context)
                 primitiveMaterialIndex += 1
                 return (part, material)
             }
-            // If we fail to create a part from a primitive, omit it from the list.
+            context.record(
+                .droppedPrimitive,
+                severity: .error,
+                message: "Primitive omitted (unsupported topology or convert failed)",
+                materialName: primitive.material?.name
+            )
             return nil
         }
 
@@ -155,7 +161,7 @@ extension RealityKitConvert {
                 tangentsAccessor = nil
             }
 
-            let bakedUVs = bakedTextureCoordinates(for: primitive)
+            let bakedUVs = bakedTextureCoordinates(for: primitive, context: context)
             if let bakedUVs {
                 guard bakedUVs.count == positionAttr.accessor.count else { return nil }
                 anyUVs = true
@@ -415,7 +421,8 @@ extension RealityKitConvert {
         primitive gltfPrimitive: GLTFPrimitive,
         materialIndex: Int = 0,
         skeletonID: String? = nil,
-        targetNames: [String] = []
+        targetNames: [String] = [],
+        context: RealityKitResourceContext
     ) -> RealityKit.MeshResource.Part?
     {
         switch gltfPrimitive.primitiveType {
@@ -448,7 +455,7 @@ extension RealityKitConvert {
             part[MeshBuffers.tangents] = MeshBuffers.Tangents(tangentArray)
         }
 
-        if let texCoordsArray = bakedTextureCoordinates(for: gltfPrimitive) {
+        if let texCoordsArray = bakedTextureCoordinates(for: gltfPrimitive, context: context) {
             part[MeshBuffers.textureCoordinates] = MeshBuffers.TextureCoordinates(texCoordsArray)
         }
 
@@ -518,7 +525,10 @@ extension RealityKitConvert {
 
     /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), wrap a single
     /// UDIM tile into 0–1, then flip V for RealityKit.
-    private func bakedTextureCoordinates(for primitive: GLTFPrimitive) -> [SIMD2<Float>]? {
+    private func bakedTextureCoordinates(
+        for primitive: GLTFPrimitive,
+        context: RealityKitResourceContext
+    ) -> [SIMD2<Float>]? {
         let params = primitive.material?.metallicRoughness?.baseColorTexture
             ?? primitive.material?.normalTexture
         let texCoord: Int
@@ -527,8 +537,16 @@ extension RealityKitConvert {
         } else {
             texCoord = params?.texCoord ?? 0
         }
-        let attribute = primitive.attribute(forName: "TEXCOORD_\(texCoord)")
-            ?? primitive.attribute(forName: "TEXCOORD_0")
+        let named = primitive.attribute(forName: "TEXCOORD_\(texCoord)")
+        let attribute = named ?? primitive.attribute(forName: "TEXCOORD_0")
+        if params != nil, named == nil, primitive.attribute(forName: "TEXCOORD_0") == nil {
+            context.record(
+                .missingTexCoord,
+                severity: .error,
+                message: "Textured material has no TEXCOORD",
+                materialName: primitive.material?.name
+            )
+        }
         guard let attribute,
               var uvs = Packed.float2Array(for: attribute.accessor, flipVertically: false)
         else { return nil }

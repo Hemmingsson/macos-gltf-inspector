@@ -2,7 +2,7 @@ import AppKit
 import RealityKit
 import simd
 
-/// Joint spheres + bone segments for skinned models (P16). Markers parent under
+/// Joint spheres + bone segments for skinned models. Markers parent under
 /// joint entities so they follow animation; bones update in pivot space.
 enum PreviewSkeletonOverlay {
     /// Fit / selection skip-list (also inlined in `PreviewCamera.modelBounds`).
