@@ -74,7 +74,9 @@ struct GLTFInspectorApp: App {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)
             }
-            CommandGroup(replacing: .saveItem) {}
+            CommandGroup(replacing: .saveItem) {
+                HostFileMenuCommands()
+            }
         }
 
         WindowGroup(id: WelcomeWindow.id) {

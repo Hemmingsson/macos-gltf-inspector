@@ -22,13 +22,28 @@
         "cwd": "${workspaceFolder}"
       },
       "dependsOn": ["xcodegen"],
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "build:install",
+      "type": "shell",
+      "command": "./scripts/build.sh --install-only",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "group": {
         "kind": "build",
         "isDefault": true
       },
       "problemMatcher": [],
       "presentation": {
-        "reveal": "silent",
+        "reveal": "always",
         "panel": "shared",
         "clear": true
       }

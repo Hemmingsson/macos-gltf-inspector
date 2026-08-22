@@ -78,7 +78,7 @@ struct StillCameraPose: Sendable {
     }
 }
 
-/// Offscreen `RealityRenderer` for Finder thumbnails and host screenshot re-renders.
+/// Offscreen `RealityRenderer` for Finder thumbnails and host PNG exports.
 @MainActor
 final class StillRenderer {
     private let renderer: RealityRenderer
@@ -119,7 +119,7 @@ final class StillRenderer {
         self.height = height
     }
 
-    /// Host screenshot — re-render at the current live camera pose.
+    /// Host PNG export — re-render at the current live camera pose.
     init(
         root: Entity,
         cameraPose: StillCameraPose,
@@ -246,8 +246,8 @@ final class StillRenderer {
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.nameFieldStringValue = suggestedName.hasSuffix(".png") ? suggestedName : "\(suggestedName).png"
-        panel.title = "Export Screenshot"
-        panel.message = "Offscreen re-render at the current camera pose (not a live framebuffer grab)."
+        panel.title = "Export PNG"
+        panel.message = "Offscreen PNG re-render at the current camera pose."
 
         let url: URL? = await withCheckedContinuation { cont in
             if let window = NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible) {

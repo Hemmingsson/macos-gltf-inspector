@@ -3,7 +3,7 @@ import SwiftUI
 /// Trailing **Camera** cluster — where you stand and how you move.
 ///
 /// Sketch-style islands: only tightly related controls share glass. Framing toggles
-/// (auto-rotate · center) share one stadium; projection, Fit, and presets each get their
+/// (auto-rotate · center) share one stadium; projection, FOV, Fit, and presets each get their
 /// own circle.
 struct CameraPill<Viewport: ViewportController>: View {
     var viewport: Viewport
@@ -38,6 +38,10 @@ struct CameraPill<Viewport: ViewportController>: View {
                 ) {
                     viewport.setProjection(isOrthographic ? .perspective : .orthographic)
                 }
+            }
+
+            Pill(circle: true) {
+                FieldOfViewPopover(viewport: viewport)
             }
 
             Pill(circle: true) {
@@ -95,7 +99,9 @@ struct CameraPresetMenu<Viewport: ViewportController>: View {
         Menu {
             Picker("Camera preset", selection: preset) {
                 ForEach(CameraPreset.allCases) { preset in
-                    Text(preset.title).tag(Optional(preset))
+                    Text(preset.title)
+                        .tag(Optional(preset))
+                        .keyboardShortcutIfAvailable(cameraPresetShortcut(for: preset))
                 }
             }
             .pickerStyle(.inline)
@@ -131,5 +137,17 @@ struct CameraPresetMenu<Viewport: ViewportController>: View {
                 viewport.applyCameraPreset(newValue)
             }
         )
+    }
+
+    private func cameraPresetShortcut(for preset: CameraPreset) -> KeyboardShortcut? {
+        switch preset {
+        case .front: KeyboardShortcut("1")
+        case .back: KeyboardShortcut("9")
+        case .left: KeyboardShortcut("4")
+        case .right: KeyboardShortcut("3")
+        case .top: KeyboardShortcut("7")
+        case .bottom: KeyboardShortcut("2")
+        case .isometric: nil
+        }
     }
 }

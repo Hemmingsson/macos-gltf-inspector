@@ -1,102 +1,87 @@
 # glTF Inspector
 
-macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLTFInspector` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/` (+ `Shared/Convert/`).
+macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host **`GLTFInspector`** embeds `PreviewExtension` and `ThumbnailExtension`; convert/render in `Shared/` (+ `Shared/Convert/`). Goal: closest practical **1:1** glTF via native RealityKit — fidelity over product overhead; **latest macOS**, **Apple Silicon**.
+
+**New features, UX, or chrome:** read [`DESIGN.md`](DESIGN.md) first — product principles, not layout spec (code wins on what ships where).
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
-| `PreviewUI/` | Host chrome over seam protocols (`SceneModel`, `ViewportController`, …). **Do not import `Shared/`.** |
-| `GLTFInspector/Engine/` | `Engine*` adapters — map host engine types to the seam. No PreviewUI rewrites. |
-| `GLTFInspector/HostShellRootView.swift` | Document window root: `ShellRootView` + adapters + real `PreviewView` canvas. |
-| `GLTFInspector/HostSidebarModel.swift` | Selection, scene/variant re-convert, visibility — guts behind `EngineSelectionModel`. |
-| `Shared/PreviewScene.swift` | RealityView host. **Host-bare** when a sidebar is present (`showsInlineChrome == false`); Quick Look keeps minimal inlined chrome via `PreviewQuickLookChrome.swift`. |
-| `Shared/PreviewChrome.swift` | Interaction + hosting helpers shared by host and QL. |
+| `PreviewUI/` | Host chrome over seam protocols. **Do not import `Shared/`.** |
+| `GLTFInspector/Engine/` | `Engine*` adapters — seam mapping only; no PreviewUI rewrites. |
+| `GLTFInspector/HostShellRootView.swift` | Document window: `ShellRootView` + adapters + `PreviewView` canvas. |
+| `GLTFInspector/HostSidebarModel.swift` | Selection, re-convert, visibility — behind `EngineSelectionModel`. |
+| `Shared/PreviewScene.swift` | RealityView host. Host-bare with sidebar (`showsInlineChrome == false`); QL uses `PreviewQuickLookChrome.swift`. |
+| `Shared/PreviewChrome.swift` | Interaction + hosting shared by host and QL. |
 
-## Goal
+Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product code on **`main`** at repo root.
 
-Closest practical **1:1** glTF rendering via **native RealityKit** on Mac. Prefer fidelity and simplicity over product overhead. Target: **latest macOS** on **Apple Silicon**.
-
-## Commands
+## Commands & build
 
 ```bash
-./scripts/build.sh            # xcodegen + Debug build + install to /Applications
-./scripts/verify.sh           # check installed app + pluginkit
-./scripts/proof.sh            # StillRenderProofTests (+ optional qlmanage)
-./scripts/release.sh          # Developer ID + notary + Sparkle appcast + gh release
-./scripts/vendor-khronos-environments.sh  # refresh bundled IBL HDRs
-./scripts/fetch-test-models.sh            # optional native Khronos GLBs → TestModels/Khronos samples
-```
+./scripts/build.sh              # xcodegen + Debug + install /Applications + verify
+./scripts/build.sh --install-only   # build + copy; no open/verify (VS Code Run preLaunchTask)
+./scripts/verify.sh             # installed app + pluginkit
+./scripts/proof.sh              # StillRenderProofTests (+ optional qlmanage)
+./scripts/release.sh            # Developer ID + notary + Sparkle + gh release
+./scripts/vendor-khronos-environments.sh
+./scripts/fetch-test-models.sh  # optional Khronos GLBs → TestModels/Khronos samples (gitignored)
 
-Signing team: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof is still PNG via `StillRenderProofTests`.
-
-Test models live under `TestModels/`. Committed fixtures: `TestModels/Fixture Models/` via `GLTFInspectorTests/TestFixtures.swift` (`#filePath`, not the bundle). Regen: `scripts/testdata/README.md`. Optional Khronos samples: `./scripts/fetch-test-models.sh` (gitignored).
-
-```bash
-xcodegen generate   # required: GLTFInspector.xcodeproj is gitignored
+xcodegen generate               # GLTFInspector.xcodeproj is gitignored
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
   -derivedDataPath /tmp/GLTFInspector-dd test
 ```
 
-Champion convert ideas kept in code: cutout-as-mask BLEND, packed SIMD/`float3` meshes, material identity cache, skeletal densify ≤30 fps. Do not re-bench CreateOptions/mip/Metal-upload folklore without new measured evidence naming which assets move; residual wall is RealityKit `TextureResource.generate` on large rasters.
+`xcodebuild` alone writes `/tmp/GLTFInspector-dd/…` — **not** `/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to install.
+
+Signing: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof: PNG via `StillRenderProofTests`. Fixtures: `TestModels/Fixture Models/` via `GLTFInspectorTests/TestFixtures.swift` (`#filePath`); regen `scripts/testdata/README.md`.
+
+Champion convert (in code): cutout-as-mask BLEND, packed SIMD/`float3` meshes, material identity cache, skeletal densify ≤30 fps. No CreateOptions/mip/Metal-upload re-bench without measured asset wins; residual wall is `TextureResource.generate` on large rasters. **Pipeline detail:** [`docs/pipeline-gltf-to-realitykit.md`](docs/pipeline-gltf-to-realitykit.md).
+
+## Worktrees & what ships
+
+| Source | Treat as |
+| --- | --- |
+| `main` (merged commits) | Shipped behavior |
+| `.worktrees/` (gitignored) | Throwaway until merged — delete = gone |
+| Dex / `.cursor/plans` | Intent only |
+
+Before `git worktree remove`: `git log main..<branch>`, merge/cherry-pick. **Document window** = host chrome + canvas; **Quick Look** = minimal chrome. **`DESIGN.md`**: design *principles* only — never paste shipped layout/state there (use code/tests/`AGENTS.md`). **`ShellRootView`**: fixed `Theme.sidebarWidth` / `inspectorWidth` — not drag-resizable unless a task adds it.
 
 ## Pitfalls — do not repeat
 
-### 1. Never mutate `@Observable` / `@State` in `View.init` or RealityView `make`/`update`
+**1. SwiftUI state in `init` / RealityView `make`/`update`** — dual spinners, 0 windows, `Modifying state during view update`. Cause: touching `@Observable PreviewInteraction` from `View.init`. Rule: `init` assigns props / `_State(initialValue:)` only; sync in `onAppear`/actions; RealityView writes in `Task { @MainActor in … }`.
 
-**Symptom:** Eternal dual spinners / 0 windows; `Modifying state during view update`.
+**2. Failed loads** — always `.failed(message)` on reject; never a spinner because `sidebar == nil`.
 
-**Cause:** Touching `@Observable PreviewInteraction` from `View.init` re-enters SwiftUI.
+**3. First paint** — open path is model only (`EntityLoader.load` → `.ready`/`.failed`); prefetch IBL in `PreviewScene`; temp key+fill until probe ready.
 
-**Rule:** `View.init` only assigns stored props / `_State(initialValue:)`. Floor/orbit sync in `onAppear` or actions. RealityView `make`/`update`: wrap state writes in `Task { @MainActor in … }`.
+**4. RealityKit landmines**
 
-### 2. Failed loads must show copy, not a spinner
+- No `RealityViewCameraContent.entities` iteration in update — own `lookRoot`.
+- `.realityViewCameraControls(.orbit)` + turntable `cameraTarget`.
+- `PreviewCamera.applyView`: one-shot fit/light only (not scroll).
+- Floor toggle: visual only; no camera limit changes.
+- Scroll/pinch: infinite dolly; Shift-drag pans camera+pivot (swallow so `.orbit` doesn't double).
+- Auto-rotate: yaw spin child; keep `cameraTarget` on pivot.
+- Clear IBL receivers before removing IBL entities.
+- Scene refs in `@State` (`PreviewFrame`), not view `let`.
 
-Sidebar spinner whenever `sidebar == nil` hid `.failed`. Always set `.failed(message)` when a URL is rejected.
-
-### 3. Don’t block first paint on IBL
-
-Open path is model only (`EntityLoader.load` → `.ready` / `.failed`). Prefetch HDR in `PreviewScene`; temporary key+fill until the probe is ready.
-
-### 4. RealityKit crash landmines
-
-- Do not iterate `RealityViewCameraContent.entities` during update. Own a `lookRoot`.
-- Prefer `.realityViewCameraControls(.orbit)` + turntable pivot as `cameraTarget`.
-- `PreviewCamera.applyView` is one-shot fit/light posing only (not interactive scroll).
-- Floor toggle is visual only; must not change camera limits.
-- Scroll/pinch is infinite dolly along look; Shift-drag pans camera + pivot (swallow so `.orbit` does not also run).
-- Auto-rotate yaws a spin child under the turntable; keep `cameraTarget` on the pivot.
-- Clear IBL receivers before removing IBL light entities.
-- Persist scene entity refs in `@State` (`PreviewFrame`), not a plain `let` on the view struct.
-
-### 5. Verify with a real window
+**5. Real-window verify** (unit tests won't catch **1**)
 
 ```bash
 ./scripts/build.sh
 open -a "/Applications/glTF Inspector.app" /path/to/file.glb
 log stream --style compact --info --predicate 'subsystem == "lol.mattias.gltf-inspector" OR (process == "glTF Inspector" AND composedMessage CONTAINS "Modifying state")'
-# Expect: one "open start", one "open ready" (or "open failed"); Modifying state ≈ 0.
+# one "open start", one "open ready" (or "open failed"); Modifying state ≈ 0
 ```
 
-Unit tests alone will not catch (1).
+**6. UI verification** — skill `macos-app-testing`. Non-intrusive by default: no focus steal, Spaces switch, activate, pointer drive, or save/export sheets unless required.
 
-### 6. UI verification
+1. Unit / `./scripts/proof.sh`
+2. Peekaboo **background** (`see`, `window list`, background `click`); no `activate`/`frontmost`/osascript loops; classic capture (`PEEKABOO_CAPTURE_ENGINE=classic`) — not ScreenCaptureKit via Claude.app
+3. Glass/layout clicks → Peekaboo once per frame change; warn before focus moves
 
-Skill: `macos-app-testing`. **Prefer non-intrusive proofs** — do not steal focus, switch
-Spaces, activate the app, drive the pointer, or open save/export sheets unless the
-question *requires* live chrome/input. Default ladder:
-
-1. Unit / still-render proofs (`xcodebuild test`, `./scripts/proof.sh`) — no UI focus
-2. Live AX / window inventory — Peekaboo **background** (`see` / `window list` /
-   background `click`); never `activate` / `frontmost` / `osascript` focus loops /
-   menu-driven Screenshot export as a “test”. Prefer **classic** capture
-   (`PEEKABOO_CAPTURE_ENGINE=classic` / `peekaboo see --capture-engine classic`) so agents
-   do not stick to Claude.app’s ScreenCaptureKit bridge when it refuses ownership.
-3. Traffic lights / resize / click / select / glass → Peekaboo once per frame change,
-   and only with explicit need; warn the user first if focus must move
-
-Do **not** use a headless `--snapshot` / flatten-glass harness for PreviewUI — Liquid Glass
-and window chrome need a real window; Peekaboo is the layout + glass proof.
-
-Never screencapture-first. Never leave Export/Save sheets open for the user to dismiss.
+No headless `--snapshot`/flatten-glass for PreviewUI. No screencapture-first. Never leave Export/Save sheets open.

@@ -1,19 +1,18 @@
 import SwiftUI
 
-/// Top of the right column: actions on the unified chrome baseline, identity on the row below.
+/// Top of the right column: Open in on the unified chrome baseline, identity on the row below.
 ///
-/// Sketch / DESIGN.md: screenshot · Open in… share the window's top band with the
-/// sidebar toggle and canvas pills; selection name sits under that cluster, not beside it.
+/// Sketch / DESIGN.md: Open in… shares the window's top band with the sidebar toggle and canvas
+/// pills; selection name sits under that cluster, not beside it.
 struct NodeHeader: View {
     var name: String
     var kindTitle: String
     var kind: NodeKind
-    var onScreenshot: () -> Void
-    var onOpenIn: () -> Void
+    let openInMenu: AnyView
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ActionRow(onScreenshot: onScreenshot, onOpenIn: onOpenIn)
+            ActionRow(openInMenu: openInMenu)
 
             IdentityRow(name: name, kindTitle: kindTitle, kind: kind)
         }
@@ -23,18 +22,15 @@ struct NodeHeader: View {
 
 /// Action cluster on the unified chrome baseline (`chromeBandAligned()`).
 ///
-/// Document actions (screenshot · Open in…) trail. When floating over the canvas (inspector
-/// closed), the same cluster sits at the trailing edge.
+/// Document actions (Open in…) trail. When floating over the canvas (inspector closed), the same
+/// cluster sits at the trailing edge.
 struct ActionRow: View {
-    var floating: Bool = false
-    var onScreenshot: () -> Void
-    var onOpenIn: () -> Void
+    let openInMenu: AnyView
 
     var body: some View {
         HStack(spacing: 4) {
             Spacer(minLength: 0)
-            screenshotButton
-            openInButton
+            openInMenu
         }
         .frame(height: ChromeMetrics.buttonSize, alignment: .trailing)
         .padding(.leading, 12)
@@ -44,13 +40,6 @@ struct ActionRow: View {
         .accessibilityLabel("Inspector actions")
     }
 
-    private var screenshotButton: some View {
-        ChromeIconButton(symbol: "camera", title: "Screenshot", prominent: false, action: onScreenshot)
-    }
-
-    private var openInButton: some View {
-        ChromeIconButton(symbol: "square.and.arrow.up", title: "Open in…", prominent: false, action: onOpenIn)
-    }
 }
 
 /// Selection identity under the action cluster.

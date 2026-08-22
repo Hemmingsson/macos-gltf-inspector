@@ -31,7 +31,7 @@ struct CanvasRegion<
     var documentState: ShellDocumentState = .ready
     /// When false, Stage clears traffic lights + the floating sidebar restore control.
     var isSidebarVisible: Bool = true
-    /// When false, Camera clears the floating inspector ActionRow.
+    /// When false, Camera clears the floating inspector Open in action.
     var isInspectorVisible: Bool = true
     @ViewBuilder var content: () -> Content
 

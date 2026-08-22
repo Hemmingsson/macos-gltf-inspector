@@ -1,102 +1,76 @@
 # glTF Inspector — Design Guidelines
 
-**The model is the product.** Chrome recedes, the file stays in focus, and the user
-stays in control of how it's shown. Native macOS, slim, honest.
+**The model is the product.** Chrome recedes, the file stays in focus, and the user stays in
+control of how it's shown. Native macOS, slim, honest.
+
+**What this is.** Enduring principles for *how to think* when designing or iterating — not a
+wireframe, not where controls live today, not what's in which column. That belongs in code.
+When this doc and the app disagree, **code wins**.
 
 ---
 
 ## macOS-native
 
-- Transparent titlebar, hidden title, full-size content — traffic lights sit over the
-  sidebar; the file name lives in the sidebar, not a title band.
-- **Unified top chrome baseline** across columns: traffic lights, sidebar toggle, canvas
-  tool pills, and inspector actions (screenshot · Open in… · inspector) share one
-  horizontal band; selection identity (icon + name + kind) sits **under** the right
-  action cluster — not beside it.
-- **Distributed toolbar**: floating glass pills over the canvas, grouped leading / center /
-  trailing — never one crammed bar.
-- The **menu bar is the complete set** (every control, with a shortcut); the canvas pills
-  are the discoverable subset. Each pill control mirrors a menu item and the same shortcut.
-- System everything: glass materials, SF Symbols, system font, light/dark follows the OS.
-- Respect Reduced Motion, Increase Contrast, and the appearance setting.
+- **System first** — glass, SF Symbols, system typography, light/dark and accessibility settings
+  from the OS (Reduced Motion, Increase Contrast, …).
+- **Menu bar = the full command set** — every action has a shortcut there. In-window controls are
+  the *discoverable* subset; same actions, same shortcuts, one storage path.
+- **Distributed, not crammed** — stage / look / camera are different jobs; don't pile unrelated
+  actions into one toolbar strip because it fits on a mockup.
 
-## Where a control lives — the three-job rule
+## The three-job rule
 
-> Change it because of **this model** → view state. Change it because of **how you always
-> work** → a setting.
+> Change it because of **this model** → view state. Change it because of **how you always work**
+> → a setting.
 
-| Job | Home | Examples |
+| Job | Question | Storage |
 |---|---|---|
-| **App default** | **Settings** only | appearance · default backdrop / floor / auto-rotate · auto-play · default camera |
-| **This window** | **canvas pills + View menu** | backdrop · floor · auto-rotate · center · view mode · lighting · perspective↔ortho · Fit · camera presets |
-| **This file** | **left sidebar** | scenes · cameras · lights · meshes · materials · animations · selection · stats · validation · pipeline |
+| **App default** | How should *new* windows start? | Settings only |
+| **This window** | How am I looking at *this* file right now? | Per-window session |
+| **This file** | What does *this asset* contain? | Read from the loaded model |
 
-- Canvas controls are **per-window and live**; they never rewrite your defaults.
-  Settings = defaults for *new* windows.
-- The View menu is the **keyboard twin** of the canvas pills — both drive the same
-  per-window state, not a second copy.
-- **One control, one job.** Never duplicate a switch as both a setting and a live toggle
-  and expect them to share storage. Storage is the single source of truth; the render
-  computes the effective value.
+- **One control, one job.** Never mirror the same switch in Settings and the live chrome with
+  separate storage — pick one owner, compute the effective value at render time.
+- Settings seed new windows; live chrome does not silently rewrite defaults.
 
-### Toolbar clusters
+## glTF & RealityKit
 
-- **Left — Stage:** backdrop · floor
-- **Center — Look:** view mode · lighting (exposure / IBL / file-vs-studio)
-- **Right — Camera:** auto-rotate · center · perspective↔ortho · Fit · camera presets
-- Document/output actions (Open in…, screenshot) sit on the **right-column header** while the
-  inspector is open (selection), otherwise float over the canvas trailing edge.
-
-## Show only what the model has
-
-Adaptive UI: **hide** controls and sections for things the file doesn't contain — don't show
-them disabled or empty.
-
-- No animations → no playback bar, no Animations section.
-- No file cameras → no Cameras section (Fit / presets still work as view state).
-- No punctual lights → no Lights section; lighting defaults to studio IBL.
-- Single scene → no Scene switcher.
-- View-mode menu lists **only channels present** (no clearcoat map → no Clearcoat mode).
-- Material chips show **only maps that exist**.
-- No skin / morphs → no skeleton or morph controls.
-- The selection inspector shows **only the fields the node type has** (mesh vs camera vs light).
-- Single scene → no Scene outliner section.
-- Inspector column opens only when an outliner row is selected; file stats/validation stay on the left.
-
-*Result:* a plain static mesh opens to a calm, near-empty UI; a rigged, animated,
-multi-scene file reveals more. Complexity scales with the asset — never the other way.
+- **Closest practical 1:1** via native RealityKit — fidelity and simplicity over DCC breadth.
+- **Complexity follows the asset** — a plain mesh should feel calm; a rigged, textured,
+  multi-scene file may legitimately expose more. Never the reverse (empty chrome for a rich file,
+  or chrome for data that isn't there).
+- **Hide, don't disable** — if the file lacks animations, cameras, lights, morphs, maps, or extra
+  scenes, omit that UI. Greyed-out placeholders are noise.
+- **Honest rendering** — the user must be able to tell *file wrong* from *we didn't render it*.
+  Validation, convert losses, and pipeline choices are separate stories; nothing silent.
 
 ## Inspector honesty
 
 The inspector answers *"is the file wrong, or are we?"*
 
-- **Validation** warnings from the Khronos glTF validator (is the *file* wrong).
-- **Not rendered as authored** — convert losses (missing textures, dropped primitives,
-  ignored extensions). Separate from validation; the file can be spec-valid and still
-  fail to render as authored.
-- A **"what our pipeline did"** list — converted spec-gloss, dequantized, file-lights on/off —
-  so nothing is silently changed.
-- **Center off** reveals the authored origin with an axis gizmo.
-- Dimensions and stats read from the real model.
+- Surface **validation** (spec / structural issues in the file).
+- Surface **convert & pipeline truth** (textures we dropped, extensions we ignored, paths we
+  changed) — a valid file can still look wrong in our viewer.
+- Read **dimensions and stats from the real model**, not placeholders.
+- When the user turns off centering, show the **authored origin** — don't pretend every asset was
+  built at the world origin.
 
-## Sidebar — structure
+## Visual language
 
-- Sketch-style quiet section headers; a section appears **only when populated**.
-- One monochrome SF Symbol per glTF type, one low-saturation tint per type
-  (camera blue · light amber · material purple · animation green · mesh graphite).
-  **Color = meaning, not decoration** — no Blender rainbow.
-- Hover reveals visibility (eye); Option-click to isolate.
+- **Quiet chrome** — hairline borders, generous whitespace; accent only for selection and active
+  state.
+- **Color = meaning** — type tints encode glTF roles (camera, light, material, …), not
+  decoration. No rainbow DCC palette.
+- **Every control earns its place** — one thousand no's for every yes.
 
-## Defaults & restraint
+## Defaults & performance
 
-- **Open path is model-only.** Lighting warms in after first paint — never block the first
-  frame on IBL.
-- **Center + Fit by default** (corrects most models); the user can turn both off.
-- Light theme, hairline borders, generous whitespace; accent used sparingly (selection +
-  active toggles).
-- Every control earns its place. One thousand no's for every yes.
+- **Open path is model-only** — first frame shows geometry; lighting and IBL warm in after paint.
+  Never block load on environment probes.
+- **Sensible defaults, easy override** — most files benefit from center + fit; power users can turn
+  them off without fighting the app.
 
 ## Non-goals
 
 - Not an editor: no shader debugger, GPU counters, or heavy DCC tooling.
-- No fake chrome. No control that duplicates a setting. No section for data that isn't there.
+- No fake chrome. No duplicate settings. No section for data that isn't in the file.

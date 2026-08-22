@@ -1,8 +1,8 @@
 import AppKit
 import RealityKit
 
-/// Offscreen still capture at the live camera pose (not a RealityView framebuffer grab).
-/// Extracted so `EngineViewportController.screenshot()` can share the path.
+/// Offscreen PNG export at the live camera pose (not a RealityView framebuffer grab).
+/// Extracted so `EngineViewportController.screenshot()` can share the export path.
 enum ScreenshotCameraPose {
     /// Clones `pivot`, samples `camera` into a `StillCameraPose`, and presents the save panel.
     @MainActor
@@ -17,7 +17,7 @@ enum ScreenshotCameraPose {
     ) {
         Task { @MainActor in
             guard let pose = StillCameraPose.capturing(from: camera) else {
-                AppLog.error(AppLog.host, "screenshot skipped — no live camera pose")
+                AppLog.error(AppLog.host, "PNG export skipped — no live camera pose")
                 return
             }
             let root = pivot.clone(recursive: true)
@@ -45,11 +45,11 @@ enum ScreenshotCameraPose {
                 if let url {
                     AppLog.info(
                         AppLog.host,
-                        "screenshot wrote \(url.path) (offscreen re-render at live camera pose)"
+                        "PNG export wrote \(url.path) (offscreen re-render at live camera pose)"
                     )
                 }
             } catch {
-                AppLog.error(AppLog.host, "screenshot failed: \(error.localizedDescription)")
+                AppLog.error(AppLog.host, "PNG export failed: \(error.localizedDescription)")
             }
         }
     }

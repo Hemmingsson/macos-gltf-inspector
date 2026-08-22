@@ -45,8 +45,8 @@ struct ShellRootView<
     /// Host hook: seed session from defaults. Must not run in `init`.
     private let seedSession: (@MainActor (Settings) -> Void)?
     private let canvas: () -> Canvas
-    /// Screenshot always goes through `viewport.screenshot()`.
-    private let onOpenIn: () -> Void
+    /// Open in menu content shared with inspector/floating chrome.
+    private let openInMenu: AnyView
     /// Host maps `PreviewMorph` → inspector sliders.
     private let morphTargets: [MorphTargetControl]
     private let onSetMorphWeight: (String, Double) -> Void
@@ -66,7 +66,7 @@ struct ShellRootView<
         morphTargets: [MorphTargetControl] = [],
         onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in },
         seedSession: (@MainActor (Settings) -> Void)? = nil,
-        onOpenIn: @escaping () -> Void = {},
+        openInMenu: AnyView = AnyView(EmptyView()),
         @ViewBuilder canvas: @escaping () -> Canvas
     ) {
         self.model = model
@@ -80,7 +80,7 @@ struct ShellRootView<
         self.morphTargets = morphTargets
         self.onSetMorphWeight = onSetMorphWeight
         self.seedSession = seedSession
-        self.onOpenIn = onOpenIn
+        self.openInMenu = openInMenu
         self.canvas = canvas
     }
 
@@ -113,8 +113,7 @@ struct ShellRootView<
                     model: model,
                     selection: selection,
                     documentState: documentState,
-                    onScreenshot: { viewport.screenshot() },
-                    onOpenIn: onOpenIn,
+                    openInMenu: openInMenu,
                     morphTargets: morphTargets,
                     onSetMorphWeight: onSetMorphWeight
                 )
@@ -169,9 +168,7 @@ struct ShellRootView<
         .overlay(alignment: .topTrailing) {
             if !showsInspector {
                 ActionRow(
-                    floating: true,
-                    onScreenshot: { viewport.screenshot() },
-                    onOpenIn: onOpenIn
+                    openInMenu: openInMenu
                 )
             }
         }

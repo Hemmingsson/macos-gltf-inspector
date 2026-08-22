@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared metrics for titlebar chrome icon buttons (sidebar / inspector / screenshot).
+/// Shared metrics for titlebar chrome icon buttons (sidebar / inspector / document actions).
 ///
 /// Locked to `Theme.chromeControlSize` so open/closed restore chrome and Stage/Camera toggles
 /// share one size.
@@ -28,9 +28,9 @@ enum ChromeMetrics {
         floatingActionRowWidth + pillClearance
     }
 
-    /// Intrinsic width of `ActionRow`’s trailing cluster (3 circles + hair + pads).
+    /// Intrinsic width of `ActionRow`’s trailing cluster (1 circle + pads).
     static var floatingActionRowWidth: CGFloat {
-        buttonSize * 3 + 4 * 2 + Theme.hairlineWidth + 4 + 14 + 12
+        buttonSize + 12 + 12
     }
 }
 

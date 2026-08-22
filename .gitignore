@@ -8,22 +8,20 @@ build/
 
 # Local research / agent scratch (not the product)
 .worktrees/
+.zed/
 # Claude Code: keep project settings, drop the runtime lock
 .claude/scheduled_tasks.lock
 .cursor/*
-!.cursor/skills/
-!.cursor/skills/**
-!.cursor/agents/
-!.cursor/agents/**
 !.cursor/hooks/
 !.cursor/hooks/**
 !.cursor/hooks.json
 # Project MCP lives at /.mcp.json (shared by Claude + Cursor via symlink)
 .xcodebuildmcp/
 .conductor/
+!.docs/
+!.docs/**
 .dex/
 .superpowers/
-docs/
 plans/
 test-models/
 Fixtures/

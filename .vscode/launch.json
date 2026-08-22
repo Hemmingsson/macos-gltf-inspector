@@ -5,31 +5,24 @@
       "type": "lldb",
       "request": "launch",
       "name": "GLTFInspector (Debug)",
-      "program": "/tmp/GLTFInspector-dd/Build/Products/Debug/glTF Inspector.app",
+      "program": "/Applications/glTF Inspector.app",
       "cwd": "${workspaceFolder}",
-      "preLaunchTask": "xcodebuild: GLTFInspector"
+      "preLaunchTask": "build:install"
     },
     {
       "type": "lldb",
       "request": "launch",
       "name": "GLTFInspector (Debug) + tiny.glb",
-      "program": "/tmp/GLTFInspector-dd/Build/Products/Debug/glTF Inspector.app",
-      "cwd": "${workspaceFolder}",
-      "args": ["${workspaceFolder}/scripts/tiny.glb"],
-      "preLaunchTask": "xcodebuild: GLTFInspector"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "glTF Inspector (/Applications)",
       "program": "/Applications/glTF Inspector.app",
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "args": ["${workspaceFolder}/TestModels/Fixture Models/tiny.glb"],
+      "preLaunchTask": "build:install"
     },
     {
       "type": "lldb",
       "request": "attach",
       "name": "Attach glTF Inspector",
-      "program": "/tmp/GLTFInspector-dd/Build/Products/Debug/glTF Inspector.app"
+      "program": "/Applications/glTF Inspector.app"
     }
   ]
 }

@@ -1,9 +1,10 @@
 import RealityKit
 import SwiftUI
+import AppKit
 
 /// Document window root: PreviewUI `ShellRootView` + engine adapters + real `PreviewView` canvas.
 ///
-/// Pills / selection / screenshot / playback / scene+variant write through the engine adapters into
+/// Pills / selection / export / playback / scene+variant write through the engine adapters into
 /// host session + `HostSidebarModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
 /// (untouched keys track defaults live). Host canvas is bare (`showsInlineChrome == false`).
 struct HostShellRootView: View {
@@ -117,7 +118,8 @@ struct HostShellRootView: View {
             panels: panels,
             morphTargets: morphTargets,
             onSetMorphWeight: applyMorphWeight,
-            seedSession: seedSession
+            seedSession: seedSession,
+            openInMenu: openInMenuView()
         ) {
             HostPreviewContainer(
                 state: previewState,
@@ -213,12 +215,84 @@ struct HostShellRootView: View {
         )
     }
 
+    private func openInMenuView() -> AnyView {
+        AnyView(OpenInChromeMenu(documentURL: loadingURL ?? documentURL))
+    }
+
     /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
     @MainActor
     private func seedSession(settings: EngineSettingsStore) {
         engineViewport.sidebar = sidebar ?? placeholderSidebar
         wireViewportHostSession()
         engineViewport.applySession(from: settings)
+    }
+
+    private struct OpenInChromeMenu: View {
+        let documentURL: URL?
+
+        private var blenderAppURL: URL? {
+            let workspace = NSWorkspace.shared
+            if let bundleIDURL = workspace.urlForApplication(withBundleIdentifier: "org.blenderfoundation.blender") {
+                return bundleIDURL
+            }
+            if let known = workspace
+                .urlsForApplications(withBundleIdentifier: "org.blenderfoundation.blender")
+                .first {
+                return known
+            }
+            return nil
+        }
+
+        var body: some View {
+            Menu {
+                Button {
+                    guard let documentURL else { return }
+                    NSWorkspace.shared.activateFileViewerSelecting([documentURL])
+                } label: {
+                    appMenuLabel(title: "Reveal in Finder", appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder"), fallbackSymbol: "folder")
+                }
+                .disabled(documentURL == nil)
+
+                if let blenderAppURL {
+                    Button {
+                        guard let documentURL else { return }
+                        let config = NSWorkspace.OpenConfiguration()
+                        NSWorkspace.shared.open([documentURL], withApplicationAt: blenderAppURL, configuration: config)
+                    } label: {
+                        appMenuLabel(title: "Open in Blender", appURL: blenderAppURL, fallbackSymbol: "cube")
+                    }
+                    .disabled(documentURL == nil)
+                }
+            } label: {
+                ChromeIconButton(
+                    symbol: "square.and.arrow.up",
+                    title: "Open in…",
+                    prominent: false,
+                    action: {}
+                )
+                .allowsHitTesting(false)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
+
+        @ViewBuilder
+        private func appMenuLabel(title: String, appURL: URL?, fallbackSymbol: String) -> some View {
+            if let appURL,
+               let icon = NSWorkspace.shared.icon(forFile: appURL.path).copy() as? NSImage {
+                HStack(spacing: 8) {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 16, height: 16)
+                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                    Text(title)
+                }
+            } else {
+                Label(title, systemImage: fallbackSymbol)
+            }
+        }
     }
 
     private func wireViewportHostSession() {
@@ -280,12 +354,12 @@ struct HostShellRootView: View {
         guard let camera = interaction.camera,
               let pivot = interaction.orbitFocus
         else {
-            AppLog.error(AppLog.host, "screenshot skipped — no live camera pose")
+            AppLog.error(AppLog.host, "PNG export skipped — no live camera pose")
             return
         }
         let suggested = (loadingURL ?? documentURL)?
             .deletingPathExtension()
-            .lastPathComponent ?? "screenshot"
+            .lastPathComponent ?? "export"
         ScreenshotCameraPose.capture(
             camera: camera,
             pivot: pivot,

@@ -41,20 +41,19 @@ private struct HostViewMenuBody: View {
         }
 
         Toggle("Show Floor", systemImage: "circle.grid.cross", isOn: floor)
-            .keyboardShortcut("l", modifiers: [.command])
 
         Toggle(
             "Auto-Rotate",
             systemImage: "arrow.trianglehead.counterclockwise.rotate.90",
             isOn: autoRotate
         )
-        .keyboardShortcut("r", modifiers: [.command])
+        .keyboardShortcut("r")
 
         Toggle("Center Model", systemImage: "dot.scope", isOn: center)
-            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .keyboardShortcut("c")
 
         Toggle("Orthographic", systemImage: "perspective", isOn: orthographic)
-            .keyboardShortcut("o", modifiers: [.command, .shift])
+            .keyboardShortcut("5")
 
         Toggle("Double-Sided", systemImage: "square.on.square", isOn: doubleSided)
         Toggle(
@@ -62,34 +61,19 @@ private struct HostViewMenuBody: View {
             systemImage: "point.3.connected.trianglepath.dotted",
             isOn: skeleton
         )
-        Button("Widen FOV", systemImage: "plus.magnifyingglass") {
-            viewport.setFieldOfViewDegrees(viewport.fieldOfViewDegrees + 5)
-        }
-        .disabled(viewport.projection == .orthographic)
-        Button("Narrow FOV", systemImage: "minus.magnifyingglass") {
-            viewport.setFieldOfViewDegrees(viewport.fieldOfViewDegrees - 5)
-        }
-        .disabled(viewport.projection == .orthographic)
-        Button("Reset FOV", systemImage: "arrow.counterclockwise") {
-            viewport.setFieldOfViewDegrees(PreviewCamera.defaultFieldOfViewDegrees)
-        }
 
         Divider()
 
         Button("Fit", systemImage: "viewfinder") {
             viewport.fit()
         }
-        .keyboardShortcut("0", modifiers: [.command])
+        .keyboardShortcut("f")
         .disabled(previewCommands == nil)
 
         Button("Reset View", systemImage: "arrow.counterclockwise") {
             viewport.reset()
         }
-
-        Button("Screenshot…", systemImage: "camera") {
-            viewport.screenshot()
-        }
-        .disabled(previewCommands == nil)
+        .keyboardShortcut("f", modifiers: [.shift])
 
         Divider()
 
@@ -97,30 +81,10 @@ private struct HostViewMenuBody: View {
             Button(preset.title, systemImage: hostPresetSymbol(preset)) {
                 viewport.applyCameraPreset(preset)
             }
+            .keyboardShortcutIfAvailable(cameraPresetShortcut(for: preset))
             .disabled(previewCommands == nil)
         }
 
-        Divider()
-        Button("Increase Exposure", systemImage: "sun.max") {
-            nudgeExposure(0.5)
-        }
-        Button("Decrease Exposure", systemImage: "sun.min") {
-            nudgeExposure(-0.5)
-        }
-        Button("Reset Exposure", systemImage: "sun.max.circle") {
-            applyLighting { $0.exposure = 0 }
-        }
-        Toggle(
-            "Dim Studio for File Lights",
-            systemImage: "lightbulb.min",
-            isOn: dimStudio
-        )
-        Button("Rotate Environment 45°", systemImage: "rotate.3d") {
-            applyLighting { $0.environmentRotationDegrees += 45 }
-        }
-        Button("Reset Environment Rotation", systemImage: "arrow.counterclockwise") {
-            applyLighting { $0.environmentRotationDegrees = 0 }
-        }
     }
 
     private var backdrop: Binding<BackdropStyle> {
@@ -172,23 +136,6 @@ private struct HostViewMenuBody: View {
         )
     }
 
-    private var dimStudio: Binding<Bool> {
-        Binding(
-            get: { viewport.lighting.usesFileLights },
-            set: { isOn in applyLighting { $0.usesFileLights = isOn } }
-        )
-    }
-
-    private func nudgeExposure(_ delta: Double) {
-        applyLighting { $0.exposure += delta }
-    }
-
-    private func applyLighting(_ mutate: (inout LightingSettings) -> Void) {
-        var lighting = viewport.lighting
-        mutate(&lighting)
-        viewport.setLighting(lighting)
-    }
-
     private func hostPresetSymbol(_ preset: CameraPreset) -> String {
         switch preset {
         case .front: PreviewCamera.CameraPreset.front.menuSymbol
@@ -198,6 +145,18 @@ private struct HostViewMenuBody: View {
         case .top: PreviewCamera.CameraPreset.top.menuSymbol
         case .bottom: PreviewCamera.CameraPreset.bottom.menuSymbol
         case .isometric: PreviewCamera.CameraPreset.iso.menuSymbol
+        }
+    }
+
+    private func cameraPresetShortcut(for preset: CameraPreset) -> KeyboardShortcut? {
+        switch preset {
+        case .front: KeyboardShortcut("1")
+        case .back: KeyboardShortcut("9")
+        case .left: KeyboardShortcut("4")
+        case .right: KeyboardShortcut("3")
+        case .top: KeyboardShortcut("7")
+        case .bottom: KeyboardShortcut("2")
+        case .isometric: nil
         }
     }
 }

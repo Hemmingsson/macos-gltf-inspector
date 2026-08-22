@@ -10,8 +10,7 @@ struct RightInspector<
     var model: Model
     var selection: Selection
     var documentState: ShellDocumentState = .ready
-    var onScreenshot: () -> Void
-    var onOpenIn: () -> Void
+    var openInMenu: AnyView
     /// Live morph weights from the host (`PreviewMorph`); shown when a morph is selected.
     var morphTargets: [MorphTargetControl] = []
     var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
@@ -50,8 +49,7 @@ struct RightInspector<
             name: detail.name,
             kindTitle: detail.kind.displayTitle,
             kind: detail.kind,
-            onScreenshot: onScreenshot,
-            onOpenIn: onOpenIn
+            openInMenu: openInMenu
         )
     }
 

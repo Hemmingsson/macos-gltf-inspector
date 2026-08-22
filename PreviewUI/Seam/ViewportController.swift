@@ -13,6 +13,8 @@ protocol ViewportController: AnyObject, Observable {
     var viewMode: ViewMode { get }
     var projection: Projection { get }
     var lighting: LightingSettings { get }
+    /// Vertical field of view in degrees (perspective only).
+    var fieldOfViewDegrees: Float { get }
     /// Nil once the user orbits away from a preset.
     var activeCameraPreset: CameraPreset? { get }
     /// Scene the canvas is showing. Selecting a Scene row calls `setScene`.
@@ -27,12 +29,13 @@ protocol ViewportController: AnyObject, Observable {
     func setViewMode(_ mode: ViewMode)
     func setProjection(_ projection: Projection)
     func setLighting(_ lighting: LightingSettings)
+    func setFieldOfViewDegrees(_ degrees: Float)
     /// Frame the model in the current view.
     func fit()
     /// Back to the opening pose and view state.
     func reset()
     func applyCameraPreset(_ preset: CameraPreset)
-    /// Capture the canvas. Fire-and-forget: the implementation owns where it lands.
+    /// Export a PNG still. Fire-and-forget: the implementation owns where it lands.
     func screenshot()
     func setScene(_ id: NodeID)
     func setMaterialVariant(_ index: Int?)

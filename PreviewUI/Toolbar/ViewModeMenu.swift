@@ -21,7 +21,9 @@ struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: V
             // one value instead of a comparison repeated per row.
             Picker("View mode", selection: mode) {
                 ForEach(availability.availableDebugChannels) { mode in
-                    Text(mode.title).tag(mode)
+                    Text(mode.title)
+                        .tag(mode)
+                        .keyboardShortcutIfAvailable(viewModeShortcut(for: mode))
                 }
             }
             .pickerStyle(.inline)
@@ -45,6 +47,14 @@ struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: V
 
     private var mode: Binding<ViewMode> {
         Binding(get: { viewport.viewMode }, set: { viewport.setViewMode($0) })
+    }
+
+    private func viewModeShortcut(for mode: ViewMode) -> KeyboardShortcut? {
+        switch mode {
+        case .shaded: KeyboardShortcut("1", modifiers: [.command])
+        case .wireframe: KeyboardShortcut("2", modifiers: [.command])
+        case .channel: nil
+        }
     }
 
     /// One glyph per family, matching the wireframes: the shaded sphere for Shaded, a grid for

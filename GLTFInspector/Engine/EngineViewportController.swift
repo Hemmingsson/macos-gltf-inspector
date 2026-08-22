@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Session + camera + still-path adapter for `ViewportController`.
 ///
-/// Owns per-window view state (DESIGN.md this-window job). Fit / reset / presets / screenshot
+/// Owns per-window view state (DESIGN.md this-window job). Fit / reset / presets / PNG export
 /// forward to injected `FocusedPreviewCommands` (or a test `screenshotHandler`). Lighting maps
 /// degrees↔radians and `usesFileLights`↔`dimStudioForFileLights`. `usesStudioEnvironment` mirrors
 /// `AppLook.useEnvironmentMap` and is never written here — Settings owns that key.
@@ -22,10 +22,10 @@ final class EngineViewportController: ViewportController {
     /// Per-window lazy overlay. Weak to avoid a cycle with the store held by the window.
     weak var settings: EngineSettingsStore?
 
-    /// Host View-menu / pill command bag. Nil in unit tests that only exercise setters.
+    /// Host menu / pill command bag. Nil in unit tests that only exercise setters.
     var commands: FocusedPreviewCommands?
 
-    /// Optional override so tests can assert `screenshot()` wires without presenting a panel.
+    /// Optional override so tests can assert the export path wires without presenting a panel.
     var screenshotHandler: (() -> Void)?
 
     /// Live host canvas session. Nil in unit tests.
