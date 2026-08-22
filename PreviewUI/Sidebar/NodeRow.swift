@@ -31,7 +31,7 @@ struct NodeRow<Selection: SelectionModel>: View {
         HStack(spacing: 8) {
             if treeFolding {
                 HStack(spacing: OutlinerTreeMetrics.gap) {
-                    leadingGutter
+                    leadingIndent
                     disclosure
                 }
             }
@@ -40,7 +40,13 @@ struct NodeRow<Selection: SelectionModel>: View {
             // (SwiftUI nested-Button is unreliable). Shared padding/background keep one hit band.
             Button(action: select) {
                 HStack(spacing: 8) {
-                    NodeIcon(kind: item.id.kind, isSelected: isSelected)
+                    if showsNodeIcon {
+                        NodeIcon(kind: item.id.kind, isSelected: isSelected)
+                    } else {
+                        Color.clear
+                            .frame(width: 16, height: 16)
+                            .accessibilityHidden(true)
+                    }
 
                     Text(item.name)
                         .font(.system(size: 13))
@@ -72,20 +78,12 @@ struct NodeRow<Selection: SelectionModel>: View {
         .onHover { isHovering = $0 }
     }
 
-    /// Ancestor indent + faint vertical guides through each parent arrow center.
-    private var leadingGutter: some View {
+    /// Ancestor indent only; no connector guides.
+    private var leadingIndent: some View {
         let step = OutlinerTreeMetrics.step
-        let arrow = OutlinerTreeMetrics.arrow
-        return ZStack(alignment: .leading) {
-            Color.clear.frame(width: CGFloat(item.depth) * step)
-            ForEach(0..<item.depth, id: \.self) { level in
-                Rectangle()
-                    .fill(Color.primary.opacity(0.12))
-                    .frame(width: 1)
-                    .padding(.leading, CGFloat(level) * step + arrow / 2 - 0.5)
-            }
-        }
-        .accessibilityHidden(true)
+        return Color.clear
+            .frame(width: CGFloat(item.depth) * step)
+            .accessibilityHidden(true)
     }
 
     /// Chevron for parents; clear 14×14 slot for leaves so labels stay column-aligned.
@@ -123,6 +121,10 @@ struct NodeRow<Selection: SelectionModel>: View {
     /// row reads as chosen even where the 12%-alpha fill is nearly invisible.
     private var label: Color {
         isSelected ? Theme.selectionText : Theme.text
+    }
+
+    private var showsNodeIcon: Bool {
+        !(item.id.kind == .empty && item.hasChildren)
     }
 
     @ViewBuilder

@@ -12,16 +12,15 @@ enum OutlinerTreeMetrics {
 /// Pure expand/collapse helpers for the Meshes section — kept free of SwiftUI so fold behaviour
 /// can be proved without driving a window.
 enum OutlinerTree {
-    /// Mesh-visible tree: skip non-mesh ancestors without a row, keep nesting among mesh rows.
-    static func meshRoots(_ nodes: [SceneNode], depth: Int = 0) -> [OutlinerItem] {
-        nodes.flatMap { node -> [OutlinerItem] in
-            guard node.kind == .mesh else {
-                return meshRoots(node.children, depth: depth)
-            }
-            let children = meshRoots(node.children, depth: depth + 1)
-            return [
-                OutlinerItem(id: node.id, name: node.name, depth: depth, children: children)
-            ]
+    /// Full scene-graph tree preserving hierarchy for all authored node kinds.
+    static func fullRoots(_ nodes: [SceneNode], depth: Int = 0) -> [OutlinerItem] {
+        nodes.map { node in
+            OutlinerItem(
+                id: node.id,
+                name: node.name,
+                depth: depth,
+                children: fullRoots(node.children, depth: depth + 1)
+            )
         }
     }
 

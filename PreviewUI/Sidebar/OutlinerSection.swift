@@ -9,7 +9,7 @@ import SwiftUI
 /// "which glTF array does this row come from" question in one function, and lets the inspector
 /// and any engine adapter bind to the same small value type.
 ///
-/// Meshes may carry nested `children` for fold/unfold; flat sections leave `children` empty.
+/// Any scene-graph node may carry nested `children` for fold/unfold.
 struct OutlinerItem: Identifiable, Hashable, Sendable {
     /// Also the selection key — `NodeID` already namespaces by kind, so mesh 0 and material 0
     /// cannot collide.
@@ -17,7 +17,7 @@ struct OutlinerItem: Identifiable, Hashable, Sendable {
     var name: String
     /// Nesting depth inside the mesh-visible tree. 0 sits flush; deeper levels step the gutter.
     var depth: Int
-    /// Mesh-visible descendants only. Empty for Cameras / Lights / Materials / … .
+    /// Scene-graph descendants.
     var children: [OutlinerItem]
 
     var hasChildren: Bool { !children.isEmpty }
@@ -50,8 +50,7 @@ struct OutlinerSection: Identifiable, Hashable, Sendable {
 
 extension OutlinerSection {
 
-    /// The whole sidebar, in wireframe order: Scene · Cameras · Lights · Meshes · Materials ·
-    /// Animations · Morphs.
+    /// The whole sidebar, in wireframe order: Scene Graph · Scenes · Materials · Animations · Morphs.
     ///
     /// DESIGN.md's "show only what the model has" is enforced *here*, once, by simply not
     /// producing an empty section — rather than by an `if` in every view, which is how a
@@ -65,16 +64,8 @@ extension OutlinerSection {
                     : []
             ),
             OutlinerSection(
-                title: "Cameras",
-                items: model.cameras.map { OutlinerItem(id: $0.id, name: $0.name) }
-            ),
-            OutlinerSection(
-                title: "Lights",
-                items: model.lights.map { OutlinerItem(id: $0.id, name: $0.name) }
-            ),
-            OutlinerSection(
-                title: "Meshes",
-                items: OutlinerTree.meshRoots(model.nodeTree),
+                title: "Scene",
+                items: OutlinerTree.fullRoots(model.nodeTree),
                 folds: true
             ),
             OutlinerSection(

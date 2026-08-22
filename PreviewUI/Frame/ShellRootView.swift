@@ -42,6 +42,8 @@ struct ShellRootView<
     @State private var playback: Playback
     /// Guards the one-shot defaults → session → viewport seed (AGENTS.md: sync in onAppear).
     @State private var didSeedSession = false
+    @State private var sidebarWidth: CGFloat = Theme.sidebarWidth
+    @State private var inspectorWidth: CGFloat = Theme.inspectorWidth
     /// Host hook: seed session from defaults. Must not run in `init`.
     private let seedSession: (@MainActor (Settings) -> Void)?
     private let canvas: () -> Canvas
@@ -95,8 +97,12 @@ struct ShellRootView<
                     isSidebarVisible: panels.isSidebarVisible,
                     onToggleSidebar: { panels.toggleSidebar() }
                 )
-                .frame(width: Theme.sidebarWidth)
+                .frame(width: sidebarWidth)
                 .transition(.opacity)
+
+                ResizeHandle(cursor: .resizeLeftRight) { delta in
+                    sidebarWidth = clampSidebarWidth(sidebarWidth + delta)
+                }
 
                 hairline
                     .transition(.opacity)
@@ -117,8 +123,12 @@ struct ShellRootView<
                     morphTargets: morphTargets,
                     onSetMorphWeight: onSetMorphWeight
                 )
-                .frame(width: Theme.inspectorWidth)
+                .frame(width: inspectorWidth)
                 .transition(.opacity)
+
+                ResizeHandle(cursor: .resizeLeftRight) { delta in
+                    inspectorWidth = clampInspectorWidth(inspectorWidth - delta)
+                }
             }
         }
         .frame(minWidth: 900, minHeight: 600)
@@ -186,5 +196,44 @@ struct ShellRootView<
     /// `1px solid var(--border)`.
     private var hairline: some View {
         Theme.border(contrast: contrast).frame(width: Theme.hairlineWidth)
+    }
+
+    private func clampSidebarWidth(_ value: CGFloat) -> CGFloat {
+        min(max(value, 220), 520)
+    }
+
+    private func clampInspectorWidth(_ value: CGFloat) -> CGFloat {
+        min(max(value, 260), 560)
+    }
+}
+
+private struct ResizeHandle: View {
+    var cursor: NSCursor
+    var onChanged: (CGFloat) -> Void
+    @State private var startX: CGFloat?
+
+    var body: some View {
+        Rectangle()
+            .fill(.clear)
+            .frame(width: 6)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if startX == nil { startX = value.startLocation.x }
+                        guard let startX else { return }
+                        onChanged(value.location.x - startX)
+                    }
+                    .onEnded { _ in
+                        startX = nil
+                    }
+            )
+            .onHover { hovering in
+                if hovering {
+                    cursor.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
     }
 }
