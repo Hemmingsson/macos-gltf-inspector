@@ -54,19 +54,15 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel>: View {
     }
 }
 
-/// Traffic-light clearance + `sidebar.leading` toggle, vertically centered in the unified band.
+/// Traffic-light clearance + `sidebar.leading` toggle on the unified chrome band.
 struct SidebarChromeRow: View {
     var isSidebarVisible: Bool
     var onToggleSidebar: () -> Void
-    /// When true, skip the traffic-light spacer (floating overlay already sits after the lights).
-    var clearsTrafficLights: Bool = true
 
     var body: some View {
         HStack(spacing: 8) {
-            if clearsTrafficLights {
-                Color.clear
-                    .frame(width: Theme.trafficLightLeadingClearance, height: ChromeMetrics.buttonSize)
-            }
+            Color.clear
+                .frame(width: Theme.trafficLightLeadingClearance, height: ChromeMetrics.buttonSize)
 
             ChromeIconButton(
                 symbol: "sidebar.leading",

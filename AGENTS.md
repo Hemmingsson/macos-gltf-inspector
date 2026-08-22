@@ -74,14 +74,15 @@ Spaces, activate the app, drive the pointer, or open save/export sheets unless t
 question *requires* live chrome/input. Default ladder:
 
 1. Unit / still-render proofs (`xcodebuild test`, `./scripts/proof.sh`) — no UI focus
-2. Layout / tokens / light·dark / section exists → `PreviewUIShell --snapshot`
-   (`SnapshotHarness`). Not for glass; no window safe area.
-3. Live AX / window inventory only when needed — Peekaboo **background** (`see` /
-   `window list` / background `click`); never `activate` / `frontmost` / `osascript`
-   focus loops / menu-driven Screenshot export as a “test”. Prefer **classic** capture
+2. Live AX / window inventory — Peekaboo **background** (`see` / `window list` /
+   background `click`); never `activate` / `frontmost` / `osascript` focus loops /
+   menu-driven Screenshot export as a “test”. Prefer **classic** capture
    (`PEEKABOO_CAPTURE_ENGINE=classic` / `peekaboo see --capture-engine classic`) so agents
    do not stick to Claude.app’s ScreenCaptureKit bridge when it refuses ownership.
-4. Traffic lights / resize / click / select / glass → Peekaboo once per frame change,
+3. Traffic lights / resize / click / select / glass → Peekaboo once per frame change,
    and only with explicit need; warn the user first if focus must move
+
+Do **not** use a headless `--snapshot` / flatten-glass harness for PreviewUI — Liquid Glass
+and window chrome need a real window; Peekaboo is the layout + glass proof.
 
 Never screencapture-first. Never leave Export/Save sheets open for the user to dismiss.

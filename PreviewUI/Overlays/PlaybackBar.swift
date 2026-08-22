@@ -14,7 +14,6 @@ struct PlaybackBar: View {
     @State private var isSeeking = false
     @State private var currentTime: TimeInterval = 0
     @State private var clipIndex = 0
-    @Environment(\.previewFlattenGlass) private var flattenGlass
 
     var body: some View {
         OverlayChrome(
@@ -118,7 +117,7 @@ struct PlaybackBar: View {
     }
 
     private var playButton: some View {
-        PlaybackPlayButton(isPlaying: isPlaying, flatten: flattenGlass) {
+        PlaybackPlayButton(isPlaying: isPlaying) {
             isPlaying.toggle()
         }
     }
@@ -135,7 +134,6 @@ struct PlaybackBar: View {
 
 private struct PlaybackPlayButton: View {
     var isPlaying: Bool
-    var flatten: Bool
     var action: () -> Void
 
     @FocusState private var isFocused: Bool
@@ -148,36 +146,13 @@ private struct PlaybackPlayButton: View {
                 .frame(width: 26, height: 26)
                 .contentShape(.rect)
         }
-        .modifier(PlaybackPlayStyle(isPlaying: isPlaying, flatten: flatten))
+        .previewGlassButtonStyle(prominent: isPlaying)
         .focused($isFocused)
         .overlay {
             PreviewFocusStroke(shape: .roundedRect(8), isFocusedOverride: isFocused)
         }
         .help(isPlaying ? "Pause" : "Play")
         .accessibilityLabel(isPlaying ? "Pause" : "Play")
-    }
-}
-
-private struct PlaybackPlayStyle: ViewModifier {
-    var isPlaying: Bool
-    var flatten: Bool
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if flatten {
-            if isPlaying {
-                content
-                    .buttonStyle(.plain)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Theme.accent)
-                    )
-            } else {
-                content.buttonStyle(.plain)
-            }
-        } else {
-            content.previewGlassButtonStyle(prominent: isPlaying)
-        }
     }
 }
 

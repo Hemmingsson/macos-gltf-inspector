@@ -6,26 +6,26 @@ import SwiftUI
 /// height, radius and rhythm — a 2 pt drift between Stage and Camera is instantly visible when
 /// they sit on the same line.
 enum PillMetrics {
-    /// Hit / island height — matches `ChromeMetrics.buttonSize` (Sketch circle islands).
-    static let height: CGFloat = 30
+    /// Hit / island height — `Theme.chromeControlSize` (Sketch circle islands).
+    static var height: CGFloat { Theme.chromeControlSize }
     /// Full half-height → stadium for multi-control islands, true circle for singles.
-    static let cornerRadius: CGFloat = height / 2
+    static var cornerRadius: CGFloat { height / 2 }
     /// Gap between separate islands (Sketch rhythm — tighter than a crammed mega-pill).
     static let islandSpacing: CGFloat = 8
     /// Horizontal inset from the canvas edges for leading / trailing clusters.
-    /// Vertical placement is `Theme.chromeBandAligned()`, not a free top pad.
+    /// Vertical placement is `chromeBandAligned()`, not a free top pad.
     static let inset: CGFloat = 14
     /// Gap inside one island.
     static let itemSpacing: CGFloat = 4
-    /// `.tbtn { width: 30px; height: 30px }` — same as `ChromeMetrics.buttonSize`.
-    static let buttonSize: CGFloat = 30
+    /// Same as chrome circles — `Theme.chromeControlSize`.
+    static var buttonSize: CGFloat { Theme.chromeControlSize }
     /// Inset selection wash radius inside a multi-control stadium (not used on single circles).
     static let buttonCornerRadius: CGFloat = 8
-    /// Inset of the selected wash from the 30×30 hit target (keeps fill off the pill glass edge).
+    /// Inset of the selected wash from the hit target (keeps fill off the pill glass edge).
     static let selectionInset: CGFloat = 2
     /// Concentric radius for the inset wash (`buttonCornerRadius − selectionInset`).
     static let selectionCornerRadius: CGFloat = 6
-    /// SF Symbol size inside a 30 pt target.
+    /// SF Symbol size inside the control target.
     static let glyphSize: CGFloat = 13
     /// The chevron on a menu chip.
     static let chevronSize: CGFloat = 9
@@ -40,39 +40,19 @@ enum PillMetrics {
 /// One floating glass cluster.
 ///
 /// A `GlassEffectContainer` rather than a bare `.glassEffect` so the pill material resolves as
-/// one surface (spacing matches layout, per Liquid Glass guidance). Toggle on-states are an
-/// inset `Theme.selection` wash — not nested `.glassProminent` — so they never fight the
-/// capsule or grow the pill.
+/// one surface. Toggle on-states are an inset `Theme.selection` wash — not nested
+/// `.glassProminent` — so they never fight the capsule or grow the pill.
 ///
-/// Modifier order is load-bearing: font/frame → padding → `.glassEffect` **last**, so the material
-/// anchors to the padded bounds rather than to the content.
-///
-/// When `\.previewFlattenGlass` is set (snapshot harness), skips glass entirely and uses a flat
-/// `Theme.card` fill — offscreen `.glass` / `.glassEffect` cannot sample a backdrop and
-/// `.glassProminent` blanks the whole bitmap (see `Theme/Glass.swift`).
+/// Modifier order is load-bearing: font/frame → padding → `.glassEffect` **last**.
 struct Pill<Content: View>: View {
     /// `padding: 0 8px` on Stage and Camera, `0 6px` on Look (its chip already carries its own).
     var horizontalPadding: CGFloat = 8
     @ViewBuilder var content: () -> Content
-    @Environment(\.previewFlattenGlass) private var flattenGlass
-    @Environment(\.previewBorder) private var border
 
     var body: some View {
-        if flattenGlass {
+        GlassEffectContainer(spacing: PillMetrics.itemSpacing) {
             cluster
-                .background(
-                    RoundedRectangle(cornerRadius: PillMetrics.cornerRadius, style: .continuous)
-                        .fill(Theme.card)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: PillMetrics.cornerRadius, style: .continuous)
-                        .strokeBorder(border, lineWidth: Theme.hairlineWidth)
-                }
-        } else {
-            GlassEffectContainer(spacing: PillMetrics.itemSpacing) {
-                cluster
-                    .glassEffect(.regular, in: .rect(cornerRadius: PillMetrics.cornerRadius))
-            }
+                .glassEffect(.regular, in: .rect(cornerRadius: PillMetrics.cornerRadius))
         }
     }
 

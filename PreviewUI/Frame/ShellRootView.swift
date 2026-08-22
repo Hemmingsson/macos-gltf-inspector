@@ -40,7 +40,7 @@ struct ShellRootView<
     var panels: ShellPanelChrome
     /// Guards the one-shot defaults → session → viewport seed (AGENTS.md: sync in onAppear).
     @State private var didSeedSession = false
-    /// Host/shell hook: seed session from defaults and optionally apply harness overrides.
+    /// Host/shell hook: seed session from defaults and optionally apply Debug viewport overrides.
     /// Must not run in `init` — see `seedSessionIfNeeded`.
     private let seedSession: (@MainActor (Settings, Viewport) -> Void)?
     private let canvas: () -> Canvas
@@ -126,7 +126,6 @@ struct ShellRootView<
         // Keeps the traffic lights but drops the title string, which would otherwise sit over
         // the sidebar content in a `.hiddenTitleBar` window.
         .toolbar(removing: .title)
-        .background(WindowChromeIndent())
         .themeContrastEnvironment()
         .animation(Animation.previewChrome(reduceMotion), value: panels.isSidebarVisible)
         .animation(Animation.previewChrome(reduceMotion), value: panels.isInspectorVisible)
@@ -148,8 +147,7 @@ struct ShellRootView<
             if !panels.isSidebarVisible {
                 SidebarChromeRow(
                     isSidebarVisible: false,
-                    onToggleSidebar: { panels.toggleSidebar() },
-                    clearsTrafficLights: true
+                    onToggleSidebar: { panels.toggleSidebar() }
                 )
             }
         }

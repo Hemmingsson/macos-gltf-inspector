@@ -52,32 +52,15 @@ enum OverlayMetrics {
 }
 
 /// Flat / glass chrome for a bottom overlay pill (dimensions, playback).
-///
-/// Same flatten switch as the toolbar pills: offscreen `.glassEffect` cannot sample a backdrop,
-/// so the snapshot harness substitutes a card fill.
 struct OverlayChrome<Content: View>: View {
     var height: CGFloat
     var cornerRadius: CGFloat
     var horizontalPadding: CGFloat = 12
     @ViewBuilder var content: () -> Content
-    @Environment(\.previewFlattenGlass) private var flattenGlass
-    @Environment(\.previewBorder) private var border
 
     var body: some View {
-        if flattenGlass {
-            cluster
-                .background(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Theme.card)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(border, lineWidth: Theme.hairlineWidth)
-                }
-        } else {
-            cluster
-                .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-        }
+        cluster
+            .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
     }
 
     private var cluster: some View {

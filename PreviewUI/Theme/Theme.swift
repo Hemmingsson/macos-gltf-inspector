@@ -130,21 +130,16 @@ enum Theme {
     static let inspectorWidth: CGFloat = 288
     /// Column separator. A `Divider()` reads far heavier than this on macOS.
     static let hairlineWidth: CGFloat = 1
-    /// Unified top chrome band shared by traffic lights, the sidebar toggle, canvas islands, and
-    /// inspector actions. Controls are top-aligned to the traffic-light centerline via
-    /// `ChromeMetrics.bandTopInset` — not vertically centered in this band.
+    /// Unified top chrome band: traffic lights, sidebar toggle, canvas islands, inspector actions.
+    /// Controls top-align to `trafficLightCenterY` via `ChromeMetrics.bandTopInset`.
     static let topChromeHeight: CGFloat = 52
-    /// Sketch-style inset from the window top to the traffic-light *top* edge
-    /// (`WindowChromeIndent` moves the system buttons here).
-    static let trafficLightTopInset: CGFloat = 14
-    /// Sketch-style inset from the window leading edge to the close button.
-    static let trafficLightLeadingInset: CGFloat = 14
-    /// Optical center of indented traffic lights (topInset 14 + half of 16 pt lights → 22).
-    static let trafficLightCenterY: CGFloat = trafficLightTopInset + 8
-    /// Leading clearance inside the left chrome band (lights + gaps → sidebar toggle).
+    /// Optical center of system traffic lights in a `.hiddenTitleBar` window (AX: y=8, h=16).
+    /// AppKit owns this layout — we align to it; we do not move the buttons.
+    static let trafficLightCenterY: CGFloat = 16
+    /// Leading clearance past the three system lights to the sidebar toggle.
     static let trafficLightLeadingClearance: CGFloat = 78
-    /// Legacy alias — prefer `topChromeHeight` for new chrome layout.
-    static let trafficLightInset: CGFloat = topChromeHeight
+    /// Shared hit target for chrome circles and pill `.tbtn`s (Sketch island scale).
+    static let chromeControlSize: CGFloat = 30
 }
 
 extension Color {

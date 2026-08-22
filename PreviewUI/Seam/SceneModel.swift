@@ -37,20 +37,7 @@ protocol SceneModel: Sendable {
 extension SceneModel {
     var defaultSceneID: NodeID? { scenes.first?.id }
 
-    /// Flattened node tree in outliner order — depth-first, roots first.
-    var flattenedNodes: [SceneNode] {
-        var result: [SceneNode] = []
-        func walk(_ nodes: [SceneNode]) {
-            for node in nodes {
-                result.append(node)
-                walk(node.children)
-            }
-        }
-        walk(nodeTree)
-        return result
-    }
-
-    /// Depth-first lookup without allocating the full flatten.
+    /// Depth-first lookup without allocating a full flatten.
     func node(_ id: NodeID) -> SceneNode? {
         func walk(_ nodes: [SceneNode]) -> SceneNode? {
             for node in nodes {

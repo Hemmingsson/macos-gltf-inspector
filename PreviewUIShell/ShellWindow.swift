@@ -21,7 +21,7 @@ struct ShellWindow: View {
     /// Only the first call's object is kept; later ones are discarded by `@State`.
     ///
     /// Viewport harness overrides run in `seedSession` *after* defaults are applied, so a
-    /// snapshot's `viewport:` block is not clobbered by seeding.
+    /// Debug fixture's `viewport:` block is not clobbered by seeding.
     @MainActor
     init(
         select initialSelection: NodeID? = nil,

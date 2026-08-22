@@ -2,16 +2,15 @@ import SwiftUI
 
 /// Shared metrics for titlebar chrome icon buttons (sidebar / inspector / screenshot).
 ///
-/// Locked to the same 30 pt hit target as `PillMetrics.buttonSize` so open/closed restore
-/// chrome, Stage/Camera toggles, and traffic-light optical center share one size.
+/// Locked to `Theme.chromeControlSize` so open/closed restore chrome and Stage/Camera toggles
+/// share one size.
 enum ChromeMetrics {
-    /// Matches `PillMetrics.buttonSize` — one size open or closed, left or right.
-    static let buttonSize: CGFloat = 30
+    /// Same hit target as pill toggles — `Theme.chromeControlSize`.
+    static var buttonSize: CGFloat { Theme.chromeControlSize }
     static let glyphSize: CGFloat = 13
     /// Inset of the selected wash from the circle edge (same idea as pill `.tbtn.on`).
     static let selectionInset: CGFloat = 2
-    /// Gap between floating restore chrome and the nearest canvas pill.
-    /// Keep ≥16 so Liquid Glass does not morph the circle into the Stage / Camera capsule.
+    /// Gap between floating restore chrome and the nearest canvas island.
     static let pillClearance: CGFloat = 20
 
     /// Top pad so a `buttonSize` control’s center lands on `Theme.trafficLightCenterY`.
@@ -19,16 +18,19 @@ enum ChromeMetrics {
         Theme.trafficLightCenterY - buttonSize / 2
     }
 
-    /// Stage pill leading inset when the left sidebar is collapsed (traffic lights + toggle).
+    /// Stage leading inset when the sidebar is collapsed (lights + toggle + clearance).
     static var collapsedLeadingInset: CGFloat {
         Theme.trafficLightLeadingClearance + buttonSize + pillClearance
     }
 
-    /// Camera pill trailing inset when the inspector is collapsed (screenshot · share · toggle).
-    /// Camera is now several islands wide — keep generous clearance past the floating ActionRow.
+    /// Trailing inset when the inspector is collapsed — clears the floating ActionRow only.
     static var collapsedTrailingInset: CGFloat {
-        // ActionRow ≈ 3×30 + hair + pads; Camera cluster ≈ framing + 3 circles + gaps.
-        118 + pillClearance + 200
+        floatingActionRowWidth + pillClearance
+    }
+
+    /// Intrinsic width of `ActionRow`’s trailing cluster (3 circles + hair + pads).
+    static var floatingActionRowWidth: CGFloat {
+        buttonSize * 3 + 4 * 2 + Theme.hairlineWidth + 4 + 14 + 12
     }
 }
 
@@ -53,8 +55,6 @@ struct ChromeIconButton: View {
     var action: () -> Void
 
     @FocusState private var isFocused: Bool
-    @Environment(\.previewFlattenGlass) private var flattenGlass
-    @Environment(\.previewBorder) private var border
 
     var body: some View {
         Button(action: action) {
@@ -66,28 +66,7 @@ struct ChromeIconButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .background { chromeBackground }
-        .overlay {
-            PreviewFocusStroke(shape: .circle, isFocusedOverride: isFocused)
-        }
-        // Hard lock: Liquid Glass must not grow past the hit target when selected.
-        .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
-        .focused($isFocused)
-        .help(title)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(prominent ? [.isSelected] : [])
-    }
-
-    @ViewBuilder
-    private var chromeBackground: some View {
-        if flattenGlass {
-            Circle()
-                .fill(prominent ? Theme.selection : Theme.card)
-                .overlay {
-                    Circle()
-                        .strokeBorder(border, lineWidth: Theme.hairlineWidth)
-                }
-        } else {
+        .background {
             Circle()
                 .fill(.clear)
                 .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
@@ -100,5 +79,13 @@ struct ChromeIconButton: View {
                     }
                 }
         }
+        .overlay {
+            PreviewFocusStroke(shape: .circle, isFocusedOverride: isFocused)
+        }
+        .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
+        .focused($isFocused)
+        .help(title)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(prominent ? [.isSelected] : [])
     }
 }

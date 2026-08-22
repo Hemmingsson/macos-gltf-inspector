@@ -8,7 +8,7 @@ enum ShellStatusCopy {
     static let emptyDetail = "Drop a .glb or .gltf here, or choose File → Open…"
     static let loadingTitle = "Loading model…"
     static let failedTitle = "Couldn’t load model"
-    /// Debug / snapshot fixture for `.failed` — keep one string so shell proofs stay in sync.
+    /// Debug fixture for `.failed` — keep one string so shell proofs stay in sync.
     static let invalidFileDetail = "The file isn’t a valid glTF / GLB."
 }
 

@@ -56,7 +56,7 @@ final class MockViewport: ViewportController {
         }
     }
 
-    /// After a snapshot/harness pre-configures the viewport, mirror those values into session
+    /// After a Debug fixture pre-configures the viewport, mirror those values into session
     /// so menu and pills still share one This-window source of truth.
     func syncSessionFromViewport() {
         persistSession()
@@ -151,15 +151,14 @@ final class MockViewport: ViewportController {
         settings?.setSession(value, for: key)
     }
 
-    /// Printed *and* appended to `/tmp/previewuishell-viewport.log`: stdout is enough when the
-    /// binary is launched in a terminal, but `open` / Xcode lose that stream, so the side file is
-    /// what Peekaboo / agent verification reads after clicking pills.
+    /// Appends to the in-memory call log. Optional stdout + `/tmp` file when
+    /// `PREVIEWUI_VIEWPORT_LOG=1` (Peekaboo / agent harness only).
     private func record(_ call: String) {
         callLog.append(call)
+        guard ProcessInfo.processInfo.environment["PREVIEWUI_VIEWPORT_LOG"] == "1" else { return }
         let line = "viewport: \(call)\n"
         print(line, terminator: "")
         let url = URL(fileURLWithPath: "/tmp/previewuishell-viewport.log")
-        // Append-only — lighting sliders call this on every tick; never read+rewrite the file.
         if let handle = try? FileHandle(forWritingTo: url) {
             defer { try? handle.close() }
             _ = try? handle.seekToEnd()

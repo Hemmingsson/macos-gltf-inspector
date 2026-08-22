@@ -9,19 +9,19 @@ import Foundation
 /// Observed failure (macOS 26): touching `NSApplication.shared` while the process is not yet a
 /// UI-element app, or while it has no WindowServer session (Cursor agent sandbox), aborts inside
 /// `HIServices` → `___RegisterApplication_block_invoke`. That is an uncaught `SIGABRT`, so the
-/// system shows the Reopen sheet — and Reopen re-runs the same `--snapshot` argv, looping.
+/// system shows the Reopen sheet — and Reopen re-runs the same argv, looping.
 enum AppKitBootstrap {
 
-    /// Exclusive lock so parallel `--snapshot` invocations do not race `RegisterApplication`.
+    /// Exclusive lock so parallel headless proofs do not race `RegisterApplication`.
     private static let lockPath = "/tmp/previewuishell-appkit.lock"
 
-    /// Prepare the process for headless rasterization (`--snapshot`). Never returns on failure:
+    /// Prepare the process for headless work (`--proof-outliner`). Never returns on failure:
     /// exits with a clear stderr line instead of aborting into Crash Reporter.
-    static func prepareHeadlessSnapshot() {
+    static func prepareHeadless() {
         acquireLock()
         guard hasWindowServerSession() else {
             fputs(
-                "snapshot: no WindowServer session (agent sandbox?). "
+                "PreviewUIShell: no WindowServer session (agent sandbox?). "
                     + "Re-run outside the sandbox / with full permissions.\n",
                 stderr
             )

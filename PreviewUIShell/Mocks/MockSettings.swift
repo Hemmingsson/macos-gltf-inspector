@@ -72,19 +72,24 @@ final class MockSettings: SettingsStore {
             if defaults.object(forKey: key.name) == nil {
                 return key.fallback
             }
-            return (defaults.bool(forKey: key.name) as! Value)
+            guard let value = defaults.bool(forKey: key.name) as? Value else {
+                preconditionFailure("SettingKey<\(Value.self)> mismatch for \(key.name)")
+            }
+            return value
         }
         if Value.self == BackdropStyle.self {
             if let raw = defaults.string(forKey: key.name),
-               let style = BackdropStyle(rawValue: raw) {
-                return style as! Value
+               let style = BackdropStyle(rawValue: raw),
+               let value = style as? Value {
+                return value
             }
             return key.fallback
         }
         if Value.self == Projection.self {
             if let raw = defaults.string(forKey: key.name),
-               let projection = Projection(rawValue: raw) {
-                return projection as! Value
+               let projection = Projection(rawValue: raw),
+               let value = projection as? Value {
+                return value
             }
             return key.fallback
         }

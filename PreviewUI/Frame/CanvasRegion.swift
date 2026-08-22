@@ -106,19 +106,3 @@ struct CanvasRegion<
         isInspectorVisible ? PillMetrics.inset : ChromeMetrics.collapsedTrailingInset
     }
 }
-
-/// The shell's stand-in for the renderer: the wireframe's radial wash plus a centred cube.
-/// `GLBPreview` injects a `RealityView` in its place at cutover; nothing else in the frame
-/// changes.
-struct CanvasPlaceholder: View {
-    var body: some View {
-        ZStack {
-            Theme.canvasGradient
-
-            Image(systemName: "cube")
-                .font(.system(size: 96, weight: .ultraLight))
-                .foregroundStyle(Theme.text3)
-                .accessibilityHidden(true)
-        }
-    }
-}

@@ -3,10 +3,8 @@ import SwiftUI
 
 /// Process entry point.
 ///
-/// `--snapshot [dir]` is a **shell-only** development affordance: it renders the view tree to PNG
-/// and exits without ever constructing a `Scene`, so no window opens and nothing steals focus.
-/// The check has to happen here, before `App.main()` — once SwiftUI owns the run loop a window
-/// already exists. See `Snapshots/SnapshotHarness.swift`.
+/// `--proof-outliner` is a shell-only headless check (fold raster + pure helpers) that exits
+/// before any window opens. Normal launches go through `PreviewUIShellApp`.
 @main
 enum PreviewUIShellMain {
     static func main() {
@@ -15,7 +13,7 @@ enum PreviewUIShellMain {
                 FileHandle.standardError.write(Data("outliner-proof FAIL: \(failure)\n".utf8))
                 exit(1)
             }
-            AppKitBootstrap.prepareHeadlessSnapshot()
+            AppKitBootstrap.prepareHeadless()
             let liveFailure = MainActor.assumeIsolated { OutlinerLiveProof.failure() }
             if let liveFailure {
                 FileHandle.standardError.write(Data("outliner-proof FAIL live: \(liveFailure)\n".utf8))
@@ -23,13 +21,6 @@ enum PreviewUIShellMain {
             }
             print("outliner-proof PASS (proofFailure + live fold bitmap)")
             exit(0)
-        }
-        if let request = SnapshotRequest(arguments: CommandLine.arguments) {
-            // Headless path first: transform + lock + quiet abort handling *before* AppKit.
-            AppKitBootstrap.prepareHeadlessSnapshot()
-            // `main()` is the process entry, so this is the main thread; the harness is
-            // @MainActor because AppKit hosting is.
-            MainActor.assumeIsolated { SnapshotHarness.run(request) }
         }
         AppKitBootstrap.prepareInteractive()
         PreviewUIShellApp.main()

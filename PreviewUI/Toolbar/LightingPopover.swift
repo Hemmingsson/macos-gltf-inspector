@@ -27,7 +27,7 @@ struct LightingPopover<Capabilities: Availability, Viewport: ViewportController>
 }
 
 /// The popover's body. Split out so the chip stays about *presentation* and this stays about the
-/// three values, which is also what makes it renderable on its own in a snapshot row.
+/// three values, which is also what makes it easy to host alone in Debug fixtures.
 struct LightingControls<Capabilities: Availability, Viewport: ViewportController>: View {
     var availability: Capabilities
     var viewport: Viewport
