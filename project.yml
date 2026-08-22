@@ -165,6 +165,13 @@ targets:
           - "*.swift"
           - GLBDracoDecompressor.mm
           - GLBTry.mm
+        excludes:
+          - GLTFValidator.swift
+          - PreviewFocus.swift
+          - PreviewMorph.swift
+          - SelectionDetail.swift
+          - PreviewOrientationGizmo.swift
+          - ModelDimensions.swift
       - path: Shared/Convert
         includes:
           - "*.swift"
@@ -228,6 +235,7 @@ targets:
           - SelectionDetail.swift
           - PreviewSessionBindings.swift
           - PreviewSkeletonOverlay.swift
+          - ModelDimensions.swift
       - path: Shared/Convert
         includes:
           - "*.swift"

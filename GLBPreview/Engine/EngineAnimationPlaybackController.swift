@@ -4,8 +4,7 @@ import RealityKit
 
 /// Live clip transport over RealityKit playback + `PreviewClip`.
 ///
-/// `advance(by:)` mirrors the RealityKit playhead (shell mock advances a local clock;
-/// RK owns time here).
+/// `advance(by:)` mirrors the RealityKit playhead (`PlaybackBar` ticks; RK owns time).
 @MainActor
 @Observable
 final class EngineAnimationPlaybackController: AnimationPlaybackController {

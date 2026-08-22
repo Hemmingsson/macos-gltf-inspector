@@ -242,14 +242,14 @@ enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Identifiabl
 }
 
 /// One *present* texture binding on a material. Width/height and preview tint are optional —
-/// shell mocks invent them; the engine adapter can omit anything it does not know yet.
+/// the engine adapter can omit anything it does not know yet.
 struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
     var map: MaterialMap
     var width: Int?
     var height: Int?
     /// glTF `texCoord`. Inspector omits the UV set when this is 0.
     var texCoord: Int
-    /// Flat placeholder for the shell swatch / map strip. Live engine can leave this nil
+    /// Flat placeholder for the inspector swatch / map strip. Live engine can leave this nil
     /// and later supply an image handle without RealityKit types in the seam.
     var previewColor: RGBColor?
 

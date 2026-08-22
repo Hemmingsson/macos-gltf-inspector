@@ -3,8 +3,8 @@ import Observation
 
 /// Live clip transport for the canvas playback bar. Mutable and per-window.
 ///
-/// `SceneModel.animations` is the file inventory; this is the player. The shell mock owns a
-/// local clock; the engine adapter wraps `PreviewScene` / `PreviewClip`.
+/// `SceneModel.animations` is the file inventory; this is the player. The host engine
+/// adapter wraps RealityKit / `PreviewClip`. `PlaybackBar` ticks `advance(by:)`.
 @MainActor
 protocol AnimationPlaybackController: AnyObject, Observable {
     var clips: [AnimationInfo] { get }
@@ -17,7 +17,7 @@ protocol AnimationPlaybackController: AnyObject, Observable {
     func pause()
     func seek(_ time: TimeInterval)
     func select(_ clip: AnimationInfo)
-    /// Advance the playhead. The shell mock uses this as its clock; the engine adapter no-ops
-    /// (RealityKit owns time) or mirrors the live player.
+    /// Advance the playhead. `PlaybackBar` drives this while playing; the engine adapter
+    /// mirrors the RealityKit player (RK owns time).
     func advance(by delta: TimeInterval)
 }

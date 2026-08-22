@@ -21,14 +21,6 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
 
     private static let charcoal = (r: 38.0 / 255, g: 38.0 / 255, b: 38.0 / 255)
 
-    var title: String {
-        switch self {
-        case .window: "None"
-        case .white: "White"
-        case .dark: "Dark"
-        }
-    }
-
     var shortTitle: String {
         switch self {
         case .window: "None"
