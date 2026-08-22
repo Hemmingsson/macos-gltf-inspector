@@ -4,7 +4,7 @@ import Observation
 /// Sidebar ↔ canvas selection, visibility and isolation for one window.
 @MainActor
 protocol SelectionModel: AnyObject, Observable {
-    /// Nil when nothing is selected — the inspector then shows the file summary.
+    /// Nil when nothing is selected — the inspector column is closed.
     var selected: NodeID? { get }
     /// Everything the inspector can show about `selected`.
     var detail: NodeDetail? { get }

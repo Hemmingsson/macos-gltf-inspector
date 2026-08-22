@@ -136,7 +136,7 @@ class RealityKitResourceContext {
     }
 
     @MainActor func alphaUsage(for gltfTextureParams: GLTFTextureParams) -> TextureAlpha.Usage {
-        guard let image = Self.gltfImage(for: gltfTextureParams.texture),
+        guard let image = RealityKitResourceContext.gltfImage(for: gltfTextureParams.texture),
               let cgImage = cachedCGImage(for: image),
               let range = TextureAlpha.range(of: cgImage)
         else { return .unused }
@@ -147,7 +147,7 @@ class RealityKitResourceContext {
                             semantic: RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
     {
         let gltfTexture = gltfTextureParams.texture
-        guard let image = Self.gltfImage(for: gltfTexture) else { return nil }
+        guard let image = RealityKitResourceContext.gltfImage(for: gltfTexture) else { return nil }
         if let resource = textureResource(for:image, channels: channels, semantic: semantic) {
             let descriptor = MTLSamplerDescriptor(from: gltfTexture.sampler ?? GLTFTextureSampler())
             let sampler = MaterialParameters.Texture.Sampler(descriptor)
@@ -207,8 +207,13 @@ class RealityKitResourceContext {
 
     }
 
-    private static func gltfImage(for texture: GLTFTexture) -> GLTFImage? {
+    static func gltfImage(for texture: GLTFTexture) -> GLTFImage? {
         texture.basisUSource ?? texture.webpSource ?? texture.source
+    }
+
+    /// Reuse convert-time decode cache for inspector thumbs (no second `newCGImage` when warm).
+    @MainActor func cgImage(for gltfImage: GLTFImage) -> CGImage? {
+        cachedCGImage(for: gltfImage)
     }
 
     @MainActor private func cachedCGImage(for gltfImage: GLTFImage) -> CGImage? {

@@ -2,22 +2,26 @@ import Foundation
 import Observation
 import simd
 
-/// Selection / visibility / isolation adapter over `HostSidebarModel` + `SelectionDetail`.
+/// Selection / visibility / isolation adapter over `HostSidebarModel`.
 ///
-/// Host `selectNode` / `isolate` toggle; seam `select` / `isolate` are set-with-nil-to-clear —
-/// call the host toggle only when the target value differs.
+/// Mesh selection drives canvas highlight via `selectedNodeIndex`. All other outliner kinds
+/// live in `resourceSelection` so material/camera/… IDs are never confused with node indices.
 @MainActor
 @Observable
 final class EngineSelectionModel: SelectionModel {
     let sidebar: HostSidebarModel
+    /// Non-mesh outliner selection (material, camera, light, scene, animation, morph, skin).
+    private(set) var resourceSelection: NodeID?
 
     init(sidebar: HostSidebarModel) {
         self.sidebar = sidebar
     }
 
     var selected: NodeID? {
-        guard let index = sidebar.selectedNodeIndex else { return nil }
-        return Self.nodeID(index: index, in: sidebar.document)
+        if let index = sidebar.selectedNodeIndex {
+            return Self.nodeID(index: index, in: sidebar.document)
+        }
+        return resourceSelection
     }
 
     var isolated: NodeID? {
@@ -26,28 +30,28 @@ final class EngineSelectionModel: SelectionModel {
     }
 
     var detail: NodeDetail? {
-        guard let index = sidebar.selectedNodeIndex,
-              let resolved = SelectionDetail.resolve(nodeIndex: index, in: sidebar.document)
-        else { return nil }
-        return Self.nodeDetail(from: resolved, nodeIndex: index, document: sidebar.document)
+        guard let id = selected else { return nil }
+        return Self.detail(for: id, document: sidebar.document)
     }
 
     func select(_ id: NodeID?) {
-        let target = Self.nodeIndex(id)
-        let current = sidebar.selectedNodeIndex
-        if target == current { return }
-        if let target {
-            if current != target {
-                // Selecting a different node: one toggle sets it (host clears only on same id).
-                sidebar.selectNode(target)
-            }
-        } else if let current {
-            sidebar.selectNode(current)
+        guard let id else {
+            clearMeshSelection()
+            resourceSelection = nil
+            return
+        }
+        switch id.kind {
+        case .mesh, .empty:
+            resourceSelection = nil
+            setMeshSelection(id.index)
+        case .camera, .light, .skin, .material, .animation, .morph, .scene:
+            clearMeshSelection()
+            resourceSelection = id
         }
     }
 
     func isolate(_ id: NodeID?) {
-        let target = Self.nodeIndex(id)
+        let target = Self.meshNodeIndex(id)
         let current = sidebar.soloRoot
         if target == current { return }
         if let target {
@@ -60,7 +64,7 @@ final class EngineSelectionModel: SelectionModel {
     }
 
     func setVisible(_ id: NodeID, _ isVisible: Bool) {
-        guard let index = Self.nodeIndex(id) else { return }
+        guard let index = Self.meshNodeIndex(id) else { return }
         if isVisible {
             sidebar.hide.remove(index)
         } else {
@@ -70,18 +74,33 @@ final class EngineSelectionModel: SelectionModel {
     }
 
     func isVisible(_ id: NodeID) -> Bool {
-        guard let index = Self.nodeIndex(id) else { return true }
+        guard let index = Self.meshNodeIndex(id) else { return true }
         return !sidebar.hide.contains(index) && !sidebar.soloHides(index)
+    }
+
+    // MARK: - Mesh selection (set semantics)
+
+    private func setMeshSelection(_ index: Int) {
+        guard sidebar.selectedNodeIndex != index else { return }
+        sidebar.selectedNodeIndex = index
+        sidebar.overlayRevision += 1
+    }
+
+    private func clearMeshSelection() {
+        guard sidebar.selectedNodeIndex != nil else { return }
+        sidebar.selectedNodeIndex = nil
+        sidebar.overlayRevision += 1
     }
 
     // MARK: - Mapping
 
-    private static func nodeIndex(_ id: NodeID?) -> Int? {
+    /// Only scene-graph nodes participate in canvas highlight / visibility.
+    private static func meshNodeIndex(_ id: NodeID?) -> Int? {
         guard let id else { return nil }
         switch id.kind {
-        case .mesh, .empty, .camera, .light, .skin:
+        case .mesh, .empty:
             return id.index
-        case .scene, .material, .animation, .morph:
+        case .scene, .material, .animation, .morph, .camera, .light, .skin:
             return nil
         }
     }
@@ -90,134 +109,191 @@ final class EngineSelectionModel: SelectionModel {
         guard let node = document.nodes.first(where: { $0.index == index }) else {
             return NodeID(kind: .empty, index: index)
         }
-        let kind: NodeKind
-        switch node.kind {
-        case .empty: kind = .empty
-        case .mesh: kind = .mesh
-        case .camera: kind = .camera
-        case .light: kind = .light
-        case .skin: kind = .skin
+        return NodeID(kind: mapNodeKind(node.kind), index: index)
+    }
+
+    private static func mapNodeKind(_ kind: GLTFSessionDocument.Node.Kind) -> NodeKind {
+        switch kind {
+        case .empty: .empty
+        case .mesh: .mesh
+        case .camera: .camera
+        case .light: .light
+        case .skin: .skin
         }
-        return NodeID(kind: kind, index: index)
+    }
+
+    static func detail(for id: NodeID, document: GLTFSessionDocument) -> NodeDetail? {
+        switch id.kind {
+        case .mesh, .empty:
+            guard let node = document.nodes.first(where: { $0.index == id.index }) else {
+                return nil
+            }
+            return nodeDetail(node: node, document: document)
+        case .camera:
+            return cameraDetail(index: id.index, document: document)
+        case .light:
+            return lightDetail(index: id.index, document: document)
+        case .skin:
+            return skinDetail(index: id.index, document: document)
+        case .material:
+            return materialDetail(index: id.index, document: document)
+        case .animation:
+            return animationDetail(index: id.index, document: document)
+        case .morph:
+            return morphDetail(index: id.index, document: document)
+        case .scene:
+            return sceneDetail(index: id.index, document: document)
+        }
     }
 
     private static func nodeDetail(
-        from detail: SelectionDetail,
-        nodeIndex: Int,
+        node: GLTFSessionDocument.Node,
         document: GLTFSessionDocument
     ) -> NodeDetail {
-        let id = nodeID(index: nodeIndex, in: document) ?? NodeID(kind: .empty, index: nodeIndex)
+        let id = NodeID(kind: mapNodeKind(node.kind), index: node.index)
         let transform = TransformInfo(
             position: Vector3(
-                x: Double(detail.translation.x),
-                y: Double(detail.translation.y),
-                z: Double(detail.translation.z)
+                x: Double(node.translation.x),
+                y: Double(node.translation.y),
+                z: Double(node.translation.z)
             ),
             rotationDegrees: Vector3(
-                x: Double(detail.rotationEulerDegrees.x),
-                y: Double(detail.rotationEulerDegrees.y),
-                z: Double(detail.rotationEulerDegrees.z)
+                x: Double(eulerDegrees(from: node.rotation).x),
+                y: Double(eulerDegrees(from: node.rotation).y),
+                z: Double(eulerDegrees(from: node.rotation).z)
             ),
             scale: Vector3(
-                x: Double(detail.scale.x),
-                y: Double(detail.scale.y),
-                z: Double(detail.scale.z)
+                x: Double(node.scale.x),
+                y: Double(node.scale.y),
+                z: Double(node.scale.z)
             )
         )
 
+        let geometry: GeometryInfo? = node.kind == .mesh
+            ? GeometryInfo(
+                triangleCount: node.triangleCount,
+                vertexCount: node.vertexCount,
+                uvSetCount: node.uvSetCount,
+                hasNormals: node.hasNormals,
+                hasTangents: node.hasTangents,
+                hasVertexColors: node.hasVertexColors
+            )
+            : nil
+
         let material: MaterialInfo? = {
-            guard let node = document.nodes.first(where: { $0.index == nodeIndex }),
+            guard node.kind == .mesh,
                   let materialIndex = node.materialIndices.first,
                   document.materials.indices.contains(materialIndex)
             else { return nil }
-            return materialInfo(index: materialIndex, document: document)
+            return EngineSceneModel.materialInfo(index: materialIndex, document: document)
         }()
 
-        let camera: CameraInfo? = detail.camera.map { fields in
-            let projection: Projection =
-                fields.type.lowercased().contains("orthographic") ? .orthographic : .perspective
-            return CameraInfo(
-                index: nodeIndex,
-                name: detail.name,
-                projection: projection,
-                fieldOfViewDegrees: fields.yfovDegrees.map(Double.init),
-                zNear: Double(fields.znear),
-                zFar: fields.zfar.map(Double.init)
-            )
+        var camera: CameraInfo?
+        var light: LightInfo?
+        if node.kind == .camera, let cameraIndex = node.cameraIndex {
+            camera = EngineSceneModel.cameraInfo(index: cameraIndex, document: document)
+        }
+        if node.kind == .light, let lightIndex = node.lightIndex {
+            light = EngineSceneModel.lightInfo(index: lightIndex, document: document)
+        }
+        var skin: SkinInfo?
+        if node.kind == .skin, let skinIndex = node.skinIndex {
+            skin = EngineSceneModel.skinInfo(index: skinIndex, document: document)
         }
 
-        let light: LightInfo? = detail.light.map { fields in
-            let kind: LightInfo.Kind
-            switch fields.type.lowercased() {
-            case "directional": kind = .directional
-            case "spot": kind = .spot
-            default: kind = .point
-            }
-            return LightInfo(
-                index: nodeIndex,
-                name: detail.name,
-                kind: kind,
-                color: RGBColor(
-                    red: Double(fields.color.x),
-                    green: Double(fields.color.y),
-                    blue: Double(fields.color.z)
-                ),
-                intensity: Double(fields.intensity),
-                range: fields.range.map(Double.init)
-            )
-        }
-
-        // Per-node triangle/vertex counts are not on `GLTFSessionDocument` yet — chips only.
+        let name = node.name.isEmpty ? "Node \(node.index)" : node.name
         return NodeDetail(
             id: id,
-            name: detail.name,
+            name: name,
             transform: transform,
             isTransformAuthored: true,
-            geometry: nil,
+            geometry: geometry,
             material: material,
             light: light,
-            camera: camera
+            camera: camera,
+            skin: skin
         )
     }
 
-    private static func materialInfo(index: Int, document: GLTFSessionDocument) -> MaterialInfo {
-        let material = document.materials[index]
-        let workflow: MaterialInfo.Workflow
-        switch material.workflow {
-        case .metallicRoughness: workflow = .metallicRoughness
-        case .specularGlossiness: workflow = .specularGlossiness
-        case .unlit: workflow = .unlit
-        }
-        let alphaMode: MaterialInfo.AlphaMode
-        switch material.alphaMode {
-        case .opaque: alphaMode = .opaque
-        case .mask: alphaMode = .mask
-        case .blend: alphaMode = .blend
-        }
-        return MaterialInfo(
-            index: index,
-            name: material.name.isEmpty ? "Material" : material.name,
-            workflow: workflow,
-            alphaMode: alphaMode,
-            isDoubleSided: material.isDoubleSided,
-            maps: materialMapSet(material.maps),
-            metallicFactor: material.metallicFactor.map(Double.init),
-            roughnessFactor: material.roughnessFactor.map(Double.init),
-            alphaCutoff: material.alphaCutoff.map(Double.init)
-        )
+    private static func materialDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
+        guard document.materials.indices.contains(index) else { return nil }
+        let material = EngineSceneModel.materialInfo(index: index, document: document)
+        return NodeDetail(id: material.id, name: material.name, material: material)
     }
 
-    private static func materialMapSet(_ maps: MaterialMapPresence) -> Set<MaterialMap> {
-        var result = Set<MaterialMap>()
-        if maps.baseColor { result.insert(.baseColor) }
-        if maps.normal { result.insert(.normal) }
-        if maps.metallicRoughness { result.insert(.metallicRoughness) }
-        if maps.occlusion { result.insert(.occlusion) }
-        if maps.emissive { result.insert(.emissive) }
-        if maps.specular { result.insert(.specular) }
-        if maps.clearcoat { result.insert(.clearcoat) }
-        if maps.clearcoatRoughness { result.insert(.clearcoatRoughness) }
-        if maps.clearcoatNormal { result.insert(.clearcoatNormal) }
-        return result
+    private static func cameraDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
+        guard let camera = EngineSceneModel.cameraInfo(index: index, document: document) else {
+            return nil
+        }
+        return NodeDetail(id: camera.id, name: camera.name, camera: camera)
     }
+
+    private static func lightDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
+        guard let light = EngineSceneModel.lightInfo(index: index, document: document) else {
+            return nil
+        }
+        return NodeDetail(id: light.id, name: light.name, light: light)
+    }
+
+    private static func skinDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
+        guard let skin = EngineSceneModel.skinInfo(index: index, document: document) else {
+            return nil
+        }
+        return NodeDetail(id: skin.id, name: skin.name, skin: skin)
+    }
+
+    private static func animationDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
+        guard document.animations.indices.contains(index) else { return nil }
+        let animation = document.animations[index]
+        let trimmed = animation.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty ? "Clip \(index + 1)" : trimmed
+        let info = AnimationInfo(index: index, name: name, duration: animation.duration)
+        return NodeDetail(id: info.id, name: info.name, animation: info)
+    }
+
+    private static func morphDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
+        guard document.morphs.indices.contains(index) else { return nil }
+        let morph = document.morphs[index]
+        let meshName = morph.meshName.isEmpty ? "Mesh \(morph.meshIndex)" : morph.meshName
+        let info = MorphInfo(index: index, meshName: meshName, targetNames: morph.targetNames)
+        return NodeDetail(id: info.id, name: info.meshName, morph: info)
+    }
+
+    private static func sceneDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
+        guard document.scenes.indices.contains(index) else { return nil }
+        let scene = document.scenes[index]
+        let name = scene.name.isEmpty ? "Scene \(index)" : scene.name
+        return NodeDetail(
+            id: NodeID(kind: .scene, index: index),
+            name: name,
+            sceneRootCount: scene.rootNodeIndices.count
+        )
+    }
+}
+
+/// Intrinsic XYZ Euler degrees from a unit quaternion (matches glTF TRS authoring).
+private func eulerDegrees(from q: simd_quatf) -> SIMD3<Float> {
+    let x = q.imag.x
+    let y = q.imag.y
+    let z = q.imag.z
+    let w = q.real
+
+    let sinr = 2 * (w * x + y * z)
+    let cosr = 1 - 2 * (x * x + y * y)
+    let roll = atan2(sinr, cosr)
+
+    let sinp = 2 * (w * y - z * x)
+    let pitch: Float
+    if abs(sinp) >= 1 {
+        pitch = copysign(.pi / 2, sinp)
+    } else {
+        pitch = asin(sinp)
+    }
+
+    let siny = 2 * (w * z + x * y)
+    let cosy = 1 - 2 * (y * y + z * z)
+    let yaw = atan2(siny, cosy)
+
+    let toDeg: Float = 180 / .pi
+    return SIMD3(roll * toDeg, pitch * toDeg, yaw * toDeg)
 }

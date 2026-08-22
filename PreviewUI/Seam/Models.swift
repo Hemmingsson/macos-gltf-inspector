@@ -131,6 +131,9 @@ struct CameraInfo: Sendable, Hashable, Identifiable {
     var projection: Projection
     /// Vertical field of view in degrees (perspective only).
     var fieldOfViewDegrees: Double?
+    /// Orthographic horizontal / vertical magnification (half-extents).
+    var xMag: Double?
+    var yMag: Double?
     var zNear: Double
     var zFar: Double?
 
@@ -139,6 +142,8 @@ struct CameraInfo: Sendable, Hashable, Identifiable {
         name: String,
         projection: Projection,
         fieldOfViewDegrees: Double? = nil,
+        xMag: Double? = nil,
+        yMag: Double? = nil,
         zNear: Double = 0.01,
         zFar: Double? = nil
     ) {
@@ -146,6 +151,8 @@ struct CameraInfo: Sendable, Hashable, Identifiable {
         self.name = name
         self.projection = projection
         self.fieldOfViewDegrees = fieldOfViewDegrees
+        self.xMag = xMag
+        self.yMag = yMag
         self.zNear = zNear
         self.zFar = zFar
     }
@@ -165,6 +172,9 @@ struct LightInfo: Sendable, Hashable, Identifiable {
     /// glTF punctual intensity (lux for directional, candela otherwise).
     var intensity: Double
     var range: Double?
+    /// Spot cone angles in degrees (`KHR_lights_punctual`).
+    var innerConeDegrees: Double?
+    var outerConeDegrees: Double?
 
     init(
         index: Int,
@@ -172,7 +182,9 @@ struct LightInfo: Sendable, Hashable, Identifiable {
         kind: Kind,
         color: RGBColor = .white,
         intensity: Double = 1,
-        range: Double? = nil
+        range: Double? = nil,
+        innerConeDegrees: Double? = nil,
+        outerConeDegrees: Double? = nil
     ) {
         self.id = NodeID(kind: .light, index: index)
         self.name = name
@@ -180,6 +192,8 @@ struct LightInfo: Sendable, Hashable, Identifiable {
         self.color = color
         self.intensity = intensity
         self.range = range
+        self.innerConeDegrees = innerConeDegrees
+        self.outerConeDegrees = outerConeDegrees
     }
 }
 
@@ -242,6 +256,8 @@ struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
     /// Flat placeholder for the inspector swatch / map strip. Live engine can leave this nil
     /// and later supply an image handle without RealityKit types in the seam.
     var previewColor: RGBColor?
+    /// Small PNG thumb stamped at convert (max edge 96). Nil when decode failed / KTX2.
+    var thumbnailPNG: Data?
 
     var id: MaterialMap { map }
 
@@ -250,13 +266,15 @@ struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
         width: Int? = nil,
         height: Int? = nil,
         texCoord: Int = 0,
-        previewColor: RGBColor? = nil
+        previewColor: RGBColor? = nil,
+        thumbnailPNG: Data? = nil
     ) {
         self.map = map
         self.width = width
         self.height = height
         self.texCoord = texCoord
         self.previewColor = previewColor
+        self.thumbnailPNG = thumbnailPNG
     }
 
     /// `"2048×2048"` when both edges are known.
@@ -379,11 +397,13 @@ struct SkinInfo: Sendable, Hashable, Identifiable {
     var id: NodeID
     var name: String
     var jointCount: Int
+    var jointNames: [String]
 
-    init(index: Int, name: String, jointCount: Int) {
+    init(index: Int, name: String, jointCount: Int, jointNames: [String] = []) {
         self.id = NodeID(kind: .skin, index: index)
         self.name = name
         self.jointCount = jointCount
+        self.jointNames = jointNames
     }
 }
 
@@ -447,6 +467,10 @@ struct NodeDetail: Sendable, Hashable, Identifiable {
     var light: LightInfo?
     var camera: CameraInfo?
     var animation: AnimationInfo?
+    var skin: SkinInfo?
+    var morph: MorphInfo?
+    /// Scene root count when `kind == .scene`.
+    var sceneRootCount: Int?
 
     var kind: NodeKind { id.kind }
 
@@ -459,7 +483,10 @@ struct NodeDetail: Sendable, Hashable, Identifiable {
         material: MaterialInfo? = nil,
         light: LightInfo? = nil,
         camera: CameraInfo? = nil,
-        animation: AnimationInfo? = nil
+        animation: AnimationInfo? = nil,
+        skin: SkinInfo? = nil,
+        morph: MorphInfo? = nil,
+        sceneRootCount: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -470,6 +497,9 @@ struct NodeDetail: Sendable, Hashable, Identifiable {
         self.light = light
         self.camera = camera
         self.animation = animation
+        self.skin = skin
+        self.morph = morph
+        self.sceneRootCount = sceneRootCount
     }
 }
 

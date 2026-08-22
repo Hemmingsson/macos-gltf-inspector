@@ -44,6 +44,13 @@ struct GLTFSessionDocument: Sendable, Equatable {
         var skinIndex: Int?
         /// File material indices bound to this node's mesh primitives (order preserved, unique).
         var materialIndices: [Int] = []
+        /// Derived from the referenced mesh's primitives (mesh nodes only).
+        var triangleCount: Int = 0
+        var vertexCount: Int = 0
+        var uvSetCount: Int = 0
+        var hasNormals: Bool = false
+        var hasTangents: Bool = false
+        var hasVertexColors: Bool = false
 
         /// Primary attachment wins: mesh > camera > light > skin; all nil → empty.
         static func inferredKind(
@@ -82,6 +89,27 @@ struct GLTFSessionDocument: Sendable, Equatable {
         var outerCone: Float?
     }
 
+    /// Authored texture slot on a material. Pixel size / thumb filled after convert.
+    struct TextureSlot: Sendable, Equatable {
+        enum Kind: String, Sendable, Equatable {
+            case baseColor
+            case normal
+            case metallicRoughness
+            case occlusion
+            case emissive
+            case specular
+            case clearcoat
+            case clearcoatRoughness
+            case clearcoatNormal
+        }
+
+        var kind: Kind
+        var texCoord: Int = 0
+        var width: Int?
+        var height: Int?
+        var thumbnailPNG: Data?
+    }
+
     /// File material + texture-map presence. `maps` is canonical for sidebar chips;
     /// `PreviewDebugMode` aggregates the same flags (JSON twin) with mesh/factor signals.
     struct Material: Sendable, Equatable {
@@ -105,6 +133,12 @@ struct GLTFSessionDocument: Sendable, Equatable {
         var metallicFactor: Float?
         var roughnessFactor: Float?
         var alphaCutoff: Float?
+        var baseColorFactor: SIMD4<Float>?
+        var emissiveFactor: SIMD3<Float>?
+        var normalScale: Float?
+        var occlusionStrength: Float?
+        /// Present map bindings; thumbs stamped after convert.
+        var textures: [TextureSlot] = []
     }
 
     /// Skin joint list stamped at convert. `jointParentIndices` indexes this

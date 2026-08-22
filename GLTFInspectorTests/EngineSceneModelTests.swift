@@ -22,6 +22,9 @@ struct EngineSceneModelTests {
         #expect(model.convertProblems.isEmpty)
         #expect(!model.nodeTree.isEmpty)
         #expect(model.pipelineReport.entries.contains { $0.kind == .lighting })
+
+        let sections = OutlinerSection.sections(of: model)
+        #expect(!sections.contains { $0.title == "Scene" })
     }
 
     @Test func tinyIsPlain() async throws {
@@ -96,6 +99,7 @@ struct EngineSceneModelTests {
         #expect(availability.isMultiScene)
         #expect(model.scenes.count >= 2)
         #expect(model.defaultSceneID != nil)
+        #expect(OutlinerSection.sections(of: model).contains { $0.title == "Scene" })
     }
 
     @Test func riggedHasSkin() async throws {
@@ -107,6 +111,7 @@ struct EngineSceneModelTests {
         #expect(availability.hasSkin)
         #expect(!model.skins.isEmpty)
         #expect(model.skins[0].jointCount >= 2)
+        #expect(OutlinerSection.sections(of: model).contains { $0.title == "Skins" })
     }
 
     @Test func morphHasMorphs() async throws {

@@ -29,7 +29,7 @@ stays in control of how it's shown. Native macOS, slim, honest.
 |---|---|---|
 | **App default** | **Settings** only | appearance · default backdrop / floor / auto-rotate · auto-play · default camera |
 | **This window** | **canvas pills + View menu** | backdrop · floor · auto-rotate · center · view mode · lighting · perspective↔ortho · Fit · camera presets |
-| **This file** | **left sidebar** | scenes · cameras · lights · meshes · materials · animations · selection · stats |
+| **This file** | **left sidebar** | scenes · cameras · lights · meshes · materials · animations · selection · stats · validation · pipeline |
 
 - Canvas controls are **per-window and live**; they never rewrite your defaults.
   Settings = defaults for *new* windows.
@@ -44,8 +44,8 @@ stays in control of how it's shown. Native macOS, slim, honest.
 - **Left — Stage:** backdrop · floor
 - **Center — Look:** view mode · lighting (exposure / IBL / file-vs-studio)
 - **Right — Camera:** auto-rotate · center · perspective↔ortho · Fit · camera presets
-- Document/output actions (Open in…, screenshot, inspector toggle) sit on the **right-column
-  header**, not on the canvas.
+- Document/output actions (Open in…, screenshot) sit on the **right-column header** while the
+  inspector is open (selection), otherwise float over the canvas trailing edge.
 
 ## Show only what the model has
 
@@ -60,6 +60,8 @@ them disabled or empty.
 - Material chips show **only maps that exist**.
 - No skin / morphs → no skeleton or morph controls.
 - The selection inspector shows **only the fields the node type has** (mesh vs camera vs light).
+- Single scene → no Scene outliner section.
+- Inspector column opens only when an outliner row is selected; file stats/validation stay on the left.
 
 *Result:* a plain static mesh opens to a calm, near-empty UI; a rigged, animated,
 multi-scene file reveals more. Complexity scales with the asset — never the other way.

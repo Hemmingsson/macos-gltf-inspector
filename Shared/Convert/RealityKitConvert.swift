@@ -105,6 +105,9 @@ public class RealityKitConvert {
             }
         }
 
+        if let asset {
+            Self.stampMaterialPreviews(document: &document, asset: asset, context: context)
+        }
         Self.lastProblems = context.problems
         return rootEntity
     }

@@ -60,7 +60,9 @@ extension OutlinerSection {
         let candidates = [
             OutlinerSection(
                 title: "Scene",
-                items: model.scenes.map { OutlinerItem(id: $0.id, name: $0.name) }
+                items: model.scenes.count > 1
+                    ? model.scenes.map { OutlinerItem(id: $0.id, name: $0.name) }
+                    : []
             ),
             OutlinerSection(
                 title: "Cameras",
@@ -78,6 +80,10 @@ extension OutlinerSection {
             OutlinerSection(
                 title: "Materials",
                 items: model.materials.map { OutlinerItem(id: $0.id, name: $0.name) }
+            ),
+            OutlinerSection(
+                title: "Skins",
+                items: model.skins.map { OutlinerItem(id: $0.id, name: $0.name) }
             ),
             OutlinerSection(
                 title: "Animations",

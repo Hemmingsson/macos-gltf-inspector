@@ -331,30 +331,9 @@ final class EngineViewportController: ViewportController {
 
     private static func matches(_ mode: PreviewDebugMode, _ channel: DebugChannel) -> Bool {
         guard case .visualization(let visualization) = mode,
-              let mapped = debugChannel(from: visualization)
+              let mapped = EngineSceneModel.debugChannel(from: visualization)
         else { return false }
         return mapped == channel
-    }
-
-    private static func debugChannel(
-        from visualization: ModelDebugOptionsComponent.VisualizationMode
-    ) -> DebugChannel? {
-        switch visualization {
-        case .baseColor: .baseColor
-        case .metallic: .metallic
-        case .roughness: .roughness
-        case .normal: .normals
-        case .tangent: .tangents
-        case .textureCoordinates: .textureCoordinates
-        case .ambientOcclusion: .ambientOcclusion
-        case .emissive: .emissive
-        case .finalAlpha: .alpha
-        case .specular: .specular
-        case .clearcoat: .clearcoat
-        case .clearcoatRoughness: .clearcoatRoughness
-        case .clearcoatNormal: .clearcoatNormal
-        default: nil
-        }
     }
 
     private static func hostPreset(_ preset: CameraPreset) -> PreviewCamera.CameraPreset {

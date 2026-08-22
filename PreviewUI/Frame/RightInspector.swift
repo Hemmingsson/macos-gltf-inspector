@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Right column — the selected node, or the file summary when nothing is selected.
+/// Right column — the selected outliner row. Closed when nothing is selected.
 ///
-/// Never blank for a loaded model: clearing the selection returns to File + Validation + Pipeline.
 /// Node sections bind to `selection.detail` and omit fields the node type does not have.
 struct RightInspector<
     Model: SceneModel,
@@ -11,12 +10,9 @@ struct RightInspector<
     var model: Model
     var selection: Selection
     var documentState: ShellDocumentState = .ready
-    /// Visual state of the trailing header toggle (accent while the column is open).
-    var isInspectorVisible: Bool
     var onScreenshot: () -> Void
     var onOpenIn: () -> Void
-    var onToggleInspector: () -> Void
-    /// Live morph weights from the host (`PreviewMorph`); empty when the file has none.
+    /// Live morph weights from the host (`PreviewMorph`); shown when a morph is selected.
     var morphTargets: [MorphTargetControl] = []
     var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
 
@@ -24,27 +20,15 @@ struct RightInspector<
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
+            if documentState.isReady, let detail = selection.detail {
+                header(detail)
 
-            if documentState.isReady {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        if let detail = selection.detail {
-                            nodeSections(detail)
-                        }
+                        nodeSections(detail)
 
-                        if !morphTargets.isEmpty {
+                        if detail.kind == .morph, !morphTargets.isEmpty {
                             MorphWeightsSection(targets: morphTargets, onSetWeight: onSetMorphWeight)
-                        }
-
-                        FileSection(stats: model.stats, fileName: model.fileName)
-
-                        ValidationSection(validation: model.validation)
-
-                        ConvertProblemsSection(problems: model.convertProblems)
-
-                        if !model.pipelineReport.isEmpty {
-                            PipelineSection(report: model.pipelineReport)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -61,38 +45,14 @@ struct RightInspector<
         .accessibilityLabel("Inspector")
     }
 
-    @ViewBuilder
-    private var header: some View {
-        if documentState.isReady, let detail = selection.detail {
-            NodeHeader(
-                name: detail.name,
-                kindTitle: detail.kind.displayTitle,
-                kind: detail.kind,
-                isInspectorVisible: isInspectorVisible,
-                onScreenshot: onScreenshot,
-                onOpenIn: onOpenIn,
-                onToggleInspector: onToggleInspector
-            )
-        } else {
-            // File-level summary (or non-ready placeholder): same action row, document identity.
-            NodeHeader(
-                name: headerName,
-                kindTitle: headerKind,
-                kind: .scene,
-                isInspectorVisible: isInspectorVisible,
-                onScreenshot: onScreenshot,
-                onOpenIn: onOpenIn,
-                onToggleInspector: onToggleInspector
-            )
-        }
-    }
-
-    private var headerName: String {
-        documentState.isReady ? model.fileName : documentState.panelDocumentTitle
-    }
-
-    private var headerKind: String {
-        documentState.isReady ? "File" : "Inspector"
+    private func header(_ detail: NodeDetail) -> some View {
+        NodeHeader(
+            name: detail.name,
+            kindTitle: detail.kind.displayTitle,
+            kind: detail.kind,
+            onScreenshot: onScreenshot,
+            onOpenIn: onOpenIn
+        )
     }
 
     @ViewBuilder
@@ -109,11 +69,24 @@ struct RightInspector<
                 density: detail.kind == .material ? .full : .compact
             )
         }
+        if detail.kind == .scene, let roots = detail.sceneRootCount {
+            VStack(alignment: .leading, spacing: 0) {
+                InspectorSectionHeader(title: "Scene")
+                InspectorFactRow(label: "Roots", value: "\(roots)")
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 8)
+            }
+        }
         NodeExtrasSection(detail: detail)
 
-        hair
-            .frame(height: Theme.hairlineWidth)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+        if detail.skin != nil || detail.morph != nil || detail.camera != nil
+            || detail.light != nil || detail.animation != nil || detail.material != nil
+            || detail.transform != nil || detail.geometry != nil || detail.sceneRootCount != nil
+        {
+            hair
+                .frame(height: Theme.hairlineWidth)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+        }
     }
 }

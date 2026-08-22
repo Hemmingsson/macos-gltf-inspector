@@ -2,26 +2,18 @@ import SwiftUI
 
 /// Top of the right column: actions on the unified chrome baseline, identity on the row below.
 ///
-/// Sketch / DESIGN.md: screenshot · Open in… · inspector share the window's top band with the
+/// Sketch / DESIGN.md: screenshot · Open in… share the window's top band with the
 /// sidebar toggle and canvas pills; selection name sits under that cluster, not beside it.
 struct NodeHeader: View {
     var name: String
     var kindTitle: String
     var kind: NodeKind
-    /// When true the inspector-toggle renders as the wireframe's `.tbtn.on` (accent / prominent).
-    var isInspectorVisible: Bool
     var onScreenshot: () -> Void
     var onOpenIn: () -> Void
-    var onToggleInspector: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ActionRow(
-                isInspectorVisible: isInspectorVisible,
-                onScreenshot: onScreenshot,
-                onOpenIn: onOpenIn,
-                onToggleInspector: onToggleInspector
-            )
+            ActionRow(onScreenshot: onScreenshot, onOpenIn: onOpenIn)
 
             IdentityRow(name: name, kindTitle: kindTitle, kind: kind)
         }
@@ -31,55 +23,25 @@ struct NodeHeader: View {
 
 /// Action cluster on the unified chrome baseline (`chromeBandAligned()`).
 ///
-/// **In-inspector:** the inspector toggle sits at the pane's inner (left) edge — mirroring the
-/// sidebar toggle at the left pane's inner edge — while the document actions (screenshot · Open in…)
-/// sit at the far/outer edge. **Floating** (inspector collapsed, over the canvas): the whole cluster
-/// trails, so the toggle can bring the panel back without a second title band.
+/// Document actions (screenshot · Open in…) trail. When floating over the canvas (inspector
+/// closed), the same cluster sits at the trailing edge.
 struct ActionRow: View {
-    var isInspectorVisible: Bool
     var floating: Bool = false
     var onScreenshot: () -> Void
     var onOpenIn: () -> Void
-    var onToggleInspector: () -> Void
-
-    @Environment(\.previewHair) private var hair
 
     var body: some View {
-        Group {
-            if floating {
-                HStack(spacing: 4) {
-                    Spacer(minLength: 0)
-                    screenshotButton
-                    openInButton
-                    divider
-                    toggleButton
-                }
-            } else {
-                HStack(spacing: 0) {
-                    toggleButton
-                    Spacer(minLength: 0)
-                    HStack(spacing: 4) {
-                        screenshotButton
-                        openInButton
-                    }
-                }
-            }
+        HStack(spacing: 4) {
+            Spacer(minLength: 0)
+            screenshotButton
+            openInButton
         }
-        .frame(height: ChromeMetrics.buttonSize, alignment: floating ? .trailing : .center)
+        .frame(height: ChromeMetrics.buttonSize, alignment: .trailing)
         .padding(.leading, 12)
         .padding(.trailing, 12)
         .chromeBandAligned()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector actions")
-    }
-
-    private var toggleButton: some View {
-        ChromeIconButton(
-            symbol: "sidebar.trailing",
-            title: "Inspector",
-            prominent: isInspectorVisible,
-            action: onToggleInspector
-        )
     }
 
     private var screenshotButton: some View {
@@ -89,16 +51,9 @@ struct ActionRow: View {
     private var openInButton: some View {
         ChromeIconButton(symbol: "square.and.arrow.up", title: "Open in…", prominent: false, action: onOpenIn)
     }
-
-    private var divider: some View {
-        hair
-            .frame(width: Theme.hairlineWidth, height: 16)
-            .padding(.horizontal, 2)
-            .accessibilityHidden(true)
-    }
 }
 
-/// Selection (or file) identity under the action cluster.
+/// Selection identity under the action cluster.
 struct IdentityRow: View {
     var name: String
     var kindTitle: String

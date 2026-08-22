@@ -31,8 +31,7 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
             )
 
             if documentState.isReady {
-                // Scrolls independently of the document header, which stays put: on a file with forty
-                // meshes the one line that says *which file* must not scroll away.
+                // Scrolls independently of the document header and the pinned file footer.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(OutlinerSection.sections(of: model)) { section in
@@ -54,12 +53,35 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
                     .padding(.bottom, 12)
                 }
                 .focusSection()
+
+                fileFooter
             } else {
                 SidebarStatusView(state: documentState)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Theme.chrome)
+    }
+
+    /// File facts + honesty — pinned under the outliner scroll.
+    @ViewBuilder
+    private var fileFooter: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    FileSection(stats: model.stats, fileName: model.fileName)
+                    ValidationSection(validation: model.validation)
+                    ConvertProblemsSection(problems: model.convertProblems)
+                    if !model.pipelineReport.isEmpty {
+                        PipelineSection(report: model.pipelineReport)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 10)
+            }
+            .frame(maxHeight: 280)
+        }
     }
 
     /// Subtitle under the file name — the active scene, falling back to the file default.

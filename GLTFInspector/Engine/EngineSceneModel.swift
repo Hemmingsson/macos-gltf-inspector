@@ -232,17 +232,23 @@ extension EngineSceneModel {
                 name: displayName(camera.name, fallback: "Camera \(index)"),
                 projection: projection,
                 fieldOfViewDegrees: camera.yfov.map { Double(radiansToDegrees($0)) },
+                xMag: camera.xmag.map(Double.init),
+                yMag: camera.ymag.map(Double.init),
                 zNear: Double(camera.znear),
                 zFar: camera.zfar.map(Double.init)
             )
         }
     }
 
+    /// Single camera from the document cameras array (outliner / inspector).
+    static func cameraInfo(index: Int, document: GLTFSessionDocument) -> CameraInfo? {
+        guard document.cameras.indices.contains(index) else { return nil }
+        return mapCameras(document.cameras)[index]
+    }
+
     private static func mapLights(_ lights: [GLTFSessionDocument.Light]) -> [LightInfo] {
         lights.enumerated().map { index, light in
-            // Document cones are radians; seam `LightInfo` has no cone fields (Selection
-            // adapter converts degrees for inspector). Camera FOV is converted above.
-            return LightInfo(
+            LightInfo(
                 index: index,
                 name: displayName(light.name, fallback: "Light \(index)"),
                 kind: mapLightKind(light.type),
@@ -252,32 +258,59 @@ extension EngineSceneModel {
                     blue: Double(light.color.z)
                 ),
                 intensity: Double(light.intensity),
-                range: light.range.map(Double.init)
+                range: light.range.map(Double.init),
+                innerConeDegrees: light.innerCone.map { Double(radiansToDegrees($0)) },
+                outerConeDegrees: light.outerCone.map { Double(radiansToDegrees($0)) }
             )
         }
     }
 
+    static func lightInfo(index: Int, document: GLTFSessionDocument) -> LightInfo? {
+        guard document.lights.indices.contains(index) else { return nil }
+        return mapLights(document.lights)[index]
+    }
+
     private static func mapMaterials(document: GLTFSessionDocument) -> [MaterialInfo] {
-        document.materials.enumerated().map { index, material in
-            let usedBy = document.nodes.compactMap { node -> String? in
-                guard node.materialIndices.contains(index) else { return nil }
-                return displayName(node.name, fallback: "Node \(node.index)")
-            }
-            let maps = materialMaps(material.maps)
-            return MaterialInfo(
-                index: index,
-                name: displayName(material.name, fallback: "Material \(index)"),
-                workflow: mapWorkflow(material.workflow),
-                alphaMode: mapAlphaMode(material.alphaMode),
-                isDoubleSided: material.isDoubleSided,
-                maps: maps,
-                textures: maps.map { MaterialTextureInfo(map: $0) },
-                metallicFactor: material.metallicFactor.map(Double.init),
-                roughnessFactor: material.roughnessFactor.map(Double.init),
-                alphaCutoff: material.alphaCutoff.map(Double.init),
-                usedByMeshNames: usedBy
+        document.materials.indices.map { materialInfo(index: $0, document: document) }
+    }
+
+    static func materialInfo(index: Int, document: GLTFSessionDocument) -> MaterialInfo {
+        let material = document.materials[index]
+        let usedBy = document.nodes.compactMap { node -> String? in
+            guard node.materialIndices.contains(index) else { return nil }
+            return displayName(node.name, fallback: "Node \(node.index)")
+        }
+        let textures = material.textures.map { slot in
+            MaterialTextureInfo(
+                map: materialMap(slot.kind),
+                width: slot.width,
+                height: slot.height,
+                texCoord: slot.texCoord,
+                thumbnailPNG: slot.thumbnailPNG
             )
         }
+        let maps = textures.isEmpty ? materialMaps(material.maps) : Set(textures.map(\.map))
+        return MaterialInfo(
+            index: index,
+            name: displayName(material.name, fallback: "Material \(index)"),
+            workflow: mapWorkflow(material.workflow),
+            alphaMode: mapAlphaMode(material.alphaMode),
+            isDoubleSided: material.isDoubleSided,
+            maps: maps,
+            textures: textures,
+            baseColorFactor: material.baseColorFactor.map {
+                RGBColor(red: Double($0.x), green: Double($0.y), blue: Double($0.z))
+            },
+            metallicFactor: material.metallicFactor.map(Double.init),
+            roughnessFactor: material.roughnessFactor.map(Double.init),
+            emissiveFactor: material.emissiveFactor.map {
+                RGBColor(red: Double($0.x), green: Double($0.y), blue: Double($0.z))
+            },
+            normalScale: material.normalScale.map(Double.init),
+            occlusionStrength: material.occlusionStrength.map(Double.init),
+            alphaCutoff: material.alphaCutoff.map(Double.init),
+            usedByMeshNames: usedBy
+        )
     }
 
     private static func mapAnimations(
@@ -296,8 +329,28 @@ extension EngineSceneModel {
             SkinInfo(
                 index: index,
                 name: displayName(skin.name, fallback: "Skin \(index)"),
-                jointCount: skin.jointNames.count
+                jointCount: skin.jointNames.count,
+                jointNames: skin.jointNames
             )
+        }
+    }
+
+    static func skinInfo(index: Int, document: GLTFSessionDocument) -> SkinInfo? {
+        guard document.skins.indices.contains(index) else { return nil }
+        return mapSkins(document.skins)[index]
+    }
+
+    private static func materialMap(_ kind: GLTFSessionDocument.TextureSlot.Kind) -> MaterialMap {
+        switch kind {
+        case .baseColor: .baseColor
+        case .normal: .normal
+        case .metallicRoughness: .metallicRoughness
+        case .occlusion: .occlusion
+        case .emissive: .emissive
+        case .specular: .specular
+        case .clearcoat: .clearcoat
+        case .clearcoatRoughness: .clearcoatRoughness
+        case .clearcoatNormal: .clearcoatNormal
         }
     }
 
@@ -400,26 +453,30 @@ extension EngineSceneModel {
     }
 
     private static func debugChannel(from mode: PreviewDebugMode) -> DebugChannel? {
-        switch mode {
-        case .none, .wire, .vertexColors:
-            return nil
-        case .visualization(let visualization):
-            switch visualization {
-            case .baseColor: return .baseColor
-            case .metallic: return .metallic
-            case .roughness: return .roughness
-            case .normal: return .normals
-            case .tangent: return .tangents
-            case .textureCoordinates: return .textureCoordinates
-            case .ambientOcclusion: return .ambientOcclusion
-            case .emissive: return .emissive
-            case .finalAlpha: return .alpha
-            case .specular: return .specular
-            case .clearcoat: return .clearcoat
-            case .clearcoatRoughness: return .clearcoatRoughness
-            case .clearcoatNormal: return .clearcoatNormal
-            default: return nil
-            }
+        guard case .visualization(let visualization) = mode else { return nil }
+        return debugChannel(from: visualization)
+    }
+
+    /// Maps a RealityKit visualization mode to the seam's `DebugChannel`.
+    /// Shared with `EngineViewportController`.
+    static func debugChannel(
+        from visualization: ModelDebugOptionsComponent.VisualizationMode
+    ) -> DebugChannel? {
+        switch visualization {
+        case .baseColor: .baseColor
+        case .metallic: .metallic
+        case .roughness: .roughness
+        case .normal: .normals
+        case .tangent: .tangents
+        case .textureCoordinates: .textureCoordinates
+        case .ambientOcclusion: .ambientOcclusion
+        case .emissive: .emissive
+        case .finalAlpha: .alpha
+        case .specular: .specular
+        case .clearcoat: .clearcoat
+        case .clearcoatRoughness: .clearcoatRoughness
+        case .clearcoatNormal: .clearcoatNormal
+        default: nil
         }
     }
 

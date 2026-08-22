@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Bound material readout.
@@ -109,7 +110,7 @@ struct MaterialSection: View {
                 }
             }
 
-            // One map representation: sized rows. No chips and no colour strip above them.
+            // One map representation: sized rows with optional thumb. No chips above them.
             if !material.orderedTextures.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(material.orderedTextures) { texture in
@@ -128,6 +129,7 @@ struct MaterialSection: View {
 
     private func mapRow(_ texture: MaterialTextureInfo) -> some View {
         HStack(spacing: 8) {
+            mapThumb(texture)
             Text(texture.map.title)
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.text2)
@@ -144,7 +146,35 @@ struct MaterialSection: View {
                     .foregroundStyle(Theme.text3)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
+    }
+
+    @ViewBuilder
+    private func mapThumb(_ texture: MaterialTextureInfo) -> some View {
+        let side: CGFloat = 28
+        if let data = texture.thumbnailPNG, let nsImage = NSImage(data: data) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .interpolation(.medium)
+                .frame(width: side, height: side)
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: Theme.hairlineWidth)
+                }
+                .accessibilityHidden(true)
+        } else if let color = texture.previewColor {
+            MaterialSwatch(color: Color(rgb: color), size: side)
+        } else {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(Theme.card)
+                .frame(width: side, height: side)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: Theme.hairlineWidth)
+                }
+                .accessibilityHidden(true)
+        }
     }
 
     @ViewBuilder

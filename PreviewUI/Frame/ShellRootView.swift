@@ -4,8 +4,8 @@ import SwiftUI
 ///
 /// Deliberately **not** a `NavigationSplitView`. The wireframe needs fixed-width panels, a custom
 /// inspector, and toolbar pills that float *over* the canvas; `NavigationSplitView` fights all
-/// three and imposes its own titlebar behaviour. Sidebar / inspector collapse is driven by
-/// `ShellPanelChrome` (chrome toggles + View-menu twins).
+/// three and imposes its own titlebar behaviour. Sidebar collapse is driven by
+/// `ShellPanelChrome`; the inspector opens only when something is selected.
 ///
 /// Generic over the canvas so the host injects `PreviewView` without PreviewUI importing Shared.
 struct ShellRootView<
@@ -36,7 +36,7 @@ struct ShellRootView<
     @State private var viewport: Viewport
     /// Defaults + this window's session overrides. Seeded in `.onAppear`, never in `init`.
     @State private var settings: Settings
-    /// Sidebar / inspector visibility — owned by the window host, shared with the View menu.
+    /// Sidebar visibility — owned by the window host, shared with the View menu.
     var panels: ShellPanelChrome
     /// Clip transport for the playback bar. Owned by the window host.
     @State private var playback: Playback
@@ -105,7 +105,7 @@ struct ShellRootView<
             canvasColumn
                 .frame(maxWidth: .infinity)
 
-            if panels.isInspectorVisible {
+            if showsInspector {
                 hairline
                     .transition(.opacity)
 
@@ -113,10 +113,8 @@ struct ShellRootView<
                     model: model,
                     selection: selection,
                     documentState: documentState,
-                    isInspectorVisible: panels.isInspectorVisible,
                     onScreenshot: { viewport.screenshot() },
                     onOpenIn: onOpenIn,
-                    onToggleInspector: { panels.toggleInspector() },
                     morphTargets: morphTargets,
                     onSetMorphWeight: onSetMorphWeight
                 )
@@ -140,8 +138,12 @@ struct ShellRootView<
         .toolbar(removing: .title)
         .themeContrastEnvironment()
         .animation(Animation.previewChrome(reduceMotion), value: panels.isSidebarVisible)
-        .animation(Animation.previewChrome(reduceMotion), value: panels.isInspectorVisible)
+        .animation(Animation.previewChrome(reduceMotion), value: showsInspector)
         .onAppear(perform: seedSessionIfNeeded)
+    }
+
+    private var showsInspector: Bool {
+        documentState.isReady && selection.selected != nil
     }
 
     /// Canvas plus floating chrome when a side column is collapsed (toggle stays reachable).
@@ -153,7 +155,7 @@ struct ShellRootView<
             playback: playback,
             documentState: documentState,
             isSidebarVisible: panels.isSidebarVisible,
-            isInspectorVisible: panels.isInspectorVisible,
+            isInspectorVisible: showsInspector,
             content: canvas
         )
         .overlay(alignment: .topLeading) {
@@ -165,13 +167,11 @@ struct ShellRootView<
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !panels.isInspectorVisible {
+            if !showsInspector {
                 ActionRow(
-                    isInspectorVisible: false,
                     floating: true,
                     onScreenshot: { viewport.screenshot() },
-                    onOpenIn: onOpenIn,
-                    onToggleInspector: { panels.toggleInspector() }
+                    onOpenIn: onOpenIn
                 )
             }
         }

@@ -208,7 +208,5 @@ private struct HostPanelChromeMenu: View {
     var body: some View {
         Toggle("Show Sidebar", isOn: $panels.isSidebarVisible)
             .keyboardShortcut("s", modifiers: [.command, .control])
-        Toggle("Show Inspector", isOn: $panels.isInspectorVisible)
-            .keyboardShortcut("i", modifiers: [.command, .control])
     }
 }

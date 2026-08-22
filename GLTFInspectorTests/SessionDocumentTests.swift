@@ -32,6 +32,11 @@ struct SessionDocumentTests {
         let material = try #require(model.document.materials.first)
         #expect(material.workflow == .metallicRoughness || material.workflow == .unlit)
         #expect([GLTFSessionDocument.Material.AlphaMode.opaque, .mask, .blend].contains(material.alphaMode))
+        #expect(!material.textures.isEmpty)
+        let slot = try #require(material.textures.first)
+        #expect(slot.width != nil && slot.height != nil)
+        #expect(slot.thumbnailPNG != nil)
+        #expect(!(slot.thumbnailPNG?.isEmpty ?? true))
     }
 
     @MainActor

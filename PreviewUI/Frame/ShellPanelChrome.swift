@@ -1,24 +1,22 @@
 import SwiftUI
 
-/// Per-window sidebar / inspector open state.
+/// Per-window sidebar open state.
 ///
-/// Owned by the window host (`ShellWindow` / `HostShellRootView`) so the chrome toggles and the
-/// View-menu twins share one source of truth. Not an app default — collapse is live chrome, not Settings.
+/// Owned by the window host (`ShellWindow` / `HostShellRootView`) so the chrome toggle and the
+/// View-menu twin share one source of truth. Not an app default — collapse is live chrome, not Settings.
+/// Inspector visibility follows selection (open iff something is selected).
 @Observable
 final class ShellPanelChrome {
     var isSidebarVisible: Bool
-    var isInspectorVisible: Bool
 
-    init(isSidebarVisible: Bool = true, isInspectorVisible: Bool = true) {
+    init(isSidebarVisible: Bool = true) {
         self.isSidebarVisible = isSidebarVisible
-        self.isInspectorVisible = isInspectorVisible
     }
 
     func toggleSidebar() { isSidebarVisible.toggle() }
-    func toggleInspector() { isInspectorVisible.toggle() }
 }
 
 extension FocusedValues {
-    /// Key-window sidebar / inspector visibility (chrome toggles + View-menu twins).
+    /// Key-window sidebar visibility (chrome toggle + View-menu twin).
     @Entry var shellPanelChrome: ShellPanelChrome?
 }

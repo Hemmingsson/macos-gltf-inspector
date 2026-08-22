@@ -1,4 +1,8 @@
+import CoreGraphics
+import Foundation
 import GLTFKit2
+import ImageIO
+import UniformTypeIdentifiers
 
 extension RealityKitConvert {
     static func makeDocument(from asset: GLTFAsset) -> GLTFSessionDocument {
@@ -14,8 +18,17 @@ extension RealityKitConvert {
             (index, materialIndices(for: mesh, in: asset))
         }
         let materialIndicesLookup = Dictionary(uniqueKeysWithValues: materialIndicesByMesh)
+        let geometryByMesh = Dictionary(
+            uniqueKeysWithValues: asset.meshes.enumerated().map { ($0.offset, meshGeometry($0.element)) }
+        )
         document.nodes = asset.nodes.enumerated().map { index, node in
-            makeNode(node, index: index, asset: asset, materialIndicesByMesh: materialIndicesLookup)
+            makeNode(
+                node,
+                index: index,
+                asset: asset,
+                materialIndicesByMesh: materialIndicesLookup,
+                geometryByMesh: geometryByMesh
+            )
         }
         document.cameras = asset.cameras.map(makeCamera)
         document.lights = asset.lights.map(makeLight)
@@ -30,17 +43,50 @@ extension RealityKitConvert {
         return document
     }
 
+    /// Fill material texture pixel size + PNG thumbs from the convert context's decoded images.
+    @MainActor
+    static func stampMaterialPreviews(
+        document: inout GLTFSessionDocument,
+        asset: GLTFAsset,
+        context: RealityKitResourceContext
+    ) {
+        guard document.materials.count == asset.materials.count else { return }
+        var thumbCache = [UUID: Data]()
+        for index in document.materials.indices {
+            let gltf = asset.materials[index]
+            var slots = document.materials[index].textures
+            for slotIndex in slots.indices {
+                guard let params = textureParams(for: slots[slotIndex].kind, on: gltf),
+                      let image = RealityKitResourceContext.gltfImage(for: params.texture)
+                else { continue }
+                if let cgImage = context.cgImage(for: image) {
+                    slots[slotIndex].width = cgImage.width
+                    slots[slotIndex].height = cgImage.height
+                    if let cached = thumbCache[image.identifier] {
+                        slots[slotIndex].thumbnailPNG = cached
+                    } else if let png = thumbnailPNG(from: cgImage, maxEdge: 96) {
+                        thumbCache[image.identifier] = png
+                        slots[slotIndex].thumbnailPNG = png
+                    }
+                }
+            }
+            document.materials[index].textures = slots
+        }
+    }
+
     static func makeNode(
         _ node: GLTFNode,
         index: Int,
         asset: GLTFAsset,
-        materialIndicesByMesh: [Int: [Int]] = [:]
+        materialIndicesByMesh: [Int: [Int]] = [:],
+        geometryByMesh: [Int: MeshGeometryStamp] = [:]
     ) -> GLTFSessionDocument.Node {
         let meshIndex = identityIndex(node.mesh, in: asset.meshes)
         let cameraIndex = identityIndex(node.camera, in: asset.cameras)
         let lightIndex = identityIndex(node.light, in: asset.lights)
         let skinIndex = identityIndex(node.skin, in: asset.skins)
         let materialIndices = meshIndex.flatMap { materialIndicesByMesh[$0] } ?? []
+        let geometry = meshIndex.flatMap { geometryByMesh[$0] }
         return GLTFSessionDocument.Node(
             index: index,
             name: node.name ?? "",
@@ -58,7 +104,13 @@ extension RealityKitConvert {
             cameraIndex: cameraIndex,
             lightIndex: lightIndex,
             skinIndex: skinIndex,
-            materialIndices: materialIndices
+            materialIndices: materialIndices,
+            triangleCount: geometry?.triangleCount ?? 0,
+            vertexCount: geometry?.vertexCount ?? 0,
+            uvSetCount: geometry?.uvSetCount ?? 0,
+            hasNormals: geometry?.hasNormals ?? false,
+            hasTangents: geometry?.hasTangents ?? false,
+            hasVertexColors: geometry?.hasVertexColors ?? false
         )
     }
 
@@ -86,6 +138,48 @@ extension RealityKitConvert {
         }
         guard let material, let name = material.name, !name.isEmpty else { return nil }
         return materials.firstIndex { $0.name == name }
+    }
+
+    struct MeshGeometryStamp {
+        var triangleCount = 0
+        var vertexCount = 0
+        var uvSetCount = 0
+        var hasNormals = false
+        var hasTangents = false
+        var hasVertexColors = false
+    }
+
+    private static func meshGeometry(_ mesh: GLTFMesh) -> MeshGeometryStamp {
+        var stamp = MeshGeometryStamp()
+        var maxUV = 0
+        for primitive in mesh.primitives {
+            let positions = primitive.attribute(forName: "POSITION")?.accessor.count ?? 0
+            stamp.vertexCount += positions
+            if primitive.attribute(forName: "NORMAL") != nil { stamp.hasNormals = true }
+            if primitive.attribute(forName: "TANGENT") != nil { stamp.hasTangents = true }
+            if primitive.attribute(forName: "COLOR_0") != nil { stamp.hasVertexColors = true }
+            for uv in 0..<8 {
+                if primitive.attribute(forName: "TEXCOORD_\(uv)") != nil {
+                    maxUV = max(maxUV, uv + 1)
+                }
+            }
+            let count: Int
+            if let indices = primitive.indices {
+                count = indices.count
+            } else {
+                count = positions
+            }
+            switch primitive.primitiveType {
+            case .triangles:
+                stamp.triangleCount += count / 3
+            case .triangleStrip, .triangleFan:
+                stamp.triangleCount += max(0, count - 2)
+            default:
+                break
+            }
+        }
+        stamp.uvSetCount = maxUV
+        return stamp
     }
 
     static func makeCamera(_ camera: GLTFCamera) -> GLTFSessionDocument.Camera {
@@ -147,6 +241,7 @@ extension RealityKitConvert {
         default: alphaMode = .opaque
         }
         let metallic = material.metallicRoughness
+        let slots = textureSlots(from: material)
         return GLTFSessionDocument.Material(
             name: material.name ?? "",
             maps: MaterialMapPresence.from(gltf: material),
@@ -155,8 +250,98 @@ extension RealityKitConvert {
             isDoubleSided: material.isDoubleSided,
             metallicFactor: metallic?.metallicFactor,
             roughnessFactor: metallic?.roughnessFactor,
-            alphaCutoff: alphaMode == .mask ? material.alphaCutoff : nil
+            alphaCutoff: alphaMode == .mask ? material.alphaCutoff : nil,
+            baseColorFactor: metallic?.baseColorFactor,
+            emissiveFactor: material.emissive?.emissiveFactor,
+            normalScale: material.normalTexture?.scale,
+            occlusionStrength: material.occlusionTexture?.scale,
+            textures: slots
         )
+    }
+
+    private static func textureSlots(from material: GLTFMaterial) -> [GLTFSessionDocument.TextureSlot] {
+        var slots: [GLTFSessionDocument.TextureSlot] = []
+        func append(_ kind: GLTFSessionDocument.TextureSlot.Kind, _ params: GLTFTextureParams?) {
+            guard let params else { return }
+            slots.append(.init(kind: kind, texCoord: Int(params.texCoord)))
+        }
+        append(.baseColor, material.metallicRoughness?.baseColorTexture
+            ?? material.specularGlossiness?.diffuseTexture)
+        append(.metallicRoughness, material.metallicRoughness?.metallicRoughnessTexture)
+        append(.normal, material.normalTexture)
+        append(.occlusion, material.occlusionTexture)
+        append(.emissive, material.emissive?.emissiveTexture)
+        append(.specular, material.specular?.specularTexture
+            ?? material.specular?.specularColorTexture
+            ?? material.specularGlossiness?.specularGlossinessTexture)
+        if let clearcoat = material.clearcoat {
+            append(.clearcoat, clearcoat.clearcoatTexture)
+            append(.clearcoatRoughness, clearcoat.clearcoatRoughnessTexture)
+            append(.clearcoatNormal, clearcoat.clearcoatNormalTexture)
+        }
+        return slots
+    }
+
+    private static func textureParams(
+        for kind: GLTFSessionDocument.TextureSlot.Kind,
+        on material: GLTFMaterial
+    ) -> GLTFTextureParams? {
+        switch kind {
+        case .baseColor:
+            return material.metallicRoughness?.baseColorTexture
+                ?? material.specularGlossiness?.diffuseTexture
+        case .metallicRoughness:
+            return material.metallicRoughness?.metallicRoughnessTexture
+        case .normal:
+            return material.normalTexture
+        case .occlusion:
+            return material.occlusionTexture
+        case .emissive:
+            return material.emissive?.emissiveTexture
+        case .specular:
+            return material.specular?.specularTexture
+                ?? material.specular?.specularColorTexture
+                ?? material.specularGlossiness?.specularGlossinessTexture
+        case .clearcoat:
+            return material.clearcoat?.clearcoatTexture
+        case .clearcoatRoughness:
+            return material.clearcoat?.clearcoatRoughnessTexture
+        case .clearcoatNormal:
+            return material.clearcoat?.clearcoatNormalTexture
+        }
+    }
+
+    private static func thumbnailPNG(from image: CGImage, maxEdge: Int) -> Data? {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0 else { return nil }
+        let longest = max(width, height)
+        let scale = longest > maxEdge ? CGFloat(maxEdge) / CGFloat(longest) : 1
+        let outW = max(1, Int((CGFloat(width) * scale).rounded()))
+        let outH = max(1, Int((CGFloat(height) * scale).rounded()))
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: outW,
+            height: outH,
+            bitsPerComponent: 8,
+            bytesPerRow: outW * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: outW, height: outH))
+        guard let scaled = ctx.makeImage() else { return nil }
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(
+            data,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        ) else { return nil }
+        CGImageDestinationAddImage(dest, scaled, nil)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        return data as Data
     }
 
     static func makeSkin(_ skin: GLTFSkin, index: Int, asset: GLTFAsset) -> GLTFSessionDocument.Skin {
