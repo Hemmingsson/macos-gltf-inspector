@@ -14,8 +14,7 @@ protocol Availability: Sendable {
     var availableDebugChannels: [ViewMode] { get }
 }
 
-/// Availability computed straight from a `SceneModel`. Both the shell and the engine
-/// adapter can use this instead of restating the booleans.
+/// Availability computed straight from a `SceneModel`.
 struct DerivedAvailability<Model: SceneModel>: Availability {
     var model: Model
     /// Channels the file has data for; the base modes are prepended.

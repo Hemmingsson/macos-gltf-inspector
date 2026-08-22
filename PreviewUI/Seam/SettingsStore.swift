@@ -14,7 +14,7 @@ struct SettingKey<Value: Sendable>: Sendable {
 }
 
 extension SettingKey where Value == Bool {
-    /// Matches the shell wireframe resting state (`Main@2x.png` / `MockViewport`): on.
+    /// Default on for a new window.
     static var autoRotate: SettingKey<Bool> { .init(name: "settings.preview.autoRotate", fallback: true) }
     /// Wireframe resting state is floor off; Settings can promote a different app default.
     static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: false) }

@@ -3,8 +3,7 @@ import SwiftUI
 /// Left column — structure. The document says which file this is; the outliner says what is in it.
 ///
 /// Generic over both seam types rather than taking existentials: `SceneModel` has `Self`
-/// requirements through its default implementations, and the point of the seam is that the shell's
-/// fixtures and the app's engine adapter are interchangeable *at compile time*.
+/// requirements through its default implementations.
 struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: ViewportController>: View {
     var model: Model
     /// Injected, not owned — the window root owns it, and the inspector reads the same instance.

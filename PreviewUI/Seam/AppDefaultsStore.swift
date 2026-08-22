@@ -10,7 +10,7 @@ import Observation
 final class AppDefaultsStore {
     static let shared = AppDefaultsStore()
 
-    /// Observation poke — `MockSettings.default(for:)` reads this so SwiftUI tracks live defaults.
+    /// Observation poke — SwiftUI tracks live defaults when Settings changes a key.
     private(set) var revision: UInt64 = 0
 
     private let defaults: UserDefaults

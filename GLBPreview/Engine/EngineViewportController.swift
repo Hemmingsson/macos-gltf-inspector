@@ -44,7 +44,7 @@ final class EngineViewportController: ViewportController {
     private var storedDimStudioForFileLights: Bool
     /// Host `sessionEnvironmentYaw` (radians).
     private var storedEnvironmentYawRadians: Float
-    /// Host-only extras (not on `ViewportController` — the shell has no these controls).
+    /// Host-only extras (not on `ViewportController`).
     private var storedDoubleSided: Bool
     private var storedShowSkeleton: Bool
     private var storedFieldOfViewDegrees: Float

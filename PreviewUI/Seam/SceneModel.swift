@@ -3,8 +3,7 @@ import Foundation
 /// Read-only introspection of one loaded file. Value-type backed: an implementation is a
 /// snapshot, never a live object the UI can write to.
 ///
-/// The shell conforms with invented fixtures; the real app conforms with a thin adapter over
-/// the converted document (UI-BUILD §0). The UI never learns which one it has.
+/// Host adapters conform over the converted document. The UI never learns which concrete type it has.
 protocol SceneModel: Sendable {
     /// Display name for the sidebar header ("Duck.glb").
     var fileName: String { get }

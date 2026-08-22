@@ -1,10 +1,9 @@
 import Foundation
 
-/// Load lifecycle for the shell window — empty / loading / ready / failed.
+/// Load lifecycle — empty / loading / ready / failed.
 ///
-/// The real host will drive this from `EntityLoader` / open; the shell drives it from Debug
-/// fixtures so Slice 8 can prove each surface without opening a file. Never leave a failed
-/// URL as a spinner (AGENTS.md pitfall 2).
+/// Host drives this from `EntityLoader` / open. Never leave a failed URL as a spinner
+/// (AGENTS.md pitfall 2).
 enum ShellDocumentState: Equatable, Sendable, Hashable {
     /// No document yet — drop / Open invite.
     case empty

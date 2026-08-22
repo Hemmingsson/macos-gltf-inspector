@@ -20,13 +20,6 @@ schemes:
         targets:
           - GLBPreviewTests
 
-    PreviewUIShell:
-      build:
-        targets:
-          PreviewUIShell: all
-      run:
-        config: Debug
-
 # Shared across every target so signing and versions live in one place.
 settings:
   base:
@@ -265,22 +258,6 @@ targets:
     dependencies:
       - package: GLTFKit2
       - package: DracoSwift
-
-  # Mock-driven shell for UI work. Never ships. No engine, no Shared/ sources.
-  PreviewUIShell:
-    type: application
-    platform: macOS
-    sources:
-      - PreviewUI
-      - PreviewUIShell
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.laurie.PreviewUIShell
-        GENERATE_INFOPLIST_FILE: YES
-        SWIFT_OBJC_BRIDGING_HEADER: ""
-        # Stub+debug-dylib launches confuse LaunchServices "Reopen" after a crash and were part
-        # of the RegisterApplication abort loop. Ship a single binary for the shell.
-        ENABLE_DEBUG_DYLIB: NO
 
   GLBPreviewTests:
     type: bundle.unit-test

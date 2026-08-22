@@ -7,8 +7,7 @@ import SwiftUI
 /// three and imposes its own titlebar behaviour. Sidebar / inspector collapse is driven by
 /// `ShellPanelChrome` (chrome toggles + View-menu twins).
 ///
-/// Generic over the canvas so the shell can inject the gradient placeholder while `GLBPreview`
-/// later injects a `RealityView` — the same view code, no `AnyView`, no engine import.
+/// Generic over the canvas so the host injects `PreviewView` without PreviewUI importing Shared.
 struct ShellRootView<
     Canvas: View,
     Model: SceneModel,
@@ -23,7 +22,7 @@ struct ShellRootView<
     /// What the file can do, passed in rather than derived here: only the host knows which debug
     /// channels its data actually supports.
     var availability: Capabilities
-    /// Empty / loading / failed — shell Debug fixtures today; host open path at cutover.
+    /// Empty / loading / failed — host open path.
     var documentState: ShellDocumentState = .ready
     /// The window's selection, owned here.
     ///

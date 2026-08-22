@@ -32,8 +32,8 @@ The `cube/` sidecar is regenerated separately with `python3 scripts/testdata/cub
 | `morph/morph-triangle.gltf` | `.morph` | one named morph target ("Blink") | morph controls | — (available for UI) |
 | `corrupt/truncated.glb` | `.corrupt` | valid magic, lying chunk lengths, truncated | hard-failure path — must show `.failed`, never a spinner (AGENTS.md pitfall 2) | — (available for UI) |
 
-The last seven back the UI-BUILD §2 mock matrix with **real** files, for the cutover's real-window
-verification (CUTOVER-PLAN.md B6). The in-memory builders in
+The last seven are on-disk stand-ins for adaptive UI (DESIGN.md — show only what the model has).
+The in-memory builders in
 [`TestGLBFixtures.swift`](../../GLBPreviewTests/TestGLBFixtures.swift) still cover byte-level edge
 cases (primitive modes, malformed accessors, instancing) that don't belong on disk.
 
