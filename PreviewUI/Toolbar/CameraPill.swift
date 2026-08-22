@@ -30,7 +30,7 @@ struct CameraPill<Viewport: ViewportController>: View {
                 onToggleCenter: { viewport.setCenter(!viewport.isCentered) }
             )
 
-            Pill(horizontalPadding: 0) {
+            Pill(circle: true) {
                 PillButton(
                     symbol: "perspective",
                     title: isOrthographic ? "Perspective" : "Orthographic",
@@ -40,13 +40,13 @@ struct CameraPill<Viewport: ViewportController>: View {
                 }
             }
 
-            Pill(horizontalPadding: 0) {
+            Pill(circle: true) {
                 PillButton(symbol: "viewfinder", title: "Fit") {
                     viewport.fit()
                 }
             }
 
-            Pill(horizontalPadding: 0) {
+            Pill(circle: true) {
                 CameraPresetMenu(viewport: viewport)
             }
         }
@@ -62,22 +62,27 @@ private struct FramingIsland: View {
     var onToggleCenter: () -> Void
 
     var body: some View {
-        Pill {
-            PillButton(
-                symbol: "arrow.trianglehead.counterclockwise.rotate.90",
-                title: reduceMotion
-                    ? "Auto-rotate (unavailable with Reduce Motion)"
-                    : "Auto-rotate",
-                isOn: autoRotateOn,
-                action: onToggleAutoRotate
-            )
+        // Two discrete circles, not a merged stadium — every camera control reads as its own button.
+        Group {
+            Pill(circle: true) {
+                PillButton(
+                    symbol: "arrow.trianglehead.counterclockwise.rotate.90",
+                    title: reduceMotion
+                        ? "Auto-rotate (unavailable with Reduce Motion)"
+                        : "Auto-rotate",
+                    isOn: autoRotateOn,
+                    action: onToggleAutoRotate
+                )
+            }
 
-            PillButton(
-                symbol: "dot.scope",
-                title: isCentered ? "Show authored origin" : "Center model",
-                isOn: isCentered,
-                action: onToggleCenter
-            )
+            Pill(circle: true) {
+                PillButton(
+                    symbol: "dot.scope",
+                    title: isCentered ? "Show authored origin" : "Center model",
+                    isOn: isCentered,
+                    action: onToggleCenter
+                )
+            }
         }
     }
 }
@@ -103,12 +108,9 @@ struct CameraPresetMenu<Viewport: ViewportController>: View {
                 .frame(width: PillMetrics.buttonSize, height: PillMetrics.buttonSize)
                 .background {
                     if viewport.activeCameraPreset != nil {
-                        RoundedRectangle(
-                            cornerRadius: PillMetrics.selectionCornerRadius,
-                            style: .continuous
-                        )
-                        .fill(Theme.selection)
-                        .padding(PillMetrics.selectionInset)
+                        Circle()
+                            .fill(Theme.selection)
+                            .padding(PillMetrics.toggleWashInset)
                     }
                 }
                 .contentShape(.rect)

@@ -49,13 +49,15 @@ struct PillIconButtonStyle: ButtonStyle {
         configuration.label
             .background {
                 if active {
-                    RoundedRectangle(cornerRadius: PillMetrics.selectionCornerRadius, style: .continuous)
+                    // A contained circle (matching the pane-toggle chrome buttons), not a wide
+                    // rounded rect that reads oversized against the pill it sits in.
+                    Circle()
                         .fill(Theme.selection)
-                        .padding(PillMetrics.selectionInset)
+                        .padding(PillMetrics.toggleWashInset)
                 }
             }
             .overlay {
-                PreviewFocusStroke(shape: .roundedRect(PillMetrics.buttonCornerRadius))
+                PreviewFocusStroke(shape: .circle)
             }
             .opacity(configuration.isPressed ? 0.85 : 1)
     }

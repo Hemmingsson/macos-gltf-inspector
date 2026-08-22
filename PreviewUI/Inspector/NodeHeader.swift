@@ -29,12 +29,15 @@ struct NodeHeader: View {
     }
 }
 
-/// Trailing action cluster — traffic-light baseline via `chromeBandAligned()`.
+/// Action cluster on the unified chrome baseline (`chromeBandAligned()`).
 ///
-/// Also used as a floating overlay when the inspector column is collapsed so the toggle can
-/// bring the panel back without a second title band.
+/// **In-inspector:** the inspector toggle sits at the pane's inner (left) edge — mirroring the
+/// sidebar toggle at the left pane's inner edge — while the document actions (screenshot · Open in…)
+/// sit at the far/outer edge. **Floating** (inspector collapsed, over the canvas): the whole cluster
+/// trails, so the toggle can bring the panel back without a second title band.
 struct ActionRow: View {
     var isInspectorVisible: Bool
+    var floating: Bool = false
     var onScreenshot: () -> Void
     var onOpenIn: () -> Void
     var onToggleInspector: () -> Void
@@ -42,43 +45,56 @@ struct ActionRow: View {
     @Environment(\.previewHair) private var hair
 
     var body: some View {
-        HStack(spacing: 0) {
-            Spacer(minLength: 0)
-
-            HStack(spacing: 4) {
-                ChromeIconButton(
-                    symbol: "camera",
-                    title: "Screenshot",
-                    prominent: false,
-                    action: onScreenshot
-                )
-                ChromeIconButton(
-                    symbol: "square.and.arrow.up",
-                    title: "Open in…",
-                    prominent: false,
-                    action: onOpenIn
-                )
-
-                hair
-                    .frame(width: Theme.hairlineWidth, height: 16)
-                    .padding(.horizontal, 2)
-                    .accessibilityHidden(true)
-
-                ChromeIconButton(
-                    symbol: "sidebar.trailing",
-                    title: "Inspector",
-                    prominent: isInspectorVisible,
-                    action: onToggleInspector
-                )
+        Group {
+            if floating {
+                HStack(spacing: 4) {
+                    Spacer(minLength: 0)
+                    screenshotButton
+                    openInButton
+                    divider
+                    toggleButton
+                }
+            } else {
+                HStack(spacing: 0) {
+                    toggleButton
+                    Spacer(minLength: 0)
+                    HStack(spacing: 4) {
+                        screenshotButton
+                        openInButton
+                    }
+                }
             }
-            .frame(height: ChromeMetrics.buttonSize)
         }
-        .frame(height: ChromeMetrics.buttonSize, alignment: .trailing)
-        .padding(.leading, 14)
+        .frame(height: ChromeMetrics.buttonSize, alignment: floating ? .trailing : .center)
+        .padding(.leading, 12)
         .padding(.trailing, 12)
         .chromeBandAligned()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector actions")
+    }
+
+    private var toggleButton: some View {
+        ChromeIconButton(
+            symbol: "sidebar.trailing",
+            title: "Inspector",
+            prominent: isInspectorVisible,
+            action: onToggleInspector
+        )
+    }
+
+    private var screenshotButton: some View {
+        ChromeIconButton(symbol: "camera", title: "Screenshot", prominent: false, action: onScreenshot)
+    }
+
+    private var openInButton: some View {
+        ChromeIconButton(symbol: "square.and.arrow.up", title: "Open in…", prominent: false, action: onOpenIn)
+    }
+
+    private var divider: some View {
+        hair
+            .frame(width: Theme.hairlineWidth, height: 16)
+            .padding(.horizontal, 2)
+            .accessibilityHidden(true)
     }
 }
 

@@ -133,9 +133,11 @@ enum Theme {
     /// Unified top chrome band: traffic lights, sidebar toggle, canvas islands, inspector actions.
     /// Controls top-align to `trafficLightCenterY` via `ChromeMetrics.bandTopInset`.
     static let topChromeHeight: CGFloat = 52
-    /// Optical center of system traffic lights in a `.hiddenTitleBar` window (AX: y=8, h=16).
-    /// AppKit owns this layout — we align to it; we do not move the buttons.
-    static let trafficLightCenterY: CGFloat = 16
+    /// Shared centerline (from the window top) for the whole top chrome band: the system traffic
+    /// lights, the pane toggles, the canvas pills, and the inspector actions all center here. A
+    /// `.hiddenTitleBar` window pins the lights near y≈16; `TrafficLightConfigurator` moves them
+    /// down to this line so the band breathes above instead of sitting flush to the window edge.
+    static let trafficLightCenterY: CGFloat = 26
     /// Leading clearance past the three system lights to the sidebar toggle.
     static let trafficLightLeadingClearance: CGFloat = 78
     /// Shared hit target for chrome circles and pill `.tbtn`s (Sketch island scale).

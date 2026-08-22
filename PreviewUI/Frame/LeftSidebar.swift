@@ -19,6 +19,7 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
         VStack(alignment: .leading, spacing: 0) {
             SidebarChromeRow(
                 isSidebarVisible: isSidebarVisible,
+                trailingAligned: true,
                 onToggleSidebar: onToggleSidebar
             )
 
@@ -68,28 +69,40 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
     }
 }
 
-/// Traffic-light clearance + `sidebar.leading` toggle on the unified chrome band.
+/// `sidebar.leading` toggle on the unified chrome band.
+///
+/// Two placements: **in-sidebar** (`trailingAligned`) sits at the pane's inner (right) edge, by the
+/// canvas divider — the traffic lights own the pane's outer/left side; **floating restore** (sidebar
+/// collapsed, over the canvas) sits at the leading edge, clearing the three system lights.
 struct SidebarChromeRow: View {
     var isSidebarVisible: Bool
+    var trailingAligned: Bool = false
     var onToggleSidebar: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            Color.clear
-                .frame(width: Theme.trafficLightLeadingClearance, height: ChromeMetrics.buttonSize)
-
-            ChromeIconButton(
-                symbol: "sidebar.leading",
-                title: isSidebarVisible ? "Hide Sidebar" : "Show Sidebar",
-                prominent: isSidebarVisible,
-                action: onToggleSidebar
-            )
-
-            Spacer(minLength: 0)
+            if trailingAligned {
+                Spacer(minLength: 0)
+                toggle
+            } else {
+                Color.clear
+                    .frame(width: Theme.trafficLightLeadingClearance, height: ChromeMetrics.buttonSize)
+                toggle
+                Spacer(minLength: 0)
+            }
         }
-        .frame(height: ChromeMetrics.buttonSize, alignment: .leading)
-        .padding(.trailing, 10)
+        .frame(height: ChromeMetrics.buttonSize, alignment: trailingAligned ? .trailing : .leading)
+        .padding(.trailing, trailingAligned ? 12 : 10)
         .chromeBandAligned()
         .accessibilityElement(children: .contain)
+    }
+
+    private var toggle: some View {
+        ChromeIconButton(
+            symbol: "sidebar.leading",
+            title: isSidebarVisible ? "Hide Sidebar" : "Show Sidebar",
+            prominent: isSidebarVisible,
+            action: onToggleSidebar
+        )
     }
 }

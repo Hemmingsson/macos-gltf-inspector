@@ -40,7 +40,7 @@ private struct FloorIsland<Viewport: ViewportController>: View {
     var viewport: Viewport
 
     var body: some View {
-        Pill(horizontalPadding: 0) {
+        Pill(circle: true) {
             PillButton(
                 symbol: "circle.grid.cross",
                 title: viewport.showsFloor ? "Hide polar floor" : "Show polar floor",

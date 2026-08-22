@@ -123,6 +123,9 @@ struct ShellRootView<
         }
         .frame(minWidth: 900, minHeight: 600)
         .background(Theme.chrome)
+        // Drop the system traffic lights onto the shared chrome centerline so they line up with the
+        // pane toggles / pills and the band gets breathing space above it (zero-size helper).
+        .background { TrafficLightConfigurator(centerY: Theme.trafficLightCenterY) }
         // A `.hiddenTitleBar` window still hands its content a ~32 pt top safe area, which would
         // push all three columns down: the canvas and the inspector would wear a band of
         // `Theme.chrome` across the top instead of running under the traffic lights, and the
@@ -162,6 +165,7 @@ struct ShellRootView<
             if !panels.isInspectorVisible {
                 ActionRow(
                     isInspectorVisible: false,
+                    floating: true,
                     onScreenshot: onScreenshot,
                     onOpenIn: onOpenIn,
                     onToggleInspector: { panels.toggleInspector() }

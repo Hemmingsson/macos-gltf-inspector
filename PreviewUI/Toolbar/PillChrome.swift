@@ -25,6 +25,10 @@ enum PillMetrics {
     static let selectionInset: CGFloat = 2
     /// Concentric radius for the inset wash (`buttonCornerRadius − selectionInset`).
     static let selectionCornerRadius: CGFloat = 6
+    /// Inset of an icon toggle's circular on-wash inside its 30 pt target. Small, so the selected
+    /// circle sits behind the glyph like a normal macOS selected control — filling most of the
+    /// button, not a tiny dot and not spilling to the glass edge.
+    static let toggleWashInset: CGFloat = 3
     /// SF Symbol size inside the control target.
     static let glyphSize: CGFloat = 13
     /// The chevron on a menu chip.
@@ -47,6 +51,9 @@ enum PillMetrics {
 struct Pill<Content: View>: View {
     /// `padding: 0 8px` on Stage and Camera, `0 6px` on Look (its chip already carries its own).
     var horizontalPadding: CGFloat = 8
+    /// A single-icon island: force a square so a glyph narrower than the pill height can't collapse
+    /// the capsule into a vertical oval — `cornerRadius = height/2` on a square is a true circle.
+    var circle: Bool = false
     @ViewBuilder var content: () -> Content
 
     var body: some View {
@@ -60,8 +67,8 @@ struct Pill<Content: View>: View {
         HStack(spacing: PillMetrics.itemSpacing) {
             content()
         }
-        .padding(.horizontal, horizontalPadding)
-        .frame(height: PillMetrics.height)
+        .padding(.horizontal, circle ? 0 : horizontalPadding)
+        .frame(width: circle ? PillMetrics.height : nil, height: PillMetrics.height)
         .focusSection()
     }
 }
