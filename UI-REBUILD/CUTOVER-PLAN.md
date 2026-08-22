@@ -13,32 +13,32 @@ This plan is in **two parts**, as requested:
 
 ---
 
-## 0. Where we actually are (verified 2026-08-22)
+## 0. Where we actually are (re-verified 2026-08-22, post A0)
 
-Read this first — three findings reshape the work, and two docs are currently lying.
+Read this first — branch reality has moved; treat older "untracked UI" notes as historical.
 
-1. **The entire new UI is uncommitted.** `PreviewUI/` and `PreviewUIShell/` exist **only as
-   untracked files in the `.worktrees/ui` working tree** (`git status` → `?? PreviewUI/`,
-   `?? PreviewUIShell/`). The `ui-rebuild` branch itself is at `f5229f2` — **one commit *behind*
-   `main`** (it predates the engine-features landing) and contains none of the UI code. One
-   `git clean`, a worktree prune, or a disk mishap destroys all of it. **This is the single
-   biggest risk in the whole effort and A0 fixes it first.**
+1. **UI is committed on `ui-rebuild` (A0 done).** Tip `ab16854` — `PreviewUI/` + `PreviewUIShell/`
+   are in history (`e7f2e69`…`ab16854`). **Still not safe for cutover:** `ui-rebuild` does **not**
+   contain Track B. It is **behind `main`** by (at least) `a7e9199` (engine packs) + two Peekaboo
+   doc commits (`main` tip `1c3018a`). Next gate: **merge/rebase `main` into `ui-rebuild`**, resolve
+   `project.yml` + doc drift, prove both schemes build. Push if not already remote.
 
-2. **`engine-features` is already fully merged into `main`.** Both branches point to the same
-   commit `a7e9199` ("Land Track B engine feature packs"). Everything the packs doc tags
-   "DONE (features)" is literally on `main`, with Swift Testing coverage. The `engine-features`
-   branch and `.worktrees/features` are now redundant.
+2. **Track B engine packs are on `main` (not equal to `engine-features` tip).** `engine-features`
+   is still parked at `a7e9199`; `main` has moved past it. Pack code tagged "DONE (features)" lives
+   on `main`. The `engine-features` branch / `.worktrees/features` remain redundant cleanup (A5/B7).
 
-3. **The shell is done and green.** All 8 slices are implemented; `PreviewUIShell` builds
-   (`** BUILD SUCCEEDED **`), and carries **no TODO/FIXME/stub/`fatalError`**. UI proof is
-   Peekaboo on a live window (no headless `--snapshot` / flatten-glass harness). The seam
-   (5 protocols + rich value types) is coherent and fully mock-backed.
+3. **The shell is done and green.** All 8 slices are implemented; `PreviewUIShell` builds, and
+   carries **no TODO/FIXME/`fatalError`** (mocks may `preconditionFailure` on type mismatch — fine).
+   UI proof is Peekaboo on a live window (no headless `--snapshot` / flatten-glass harness). The
+   seam is **5 protocols** (`SceneModel`, `ViewportController`, `SelectionModel`, `SettingsStore`,
+   `Availability`) + value types — **no `AnimationPlaybackController` yet** (A2).
 
 **Two stale docs to correct (they will mislead whoever executes this):**
-- `ENGINE-FEATURE-PACKS.md` P17 says the glTF validator is *"still absent — cherry-pick from
-  engine-features."* **False.** `Shared/GLTFValidator.swift`, `Vendor/gltf-validator/`, the
-  invalid fixture, `GLTFValidatorTests`, and host wiring are all on `main`.
-- The whole-doc framing *"Status on engine-features"* is obsolete now that `main == engine-features`.
+- `ENGINE-FEATURE-PACKS.md` on **`main`** still says P17 is *"still absent — cherry-pick…"*
+  **False.** `Shared/GLTFValidator.swift`, `Vendor/gltf-validator/`, fixtures, tests, and host
+  wiring are on `main`. The `ui-rebuild` copy of this doc also drifts — reconcile to **main's tree
+  + A1 corrections**, not an older worktree draft.
+- Whole-doc framing *"Status on engine-features"* is obsolete: packs shipped on `main`.
 
 ---
 
@@ -47,23 +47,23 @@ Read this first — three findings reshape the work, and two docs are currently 
 Goal: eliminate risk, correct the record, close the real seam/engine gaps, and make the product
 decisions — so Part B is pure, low-surprise adapter work.
 
-### A0. De-risk: get the UI work into git *(do this before anything else)*
+### A0. De-risk: get the UI work into git *(mostly done — finish the merge)*
 
-Work in `.worktrees/ui`. The `ui-rebuild` branch is behind `main` and the UI is untracked.
+Work in `.worktrees/ui` on `ui-rebuild`.
 
-1. **Commit the UI first, exactly as it stands** (so it exists in history before any rebase):
-   `git add PreviewUI PreviewUIShell project.yml` and the modified docs, commit on `ui-rebuild`.
-2. **Rebase `ui-rebuild` onto `main`** (`a7e9199`) so it becomes *main + UI*. Expect one
-   `project.yml` conflict (the shell adds a 4th target + scheme; take both sides). After rebase,
-   `PreviewUIShell` must still build.
-3. **Reconcile the doc drift.** `main` already has committed `DESIGN.md` / `UI-BUILD.md` /
-   `ENGINE-FEATURE-PACKS.md` (from `f5229f2`); the worktree has *modified* copies plus untracked
-   `PROMPT-UI.md` and `UI-IMPLEMENTATION-PLAN.md` (the latter two are also untracked in `main`'s
-   working tree). Pick the worktree versions as canonical, fold in the A1 corrections, commit once.
-4. Push `ui-rebuild` to the remote. **Now the work is safe** and the rest of Part A can proceed on
-   that branch.
+1. ~~**Commit the UI**~~ — **done** (`e7f2e69`…`ab16854`).
+2. **Merge or rebase `main` (`1c3018a`+) into `ui-rebuild`** so the branch is *main + UI*. Expect
+   `project.yml` conflict (shell adds a 4th target + scheme; take both sides) and doc conflicts
+   under `UI-REBUILD/`. After merge, **both** `PreviewUIShell` and `GLBPreview` must build; run
+   existing tests on the merged tree.
+3. **Reconcile the doc drift.** Prefer **main's** `ENGINE-FEATURE-PACKS.md` / `DESIGN.md` /
+   `UI-BUILD.md` as the base (they reflect shipped packs), then fold A1 corrections + keep
+   worktree-only docs (`PROMPT-UI.md`, `UI-IMPLEMENTATION-PLAN.md`, this cutover plan). Commit once.
+4. Push `ui-rebuild` if the remote is behind. **Then** Part A seam/engine work proceeds on that
+   branch.
 
-*Output of A0:* one branch (`ui-rebuild`) = `main` + `PreviewUI` + `PreviewUIShell`, building, pushed.
+*Output of A0:* one branch (`ui-rebuild`) = current `main` + `PreviewUI` + `PreviewUIShell`,
+building, pushed.
 
 ### A1. Correct the stale docs *(5 minutes, high clarity)*
 - `ENGINE-FEATURE-PACKS.md`: delete the P17 "still absent / cherry-pick" note; mark P17 present on
@@ -84,10 +84,15 @@ The shell is complete, but three contract gaps will bite at cutover if left. Fix
 - **Screenshot path is a dead no-op in the shell.** `NodeHeader`'s `onScreenshot` threads up to a
   `{}` default; `MockViewport.screenshot()` exists but nothing calls it. Wire `ShellWindow` to call
   `viewport.screenshot()` so the end-to-end path is proven before the engine has to honour it.
-- **Multi-scene switching decision (A4).** The outliner *lists* scenes but nothing sets the active
-  scene, and `Availability.isMultiScene/hasCameras/hasSkin/hasMorphs` have no view reader (empty
-  sections carry the adaptivity today). If multi-scene switching ships in v1, add
-  `setScene(_:)`/`activeSceneID` to the seam now.
+- **Multi-scene switching (A4) — do not regress the host.** Today the **real app already
+  switches scenes**: `HostSidebarModel.activeSceneIndex` + outliner `Picker` + `ContentView`
+  re-convert via `EntityLoader.convertScene`. The PreviewUI seam only *lists* `scenes` /
+  `defaultSceneID`; selecting a scene goes through `SelectionModel` as inspector detail, with
+  **no** `setScene` / `activeSceneID`. `Availability.isMultiScene` (and `hasCameras` / `hasSkin` /
+  `hasMorphs`) are largely unread by production PreviewUI views. **If multi-scene stays in v1
+  (recommended — host already ships it), A2 must add active-scene to the seam before B2**, or the
+  cutover drops a live feature. If product says listing-only, document that as an intentional
+  regression and remove the host Picker path explicitly.
 
 ### A3. Close the engine gaps on `main` so the adapter stays thin
 
@@ -96,17 +101,24 @@ Each engine pack is real; the gaps below are what the seam asks for that the doc
 cutover branch) with the existing test fixtures — every one is testable in the current app today.
 
 **Needed for correctness (do before cutover):**
-- **`availableDebugChannels` without JSON.** `PreviewDebugMode.available(from: json)` needs the raw
-  glTF header, which `GLTFSessionDocument` drops. Compute the channel set at convert time and
-  persist it on the document (or a sidecar) so the adapter can serve `Availability` from a snapshot.
+- **`availableDebugChannels` without re-parsing JSON.** `PreviewDebugMode.available(from:)` needs
+  the raw glTF header, and `GLTFSessionDocument` does not keep JSON — **but the gap is thinner than
+  "persist on the document."** `EntityLoader.LoadedModel` already carries
+  `debugModes: [PreviewDebugMode]` (and `PreviewDebugMode.availableDebugChannels(from:)` exists).
+  **Prefer:** keep `debugModes` (or the channel ID list) on the window/load result the adapter
+  already sees — same place `ContentView` already threads `model.debugModes` today. Stamping onto
+  the document is optional, not required for a thin adapter.
 - **Persisted `center` + `projection` settings keys.** Today these are session-only `@State`
   (`sessionCenterModel`, `sessionOrthographic`) with **no `UserDefaults` default**. `SettingsStore.
-  default(for:)`/`promoteToDefault` need real keys. Add two keys + register defaults
-  (mirror `autoRotate`'s registration in `GLBPreviewApp.swift`).
+  default(for:)`/`promoteToDefault` need real keys *if* they stay in the seam key set. Prefer A3b's
+  recommendation: keep them session-only and **drop** `.center`/`.projection` from persisted
+  defaults rather than inventing Settings rows DESIGN.md does not want.
 - **Per-node bound material (inspector honesty).** `SelectionDetail`'s materials are the *file-level
   inventory*, not the node's bound material — the code comment admits the mesh→material bind isn't
   on the document. Left as-is, `NodeDetail.material` shows the wrong material, violating DESIGN.md's
-  "inspector honesty." **Stamp mesh→material binding** in `RealityKitConvert.makeDocument`.
+  "inspector honesty." **Stamp mesh→material binding** in `RealityKitConvert.makeDocument`
+  (primitive `materialIndex` already exists in mesh convert for RealityKit parts — it never reaches
+  `GLTFSessionDocument.Node`).
 
 **Scope decision drives these (A4 "inspector depth"):**
 - **Material rich detail.** `GLTFSessionDocument.Material` carries only `name` + `MaterialMapPresence`.
@@ -128,9 +140,16 @@ cutover branch) with the existing test fixtures — every one is testable in the
 **Minor mapping (fold into B1, no separate work):** `Stats.meshCount` (derive from distinct
 `meshIndex`), `Dimensions.authoredOrigin` (from bounds), `PipelineReport` extensions slot (fold
 `extensionsUsed` P41 into `entries` or add a field), `LightingSettings` shape (degrees↔radians;
-`usesStudioEnvironment` isn't independently toggleable — studio IBL is always on, only dimmed),
-selection **toggle-vs-set** (`HostSidebarModel.selectNode`/`isolate` toggle; seam `select(_)`/
-`isolate(_)` are set-with-nil-to-clear).
+map carefully — see below), selection **toggle-vs-set** (`HostSidebarModel.selectNode`/`isolate`
+toggle; seam `select(_)`/`isolate(_)` are set-with-nil-to-clear).
+
+**Lighting mapping (do not hand-wave):** Host session has `exposureEV`, `environmentYaw` (radians),
+`dimStudioForFileLights`. Seam `LightingSettings` has `exposure`, `environmentRotationDegrees`,
+`usesFileLights`, `usesStudioEnvironment`. Closest mapping: exposure↔EV, yaw degrees↔radians,
+`usesFileLights` ↔ file-lights / dim-studio UX (Look pill Studio|File when `hasLights`).
+`usesStudioEnvironment` is **not** the same as host `dimStudioForFileLights`, and studio IBL is
+**not** "always on": `AppLook.useEnvironmentMap` can turn the environment map off entirely (app
+default). Adapter must not invent a second on/off that fights `AppLook`.
 
 ### A3b. Settings — bring over ALL three panes, adapt to the new philosophy
 
@@ -167,9 +186,13 @@ key plus the picker UI ported.
 dropping `.center`/`.projection` from the persisted default set (keep them session-only with a fixed
 initial — center on, perspective) rather than surfacing them in Settings, unless you want a default.
 
-Expand the seam's `SettingKey` set (appearance, showPills, useEnvironmentMap, environmentCatalog,
-customEnvironmentFile, autoPlay), split by job, and rebuild `SettingsRootView`'s 3-tab `TabView`
-(General / Preview / About) hosting the ported panes, driven by the seam store.
+Expand the seam's `SettingKey` set for **real ports** (appearance, showPills←`showToolbar`,
+useEnvironmentMap, environmentCatalog, customEnvironmentFile), split by job, and rebuild
+`SettingsRootView`'s 3-tab `TabView` (General / Preview / About) hosting the ported panes, driven
+by the seam store.
+
+**`autoPlay` is not a port.** There is no `autoPlay` key/pane on `main` or in the shell today —
+only DESIGN.md desire. Treat it as an optional greenfield add (A4), not "bring over from Settings."
 
 ### A3c. Lock the propagation model — *"if on default, update live; if changed, don't"*
 
@@ -204,8 +227,10 @@ App-wide settings (appearance) skip the overlay entirely — they apply everywhe
 | 1 | **P34: per-window vs sticky settings** | **CONFIRMED — per-window, lazy overlay (A3c)** | Effective-value model: untouched keys track the default live; touched keys stick per window. Matches DESIGN.md and needs only the two A3c adjustments. |
 | 2 | **Inspector depth** (material factors / per-node geometry counts) | **Ship map-chips + cheap material non-optionals + honest bound material; defer per-node exact counts** | Honest and calm now (DESIGN.md "show only what the model has"); the heavy per-node accounting is additive later and the seam already allows nil. |
 | 3 | **Quick Look scope** | **CONFIRMED — canvas only: orbit + bottom-left info readout + two buttons (backdrop, rotate toggle), reusing main's controls; everything else removed. Done *after* the UI cutover.** | QL is a lightweight preview, not the inspector. No pills cluster, no outliner, no menu. Drives a much-trimmed B5. |
-| 4 | **Multi-scene switching in v1?** | Product call | If yes, A2 adds `setScene` to the seam before cutover; if no, the scene switcher stays a listing only. |
+| 4 | **Multi-scene switching in v1?** | **Recommend YES — host already ships it** | Seam must gain active-scene (A2) or B2 regresses `activeSceneIndex` + `convertScene`. Listing-only is a product cut, not free. |
 | 5 | **Keep `PreviewUIShell` after cutover?** | **Keep** | Zero-engine-risk design playground + `--proof-outliner`; it never ships. UI regression = Peekaboo on a live window. |
+| 6 | **Material variants (P40) in v1?** | **Recommend YES — host already ships it** | `materialVariantNames` / re-convert live on `main`; **absent from PreviewUI seam/outliner**. Easy silent loss at cutover unless A2/B1 add a variants control (or an explicit "drop P40 from UI" decision). |
+| 7 | **Host session extras vs seam** | **Must map or explicitly drop** | View menu today also drives `doubleSided`, `showSkeleton`, `fieldOfViewDegrees` (+ lighting). Shell `ViewportController` / shell View menu do **not** cover skeleton / double-sided / FOV. Decide: extend seam + Look/Stage pills, keep FocusedValues bridges beside the seam, or drop from v1 menus. |
 
 ### A5. Repo tidy (independent of the cutover)
 - Delete stray scratch: `.worktrees/ui/window-*.png` (Peekaboo captures), stray `.DS_Store`s.
@@ -229,16 +254,18 @@ builds, runs a real window, and is verifiable on its own. Do it on a branch off 
 
 ### B1. Write the engine adapters — `GLBPreview/Engine/` *(the heart of the cutover)*
 Five thin conformances over types that already exist on `main`. Each gets a unit test that maps a
-real fixture (`scripts/testdata/cube`, `BoxAnimated`, `offcenter`, `invalid`) to the seam types.
+real fixture (via `TestFixtures` — `.cube`, `.boxAnimated`, `.offcenter`, `.invalid`, `.lights`,
+`.cameras`, `.rigged`, `.morph`, `.multiScene`, `.missingChannels`) to the seam types.
 
 | Adapter | Wraps (all on `main`) | Notes |
 |---|---|---|
 | `EngineSceneModel: SceneModel` | `GLTFSessionDocument` + `PreviewStats` + `ModelDimensions` + `GLTFValidationState` + `PipelineReport` | Consumes A3. Build `nodeTree` from flat `document.nodes` child indices; radians→degrees for fov/cones. Re-snapshot on async validation. |
-| `EngineViewportController: ViewportController` | `PreviewScene` session state + `PreviewCamera` + `FocusedPreviewCommands` + `StillRenderer` | Cleanest — every member has a backer. `screenshot()`→`screenshotCurrentCameraPose`. Map `LightingSettings`. |
+| `EngineViewportController: ViewportController` | `PreviewScene` session state + `PreviewCamera` + `FocusedPreviewCommands` + still path | Every listed member has a backer; **plus** decide A4-7 for double-sided / skeleton / FOV. `screenshot()` must call the **host** still path (`ContentView.screenshotCurrentCameraPose` → `StillRenderer` + save panel) — that helper is **private on `ContentView` today**, not on `PreviewScene`/`StillRenderer`. Extract or wrap. Map `LightingSettings` per A3 lighting note. |
 | `EngineSelectionModel: SelectionModel` | `HostSidebarModel` + `PreviewSelectionVisuals` + `SelectionDetail` | Reconcile toggle-vs-set; `isVisible` from `hide`+`soloHides`; honest `NodeDetail.material` (A3). |
-| `EngineSettingsStore: SettingsStore` | `SettingsKeys` (`@AppStorage`) + per-window session | Resolves P34 (per-window). Type-erased `UserDefaults` bridge for the generic `default(for:)`. |
-| `Availability` | `DerivedAvailability<EngineSceneModel>` (already written) + carried channels | No new type; feed it the A3 channel set. |
+| `EngineSettingsStore: SettingsStore` | `SettingsKeys` (`@AppStorage`) + per-window session | Resolves P34 (per-window). Type-erased `UserDefaults` bridge for the generic `default(for:)`. Also absorb A3c: **stop host ContentView seed-once** the same way the shell drops `seedSessionFromDefaultsIfNeeded`. |
+| `Availability` | `DerivedAvailability<EngineSceneModel>` (already written) + carried channels | No new type; feed channels from `LoadedModel.debugModes` (A3). |
 | `AnimationPlaybackController` | `PreviewScene` clip playback + `PreviewClip` | The A2 protocol; back it with the real player. |
+| *(optional)* active scene / variants | `HostSidebarModel.activeSceneIndex`, `materialVariantNames` / reload | Required if A4-4 / A4-6 stay YES — either extend seam protocols or keep small host chrome beside PreviewUI. |
 
 *Verify:* adapter unit tests green; no engine changes needed beyond A3.
 
@@ -246,11 +273,16 @@ real fixture (`scripts/testdata/cube`, `BoxAnimated`, `offcenter`, `invalid`) to
 - New window root hosts `ShellRootView`'s composition with the **engine adapters** and the **real
   canvas**: the generic `canvas: () -> Canvas` closure returns the real `PreviewView`
   (`HostPreviewContainer`/`PreviewHostingView`) instead of `CanvasPlaceholder`. The UI views are
-  untouched.
+  untouched. **Preserve** `DocumentGroup` / open-URL / drop-open (`GLBDocumentOpening`) / Welcome
+  / Sparkle `CommandGroup(after: .appInfo)` — B2 is chrome injection, not a new app lifecycle.
 - Wire selection↔`HostSidebarModel` (reuse the existing `PreviewOverlay`/`GLTFNodeLookup` bridge),
-  pills→session, screenshot→`viewport.screenshot()`, playback bar→the controller.
+  pills→session, screenshot→`viewport.screenshot()`, playback bar→the controller, and (if A4-4/6)
+  scene + material-variant switching without regressing re-convert.
 - Rebuild the **View menu** as `CommandGroup(after: .sidebar)` driving the seam controllers via the
-  existing `FocusedValues` pattern (do **not** add a `CommandMenu("View")`).
+  existing `FocusedValues` pattern (do **not** add a `CommandMenu("View")`). This **replaces** the
+  current host `CommandGroup` body (floor / auto-rotate / center / ortho / double-sided / skeleton /
+  FOV / fit / reset / screenshot / presets / lighting) — do not delete in B4 until B2's menu is
+  proven feature-complete per A4-7.
 - *Verify (AGENTS.md pitfall gauntlet):* open a real file → exactly one "open start" + one
   "open ready", **zero** "Modifying state during view update"; failed URL shows copy, not a spinner;
   first paint isn't blocked on IBL.
@@ -263,35 +295,41 @@ the host path must stop drawing them — **but Quick Look depends on the inlined
 available for the QL path (per A4 decision 3). *Verify:* host window has no double gizmos/pills; QL
 still shows its tap-to-toggle chrome.
 
-### B4. Delete the old chrome
+### B4. Delete the old host chrome *(outliner + View menu; not QL-shared files yet)*
 Once B2/B3 are verified on real windows:
-- **Delete:** `GLBPreview/HostOutlinerView.swift`, `Shared/PreviewChromeBar.swift`,
-  `Shared/PreviewCycleMenu.swift`, and the throwaway `.commands` block in `GLBPreviewApp.swift`
-  (the P5 lighting group + preset buttons). Crib `previewGlassButtonStyle` into `Theme/Glass.swift`
-  first if not already (it is, in the shell).
+- **Delete now:** `GLBPreview/HostOutlinerView.swift` (host-only).
+- **Replace, don't "delete a throwaway block":** the entire `CommandGroup(after: .sidebar)` in
+  `GLBPreviewApp.swift` is the current View menu (P5 lighting is only part of it). After B2's
+  seam-driven menu lands, remove the old body; keep Sparkle `CommandGroup(after: .appInfo)`.
+  Crib `previewGlassButtonStyle` into `Theme/Glass.swift` first if not already (it is, in the shell).
+- **Do not delete yet:** `Shared/PreviewChromeBar.swift` / `Shared/PreviewCycleMenu.swift` — QL still
+  needs them until B5 carves its two-button chrome. **Never delete** `Shared/PreviewChrome.swift`
+  (`PreviewOverlay` / `PreviewInteraction`).
 - **Re-home, don't delete the logic:** `HostSidebarModel` + `PreviewSelectionVisuals` become the
   guts of `EngineSelectionModel` (keep the RealityKit visibility/isolate/AABB behaviour).
   `PreviewSessionBindings`/`PreviewFocus` are superseded by the seam controllers — keep only the
-  `FocusedValues` plumbing the menu needs.
-- *Verify:* `xcodebuild -scheme GLBPreview` builds with the files gone; grep confirms no dangling refs.
+  `FocusedValues` plumbing the menu needs (and any A4-7 bridges you chose to keep).
+- *Verify:* host builds without `HostOutlinerView`; no dangling refs to it.
 
-### B5. Extensions *(do this AFTER the app UI is in — easier once the pieces exist)*
+### B5. Extensions *(after host UI; carve QL before deleting shared chrome)*
 - **Thumbnail:** unaffected — `ThumbnailExtension` already excludes all UI files and renders via
   `StillRenderer`. No change; just re-run its tests.
-- **Quick Look — strip it down to a canvas (A4-3).** QL is the lighter, canvas-only preview. Keep
-  **only**: model interaction (orbit / scroll-dolly / shift-pan via `PreviewInteraction`), the
-  **bottom-left info readout** (`PreviewOverlayFacts` — dimensions/stats), and **two small glass
-  buttons reusing main's controls**: backdrop cycle and auto-rotate toggle (carve a trimmed
-  chrome from the old `PreviewChromeBar`/`PreviewCycleMenu` bits + `previewGlassButtonStyle` before
-  B4 deletes the rest). **Remove everything else** from QL — no pills cluster, no outliner, no
-  view-mode/lighting/floor/presets, no menu. This rides on `PreviewScene`'s host-bare core (B3) plus
-  the two-button QL chrome. *Verify:* QL a `.glb` in Finder — model orbits, info shows bottom-left,
-  the two buttons work, nothing else present, no crash.
+- **Quick Look — strip it down to a canvas (A4-3).** QL today shows **full** inlined chrome when
+  tapped (not already two buttons). Keep **only**: model interaction (orbit / scroll-dolly /
+  shift-pan via `PreviewInteraction`), the **bottom-left info readout** (`PreviewOverlayFacts`),
+  and **two small glass buttons**: backdrop cycle + auto-rotate (extract from
+  `PreviewChromeBar`/`PreviewCycleMenu` + `previewGlassButtonStyle`). **Remove everything else**
+  from QL. Then **delete** the remainder of `PreviewChromeBar.swift` / `PreviewCycleMenu.swift`.
+  Note: `PreviewPlaybackBar` lives inside `PreviewChromeBar.swift` — PreviewUI `PlaybackBar` must
+  already be engine-backed (A2/B1) before this delete. *Verify:* QL a `.glb` in Finder — model
+  orbits, info bottom-left, two buttons work, nothing else, no crash.
 
 ### B6. Verify across the fixture matrix on real files
-Run the UI-BUILD §2 matrix against **real** assets, not mocks:
-`plainMesh` (cube), `riggedAnimated` (BoxAnimated), `withLights`/`withCameras`/`missingChannels`
-(Khronos samples), `invalidFile` (`scripts/testdata/invalid`), uncentered (`offcenter`), multiScene.
+Run the UI-BUILD §2 matrix against **real** assets, not mocks — all now committed under
+`scripts/testdata/` (via `TestFixtures`): `plainMesh` (`.cube`), `riggedAnimated` (`.boxAnimated` +
+`.rigged`/`.morph`), `withLights` (`.lights`), `withCameras` (`.cameras`), `missingChannels`
+(`.missingChannels`), `invalidFile` (`.invalid`), corrupt (`.corrupt`), uncentered (`.offcenter`),
+`multiScene` (`.multiScene`).
 For each: correct sections appear/disappear, validation badge is honest, real-window log is clean.
 UI layout/glass regression is Peekaboo on a live `PreviewUIShell` / host window — not a headless
 `--snapshot` harness.
@@ -306,30 +344,37 @@ UI layout/glass regression is Peekaboo on a live `PreviewUIShell` / host window 
 
 ## The linear path
 ```
-A0 de-risk (commit ✅ done — still merge main in)  →  A1 doc fix
-   →  A2 seam holes  ∥  A3 engine gaps  ∥  A3b settings migration + A3c propagation  →  A4 decisions
+A0 finish merge main → ui-rebuild  →  A1 doc fix
+   →  A2 seam holes (playback + screenshot + scene/variants)  ∥  A3 engine gaps  ∥  A3b settings + A3c
+   →  A4 decisions (incl. variants / session extras)
    →  B0 land PreviewUI  →  B1 adapters  →  B2 inject one window  →  B3 decouple PreviewScene
-   →  B4 delete old chrome  →  B5 strip Quick Look (canvas + info + 2 buttons)  →  B6 matrix  →  B7 cleanup
+   →  B4 delete host outliner + old View menu  →  B5 strip QL then delete shared chrome files
+   →  B6 matrix  →  B7 cleanup
 ```
-Highest-leverage checkpoint now: **B2** (sign off one real window before deleting anything). A0's
-commit is done — the UI work is safe; the branch still needs `main` merged in before hosting B0.
+Highest-leverage checkpoint: **B2** (sign off one real window before deleting anything). A0 commit
+is done; **merge `main` into `ui-rebuild` before B0**.
 
 ## Risk register
 | Risk | Mitigation |
 |---|---|
-| UI work lost (untracked, on a stale branch) | **A0 first**, commit before rebase, push. |
-| Quick Look breaks when chrome is deleted | B3 host-bare mode + B5 keep QL chrome; verify in Finder. |
+| UI work on stale base (behind Track B) | Finish A0 merge/rebase onto current `main`; both schemes build. |
+| Quick Look breaks when chrome is deleted | B3 host-bare mode + B5 keep QL chrome; verify in Finder. QL today is **full** inlined chrome — B5 is a real shrink. |
 | `PreviewScene` overlays double up | B3 gates inlined chrome to the QL path only. |
 | "Modifying state during view update" regressions | B2 real-window log check; adapters do sync in `.onAppear`/`Task { @MainActor }`, never in `init`. |
 | Async validation vs sync snapshot | B1 re-snapshot on resolve; `.failed`/`.skipped` surface as copy. |
 | Inspector shows wrong material | A3 mesh→material binding before cutover. |
+| Silent loss of multi-scene / P40 variants | A4-4/6 + A2 seam (or explicit drop); B2 fixture check. |
+| Silent loss of double-sided / skeleton / FOV | A4-7 before B2 View menu rewrite. |
+| Delete `PreviewChrome.swift` by name confusion | Ledger: delete `PreviewChromeBar` only; keep `PreviewChrome`. |
+| `PreviewPlaybackBar` deleted with chrome file | A2/B1 engine playback before B5 deletes `PreviewChromeBar.swift`. |
+| P34 "live defaults" broken | A3c + stop host ContentView seed-once together. |
 
 ## What gets deleted (cleanup ledger)
-**Delete:** `HostOutlinerView.swift`, the throwaway `.commands` block, `engine-features` branch,
-`.worktrees/features`, `.worktrees/ui` (post-merge), stray `window-*.png`.
+**Delete:** `HostOutlinerView.swift`, old `CommandGroup(after: .sidebar)` body (after B2 replacement),
+`engine-features` branch, `.worktrees/features`, `.worktrees/ui` (post-merge), stray `window-*.png`.
 **Delete *after* carving what QL keeps:** `PreviewChromeBar.swift`, `PreviewCycleMenu.swift` — first
 extract the backdrop-cycle + auto-rotate buttons and `previewGlassButtonStyle` into the trimmed QL
-chrome (B5); then delete the rest.
+chrome (B5); then delete the rest. **Keep** `PreviewChrome.swift`.
 **Re-home (logic kept):** `HostSidebarModel`, `PreviewSelectionVisuals`, `PreviewSessionBindings`/
 `PreviewFocus` → engine adapters + FocusedValues plumbing.
 **Re-home into the new Settings (do NOT lose — A3b):** `AppLook`/`AppLookStore`/`KhronosEnvironments`
@@ -340,3 +385,61 @@ by the seam store.
 `PreviewCamera`, `PreviewOrientationGizmo`, `PreviewOverlayFacts` (QL's bottom-left readout),
 `PreviewSkeletonOverlay`, `PreviewMorph`, `StillRenderer`, `SelectionDetail`, `GLTFSessionDocument`,
 `GLTFValidator`, `EntityLoader`, `Shared/Convert/*`, `ThumbnailExtension` engine path, `PreviewUIShell`.
+
+---
+
+## Plan validation (review)
+
+**Verdict: ready with edits** — strategy (seam adapters, host-bare `PreviewScene`, Settings port,
+lazy P34 overlay) is sound; several factual assumptions about branch state and engine gaps were
+wrong or incomplete and are corrected above.
+
+### Findings by theme
+
+**Reuse**
+- Good: adapters over existing `GLTFSessionDocument` / `HostSidebarModel` / `PreviewOverlay` /
+  `FocusedValues` / `ShellRootView` canvas injection.
+- Overbuilt: A3 “persist debug channels on the document” — `LoadedModel.debugModes` already exists;
+  prefer adapter input from the load result.
+- Missed reuse: host multi-scene + P40 material variants already ship; cutover must wire or
+  explicitly drop them.
+
+**Simplicity**
+- A3c lazy overlay is the right simplification of P34 (matches `sessionValue(for:)`).
+- Dropping persisted center/projection from Settings (A3b) is simpler than inventing keys DESIGN
+  does not want.
+- `autoPlay` was incorrectly listed as a Settings port — it is greenfield; keep optional.
+
+**Dependencies**
+- A0 merge of `main` → `ui-rebuild` must finish before A3 work that assumes Track B types.
+- A2 playback protocol before B4/B5 delete `PreviewChromeBar.swift` (contains `PreviewPlaybackBar`).
+- B4 must not delete shared chrome files before B5 carves QL (ordering fixed).
+- A4-4/6/7 gate B2 View-menu / outliner scope.
+
+**Verification**
+- Real-window log gauntlet + Peekaboo remain correct for this macOS app (not Chrome DevTools).
+- Add explicit B2 checks for multi-scene, variants, double-sided/skeleton/FOV (per A4), and
+  screenshot save-panel path.
+- B5 must verify QL shrink from *full* chrome, not assume two buttons already exist.
+
+**Assumptions / risks**
+- §0 “UI untracked / `main == engine-features`” was stale — UI committed; `main` ahead of
+  `engine-features`.
+- Lighting: `usesStudioEnvironment` ≠ host dim-studio; `AppLook.useEnvironmentMap` can disable IBL.
+- Screenshot: `screenshotCurrentCameraPose` is private on `ContentView`, not a Scene/Still API.
+- Name trap: `PreviewChrome` (keep) vs `PreviewChromeBar` (delete after B5).
+- App lifecycle (DocumentGroup, Sparkle, open/drop) must survive B2 — called out now.
+
+### Edits applied to this doc
+1. Rewrote §0 / A0 for current git reality (`ui-rebuild` `ab16854`, `main` `1c3018a`).
+2. Thinned A3 debug-channel work to `LoadedModel.debugModes`.
+3. Corrected multi-scene, lighting, autoPlay, screenshot, View-menu, and B4/B5 delete ordering.
+4. Added A4 decisions for variants + session extras; expanded risk register / cleanup ledger.
+
+### Execution checklist (next)
+1. Merge/rebase `main` into `ui-rebuild`; both schemes build + tests.
+2. A1 doc fix on reconciled `ENGINE-FEATURE-PACKS.md`.
+3. Confirm A4-4/6/7 (scene / variants / double-sided·skeleton·FOV).
+4. A2 seam holes (playback, screenshot wire, scene/variants if YES).
+5. A3 honesty gaps (bound material; optional material non-optionals) ∥ A3b/A3c settings.
+6. B0→B2 one real window; only then B3–B7.
