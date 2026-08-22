@@ -31,6 +31,20 @@ extension RealityKitConvert {
         let cameraIndex = identityIndex(node.camera, in: asset.cameras)
         let lightIndex = identityIndex(node.light, in: asset.lights)
         let skinIndex = identityIndex(node.skin, in: asset.skins)
+        var materialIndices: [Int] = []
+        if let meshIndex, asset.meshes.indices.contains(meshIndex) {
+            var seen = Set<Int>()
+            for primitive in asset.meshes[meshIndex].primitives {
+                let resolved = identityIndex(primitive.material, in: asset.materials)
+                    ?? primitive.material.flatMap { material in
+                        asset.materials.firstIndex { $0.name == material.name && material.name != nil }
+                    }
+                guard let materialIndex = resolved else { continue }
+                if seen.insert(materialIndex).inserted {
+                    materialIndices.append(materialIndex)
+                }
+            }
+        }
         return GLTFSessionDocument.Node(
             index: index,
             name: node.name ?? "",
@@ -47,7 +61,8 @@ extension RealityKitConvert {
             meshIndex: meshIndex,
             cameraIndex: cameraIndex,
             lightIndex: lightIndex,
-            skinIndex: skinIndex
+            skinIndex: skinIndex,
+            materialIndices: materialIndices
         )
     }
 
@@ -97,9 +112,28 @@ extension RealityKitConvert {
     }
 
     static func makeMaterial(_ material: GLTFMaterial) -> GLTFSessionDocument.Material {
-        GLTFSessionDocument.Material(
+        let workflow: GLTFSessionDocument.Material.Workflow
+        if material.isUnlit {
+            workflow = .unlit
+        } else {
+            workflow = .metallicRoughness
+        }
+        let alphaMode: GLTFSessionDocument.Material.AlphaMode
+        switch material.alphaMode {
+        case .mask: alphaMode = .mask
+        case .blend: alphaMode = .blend
+        default: alphaMode = .opaque
+        }
+        let metallic = material.metallicRoughness
+        return GLTFSessionDocument.Material(
             name: material.name ?? "",
-            maps: MaterialMapPresence.from(gltf: material)
+            maps: MaterialMapPresence.from(gltf: material),
+            workflow: workflow,
+            alphaMode: alphaMode,
+            isDoubleSided: material.isDoubleSided,
+            metallicFactor: metallic?.metallicFactor,
+            roughnessFactor: metallic?.roughnessFactor,
+            alphaCutoff: alphaMode == .mask ? material.alphaCutoff : nil
         )
     }
 

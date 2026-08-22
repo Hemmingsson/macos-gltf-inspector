@@ -15,6 +15,10 @@ protocol ViewportController: AnyObject, Observable {
     var lighting: LightingSettings { get }
     /// Nil once the user orbits away from a preset.
     var activeCameraPreset: CameraPreset? { get }
+    /// Scene the canvas is showing. Selecting a Scene row calls `setScene`.
+    var activeSceneID: NodeID? { get }
+    /// Selected `KHR_materials_variants` index, or nil for the file default.
+    var selectedMaterialVariantIndex: Int? { get }
 
     func setBackdrop(_ style: BackdropStyle)
     func setFloor(_ isOn: Bool)
@@ -30,4 +34,6 @@ protocol ViewportController: AnyObject, Observable {
     func applyCameraPreset(_ preset: CameraPreset)
     /// Capture the canvas. Fire-and-forget: the implementation owns where it lands.
     func screenshot()
+    func setScene(_ id: NodeID)
+    func setMaterialVariant(_ index: Int?)
 }

@@ -18,7 +18,11 @@ extension SettingKey where Value == Bool {
     static var autoRotate: SettingKey<Bool> { .init(name: "settings.preview.autoRotate", fallback: true) }
     /// Wireframe resting state is floor off; Settings can promote a different app default.
     static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: false) }
+    /// Session-only. Never registered as a persisted app default (P34 / A3c).
     static var center: SettingKey<Bool> { .init(name: "settings.preview.center", fallback: true) }
+    /// Host `showToolbar` — pills visible on open.
+    static var showPills: SettingKey<Bool> { .init(name: "settings.preview.showToolbar", fallback: true) }
+    static var useEnvironmentMap: SettingKey<Bool> { .init(name: "settings.preview.useEnvironmentMap", fallback: true) }
 }
 
 extension SettingKey where Value == BackdropStyle {
@@ -27,7 +31,15 @@ extension SettingKey where Value == BackdropStyle {
 }
 
 extension SettingKey where Value == Projection {
+    /// Session-only. Never registered as a persisted app default.
     static var projection: SettingKey<Projection> { .init(name: "settings.preview.projection", fallback: .perspective) }
+}
+
+extension SettingKey where Value == String {
+    static var appearance: SettingKey<String> { .init(name: "settings.general.appearance", fallback: "system") }
+    /// `KhronosEnvironments.rawValue` (`neutral` / `field` / `Colorful_Studio`).
+    static var environmentCatalog: SettingKey<String> { .init(name: "settings.preview.environmentCatalog", fallback: "neutral") }
+    static var customEnvironmentFile: SettingKey<String> { .init(name: "settings.preview.customEnvironmentFile", fallback: "") }
 }
 
 /// Defaults (the App-default job) plus this window's overrides (the This-window job).

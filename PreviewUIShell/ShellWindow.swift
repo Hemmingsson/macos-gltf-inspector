@@ -11,6 +11,7 @@ struct ShellWindow: View {
     /// Owned here so `.focusedSceneValue` can hand the same instance to the View menu that the
     /// pills drive inside `ShellRootView`.
     @State private var viewport: MockViewport
+    @State private var playback: MockPlayback
     /// Sidebar / inspector collapse — shared by chrome toggles and the View menu.
     @State private var panels: ShellPanelChrome
     private let initialSelection: NodeID?
@@ -20,8 +21,8 @@ struct ShellWindow: View {
     /// object construction and not a state mutation during view update (AGENTS.md pitfall 1).
     /// Only the first call's object is kept; later ones are discarded by `@State`.
     ///
-    /// Viewport harness overrides run in `seedSession` *after* defaults are applied, so a
-    /// Debug fixture's `viewport:` block is not clobbered by seeding.
+    /// Viewport harness overrides run in `seedSession` after the viewport reads live defaults.
+    /// Do **not** copy every default into the session (that pins the window and kills P34).
     @MainActor
     init(
         select initialSelection: NodeID? = nil,
@@ -34,6 +35,7 @@ struct ShellWindow: View {
         configure(scene)
         _scene = State(wrappedValue: scene)
         _viewport = State(wrappedValue: MockViewport())
+        _playback = State(wrappedValue: MockPlayback(clips: scene.model.animations))
         _panels = State(wrappedValue: ShellPanelChrome(
             isSidebarVisible: sidebarVisible,
             isInspectorVisible: inspectorVisible
@@ -50,10 +52,21 @@ struct ShellWindow: View {
             selection: MockSelection(scene: scene, selected: initialSelection),
             viewport: viewport,
             settings: MockSettings(),
+            playback: playback,
             panels: panels,
-            seedSession: seedSession
+            seedSession: seedSession,
+            onScreenshot: { viewport.screenshot() }
         ) {
             CanvasPlaceholder()
+        }
+        .onAppear {
+            if viewport.activeSceneID == nil, let id = scene.model.defaultSceneID {
+                viewport.setScene(id)
+            }
+            playback.replaceClips(scene.model.animations)
+        }
+        .onChange(of: scene.model.animations.map(\.id)) { _, _ in
+            playback.replaceClips(scene.model.animations)
         }
         // Key-window fixtures for Debug + View menus (`FocusedValues`).
         .focusedSceneValue(\.mockScene, scene)
@@ -61,12 +74,11 @@ struct ShellWindow: View {
         .focusedSceneValue(\.shellPanelChrome, panels)
     }
 
-    /// Defaults → session → viewport, then optional harness override, then session mirror.
+    /// Read live defaults into the viewport, then apply optional harness overrides.
+    /// Harness mutators (`setFloor`, …) write only the keys they touch.
     @MainActor
     private func seedSession(settings: MockSettings, viewport: MockViewport) {
-        settings.seedSessionFromDefaultsIfNeeded()
         viewport.applySession(from: settings, log: false)
         configureViewport(viewport)
-        viewport.syncSessionFromViewport()
     }
 }

@@ -23,6 +23,8 @@ final class MockViewport: ViewportController {
     private(set) var projection: Projection = SettingKey<Projection>.projection.fallback
     private(set) var lighting: LightingSettings = .standard
     private(set) var activeCameraPreset: CameraPreset?
+    private(set) var activeSceneID: NodeID?
+    private(set) var selectedMaterialVariantIndex: Int?
 
     /// Newest last. Read it from a debug overlay, a test, or the launch log.
     private(set) var callLog: [String] = []
@@ -132,6 +134,16 @@ final class MockViewport: ViewportController {
 
     func screenshot() {
         record("screenshot()")
+    }
+
+    func setScene(_ id: NodeID) {
+        activeSceneID = id
+        record("setScene(\(id.kind.rawValue):\(id.index))")
+    }
+
+    func setMaterialVariant(_ index: Int?) {
+        selectedMaterialVariantIndex = index
+        record("setMaterialVariant(\(index.map(String.init) ?? "nil"))")
     }
 
     // MARK: - Session mirror

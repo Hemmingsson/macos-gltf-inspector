@@ -2,18 +2,12 @@ import SwiftUI
 
 /// Bottom-centre animation controls (`Main-html` playback bar).
 ///
-/// Shown only when `Availability.hasAnimations`. Cribbed conceptually from
-/// `Shared/PreviewPlaybackBar` — copied, not imported (PreviewUI must not depend on Shared/).
-///
-/// Shell playback is local UI state only: there is no renderer clock yet. The seam will later
-/// drive these bindings from a real `AnimationPlaybackController`.
-struct PlaybackBar: View {
-    var clips: [AnimationInfo]
+/// Shown only when `Availability.hasAnimations`. Transport lives on
+/// `AnimationPlaybackController` — the bar never owns a local clock.
+struct PlaybackBar<Playback: AnimationPlaybackController>: View {
+    var playback: Playback
 
-    @State private var isPlaying = false
     @State private var isSeeking = false
-    @State private var currentTime: TimeInterval = 0
-    @State private var clipIndex = 0
 
     var body: some View {
         OverlayChrome(
@@ -31,10 +25,10 @@ struct PlaybackBar: View {
 
             Slider(
                 value: Binding(
-                    get: { currentTime },
-                    set: { seek(to: $0) }
+                    get: { playback.time },
+                    set: { playback.seek($0) }
                 ),
-                in: 0...max(clipDuration, 0.001)
+                in: 0...max(playback.duration, 0.001)
             ) { editing in
                 isSeeking = editing
             }
@@ -53,48 +47,34 @@ struct PlaybackBar: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Playback")
-        .onChange(of: clips.map(\.id)) { _, _ in
-            clipIndex = 0
-            currentTime = 0
-            isPlaying = false
-        }
-        .onChange(of: clipIndex) { _, _ in
-            currentTime = 0
-        }
-        // Shell-only clock: advances while playing so the scrubber is live without an engine.
-        .task(id: isPlaying) {
-            guard isPlaying else { return }
+        .task(id: playback.isPlaying) {
+            guard playback.isPlaying else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(50))
-                guard !isSeeking, clipDuration > 0 else { continue }
-                currentTime = (currentTime + 0.05).truncatingRemainder(dividingBy: clipDuration)
+                guard !isSeeking else { continue }
+                playback.advance(by: 0.05)
             }
         }
     }
 
-    private var clipDuration: TimeInterval {
-        guard clips.indices.contains(clipIndex) else { return 0 }
-        return max(clips[clipIndex].duration, 0)
-    }
-
     private var timeLabel: String {
-        "\(formatTime(currentTime)) / \(formatTime(clipDuration))"
+        "\(formatTime(playback.time)) / \(formatTime(playback.duration))"
     }
 
     @ViewBuilder
     private var clipMenu: some View {
-        if clips.count > 1 {
+        if playback.clips.count > 1 {
             Menu {
-                Picker("Animation clip", selection: $clipIndex) {
-                    ForEach(Array(clips.enumerated()), id: \.element.id) { index, clip in
-                        Text(clip.name).tag(index)
+                Picker("Animation clip", selection: clipBinding) {
+                    ForEach(playback.clips) { clip in
+                        Text(clip.name).tag(Optional(clip.id))
                     }
                 }
                 .pickerStyle(.inline)
                 .labelsHidden()
             } label: {
                 HStack(spacing: 5) {
-                    Text(clips[safe: clipIndex]?.name ?? "Clip")
+                    Text(playback.activeClip?.name ?? "Clip")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.glyph)
                     Image(systemName: "chevron.down")
@@ -106,8 +86,8 @@ struct PlaybackBar: View {
             .menuIndicator(.hidden)
             .help("Animation clip")
             .accessibilityLabel("Animation clip")
-            .accessibilityValue(clips[safe: clipIndex]?.name ?? "")
-        } else if let only = clips.first {
+            .accessibilityValue(playback.activeClip?.name ?? "")
+        } else if let only = playback.activeClip ?? playback.clips.first {
             Text(only.name)
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.glyph)
@@ -116,14 +96,24 @@ struct PlaybackBar: View {
         }
     }
 
-    private var playButton: some View {
-        PlaybackPlayButton(isPlaying: isPlaying) {
-            isPlaying.toggle()
-        }
+    private var clipBinding: Binding<NodeID?> {
+        Binding(
+            get: { playback.activeClip?.id },
+            set: { id in
+                guard let id, let clip = playback.clips.first(where: { $0.id == id }) else { return }
+                playback.select(clip)
+            }
+        )
     }
 
-    private func seek(to time: TimeInterval) {
-        currentTime = min(max(time, 0), clipDuration)
+    private var playButton: some View {
+        PlaybackPlayButton(isPlaying: playback.isPlaying) {
+            if playback.isPlaying {
+                playback.pause()
+            } else {
+                playback.play()
+            }
+        }
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
@@ -153,11 +143,5 @@ private struct PlaybackPlayButton: View {
         }
         .help(isPlaying ? "Pause" : "Play")
         .accessibilityLabel(isPlaying ? "Pause" : "Play")
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

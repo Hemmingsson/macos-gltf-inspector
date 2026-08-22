@@ -16,7 +16,8 @@ struct CanvasRegion<
     Content: View,
     Model: SceneModel,
     Capabilities: Availability,
-    Viewport: ViewportController
+    Viewport: ViewportController,
+    Playback: AnimationPlaybackController
 >: View {
     /// File snapshot — dimensions and animation clips for the bottom overlays.
     var model: Model
@@ -25,6 +26,7 @@ struct CanvasRegion<
     /// The window's live view state. Injected, not owned: `ShellRootView` owns it and the View
     /// menu will drive the same instance in Slice 7.
     var viewport: Viewport
+    var playback: Playback
     /// Empty / loading / failed hide the model chrome; ready shows pills + overlays.
     var documentState: ShellDocumentState = .ready
     /// When false, Stage clears traffic lights + the floating sidebar restore control.
@@ -86,7 +88,7 @@ struct CanvasRegion<
             }
             .overlay(alignment: .bottom) {
                 if availability.hasAnimations {
-                    PlaybackBar(clips: model.animations)
+                    PlaybackBar(playback: playback)
                         .padding(.bottom, OverlayMetrics.inset)
                         .transition(reduceMotion ? .identity : .opacity)
                 }

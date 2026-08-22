@@ -97,6 +97,7 @@ extension OutlinerSection {
 struct OutlinerSectionView<Selection: SelectionModel>: View {
     var section: OutlinerSection
     var selection: Selection
+    var onSelect: ((OutlinerItem) -> Void)? = nil
     /// Optional external expand set (shell proofs). Production sidebar leaves this `nil` and owns
     /// expansion in `@State` — never written from `View.init`.
     var expanded: Binding<Set<NodeID>>? = nil
@@ -126,7 +127,11 @@ struct OutlinerSectionView<Selection: SelectionModel>: View {
                         isSelected: selection.selected == item.id,
                         selection: selection
                     ) {
-                        selection.select(selection.selected == item.id ? nil : item.id)
+                        if let onSelect {
+                            onSelect(item)
+                        } else {
+                            selection.select(selection.selected == item.id ? nil : item.id)
+                        }
                     }
                 }
             }

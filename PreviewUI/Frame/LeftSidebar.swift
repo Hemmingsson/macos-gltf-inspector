@@ -5,10 +5,11 @@ import SwiftUI
 /// Generic over both seam types rather than taking existentials: `SceneModel` has `Self`
 /// requirements through its default implementations, and the point of the seam is that the shell's
 /// fixtures and the app's engine adapter are interchangeable *at compile time*.
-struct LeftSidebar<Model: SceneModel, Selection: SelectionModel>: View {
+struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: ViewportController>: View {
     var model: Model
     /// Injected, not owned — the window root owns it, and the inspector reads the same instance.
     var selection: Selection
+    var viewport: Viewport
     var documentState: ShellDocumentState = .ready
     /// Visual state of the leading chrome toggle (accent while the column is open).
     var isSidebarVisible: Bool
@@ -23,7 +24,10 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel>: View {
 
             DocumentHeader(
                 fileName: documentState.isReady ? model.fileName : documentState.panelDocumentTitle,
-                sceneName: documentState.isReady ? currentSceneName : nil
+                sceneName: documentState.isReady ? currentSceneName : nil,
+                variantNames: documentState.isReady ? model.materialVariantNames : [],
+                selectedVariantIndex: viewport.selectedMaterialVariantIndex,
+                onSelectVariant: { viewport.setMaterialVariant($0) }
             )
 
             if documentState.isReady {
@@ -32,7 +36,16 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel>: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(OutlinerSection.sections(of: model)) { section in
-                            OutlinerSectionView(section: section, selection: selection)
+                            OutlinerSectionView(
+                                section: section,
+                                selection: selection,
+                                onSelect: { item in
+                                    if item.id.kind == .scene {
+                                        viewport.setScene(item.id)
+                                    }
+                                    selection.select(selection.selected == item.id ? nil : item.id)
+                                }
+                            )
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -47,9 +60,10 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel>: View {
         .background(Theme.chrome)
     }
 
-    /// Subtitle under the file name. The default scene, since that is what the canvas is showing.
+    /// Subtitle under the file name — the active scene, falling back to the file default.
     private var currentSceneName: String? {
-        guard let id = model.defaultSceneID else { return nil }
+        let id = viewport.activeSceneID ?? model.defaultSceneID
+        guard let id else { return nil }
         return model.scenes.first { $0.id == id }?.name
     }
 }

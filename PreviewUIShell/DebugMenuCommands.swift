@@ -27,6 +27,7 @@ private struct DebugMenuBody: View {
         Toggle("Skin / morphs", isOn: skinMorphs)
         Toggle("Missing material channels", isOn: $mock.hasMissingChannels)
         Toggle("Uncentered (origin gizmo)", isOn: $mock.isUncentered)
+        Toggle("Material variants", isOn: $mock.hasMaterialVariants)
         Divider()
         Button("Preset: Plain mesh") { mock.apply(.plainMesh) }
         Button("Preset: Rigged + animated") { mock.apply(.riggedAnimated) }

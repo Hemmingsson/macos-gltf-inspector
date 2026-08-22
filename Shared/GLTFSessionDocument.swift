@@ -42,6 +42,8 @@ struct GLTFSessionDocument: Sendable, Equatable {
         var cameraIndex: Int?
         var lightIndex: Int?
         var skinIndex: Int?
+        /// File material indices bound to this node's mesh primitives (order preserved, unique).
+        var materialIndices: [Int] = []
 
         /// Primary attachment wins: mesh > camera > light > skin; all nil → empty.
         static func inferredKind(
@@ -83,8 +85,26 @@ struct GLTFSessionDocument: Sendable, Equatable {
     /// File material + texture-map presence. `maps` is canonical for sidebar chips;
     /// `PreviewDebugMode` aggregates the same flags (JSON twin) with mesh/factor signals.
     struct Material: Sendable, Equatable {
+        enum Workflow: String, Sendable, Equatable {
+            case metallicRoughness
+            case specularGlossiness
+            case unlit
+        }
+
+        enum AlphaMode: String, Sendable, Equatable {
+            case opaque
+            case mask
+            case blend
+        }
+
         var name: String
         var maps: MaterialMapPresence
+        var workflow: Workflow = .metallicRoughness
+        var alphaMode: AlphaMode = .opaque
+        var isDoubleSided: Bool = false
+        var metallicFactor: Float?
+        var roughnessFactor: Float?
+        var alphaCutoff: Float?
     }
 
     /// Skin joint list stamped at convert (P16). `jointParentIndices` indexes this

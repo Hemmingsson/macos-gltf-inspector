@@ -50,6 +50,8 @@ final class MockScene {
     var hasMissingChannels: Bool = false
     /// The authored origin sits away from the model, so the origin gizmo has something to show.
     var isUncentered: Bool = false
+    /// `KHR_materials_variants` names for the seam switcher.
+    var hasMaterialVariants: Bool = false
 
     init() {}
 
@@ -68,7 +70,8 @@ final class MockScene {
             stats: stats,
             dimensions: dimensions,
             validation: validation,
-            pipelineReport: pipelineReport
+            pipelineReport: pipelineReport,
+            materialVariantNames: materialVariantNames
         )
     }
 
@@ -88,6 +91,7 @@ final class MockScene {
         hasMorphs = false
         hasMissingChannels = false
         isUncentered = false
+        hasMaterialVariants = false
 
         switch fixture {
         case .plainMesh:
@@ -98,6 +102,7 @@ final class MockScene {
             hasMorphs = true
         case .multiScene:
             hasMultipleScenes = true
+            hasMaterialVariants = true
         case .withLights:
             hasLights = true
         case .withCameras:
@@ -416,6 +421,10 @@ final class MockScene {
         ])
     }
 
+    private var materialVariantNames: [String] {
+        hasMaterialVariants ? ["Default", "Painted"] : []
+    }
+
     private var pipelineReport: PipelineReport {
         var entries: [PipelineReport.Entry] = [
             PipelineReport.Entry(title: "Converted from KHR spec-gloss"),
@@ -447,4 +456,5 @@ struct MockSceneModel: SceneModel {
     var dimensions: Dimensions
     var validation: ValidationResult
     var pipelineReport: PipelineReport
+    var materialVariantNames: [String] = []
 }

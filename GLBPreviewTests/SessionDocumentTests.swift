@@ -18,6 +18,23 @@ struct SessionDocumentTests {
     }
 
     @MainActor
+    @Test func convertStampsBoundMaterialAndHonestyFields() async throws {
+        let url = try writeTempMixedMapsMaterialGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await EntityLoader.load(from: url, includeAnimations: false)
+        #expect(!model.document.materials.isEmpty)
+        let bound = model.document.nodes.filter { !$0.materialIndices.isEmpty }
+        #expect(!bound.isEmpty)
+        for node in bound {
+            #expect(node.materialIndices.allSatisfy { model.document.materials.indices.contains($0) })
+        }
+        let material = try #require(model.document.materials.first)
+        #expect(material.workflow == .metallicRoughness || material.workflow == .unlit)
+        #expect([GLTFSessionDocument.Material.AlphaMode.opaque, .mask, .blend].contains(material.alphaMode))
+    }
+
+    @MainActor
     @Test func documentListsEverySceneFromAsset() async throws {
         let url = try writeTempTwoSceneGLB()
         defer { try? FileManager.default.removeItem(at: url) }

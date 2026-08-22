@@ -25,6 +25,8 @@ protocol SceneModel: Sendable {
     var animations: [AnimationInfo] { get }
     var skins: [SkinInfo] { get }
     var morphs: [MorphInfo] { get }
+    /// `KHR_materials_variants` names in file order. Empty when the extension is absent.
+    var materialVariantNames: [String] { get }
 
     var stats: Stats { get }
     var dimensions: Dimensions { get }
@@ -36,6 +38,7 @@ protocol SceneModel: Sendable {
 
 extension SceneModel {
     var defaultSceneID: NodeID? { scenes.first?.id }
+    var materialVariantNames: [String] { [] }
 
     /// Depth-first lookup without allocating a full flatten.
     func node(_ id: NodeID) -> SceneNode? {

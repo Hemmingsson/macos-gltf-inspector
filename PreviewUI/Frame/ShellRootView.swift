@@ -15,7 +15,8 @@ struct ShellRootView<
     Capabilities: Availability,
     Selection: SelectionModel,
     Viewport: ViewportController,
-    Settings: SettingsStore
+    Settings: SettingsStore,
+    Playback: AnimationPlaybackController
 >: View {
     /// A snapshot of the loaded file. A value, so a redraw can never see it half-updated.
     var model: Model
@@ -38,6 +39,8 @@ struct ShellRootView<
     @State private var settings: Settings
     /// Sidebar / inspector visibility — owned by the window host, shared with the View menu.
     var panels: ShellPanelChrome
+    /// Clip transport for the playback bar. Owned by the window host.
+    @State private var playback: Playback
     /// Guards the one-shot defaults → session → viewport seed (AGENTS.md: sync in onAppear).
     @State private var didSeedSession = false
     /// Host/shell hook: seed session from defaults and optionally apply Debug viewport overrides.
@@ -59,6 +62,7 @@ struct ShellRootView<
         selection: @autoclosure () -> Selection,
         viewport: @autoclosure () -> Viewport,
         settings: @autoclosure () -> Settings,
+        playback: @autoclosure () -> Playback,
         panels: ShellPanelChrome,
         seedSession: (@MainActor (Settings, Viewport) -> Void)? = nil,
         onScreenshot: @escaping () -> Void = {},
@@ -71,6 +75,7 @@ struct ShellRootView<
         _selection = State(wrappedValue: selection())
         _viewport = State(wrappedValue: viewport())
         _settings = State(wrappedValue: settings())
+        _playback = State(wrappedValue: playback())
         self.panels = panels
         self.seedSession = seedSession
         self.onScreenshot = onScreenshot
@@ -84,6 +89,7 @@ struct ShellRootView<
                 LeftSidebar(
                     model: model,
                     selection: selection,
+                    viewport: viewport,
                     documentState: documentState,
                     isSidebarVisible: panels.isSidebarVisible,
                     onToggleSidebar: { panels.toggleSidebar() }
@@ -138,6 +144,7 @@ struct ShellRootView<
             model: model,
             availability: availability,
             viewport: viewport,
+            playback: playback,
             documentState: documentState,
             isSidebarVisible: panels.isSidebarVisible,
             isInspectorVisible: panels.isInspectorVisible,

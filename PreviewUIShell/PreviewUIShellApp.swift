@@ -8,7 +8,8 @@ import SwiftUI
 @main
 enum PreviewUIShellMain {
     static func main() {
-        if CommandLine.arguments.contains("--proof-outliner") {
+        if CommandLine.arguments.contains("--proof-outliner")
+            || CommandLine.arguments.contains("--proof-cutover-a") {
             if let failure = OutlinerTree.proofFailure() {
                 FileHandle.standardError.write(Data("outliner-proof FAIL: \(failure)\n".utf8))
                 exit(1)
@@ -18,6 +19,18 @@ enum PreviewUIShellMain {
             if let liveFailure {
                 FileHandle.standardError.write(Data("outliner-proof FAIL live: \(liveFailure)\n".utf8))
                 exit(1)
+            }
+            if CommandLine.arguments.contains("--proof-cutover-a") {
+                if let failure = MainActor.assumeIsolated({ SeamLiveProof.failure() }) {
+                    FileHandle.standardError.write(Data("seam-proof FAIL: \(failure)\n".utf8))
+                    exit(1)
+                }
+                if let failure = MainActor.assumeIsolated({ SettingsLiveProof.failure() }) {
+                    FileHandle.standardError.write(Data("settings-proof FAIL: \(failure)\n".utf8))
+                    exit(1)
+                }
+                print("cutover-a-proof PASS (outliner + seam + lazy overlay)")
+                exit(0)
             }
             print("outliner-proof PASS (proofFailure + live fold bitmap)")
             exit(0)
@@ -36,9 +49,11 @@ struct PreviewUIShellApp: App {
         UserDefaults.standard.register(defaults: [
             SettingKey<Bool>.autoRotate.name: SettingKey<Bool>.autoRotate.fallback,
             SettingKey<Bool>.showFloor.name: SettingKey<Bool>.showFloor.fallback,
-            SettingKey<Bool>.center.name: SettingKey<Bool>.center.fallback,
+            SettingKey<Bool>.showPills.name: SettingKey<Bool>.showPills.fallback,
+            SettingKey<Bool>.useEnvironmentMap.name: SettingKey<Bool>.useEnvironmentMap.fallback,
             SettingKey<BackdropStyle>.backdrop.name: SettingKey<BackdropStyle>.backdrop.fallback.rawValue,
-            SettingKey<Projection>.projection.name: SettingKey<Projection>.projection.fallback.rawValue,
+            SettingKey<String>.appearance.name: SettingKey<String>.appearance.fallback,
+            SettingKey<String>.environmentCatalog.name: SettingKey<String>.environmentCatalog.fallback,
         ])
     }
 

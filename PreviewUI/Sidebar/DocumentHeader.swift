@@ -10,10 +10,14 @@ struct DocumentHeader: View {
     /// The scene being shown. Nil for a file with no named scene — the subtitle then collapses
     /// rather than printing a placeholder.
     var sceneName: String?
+    var variantNames: [String] = []
+    var selectedVariantIndex: Int?
+    var onSelectVariant: (Int?) -> Void = { _ in }
 
     @Environment(\.previewHair) private var hair
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
         HStack(spacing: 9) {
             // Accent, not a type tint: this is the document itself, not a row in the outliner.
             Image(systemName: "cube")
@@ -37,6 +41,25 @@ struct DocumentHeader: View {
             }
 
             Spacer(minLength: 0)
+        }
+
+        if !variantNames.isEmpty {
+            Picker(
+                "Variant",
+                selection: Binding(
+                    get: { selectedVariantIndex },
+                    set: onSelectVariant
+                )
+            ) {
+                Text("Default").tag(Optional<Int>.none)
+                ForEach(Array(variantNames.enumerated()), id: \.offset) { index, name in
+                    Text(name).tag(Optional(index))
+                }
+            }
+            .labelsHidden()
+            .controlSize(.small)
+            .accessibilityLabel("Material variant")
+        }
         }
         // `padding: 7px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--hair)`
         .padding(.vertical, 7)
