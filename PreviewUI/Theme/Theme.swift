@@ -37,9 +37,7 @@ enum Theme {
         )
     }
 
-    /// A raised block sitting on `chrome` — the sidebar's document header card (Main-html spells
-    /// it `#fff` inline, with no token of its own). Dark lifts *away* from chrome rather than
-    /// toward white, which would glare.
+    /// A raised block sitting on `chrome` — the sidebar's document header card.
     static let card = Color.dynamic(light: 0xFFFFFF, dark: 0x2B2B2E)
 
     // MARK: Lines
@@ -74,7 +72,7 @@ enum Theme {
         dark: .init(srgbRed: 0.039, green: 0.518, blue: 1.0, alpha: 0.28)
     )
 
-    /// Label and icon colour *inside* a selected row (Main-html `.row.sel { color: #0060df }`).
+    /// Label and icon colour *inside* a selected row.
     /// A deeper blue than `accent`, because `accent` on a 12%-alpha `accent` fill has almost no
     /// contrast; dark inverts the relationship for the same reason.
     static let selectionText = Color.dynamic(light: 0x0060DF, dark: 0x9AC9FF)
@@ -100,7 +98,7 @@ enum Theme {
     /// What the `BackdropStyle` swatches paint. Fixed across appearances on purpose: a "White"
     /// backdrop is white at night too — these are the colour the *canvas* takes, not chrome.
     static let backdropWhite = Color.dynamic(light: 0xFFFFFF, dark: 0xFFFFFF)
-    /// Main-html's charcoal swatch, `#2c2c2e`.
+    /// Charcoal backdrop swatch.
     static let backdropDark = Color.dynamic(light: 0x2C2C2E, dark: 0x2C2C2E)
     /// The dark square of the "None" swatch's checkerboard (`#dcdce0`); the light square is
     /// `backdropWhite`. Checkerboard means *no* backdrop, and it reads that way only while it

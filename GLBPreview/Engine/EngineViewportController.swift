@@ -301,23 +301,6 @@ final class EngineViewportController: ViewportController {
 
     // MARK: - ViewMode ↔ PreviewDebugMode
 
-    static func viewMode(at index: Int, in modes: [PreviewDebugMode]) -> ViewMode {
-        guard modes.indices.contains(index) else { return .shaded }
-        switch modes[index] {
-        case .none:
-            return .shaded
-        case .wire:
-            return .wireframe
-        case .vertexColors:
-            return .shaded
-        case .visualization(let visualization):
-            if let channel = debugChannel(from: visualization) {
-                return .channel(channel)
-            }
-            return .shaded
-        }
-    }
-
     static func debugModeIndex(for mode: ViewMode, in modes: [PreviewDebugMode]) -> Int {
         switch mode {
         case .shaded:

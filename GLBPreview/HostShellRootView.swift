@@ -1,7 +1,5 @@
-import AppKit
 import RealityKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Document window root: PreviewUI `ShellRootView` + engine adapters + real `PreviewView` canvas.
 ///
@@ -20,7 +18,6 @@ struct HostShellRootView: View {
     @State private var sidebar: HostSidebarModel?
     @State private var loadGeneration = 0
     @State private var loadingURL: URL?
-    @State private var blenderLaunchError: String?
     @State private var panels = ShellPanelChrome()
     @State private var placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
 
@@ -63,17 +60,6 @@ struct HostShellRootView: View {
             .focusedSceneValue(\.previewCommands, focusedPreviewCommands)
             .focusedSceneValue(\.engineViewport, loadedModel == nil ? nil : engineViewport)
             .focusedSceneValue(\.shellPanelChrome, panels)
-            .alert(
-                "Couldn’t open in Blender",
-                isPresented: Binding(
-                    get: { blenderLaunchError != nil },
-                    set: { if !$0 { blenderLaunchError = nil } }
-                )
-            ) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(blenderLaunchError ?? "")
-            }
             .onAppear {
                 dismissWindow(id: WelcomeWindow.id)
                 wireViewportHostSession()
@@ -228,15 +214,9 @@ struct HostShellRootView: View {
     }
 
     /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
-    /// Does **not** pin every key into session — only reads effective values (P34).
     @MainActor
-    private func seedSession(settings: EngineSettingsStore, viewport _: EngineViewportController) {
-        // Window-owned `engineViewport` is the FocusedValues / pill source of truth. ShellRootView
-        // `@State` holds the same class instance (`viewport: engineViewport`).
+    private func seedSession(settings: EngineSettingsStore) {
         engineViewport.sidebar = sidebar ?? placeholderSidebar
-        engineViewport.settings = settings
-        engineViewport.commands = focusedPreviewCommands
-        engineViewport.screenshotHandler = screenshotCurrentCameraPose
         wireViewportHostSession()
         engineViewport.applySession(from: settings)
     }

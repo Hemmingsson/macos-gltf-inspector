@@ -42,13 +42,12 @@ struct ShellRootView<
     @State private var playback: Playback
     /// Guards the one-shot defaults → session → viewport seed (AGENTS.md: sync in onAppear).
     @State private var didSeedSession = false
-    /// Host/shell hook: seed session from defaults and optionally apply Debug viewport overrides.
-    /// Must not run in `init` — see `seedSessionIfNeeded`.
-    private let seedSession: (@MainActor (Settings, Viewport) -> Void)?
+    /// Host hook: seed session from defaults. Must not run in `init`.
+    private let seedSession: (@MainActor (Settings) -> Void)?
     private let canvas: () -> Canvas
-    /// Host binds Open in… later; screenshot always goes through `viewport.screenshot()`.
+    /// Screenshot always goes through `viewport.screenshot()`.
     private let onOpenIn: () -> Void
-    /// Host maps `PreviewMorph` → inspector sliders; shell leaves these empty.
+    /// Host maps `PreviewMorph` → inspector sliders.
     private let morphTargets: [MorphTargetControl]
     private let onSetMorphWeight: (String, Double) -> Void
 
@@ -66,7 +65,7 @@ struct ShellRootView<
         panels: ShellPanelChrome,
         morphTargets: [MorphTargetControl] = [],
         onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in },
-        seedSession: (@MainActor (Settings, Viewport) -> Void)? = nil,
+        seedSession: (@MainActor (Settings) -> Void)? = nil,
         onOpenIn: @escaping () -> Void = {},
         @ViewBuilder canvas: @escaping () -> Canvas
     ) {
@@ -183,7 +182,7 @@ struct ShellRootView<
     private func seedSessionIfNeeded() {
         guard !didSeedSession else { return }
         didSeedSession = true
-        seedSession?(settings, viewport)
+        seedSession?(settings)
     }
 
     /// A 1 pt contrast-aware rule. `Divider()` renders noticeably heavier than the wireframe's
