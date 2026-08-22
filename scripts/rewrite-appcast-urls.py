@@ -14,7 +14,7 @@ from urllib.parse import quote, unquote, urlparse
 SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 SPARKLE_SHORT_VERSION = f"{{{SPARKLE_NS}}}shortVersionString"
 SPARKLE_RELEASE_NOTES_LINK = f"{{{SPARKLE_NS}}}releaseNotesLink"
-GITHUB_REPO = os.environ.get("GH_REPO", "Hemmingsson/macos-gltf-preview")
+GITHUB_REPO = os.environ.get("GH_REPO", "Hemmingsson/macos-gltf-inspector")
 GITHUB_RELEASE_BASE = f"https://github.com/{GITHUB_REPO}/releases/download"
 
 

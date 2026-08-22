@@ -311,7 +311,7 @@ enum EntityLoader {
         }
         let packed = try GLBBox.packSidecar(json) { uri in
             guard isAllowedSidecarURI(uri, assetDirectory: directoryURL) else {
-                throw GLBPreviewError.make(1021, "glTF sidecar URI is not a safe relative path")
+                throw GLTFInspectorError.make(1021, "glTF sidecar URI is not a safe relative path")
             }
             let decoded = uri.removingPercentEncoding ?? uri
             // Derive from the previewed file URL so a security-scoped .gltf
@@ -365,14 +365,14 @@ enum EntityLoader {
         if let sceneIndex {
             guard sceneIndex >= 0, sceneIndex < asset.scenes.count else {
                 AppLog.error(AppLog.load, "scene index \(sceneIndex) out of range for \(name)")
-                throw GLBPreviewError.make(1020, "The glTF asset does not contain scene index \(sceneIndex)")
+                throw GLTFInspectorError.make(1020, "The glTF asset does not contain scene index \(sceneIndex)")
             }
             scene = asset.scenes[sceneIndex]
         } else if let defaultScene = asset.defaultScene {
             scene = defaultScene
         } else {
             AppLog.error(AppLog.load, "no default scene for \(name)")
-            throw GLBPreviewError.make(1020, "The glTF asset did not specify a default scene")
+            throw GLTFInspectorError.make(1020, "The glTF asset did not specify a default scene")
         }
         let retryWithoutAnimations = includeAnimations && !asset.animations.isEmpty
         return try await MainActor.run {
@@ -409,7 +409,7 @@ enum EntityLoader {
                 AppLog.error(AppLog.load, error.localizedDescription)
             }
         }
-        throw convertFailure(from: lastError ?? GLBPreviewError.make(1022, "Failed to convert the glTF asset"))
+        throw convertFailure(from: lastError ?? GLTFInspectorError.make(1022, "Failed to convert the glTF asset"))
     }
 
     @MainActor
@@ -429,7 +429,7 @@ enum EntityLoader {
             )
         }
         guard let converted, modelComponentCount(in: converted) > 0 else {
-            throw GLBPreviewError.make(1022, "The glTF asset has no visible mesh")
+            throw GLTFInspectorError.make(1022, "The glTF asset has no visible mesh")
         }
         if buildDocument, document.animations.isEmpty {
             // Fallback when convert stamped no animations — same usable filter as playback.
@@ -458,10 +458,10 @@ enum EntityLoader {
 
     private static func convertFailure(from error: Error) -> NSError {
         let nsError = error as NSError
-        if nsError.domain == GLBPreviewError.domain, nsError.code == 1022 || nsError.code == 1023 {
+        if nsError.domain == GLTFInspectorError.domain, nsError.code == 1022 || nsError.code == 1023 {
             return nsError
         }
-        return GLBPreviewError.make(1022, "Failed to convert the glTF asset")
+        return GLTFInspectorError.make(1022, "Failed to convert the glTF asset")
     }
 
     /// Sidecars must stay inside the asset directory: no `..`, no absolute paths,

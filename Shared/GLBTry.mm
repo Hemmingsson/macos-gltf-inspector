@@ -15,7 +15,7 @@ BOOL GLBTry(void (^NS_NOESCAPE block)(void), NSError *_Nullable *_Nullable outEr
             if (reason.length == 0) {
                 reason = @"Unknown exception";
             }
-            *outError = [NSError errorWithDomain:@"GLBPreview"
+            *outError = [NSError errorWithDomain:@"lol.mattias.gltf-inspector"
                                             code:1023
                                         userInfo:@{NSLocalizedDescriptionKey: reason}];
         }

@@ -1,5 +1,5 @@
 # Xcode
-GLBPreview.xcodeproj/
+GLTFInspector.xcodeproj/
 xcuserdata/
 *.xcworkspace
 DerivedData/
@@ -38,7 +38,7 @@ sparkle_private_key.txt
 # Generated plists (xcodegen recreates these)
 PreviewExtension/Info.plist
 ThumbnailExtension/Info.plist
-GLBPreview/Info.plist
+GLTFInspector/Info.plist
 
 # Entitlements (xcodegen recreates these)
 PreviewExtension/PreviewExtension.entitlements

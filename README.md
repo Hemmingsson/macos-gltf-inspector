@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.png" width="175" alt="GLB Preview">
+  <img src="assets/icon.png" width="175" alt="glTF Inspector">
 </p>
 
-<h1 align="center">GLB Preview</h1>
+<h1 align="center">macOS glTF Inspector</h1>
 
 <p align="center">
   <strong>Native App and Finder Support for <code>.glb</code> and <code>.gltf</code> Using <a href="https://developer.apple.com/documentation/realitykit">RealityKit</a></strong><br>
@@ -36,8 +36,8 @@
 
 ## Install
 
-1. Download [GLBPreview.zip](https://github.com/Hemmingsson/macos-gltf-preview/releases/latest).
-2. Move `GLBPreview.app` to `/Applications`.
+1. Download [glTFInspector.zip](https://github.com/Hemmingsson/macos-gltf-inspector/releases/latest).
+2. Move `glTF Inspector.app` to `/Applications`.
 3. Control-click → **Open** (or allow under **System Settings → Privacy & Security**).
 4. Open the app once so the Quick Look preview and thumbnail extensions load.
 
@@ -53,8 +53,8 @@ This generates the Xcode project, builds, installs to `/Applications`, and check
 ```bash
 xcodegen generate
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
-  -derivedDataPath /tmp/GLBPreview-dd test
+  xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
+  -derivedDataPath /tmp/GLTFInspector-dd test
 ```
 
 ## How it works
@@ -72,7 +72,7 @@ flowchart LR
 
 Prepare rewrites materials and meshes RealityKit will not ingest, then the default scene is converted to a physically based entity on a turntable.
 
-The host app window is **`PreviewUI`** chrome (sidebar, inspector, pills, settings) over a real **`PreviewView`** canvas. Thin **`GLBPreview/Engine/`** adapters map the existing engine (`HostSidebarModel`, `EntityLoader`, `AppLook`) onto the UI seam.
+The host app window is **`PreviewUI`** chrome (sidebar, inspector, pills, settings) over a real **`PreviewView`** canvas. Thin **`GLTFInspector/Engine/`** adapters map the existing engine (`HostSidebarModel`, `EntityLoader`, `AppLook`) onto the UI seam.
 
 App and Quick Look show that entity in a `RealityView` with studio IBL for light and reflections — not a skybox. Quick Look is a light canvas (orbit, bottom-left facts, backdrop + auto-rotate). Finder thumbnails are a still from `RealityRenderer`.
 

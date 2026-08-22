@@ -45,7 +45,7 @@ Each window gets its own `@State`. Share process-wide settings via `@AppStorage`
 
 ```swift
 @main
-struct GLBPreviewApp: App {
+struct GLTFInspectorApp: App {
     var body: some Scene {
         WindowGroup {
             HostWindow()

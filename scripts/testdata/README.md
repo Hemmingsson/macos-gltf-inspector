@@ -2,7 +2,7 @@
 
 Small, committed glTF/GLB models for tests **and** for exercising the new UI's adaptive behaviour
 (DESIGN.md — *show only what the model has*). Tests reach them through
-[`GLBPreviewTests/TestFixtures.swift`](../../GLBPreviewTests/TestFixtures.swift), which resolves
+[`GLTFInspectorTests/TestFixtures.swift`](../../GLTFInspectorTests/TestFixtures.swift), which resolves
 paths from the source tree via `#filePath` — **fixtures are not bundled resources**, so adding a
 file here needs no `project.yml` change.
 
@@ -34,7 +34,7 @@ The `cube/` sidecar is regenerated separately with `python3 scripts/testdata/cub
 
 The last seven are on-disk stand-ins for adaptive UI (DESIGN.md — show only what the model has).
 The in-memory builders in
-[`TestGLBFixtures.swift`](../../GLBPreviewTests/TestGLBFixtures.swift) still cover byte-level edge
+[`TestGLBFixtures.swift`](../../GLTFInspectorTests/TestGLBFixtures.swift) still cover byte-level edge
 cases (primitive modes, malformed accessors, instancing) that don't belong on disk.
 
 `appcast-sample.xml` is a Sparkle update-feed fixture, unrelated to model loading.

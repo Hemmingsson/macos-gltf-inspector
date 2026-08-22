@@ -56,7 +56,7 @@ struct PreviewQuickLookChrome: View {
 
 extension View {
     /// QL glass button style. Named apart from PreviewUI's `previewGlassButtonStyle`
-    /// so both can compile into the GLBPreview target.
+    /// so both can compile into the GLTFInspector target.
     @ViewBuilder
     func quickLookGlassButtonStyle(prominent: Bool) -> some View {
         if prominent {

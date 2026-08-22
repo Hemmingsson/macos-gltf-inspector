@@ -65,11 +65,11 @@ static uint32_t *GLTFCopyUInt32IndexDataForMesh(draco::Mesh *mesh, size_t &outIn
 {
     NSData *bufferData = bufferView.buffer.data;
     if (bufferData == nil || bufferView.length <= 0) {
-        NSLog(@"[GLBPreview][draco] skip empty bufferView length=%ld", (long)bufferView.length);
+        NSLog(@"[GLTFInspector][draco] skip empty bufferView length=%ld", (long)bufferView.length);
         return nil;
     }
     if (bufferView.offset < 0 || (NSUInteger)(bufferView.offset + bufferView.length) > bufferData.length) {
-        NSLog(@"[GLBPreview][draco] skip OOB offset=%ld length=%ld buffer=%lu",
+        NSLog(@"[GLTFInspector][draco] skip OOB offset=%ld length=%ld buffer=%lu",
               (long)bufferView.offset, (long)bufferView.length, (unsigned long)bufferData.length);
         return nil;
     }
@@ -80,22 +80,22 @@ static uint32_t *GLTFCopyUInt32IndexDataForMesh(draco::Mesh *mesh, size_t &outIn
     draco::Decoder decoder;
     auto typeOrStatus = draco::Decoder::GetEncodedGeometryType(&buffer);
     if (!typeOrStatus.ok()) {
-        NSLog(@"[GLBPreview][draco] GetEncodedGeometryType failed");
+        NSLog(@"[GLTFInspector][draco] GetEncodedGeometryType failed");
         return nil;
     }
     if (typeOrStatus.value() != draco::TRIANGULAR_MESH) {
-        NSLog(@"[GLBPreview][draco] not a triangular mesh type=%d", (int)typeOrStatus.value());
+        NSLog(@"[GLTFInspector][draco] not a triangular mesh type=%d", (int)typeOrStatus.value());
         return nil;
     }
 
     auto meshOrStatus = decoder.DecodeMeshFromBuffer(&buffer);
     if (!meshOrStatus.ok()) {
-        NSLog(@"[GLBPreview][draco] DecodeMeshFromBuffer failed");
+        NSLog(@"[GLTFInspector][draco] DecodeMeshFromBuffer failed");
         return nil;
     }
     std::unique_ptr<draco::Mesh> mesh = std::move(meshOrStatus).value();
     draco::Mesh *meshPtr = mesh.get();
-    NSLog(@"[GLBPreview][draco] decoded points=%d faces=%d attributes=%lu bytes=%ld",
+    NSLog(@"[GLTFInspector][draco] decoded points=%d faces=%d attributes=%lu bytes=%ld",
           meshPtr->num_points(), meshPtr->num_faces(),
           (unsigned long)attributeMap.count, (long)bufferView.length);
 

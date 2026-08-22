@@ -1,7 +1,7 @@
 # Shared constants and helpers for archive.sh / appcast.sh / release.sh.
 # Source only; do not execute.
 
-GH_REPO="${GH_REPO:-Hemmingsson/macos-gltf-preview}"
+GH_REPO="${GH_REPO:-Hemmingsson/macos-gltf-inspector}"
 FEED_URL="https://github.com/${GH_REPO}/releases/latest/download/appcast.xml"
 PLACEHOLDER_ED_KEY="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 TEAM_ID="${TEAM_ID:-94A9N4B67S}"
@@ -57,14 +57,14 @@ PY
     return 1
   fi
   TAG="v${MARKETING}"
-  ZIP="$root/dist/GLBPreview-${MARKETING}.zip"
-  NOTES="$root/dist/GLBPreview-${MARKETING}.md"
+  ZIP="$root/dist/glTFInspector-${MARKETING}.zip"
+  NOTES="$root/dist/glTFInspector-${MARKETING}.md"
 }
 
 uses_placeholder_ed_key() {
   local root
   root="$(sparkle_root)"
-  grep -qF "$PLACEHOLDER_ED_KEY" "$root/project.yml" "$root/GLBPreview/GLBUpdateConfig.swift"
+  grep -qF "$PLACEHOLDER_ED_KEY" "$root/project.yml" "$root/GLTFInspector/UpdateConfig.swift"
 }
 
 zip_exported_app() {
@@ -72,7 +72,7 @@ zip_exported_app() {
   local zip_path="$2"
   (
     cd "$export_dir"
-    ditto -c -k --keepParent "GLBPreview.app" "$zip_path"
+    ditto -c -k --keepParent "glTF Inspector.app" "$zip_path"
   )
 }
 

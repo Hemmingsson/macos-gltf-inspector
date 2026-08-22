@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>GLB Preview Updates</title>
-    <item sparkle:version="3" sparkle:shortVersionString="1.2.0" sparkle:releaseNotesLink="file:///tmp/GLBPreview-1.2.0.md">
+    <title>glTF Inspector Updates</title>
+    <item sparkle:version="3" sparkle:shortVersionString="1.2.0" sparkle:releaseNotesLink="file:///tmp/glTFInspector-1.2.0.md">
       <title>Version 1.2.0</title>
-      <enclosure url="file:///tmp/GLBPreview 1.2.0.zip" sparkle:edSignature="signature-120" length="120" type="application/octet-stream" />
+      <enclosure url="file:///tmp/glTFInspector-1.2.0.zip" sparkle:edSignature="signature-120" length="120" type="application/octet-stream" />
     </item>
     <item>
       <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
-      <enclosure url="file:///tmp/GLBPreview-1.2.0.zip" sparkle:edSignature="abc" length="1" type="application/octet-stream" />
+      <enclosure url="file:///tmp/glTFInspector-1.2.0.zip" sparkle:edSignature="abc" length="1" type="application/octet-stream" />
     </item>
     <item sparkle:version="2" sparkle:shortVersionString="1.1.0">
       <title>Version 1.1.0</title>
-      <sparkle:releaseNotesLink>file:///tmp/GLBPreview-1.1.0.md</sparkle:releaseNotesLink>
-      <enclosure url="file:///tmp/releases/GLBPreview-1.1.0.zip" sparkle:edSignature="signature-110" length="110" type="application/octet-stream" />
+      <sparkle:releaseNotesLink>file:///tmp/glTFInspector-1.1.0.md</sparkle:releaseNotesLink>
+      <enclosure url="file:///tmp/releases/glTFInspector-1.1.0.zip" sparkle:edSignature="signature-110" length="110" type="application/octet-stream" />
     </item>
   </channel>
 </rss>

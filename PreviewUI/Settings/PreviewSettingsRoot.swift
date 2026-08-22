@@ -68,7 +68,7 @@ private struct GeneralSettingsPane<Store: SettingsDefaultsStore>: View {
     @State private var defaultAppError: String?
 
     private var showsDefaultApp: Bool {
-        Bundle.main.bundleIdentifier == "com.laurie.GLBPreview"
+        Bundle.main.bundleIdentifier == "lol.mattias.gltf-inspector"
     }
 
     var body: some View {
@@ -282,8 +282,8 @@ private struct AboutSettingsPane: View {
             Section {
                 LabeledContent {
                     Link(
-                        "github.com/Hemmingsson/macos-gltf-preview",
-                        destination: URL(string: "https://github.com/Hemmingsson/macos-gltf-preview")!
+                        "github.com/Hemmingsson/macos-gltf-inspector",
+                        destination: URL(string: "https://github.com/Hemmingsson/macos-gltf-inspector")!
                     )
                 } label: {
                     HStack(spacing: 16) {
@@ -305,7 +305,7 @@ private struct AboutSettingsPane: View {
     }
 
     private var appName: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "GLB Preview"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "glTF Inspector"
     }
 
     private var versionLine: String {

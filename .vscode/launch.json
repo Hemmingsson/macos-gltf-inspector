@@ -4,32 +4,32 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "GLBPreview (Debug)",
-      "program": "/tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app",
+      "name": "GLTFInspector (Debug)",
+      "program": "/tmp/GLTFInspector-dd/Build/Products/Debug/glTF Inspector.app",
       "cwd": "${workspaceFolder}",
-      "preLaunchTask": "xcodebuild: GLBPreview"
+      "preLaunchTask": "xcodebuild: GLTFInspector"
     },
     {
       "type": "lldb",
       "request": "launch",
-      "name": "GLBPreview (Debug) + tiny.glb",
-      "program": "/tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app",
+      "name": "GLTFInspector (Debug) + tiny.glb",
+      "program": "/tmp/GLTFInspector-dd/Build/Products/Debug/glTF Inspector.app",
       "cwd": "${workspaceFolder}",
       "args": ["${workspaceFolder}/scripts/tiny.glb"],
-      "preLaunchTask": "xcodebuild: GLBPreview"
+      "preLaunchTask": "xcodebuild: GLTFInspector"
     },
     {
       "type": "lldb",
       "request": "launch",
-      "name": "GLBPreview (/Applications)",
-      "program": "/Applications/GLBPreview.app",
+      "name": "glTF Inspector (/Applications)",
+      "program": "/Applications/glTF Inspector.app",
       "cwd": "${workspaceFolder}"
     },
     {
       "type": "lldb",
       "request": "attach",
-      "name": "Attach GLBPreview",
-      "program": "/tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app"
+      "name": "Attach glTF Inspector",
+      "program": "/tmp/GLTFInspector-dd/Build/Products/Debug/glTF Inspector.app"
     }
   ]
 }

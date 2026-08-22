@@ -9,7 +9,7 @@ file, no `.bin` sidecar, nothing to download.
 
 These mirror the JSON that the passing Swift builders emit
 (`SceneGraphConvertTests`, `SessionDocumentTests`, `MorphSkeletonTests`), so they
-stay valid. Catalogue: `scripts/testdata/README.md`. Accessor: `GLBPreviewTests/TestFixtures.swift`.
+stay valid. Catalogue: `scripts/testdata/README.md`. Accessor: `GLTFInspectorTests/TestFixtures.swift`.
 
 Pure stdlib. Re-run after editing:  python3 scripts/testdata/make_fixtures.py
 """

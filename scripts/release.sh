@@ -64,7 +64,7 @@ print_pipeline() {
   echo "  7. ./scripts/appcast.sh $ZIP"
   echo "  8. collect zip, notes.md if present, dist/appcast.xml, dist/updates/*.delta"
   echo "  9. gh release create ${TAG:-v?} (notes file or Build ${BUILD:-?}. )"
-  echo "  10. also upload zip as GLBPreview.zip (stable latest download name)"
+  echo "  10. also upload zip as glTFInspector.zip (stable latest download name)"
   echo "  11. print release URL and $FEED_URL"
 }
 
@@ -109,7 +109,7 @@ if [[ "$PREFLIGHT" -eq 1 ]]; then
   echo
 
   if uses_placeholder_ed_key; then
-    echo "warning: GLBUpdateConfig/project.yml still uses the placeholder Sparkle public key" >&2
+    echo "warning: UpdateConfig/project.yml still uses the placeholder Sparkle public key" >&2
   fi
   echo
 
@@ -158,7 +158,7 @@ parse_project_versions || exit 1
 require_newer_build || exit 1
 
 if uses_placeholder_ed_key; then
-  echo "refusing to publish with the placeholder Sparkle public key. Run generate_keys and paste SUPublicEDKey into project.yml and GLBUpdateConfig.publicEdKey." >&2
+  echo "refusing to publish with the placeholder Sparkle public key. Run generate_keys and paste SUPublicEDKey into project.yml and UpdateConfig.publicEdKey." >&2
   exit 1
 fi
 
@@ -167,7 +167,7 @@ if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "releasing GLB Preview ${MARKETING} (${BUILD}) as $TAG"
+echo "releasing glTF Inspector ${MARKETING} (${BUILD}) as $TAG"
 "$ARCHIVE_SH"
 "$APPCAST_SH" "$ZIP"
 
@@ -182,7 +182,7 @@ shopt -s nullglob
 assets+=("$ROOT/dist/updates"/*.delta)
 shopt -u nullglob
 
-create_args=(release create "$TAG" --repo "$GH_REPO" --title "GLB Preview ${MARKETING}")
+create_args=(release create "$TAG" --repo "$GH_REPO" --title "glTF Inspector ${MARKETING}")
 if [[ -f "$NOTES" ]]; then
   create_args+=(--notes-file "$NOTES")
 else
@@ -193,8 +193,8 @@ create_args+=("${assets[@]}")
 gh "${create_args[@]}"
 
 # Stable name so README's latest zip link keeps working.
-cp "$ZIP" "$ROOT/dist/GLBPreview.zip"
-gh release upload "$TAG" "$ROOT/dist/GLBPreview.zip" --repo "$GH_REPO" --clobber
+cp "$ZIP" "$ROOT/dist/glTFInspector.zip"
+gh release upload "$TAG" "$ROOT/dist/glTFInspector.zip" --repo "$GH_REPO" --clobber
 
 echo "ok https://github.com/${GH_REPO}/releases/tag/${TAG}"
 echo "feed $FEED_URL"

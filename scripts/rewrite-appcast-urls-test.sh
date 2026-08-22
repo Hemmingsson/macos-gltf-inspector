@@ -17,10 +17,9 @@ cp "$fixture" "$tmp"
 "$ROOT/scripts/rewrite-appcast-urls.py" "$tmp"
 
 base="https://github.com/${GH_REPO}/releases/download"
-grep -F "${base}/v1.2.0/GLBPreview%201.2.0.zip" "$tmp" >/dev/null
-grep -F "${base}/v1.2.0/GLBPreview-1.2.0.zip" "$tmp" >/dev/null
-grep -F "${base}/v1.1.0/GLBPreview-1.1.0.zip" "$tmp" >/dev/null
-grep -F "${base}/v1.1.0/GLBPreview-1.1.0.md" "$tmp" >/dev/null
-grep -F "${base}/v1.2.0/GLBPreview-1.2.0.md" "$tmp" >/dev/null
+grep -F "${base}/v1.2.0/glTFInspector-1.2.0.zip" "$tmp" >/dev/null
+grep -F "${base}/v1.1.0/glTFInspector-1.1.0.zip" "$tmp" >/dev/null
+grep -F "${base}/v1.1.0/glTFInspector-1.1.0.md" "$tmp" >/dev/null
+grep -F "${base}/v1.2.0/glTFInspector-1.2.0.md" "$tmp" >/dev/null
 
 echo "ok"

@@ -15,9 +15,9 @@
       }
     },
     {
-      "label": "xcodebuild: GLBPreview",
+      "label": "xcodebuild: GLTFInspector",
       "type": "shell",
-      "command": "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -scheme GLBPreview -destination 'platform=macOS' -derivedDataPath /tmp/GLBPreview-dd build",
+      "command": "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -scheme GLTFInspector -destination 'platform=macOS' -derivedDataPath /tmp/GLTFInspector-dd build",
       "options": {
         "cwd": "${workspaceFolder}"
       },

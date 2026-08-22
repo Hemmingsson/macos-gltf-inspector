@@ -4,7 +4,7 @@ import os
 /// Failures and rare framing/lighting notes. Do not add per-frame or load-path chatter —
 /// that made Spacebar hitch.
 enum AppLog {
-    static let subsystem = "com.laurie.GLBPreview"
+    static let subsystem = "lol.mattias.gltf-inspector"
 
     static let load = Logger(subsystem: subsystem, category: "load")
     static let preview = Logger(subsystem: subsystem, category: "preview")

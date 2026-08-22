@@ -30,8 +30,8 @@ Add a local package only when two *products* must compile the same code:
 - Platforms in `Package.swift` match the documented target (macOS 26 / iOS 26). Do not invent 27.
 
 ```
-GLBPreview.xcodeproj
-GLBPreview/          # host UI
+GLTFInspector.xcodeproj
+GLTFInspector/          # host UI
 PreviewExtension/
 ThumbnailExtension/
 Shared/              # same sources in all three targets — or one local package if Xcode target membership becomes painful

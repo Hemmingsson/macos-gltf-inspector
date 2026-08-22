@@ -1,6 +1,6 @@
-name: GLBPreview
+name: GLTFInspector
 options:
-  bundleIdPrefix: com.laurie
+  bundleIdPrefix: lol.mattias
   deploymentTarget:
     macOS: "26.0"
   fileTypes:
@@ -9,16 +9,16 @@ options:
       buildPhase: resources
 
 schemes:
-    GLBPreview:
+    GLTFInspector:
       build:
         targets:
-          GLBPreview: all
+          GLTFInspector: all
       run:
         config: Debug
       test:
         config: Debug
         targets:
-          - GLBPreviewTests
+          - GLTFInspectorTests
 
 # Shared across every target so signing and versions live in one place.
 settings:
@@ -28,7 +28,7 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "1.1"
     CURRENT_PROJECT_VERSION: "4"
-    SWIFT_OBJC_BRIDGING_HEADER: Shared/GLBPreview-Bridging-Header.h
+    SWIFT_OBJC_BRIDGING_HEADER: Shared/GLTFInspector-Bridging-Header.h
 
 packages:
   Sparkle:
@@ -42,11 +42,11 @@ packages:
     from: "1.5.7"
 
 targets:
-  GLBPreview:
+  GLTFInspector:
     type: application
     platform: macOS
     sources:
-      - GLBPreview
+      - GLTFInspector
       - PreviewUI
       - path: assets/ICON.icon
         type: file
@@ -69,9 +69,10 @@ targets:
           - NOTICES
         buildPhase: resources
     info:
-      path: GLBPreview/Info.plist
+      path: GLTFInspector/Info.plist
       properties:
         CFBundleIconName: ICON
+        CFBundleDisplayName: glTF Inspector
         CFBundleDocumentTypes:
           - CFBundleTypeName: GL Transmission Format Binary
             CFBundleTypeRole: Viewer
@@ -121,14 +122,16 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        SUFeedURL: https://github.com/Hemmingsson/macos-gltf-preview/releases/latest/download/appcast.xml
+        SUFeedURL: https://github.com/Hemmingsson/macos-gltf-inspector/releases/latest/download/appcast.xml
         SUPublicEDKey: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
         SUEnableAutomaticChecks: true
         SUAutomaticallyUpdate: false
         SUAllowsAutomaticUpdates: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview
+        PRODUCT_NAME: glTF Inspector
+        PRODUCT_MODULE_NAME: GLTFInspector
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_DEBUG_DYLIB: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: ICON
@@ -186,7 +189,7 @@ targets:
     info:
       path: PreviewExtension/Info.plist
       properties:
-        CFBundleDisplayName: GLB Preview
+        CFBundleDisplayName: glTF Inspector
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:
@@ -199,7 +202,7 @@ targets:
             QLSupportsSearchableItems: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview.PreviewExtension
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.PreviewExtension
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
         ENABLE_DEBUG_DYLIB: NO
@@ -250,7 +253,7 @@ targets:
     info:
       path: ThumbnailExtension/Info.plist
       properties:
-        CFBundleDisplayName: GLB Thumbnail
+        CFBundleDisplayName: glTF Inspector
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:
@@ -263,7 +266,7 @@ targets:
             QLSupportsSearchableItems: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreview.ThumbnailExtension
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.ThumbnailExtension
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
         ENABLE_DEBUG_DYLIB: NO
@@ -271,20 +274,22 @@ targets:
       - package: GLTFKit2
       - package: DracoSwift
 
-  GLBPreviewTests:
+  GLTFInspectorTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - GLBPreviewTests
+      - GLTFInspectorTests
       - path: assets/ibl/khronos
         type: file
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.laurie.GLBPreviewTests
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.tests
         GENERATE_INFOPLIST_FILE: YES
         ENABLE_TESTING_SEARCH_PATHS: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/glTF Inspector.app/Contents/MacOS/glTF Inspector"
+        BUNDLE_LOADER: "$(TEST_HOST)"
     dependencies:
-      - target: GLBPreview
+      - target: GLTFInspector
       - package: GLTFKit2
       - package: DracoSwift

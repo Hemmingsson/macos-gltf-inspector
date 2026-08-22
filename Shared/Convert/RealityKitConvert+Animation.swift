@@ -118,7 +118,7 @@ extension RealityKitConvert {
         }
 
         if animations.isEmpty {
-            throw GLBPreviewError.make(1022, "animation \(name) produced no channels")
+            throw GLTFInspectorError.make(1022, "animation \(name) produced no channels")
         }
         if animations.count == 1 {
             return try AnimationResource.generate(with: animations[0])

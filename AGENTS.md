@@ -1,15 +1,15 @@
-# GLB Preview
+# glTF Inspector
 
-macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/` (+ `Shared/Convert/`).
+macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLTFInspector` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/` (+ `Shared/Convert/`).
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
 | `PreviewUI/` | Host chrome over seam protocols (`SceneModel`, `ViewportController`, …). **Do not import `Shared/`.** |
-| `GLBPreview/Engine/` | `Engine*` adapters — map host engine types to the seam. No PreviewUI rewrites. |
-| `GLBPreview/HostShellRootView.swift` | Document window root: `ShellRootView` + adapters + real `PreviewView` canvas. |
-| `GLBPreview/HostSidebarModel.swift` | Selection, scene/variant re-convert, visibility — guts behind `EngineSelectionModel`. |
+| `GLTFInspector/Engine/` | `Engine*` adapters — map host engine types to the seam. No PreviewUI rewrites. |
+| `GLTFInspector/HostShellRootView.swift` | Document window root: `ShellRootView` + adapters + real `PreviewView` canvas. |
+| `GLTFInspector/HostSidebarModel.swift` | Selection, scene/variant re-convert, visibility — guts behind `EngineSelectionModel`. |
 | `Shared/PreviewScene.swift` | RealityView host. **Host-bare** when a sidebar is present (`showsInlineChrome == false`); Quick Look keeps minimal inlined chrome via `PreviewQuickLookChrome.swift`. |
 | `Shared/PreviewChrome.swift` | Interaction + hosting helpers shared by host and QL. |
 
@@ -29,13 +29,13 @@ Closest practical **1:1** glTF rendering via **native RealityKit** on Mac. Prefe
 
 Signing team: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof is still PNG via `StillRenderProofTests`.
 
-Test fixtures: reach on-disk models through `GLBPreviewTests/TestFixtures.swift` (not the bundle — read via `#filePath`); catalogue + regen in `scripts/testdata/README.md`.
+Test fixtures: reach on-disk models through `GLTFInspectorTests/TestFixtures.swift` (not the bundle — read via `#filePath`); catalogue + regen in `scripts/testdata/README.md`.
 
 ```bash
-xcodegen generate   # required: GLBPreview.xcodeproj is gitignored
+xcodegen generate   # required: GLTFInspector.xcodeproj is gitignored
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
-  -derivedDataPath /tmp/GLBPreview-dd test
+  xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
+  -derivedDataPath /tmp/GLTFInspector-dd test
 ```
 
 Champion convert ideas kept in code: cutout-as-mask BLEND, packed SIMD/`float3` meshes, material identity cache, skeletal densify ≤30 fps. Do not re-bench CreateOptions/mip/Metal-upload folklore without new measured evidence naming which assets move; residual wall is RealityKit `TextureResource.generate` on large rasters.
@@ -73,8 +73,8 @@ Open path is model only (`EntityLoader.load` → `.ready` / `.failed`). Prefetch
 
 ```bash
 ./scripts/build.sh
-open -a /Applications/GLBPreview.app /path/to/file.glb
-log stream --style compact --info --predicate 'subsystem == "com.laurie.GLBPreview" OR (process == "GLBPreview" AND composedMessage CONTAINS "Modifying state")'
+open -a "/Applications/glTF Inspector.app" /path/to/file.glb
+log stream --style compact --info --predicate 'subsystem == "lol.mattias.gltf-inspector" OR (process == "glTF Inspector" AND composedMessage CONTAINS "Modifying state")'
 # Expect: one "open start", one "open ready" (or "open failed"); Modifying state ≈ 0.
 ```
 

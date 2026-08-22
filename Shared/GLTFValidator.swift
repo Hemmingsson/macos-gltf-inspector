@@ -62,7 +62,7 @@ enum GLTFValidationState: Sendable, Equatable {
 /// Does not block model open — call after first paint.
 enum GLTFValidator {
     private static let scriptName = "gltf_validator.dart.js"
-    private static let queue = DispatchQueue(label: "com.laurie.GLBPreview.gltf-validator", qos: .utility)
+    private static let queue = DispatchQueue(label: "lol.mattias.gltf-inspector.gltf-validator", qos: .utility)
 
     /// Raw file/byte ceiling before base64→JavaScriptCore.
     /// Above this we soft-skip: Dart validator expands the asset via `atob` into a `Uint8Array`

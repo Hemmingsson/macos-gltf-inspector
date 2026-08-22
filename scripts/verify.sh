@@ -7,7 +7,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="/Applications/GLBPreview.app"
+APP="/Applications/glTF Inspector.app"
 
 for arg in "$@"; do
   case "$arg" in
@@ -35,7 +35,7 @@ for plug in PreviewExtension.appex ThumbnailExtension.appex; do
 done
 
 plugins="$(pluginkit -mAvvv)"
-for id in com.laurie.GLBPreview.PreviewExtension com.laurie.GLBPreview.ThumbnailExtension; do
+for id in lol.mattias.gltf-inspector.PreviewExtension lol.mattias.gltf-inspector.ThumbnailExtension; do
   if ! grep -q "$id" <<<"$plugins"; then
     echo "pluginkit does not list $id — open $APP once, then qlmanage -r" >&2
     exit 1
@@ -45,4 +45,4 @@ done
 echo "ok $APP"
 echo "ok PreviewExtension + ThumbnailExtension registered"
 echo "proof:    $ROOT/scripts/proof.sh"
-echo "logs:     log stream --style compact --info --predicate 'subsystem == \"com.laurie.GLBPreview\"'"
+echo "logs:     log stream --style compact --info --predicate 'subsystem == \"lol.mattias.gltf-inspector\"'"

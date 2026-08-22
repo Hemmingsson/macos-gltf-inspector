@@ -11,7 +11,7 @@ DIST_DIR="$ROOT/dist"
 UPDATES_DIR="$DIST_DIR/updates"
 
 if [[ $# -gt 1 ]]; then
-  echo "usage: $0 [dist/GLBPreview-*.zip]" >&2
+  echo "usage: $0 [dist/glTFInspector-*.zip]" >&2
   exit 2
 fi
 
@@ -20,7 +20,7 @@ if [[ $# -eq 1 ]]; then
   [[ "$zip_path" = /* ]] || zip_path="$ROOT/$zip_path"
 else
   shopt -s nullglob
-  zips=("$DIST_DIR"/GLBPreview-*.zip)
+  zips=("$DIST_DIR"/glTFInspector-*.zip)
   shopt -u nullglob
   if [[ ${#zips[@]} -eq 0 ]]; then
     echo "missing zip (run ./scripts/archive.sh)" >&2

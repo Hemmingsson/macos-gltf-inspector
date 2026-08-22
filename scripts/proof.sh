@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # Reliable visual proof. qlmanage can hang on a stale system plugin;
-# the still-renderer test writes /tmp/GLBPreview-proof.png instead.
+# the still-renderer test writes /tmp/GLTFInspector-proof.png instead.
 #
 #   ./scripts/proof.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="${GLB_PROOF_PNG:-/tmp/GLBPreview-proof.png}"
-QL_DIR="${TMPDIR:-/tmp}/GLBPreview-qlmanage"
+OUT="${GLB_PROOF_PNG:-/tmp/GLTFInspector-proof.png}"
+QL_DIR="${TMPDIR:-/tmp}/GLTFInspector-qlmanage"
 rm -rf "$QL_DIR"
 mkdir -p "$QL_DIR"
 
 echo "still renderer: xcodebuild StillRenderProofTests → $OUT"
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
-  -derivedDataPath /tmp/GLBPreview-dd \
-  -only-testing:GLBPreviewTests/StillRenderProofTests \
+  xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
+  -derivedDataPath /tmp/GLTFInspector-dd \
+  -only-testing:GLTFInspectorTests/StillRenderProofTests \
   test
 
 if [[ ! -f "$OUT" ]]; then

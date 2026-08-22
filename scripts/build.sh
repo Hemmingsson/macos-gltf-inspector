@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate, build, and install GLBPreview.app to /Applications, then check plugins.
+# Generate, build, and install "glTF Inspector.app" to /Applications, then check plugins.
 #
 #   ./scripts/build.sh
 #   ./scripts/verify.sh            # check only (no rebuild)
@@ -7,7 +7,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="/Applications/GLBPreview.app"
+APP="/Applications/glTF Inspector.app"
 
 for arg in "$@"; do
   case "$arg" in
@@ -27,11 +27,11 @@ command -v xcodegen >/dev/null || { echo "install XcodeGen: brew install xcodege
 cd "$ROOT"
 xcodegen generate
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -scheme GLBPreview -destination 'platform=macOS' \
-  -derivedDataPath /tmp/GLBPreview-dd build
+  xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
+  -derivedDataPath /tmp/GLTFInspector-dd build
 rm -rf "$APP"
-cp -R /tmp/GLBPreview-dd/Build/Products/Debug/GLBPreview.app "$APP"
-rm -rf "$APP/Contents/PlugIns/GLBPreviewTests.xctest"
+cp -R "/tmp/GLTFInspector-dd/Build/Products/Debug/glTF Inspector.app" "$APP"
+rm -rf "$APP/Contents/PlugIns/GLTFInspectorTests.xctest"
 qlmanage -r
 open "$APP"
 sleep 2

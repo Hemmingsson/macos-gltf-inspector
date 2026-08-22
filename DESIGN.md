@@ -1,4 +1,4 @@
-# GLB Preview — Design Guidelines
+# glTF Inspector — Design Guidelines
 
 **The model is the product.** Chrome recedes, the file stays in focus, and the user
 stays in control of how it's shown. Native macOS, slim, honest.

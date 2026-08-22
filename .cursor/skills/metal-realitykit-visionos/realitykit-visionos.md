@@ -14,7 +14,7 @@ Defer SwiftUI observation/`@State` rules to `swiftui-expert-skill`. Prefer `@Obs
 
 ## Mac landmines
 
-Hard rules from shipping a macOS RealityKit host (GLB Preview). Violating these causes infinite SwiftUI loops, hung spinners, or `EXC_BREAKPOINT`.
+Hard rules from shipping a macOS RealityKit host (glTF Inspector). Violating these causes infinite SwiftUI loops, hung spinners, or `EXC_BREAKPOINT`.
 
 1. **Never mutate `@State` / `@Observable` in `View.init` or RealityView `make`/`update`.** Only assign stored props / `_State(initialValue:)` in `init`. Floor/orbit/camera sync belongs in `onAppear` or explicit actions. If `make`/`update` must schedule a write: `Task { @MainActor in … }`.
 2. **Do not iterate `RealityViewCameraContent.entities` during update** — crash. Own a `lookRoot` (or similar) entity; put lights under it.

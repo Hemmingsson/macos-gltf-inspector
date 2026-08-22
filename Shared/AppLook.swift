@@ -33,7 +33,7 @@ struct AppLook: Codable, Equatable, Sendable {
 
     static func supportDirectory() -> URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("GLBPreview", isDirectory: true)
+            .appendingPathComponent("glTF Inspector", isDirectory: true)
     }
 
     static func lookURL(in directory: URL) -> URL {

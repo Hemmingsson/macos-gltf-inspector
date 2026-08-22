@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Release-archive GLBPreview, notarize, staple, zip.
+# Release-archive glTF Inspector, notarize, staple, zip.
 #
 #   ./scripts/archive.sh
 #   ./scripts/archive.sh --help
@@ -19,7 +19,7 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
 usage() {
   cat <<'EOF'
-Release-archive GLBPreview, notarize, staple, zip.
+Release-archive glTF Inspector, notarize, staple, zip.
 
   ./scripts/archive.sh
   ./scripts/archive.sh --help
@@ -67,9 +67,9 @@ print_pipeline() {
   echo "  2. xcodegen generate"
   echo "  3. xcodebuild archive Release generic/platform=macOS"
   echo "     derivedData: $DD"
-  echo "     archive: $ARCHIVE_DIR/GLBPreview.xcarchive"
+  echo "     archive: $ARCHIVE_DIR/GLTFInspector.xcarchive"
   echo "  4. xcodebuild -exportArchive ($EXPORT_OPTIONS) -> $EXPORT_DIR"
-  echo "  5. strip GLBPreviewTests.xctest if present"
+  echo "  5. strip GLTFInspectorTests.xctest if present"
   echo "  6. codesign --deep --verify --strict"
   echo "  7. assert PreviewExtension.appex, ThumbnailExtension.appex, Sparkle.framework"
   echo "  8. ditto -c -k --keepParent -> $ZIP"
@@ -83,7 +83,7 @@ command -v xcodegen >/dev/null || { echo "install XcodeGen: brew install xcodege
 parse_project_versions || exit 1
 
 if [[ "$PREFLIGHT" -eq 1 ]]; then
-  echo "preflight GLBPreview ${MARKETING} (${BUILD})"
+  echo "preflight glTF Inspector ${MARKETING} (${BUILD})"
   echo
   echo "tools:"
   tool_status xcodegen
@@ -137,26 +137,26 @@ if ! has_notary_profile; then
   exit 1
 fi
 
-echo "archiving GLBPreview ${MARKETING} (${BUILD})"
+echo "archiving glTF Inspector ${MARKETING} (${BUILD})"
 xcodegen generate
 rm -rf "$ARCHIVE_DIR" "$EXPORT_DIR"
 mkdir -p "$ARCHIVE_DIR" "$EXPORT_DIR" "$ROOT/dist"
 
-xcodebuild -scheme GLBPreview -destination 'generic/platform=macOS' \
+xcodebuild -scheme GLTFInspector -destination 'generic/platform=macOS' \
   -configuration Release \
   -derivedDataPath "$DD" \
-  -archivePath "$ARCHIVE_DIR/GLBPreview.xcarchive" \
+  -archivePath "$ARCHIVE_DIR/GLTFInspector.xcarchive" \
   archive
 
 xcodebuild -exportArchive \
-  -archivePath "$ARCHIVE_DIR/GLBPreview.xcarchive" \
+  -archivePath "$ARCHIVE_DIR/GLTFInspector.xcarchive" \
   -exportPath "$EXPORT_DIR" \
   -exportOptionsPlist "$EXPORT_OPTIONS"
 
-APP="$EXPORT_DIR/GLBPreview.app"
+APP="$EXPORT_DIR/glTF Inspector.app"
 [[ -d "$APP" ]] || { echo "missing exported $APP" >&2; exit 1; }
 
-rm -rf "$APP/Contents/PlugIns/GLBPreviewTests.xctest"
+rm -rf "$APP/Contents/PlugIns/GLTFInspectorTests.xctest"
 
 codesign --deep --verify --strict "$APP"
 test -d "$APP/Contents/PlugIns/PreviewExtension.appex"
