@@ -20,6 +20,7 @@ Router for this repo’s macOS work. Read a module’s `MODULE.md`, then only th
 |------|--------|
 | SwiftUI views, state, lists, animation, Liquid Glass **API** | `swiftui-expert-skill` |
 | Metal / RealityKit / RealityView | `metal-realitykit-visionos` |
+| Verify UI (AX, Peekaboo, glass — no headless UI snapshots) | `macos-app-testing` |
 | Swift 6 isolation, Sendable, MainActor, actors | `coding-best-practices/` |
 | UserDefaults / AppStorage / Core Data legacy | `coding-best-practices/data-persistence.md` |
 | App size → architecture | `architecture-patterns/` |
