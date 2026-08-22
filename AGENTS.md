@@ -2,7 +2,7 @@
 
 macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/` (+ `Shared/Convert/`).
 
-## Layout (post PreviewUI cutover)
+## Layout
 
 | Path | Role |
 | --- | --- |
@@ -13,8 +13,6 @@ macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview`
 | `PreviewUIShell/` | Mock-driven shell for UI work. **Never ships.** |
 | `Shared/PreviewScene.swift` | RealityView host. **Host-bare** when a sidebar is present (`showsInlineChrome == false`); Quick Look keeps minimal inlined chrome via `PreviewQuickLookChrome.swift`. |
 | `Shared/PreviewChrome.swift` | Interaction + hosting helpers shared by host and QL. |
-
-Cutover plan: `UI-REBUILD/CUTOVER-PLAN.md`. Active integration branch: **`ui-rebuild`** in `.worktrees/ui`.
 
 ## Goal
 
@@ -41,7 +39,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   -derivedDataPath /tmp/GLBPreview-dd test
 ```
 
-Load-time work already shipped (−54% vs an old baseline on a frozen corpus). Champion ideas kept in code: cutout-as-mask BLEND, packed SIMD/`float3` meshes, material identity cache, skeletal densify ≤30 fps. Do not re-bench CreateOptions/mip/Metal-upload folklore without new measured evidence naming which assets move; residual wall is RealityKit `TextureResource.generate` on large rasters.
+Champion convert ideas kept in code: cutout-as-mask BLEND, packed SIMD/`float3` meshes, material identity cache, skeletal densify ≤30 fps. Do not re-bench CreateOptions/mip/Metal-upload folklore without new measured evidence naming which assets move; residual wall is RealityKit `TextureResource.generate` on large rasters.
 
 ## Pitfalls — do not repeat
 

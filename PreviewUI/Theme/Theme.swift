@@ -3,10 +3,8 @@ import AppKit
 
 /// The one source of truth for colour and frame metrics.
 ///
-/// Light values are the `:root` custom properties from `UI-REBUILD/Main-html/Main.dc.html`
-/// (and `Inspect-html/Inspect.dc.html`, which shares them). The wireframes only specify the
-/// light theme, so each token carries a dark counterpart chosen to keep the same *relationship*
-/// (chrome sits behind, canvas sits back, text2 is quieter than text, text3 quieter still).
+/// Light tokens are the design palette (chrome behind, canvas back, text2 quieter than text,
+/// text3 quieter still). Dark counterparts keep those same relationships.
 ///
 /// Views must never hard-code a colour: every surface, hairline, label and glTF-type tint comes
 /// from here, so appearance switches for free and a palette tweak is one edit.
