@@ -45,6 +45,8 @@ public class RealityKitConvert {
     var skeletonTransformsByJointName : [String: Transform] = [:]
     var sourceAsset: GLTFAsset?
     var ignoreBakedEmissive = false
+    /// Last convert’s baked-emissive drop decision (MainActor convert path only).
+    @MainActor static var lastDroppedBakedEmissive = false
 
     @MainActor static func convert(
         scene: GLTFScene,
@@ -73,6 +75,7 @@ public class RealityKitConvert {
         }
         let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))
         ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(emissiveHints)
+        Self.lastDroppedBakedEmissive = ignoreBakedEmissive
         if ignoreBakedEmissive {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }

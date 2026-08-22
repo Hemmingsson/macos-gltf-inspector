@@ -19,7 +19,10 @@ enum PreviewFloor {
 
     /// Helper names skipped by Fit framing (`modelBounds`) and selection dim walks.
     static func isHelperName(_ name: String) -> Bool {
-        name == entityName || name == selectionBoxName
+        name == entityName
+            || name == selectionBoxName
+            || name == PreviewCamera.worldOriginGizmoName
+            || PreviewSkeletonOverlay.isHelperName(name)
     }
 
     /// Floor root named `previewFloor`, parented under the turntable in pivot space.

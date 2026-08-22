@@ -46,4 +46,11 @@ struct EmissiveBoostTests {
             "materials": [["pbrMetallicRoughness": ["metallicFactor": 0]]],
         ]))
     }
+
+    @Test func sessionIBLExponentAddsExposureEV() {
+        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: false, exposureEV: 0) == 0)
+        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: false, exposureEV: 1) == 1)
+        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: true, exposureEV: 0) == -2)
+        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: true, exposureEV: 0.5) == -1.5)
+    }
 }

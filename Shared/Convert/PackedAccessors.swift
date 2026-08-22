@@ -89,6 +89,18 @@ enum Packed {
         }
     }
 
+    /// glTF `COLOR_*` is VEC3 or VEC4; RealityKit mesh colors are always RGBA.
+    static func color4Array(for accessor: GLTFAccessor) -> [SIMD4<Float>]? {
+        switch accessor.dimension {
+        case .vector3:
+            return float3Array(for: accessor)?.map { SIMD4($0.x, $0.y, $0.z, 1) }
+        case .vector4:
+            return float4Array(for: accessor)
+        default:
+            return nil
+        }
+    }
+
     static func quatfArray(for accessor: GLTFAccessor) -> [simd_quatf]? {
         float4Array(for: accessor)?.map { simd_quaternion($0.x, $0.y, $0.z, $0.w) }
     }

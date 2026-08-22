@@ -9,11 +9,10 @@ depends only on "the seam" (§0). The shell app injects mocks; the real app inje
 engine-backed conformances. **At cutover there is no UI rewrite, only a different
 implementation injected.**
 
-> **Re-verified 2026-08-21 against `main`.** Engine adapters stay thin — extend
-> `makeDocument` / `HostSidebarModel` / `PreviewSelectionVisuals`; do not re-parse glTF or
-> rebuild selection. `GLTFSessionDocument` is **slim** (no lights/materials/TRS). Hide exists;
-> isolate does not. `PreviewDebugMode.available(from:)` is the public channel API. Details:
-> `ENGINE-FEATURE-PACKS.md` headline. The §0 "gap" table below can lag — trust that headline.
+> **Post-`engine-features` (lands on main with this branch):** `GLTFSessionDocument` now
+> persists typed nodes/TRS, lights, materials, skins, morphs; isolate + selection detail exist.
+> Engine adapters stay thin — do not re-parse glTF. Channels via
+> `PreviewDebugMode.available(from:)`. Details: `ENGINE-FEATURE-PACKS.md`.
 
 ```
         ┌─────────────────────────────┐
@@ -50,10 +49,10 @@ they let the UI track and the engine track run fully in parallel.
 
 | Protocol | Backed today by | Gap to fill |
 |---|---|---|
-| `SceneModel` | slim `GLTFSessionDocument` + `PreviewStats` | persist node kind/TRS/mesh/light/skin, lights, materials (P12–P14); dimensions; max-res; `validation` (P17); `pipelineReport` (P18) |
-| `Availability` | derive from document + `PreviewStats` + `PreviewDebugMode.available(from:)` | compute the booleans |
-| `ViewportController` | backdrop/floor/auto-rotate/debug-mode/Fit | center (P1) · projection (P2) · presets (P3) · reset (P4) · lighting (P5) · screenshot (P19) |
-| `SelectionModel` | `HostSidebarModel` (`selectedNodeIndex`, `hide`) + `PreviewSelectionVisuals` | isolate (P31, not built yet) · detail view (P32) |
+| `SceneModel` | `GLTFSessionDocument` (typed nodes/lights/materials/skins/morphs) + `PreviewStats` + `ModelDimensions` + validation + `PipelineReport` | PreviewUI adapter only (engine packs P10–P18/P41 **DONE** on features) |
+| `Availability` | derive from document + `PreviewStats` + `PreviewDebugMode.available(from:)` | compute the booleans in the adapter |
+| `ViewportController` | backdrop/floor/auto-rotate/debug/Fit + center/ortho/presets/reset/lighting/FOV/screenshot (View menu) | bind pills to existing session controls |
+| `SelectionModel` | `HostSidebarModel` (`selected`/`hide`/`isolate`/`soloRoot`) + `PreviewSelectionVisuals` + `SelectionDetail` | PreviewUI adapter only |
 | `SettingsStore` | `@AppStorage`; P33 single-source **already on `main`** | P34 per-window vs sticky |
 
 > Existing seams to reuse: `PreviewOverlay` (`Shared/PreviewChrome.swift`) already bridges scene

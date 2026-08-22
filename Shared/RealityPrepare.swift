@@ -33,11 +33,16 @@ enum RealityPrepare {
     /// Float positions, PNG textures, expanded GPU instances — in memory. Serialization
     /// happens once at the end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
+        var report = PipelineReport()
+        return try transformed(glb, report: &report)
+    }
+
+    static func transformed(_ glb: GLBBox, report: inout PipelineReport) throws -> GLBBox {
         var json = glb.json
         var bin = glb.bin
-        dequantizeAccessors(&json, bin: &bin)
-        try convertWebP(&json, bin: &bin)
-        expandInstances(&json, bin: bin)
+        if dequantizeAccessors(&json, bin: &bin) { report.dequantized = true }
+        if try convertWebP(&json, bin: &bin) { report.webpToPng = true }
+        if expandInstances(&json, bin: bin) { report.gpuInstancesExpanded = true }
         nameUnnamedSkinJoints(&json)
         GLBBox.rewriteExtensionLists(&json, removing: [quantization, instancing, webp])
         GLBBox.setPrimaryBufferLength(&json, bin.count)
@@ -52,10 +57,12 @@ enum RealityPrepare {
 
     // MARK: - Dequantize
 
-    static func dequantizeAccessors(_ json: inout [String: Any], bin: inout Data) {
+    @discardableResult
+    static func dequantizeAccessors(_ json: inout [String: Any], bin: inout Data) -> Bool {
         let skip = skipAccessorIndices(json)
         var accessors = json["accessors"] as? [[String: Any]] ?? []
         var bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
+        var changed = false
         for i in accessors.indices where !skip.contains(i) {
             guard let componentType = GLBBox.intValue(accessors[i]["componentType"]),
                   isIntegerComponent(componentType),
@@ -82,16 +89,20 @@ enum RealityPrepare {
             accessors[i]["byteOffset"] = 0
             accessors[i]["componentType"] = floatType
             accessors[i].removeValue(forKey: "normalized")
+            changed = true
         }
         json["accessors"] = accessors
         json["bufferViews"] = bufferViews
+        return changed
     }
 
     // MARK: - WebP
 
-    static func convertWebP(_ json: inout [String: Any], bin: inout Data) throws {
+    @discardableResult
+    static func convertWebP(_ json: inout [String: Any], bin: inout Data) throws -> Bool {
         var images = json["images"] as? [[String: Any]] ?? []
         var bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
+        var changed = false
         for i in images.indices {
             let mime = (images[i]["mimeType"] as? String)?.lowercased()
             guard mime == "image/webp",
@@ -107,18 +118,22 @@ enum RealityPrepare {
             let newView = GLBBox.appendBytes(png, bin: &bin, bufferViews: &bufferViews)
             images[i]["bufferView"] = newView
             images[i]["mimeType"] = "image/png"
+            changed = true
         }
         json["images"] = images
         json["bufferViews"] = bufferViews
+        return changed
     }
 
     // MARK: - Instancing
 
-    static func expandInstances(_ json: inout [String: Any], bin: Data) {
+    @discardableResult
+    static func expandInstances(_ json: inout [String: Any], bin: Data) -> Bool {
         var nodes = json["nodes"] as? [[String: Any]] ?? []
         let accessors = json["accessors"] as? [[String: Any]] ?? []
         let bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
         let meshoptViews = meshoptViewIndices(json)
+        var changed = false
         var i = 0
         while i < nodes.count {
             guard let extensions = nodes[i]["extensions"] as? [String: Any],
@@ -163,9 +178,11 @@ enum RealityPrepare {
             removeExtension(instancing, from: &original)
             original["children"] = children
             nodes[i] = original
+            changed = true
             i += 1
         }
         json["nodes"] = nodes
+        return changed
     }
 
     static func hasUnnamedSkinJoints(_ json: [String: Any]) -> Bool {

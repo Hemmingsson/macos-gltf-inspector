@@ -19,10 +19,7 @@ struct LoaderHelpersTests {
     /// `LoadedModel` with stats, against a real `.glb`.
     @MainActor
     @Test func loadsRealGLBEndToEnd() async throws {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let url = repoRoot.appendingPathComponent("scripts/tiny.glb")
+        let url = TestFixtures.tiny
         try #require(FileManager.default.fileExists(atPath: url.path))
         let model = try await EntityLoader.load(from: url, includeAnimations: false)
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)

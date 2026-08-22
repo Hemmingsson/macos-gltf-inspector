@@ -18,6 +18,44 @@ struct PreviewStatsTests {
         #expect(!stats.isRigged)
         #expect(stats.overlayFacts.contains { $0.label == "materials" && $0.value == "1" })
         #expect(stats.overlayFacts.contains { $0.label == "textures" && $0.value == "1" })
+        #expect(stats.maxTextureEdge == nil)
+    }
+
+    @Test func overlayIncludesAnimationCount() {
+        let stats = PreviewStats.from(
+            json: ["materials": [[:]]],
+            animationCount: 2
+        )
+        #expect(stats.animationCount == 2)
+        #expect(stats.overlayFacts.contains { $0.label == "animations" && $0.value == "2" })
+    }
+
+    @Test func maxTextureEdgeFromEmbeddedPNG() throws {
+        let png = tinyPNG()
+        var bin = Data()
+        bin.append(png)
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": png.count]],
+            "images": [["mimeType": "image/png", "bufferView": 0]],
+            "textures": [["source": 0]],
+            "materials": [[:]],
+            "meshes": [[:]],
+            "nodes": [[:]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+        ]
+        let data = try GLBBox.serialize(json: json, bin: bin)
+        let url = try GLBBox.writePrepared(data, prefix: "stats-tex")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let stats = PreviewStats.from(json: json, animationCount: 0, resourceURL: url)
+        #expect(stats.textureCount == 1)
+        #expect(stats.maxTextureEdge == 1)
+        #expect(stats.overlayFacts.contains {
+            $0.label == "textures" && $0.value == "1 · max 1²"
+        })
     }
 
     @Test func trianglesAndFileSizeOverlay() {

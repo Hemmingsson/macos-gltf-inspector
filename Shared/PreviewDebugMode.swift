@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import RealityKit
 
@@ -5,67 +6,133 @@ import RealityKit
 enum PreviewDebugMode: Equatable, Hashable {
     case none
     case wire
+    /// Custom: white unlit so mesh `COLOR_*` dominates (no SDK viz mode).
+    case vertexColors
     case visualization(ModelDebugOptionsComponent.VisualizationMode)
 
     var shortTitle: String {
         switch self {
         case .none: "None"
         case .wire: "Wire"
-        case .visualization(let mode):
-            switch mode {
-            case .normal: "Nrm"
-            case .textureCoordinates: "UV"
-            case .baseColor: "Base"
-            case .metallic: "Met"
-            case .roughness: "Rgh"
-            case .ambientOcclusion: "AO"
-            case .emissive: "Emit"
-            case .finalAlpha: "A"
-            case .specular: "Spec"
-            case .tangent: "Tan"
-            case .clearcoat: "Coat"
-            case .clearcoatRoughness: "CoatR"
-            case .clearcoatNormal: "CoatN"
-            default: mode.rawValue
-            }
+        case .vertexColors: "RGB"
+        case .visualization(let mode): Self.labels(for: mode).title
+        }
+    }
+
+    /// Stable id for seam menus (not localized). Prefer short labels over SDK rawValues.
+    var channelID: String {
+        switch self {
+        case .none: "none"
+        case .wire: "wire"
+        case .vertexColors: "vertexColors"
+        case .visualization(let mode): Self.labels(for: mode).id
         }
     }
 
     /// Modes present and used in `json`, in cycle order.
+    /// `lightingDiffuse` / `lightingSpecular` are SDK cases confirmed on this macOS SDK.
     static func available(from json: [String: Any]) -> [PreviewDebugMode] {
         let flags = Channels(json: json)
         var modes: [PreviewDebugMode] = [.none]
         if flags.hasTriangles { modes.append(.wire) }
-        if flags.hasNormals { modes.append(.visualization(.normal)) }
-        if flags.hasUVs { modes.append(.visualization(.textureCoordinates)) }
-        if flags.hasBase { modes.append(.visualization(.baseColor)) }
-        if flags.hasMetallic { modes.append(.visualization(.metallic)) }
-        if flags.hasRoughness { modes.append(.visualization(.roughness)) }
-        if flags.hasAO { modes.append(.visualization(.ambientOcclusion)) }
-        if flags.hasEmissive { modes.append(.visualization(.emissive)) }
-        if flags.hasAlpha { modes.append(.visualization(.finalAlpha)) }
-        if flags.hasSpecular { modes.append(.visualization(.specular)) }
-        if flags.hasTangents { modes.append(.visualization(.tangent)) }
-        if flags.hasClearcoat { modes.append(.visualization(.clearcoat)) }
-        if flags.hasClearcoatRoughness { modes.append(.visualization(.clearcoatRoughness)) }
-        if flags.hasClearcoatNormal { modes.append(.visualization(.clearcoatNormal)) }
+
+        let gated: [(Bool, ModelDebugOptionsComponent.VisualizationMode)] = [
+            (flags.hasNormals, .normal),
+            (flags.hasUVs, .textureCoordinates),
+            (flags.hasBase, .baseColor),
+            (flags.hasMetallic, .metallic),
+            (flags.hasRoughness, .roughness),
+            (flags.hasAO, .ambientOcclusion),
+            (flags.hasEmissive, .emissive),
+            (flags.hasAlpha, .finalAlpha),
+            (flags.hasSpecular, .specular),
+            (flags.hasTangents, .tangent),
+            (flags.hasClearcoat, .clearcoat),
+            (flags.hasClearcoatRoughness, .clearcoatRoughness),
+            (flags.hasClearcoatNormal, .clearcoatNormal),
+        ]
+        for (present, mode) in gated where present {
+            modes.append(.visualization(mode))
+        }
+        // Always useful once geometry exists — not gated on textures.
+        if flags.hasTriangles {
+            modes.append(.visualization(.lightingDiffuse))
+            modes.append(.visualization(.lightingSpecular))
+        }
+        if flags.hasVertexColors { modes.append(.vertexColors) }
         return modes
     }
 
-    static func apply(_ mode: PreviewDebugMode, to root: Entity, store: DebugMaterialStore) {
-        switch mode {
-        case .none:
-            store.restore(root)
-            clearDebug(root)
-        case .wire:
-            store.snapshotIfNeeded(root)
-            clearDebug(root)
-            applyWire(root)
-        case .visualization(let visualization):
-            store.restore(root)
-            applyVisualization(root, visualization)
+    /// PreviewUI `Availability.availableDebugChannels` — same filter as `available(from:)`,
+    /// Sendable titles only (no RealityKit types on the seam).
+    static func availableDebugChannels(from json: [String: Any]) -> [PreviewDebugChannel] {
+        available(from: json).map { mode in
+            PreviewDebugChannel(id: mode.channelID, title: mode.shortTitle)
         }
     }
+
+    static func apply(_ mode: PreviewDebugMode, to root: Entity, store: DebugMaterialStore) {
+        apply(mode, doubleSided: false, to: root, store: store)
+    }
+
+    /// Rebuild material overrides from the store baseline so wire + double-sided don't stack.
+    /// P6 — `doubleSided` forces `faceCulling = .none`; leaving it restores via `store`.
+    static func apply(
+        _ mode: PreviewDebugMode,
+        doubleSided: Bool,
+        to root: Entity,
+        store: DebugMaterialStore
+    ) {
+        store.restore(root)
+        clearDebug(root)
+
+        switch mode {
+        case .none:
+            break
+        case .wire:
+            store.snapshotIfNeeded(root)
+            applyWire(root)
+        case .vertexColors:
+            store.snapshotIfNeeded(root)
+            applyVertexColors(root)
+        case .visualization(let visualization):
+            applyVisualization(root, visualization)
+        }
+
+        if doubleSided {
+            store.snapshotIfNeeded(root)
+            applyDoubleSided(root)
+        }
+    }
+
+    private static func labels(
+        for mode: ModelDebugOptionsComponent.VisualizationMode
+    ) -> (id: String, title: String) {
+        switch mode {
+        case .normal: ("normal", "Nrm")
+        case .textureCoordinates: ("uv", "UV")
+        case .baseColor: ("baseColor", "Base")
+        case .metallic: ("metallic", "Met")
+        case .roughness: ("roughness", "Rgh")
+        case .ambientOcclusion: ("ao", "AO")
+        case .emissive: ("emissive", "Emit")
+        case .finalAlpha: ("alpha", "A")
+        case .specular: ("specular", "Spec")
+        case .tangent: ("tangent", "Tan")
+        case .clearcoat: ("clearcoat", "Coat")
+        case .clearcoatRoughness: ("clearcoatRoughness", "CoatR")
+        case .clearcoatNormal: ("clearcoatNormal", "CoatN")
+        case .lightingDiffuse: ("lightingDiffuse", "Diff")
+        case .lightingSpecular: ("lightingSpecular", "LSpec")
+        default: (mode.rawValue, mode.rawValue)
+        }
+    }
+}
+
+/// Sendable debug-channel row for PreviewUI Availability / view-mode menus.
+struct PreviewDebugChannel: Identifiable, Equatable, Sendable, Hashable {
+    let id: String
+    let title: String
 }
 
 /// Original materials so wireframe can be undone.
@@ -106,6 +173,7 @@ private struct Channels {
     var hasNormals = false
     var hasUVs = false
     var hasTangents = false
+    var hasVertexColors = false
     var hasBase = false
     var hasMetallic = false
     var hasRoughness = false
@@ -131,6 +199,9 @@ private struct Channels {
                 if attributes.keys.contains(where: { $0.hasPrefix("TEXCOORD_") }) {
                     hasUVs = true
                 }
+                if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) {
+                    hasVertexColors = true
+                }
                 let mode = GLBBox.intValue(primitive["mode"]) ?? 4
                 if mode == 4 || mode == 5 || mode == 6 {
                     hasTriangles = true
@@ -147,20 +218,22 @@ private struct Channels {
             let extensions = material["extensions"] as? [String: Any] ?? [:]
             let unlit = extensions["KHR_materials_unlit"] != nil
             let specGloss = extensions["KHR_materials_pbrSpecularGlossiness"] != nil
-            if specGloss || extensions["KHR_materials_specular"] != nil {
+            let maps = MaterialMapPresence.from(json: material)
+
+            if maps.specular || extensions["KHR_materials_specular"] != nil || specGloss {
                 hasSpecular = true
             }
             if let alpha = material["alphaMode"] as? String,
                alpha == "MASK" || alpha == "BLEND" {
                 hasAlpha = true
             }
-            if material["normalTexture"] != nil {
+            if maps.normal {
                 hasNormals = true
             }
-            if material["occlusionTexture"] != nil {
+            if maps.occlusion {
                 hasAO = true
             }
-            if material["emissiveTexture"] != nil {
+            if maps.emissive {
                 hasEmissive = true
             }
             if let emissive = float3(material["emissiveFactor"]), !nearZero(emissive) {
@@ -170,26 +243,29 @@ private struct Channels {
             let metalRough = !unlit && !specGloss
             if metalRough {
                 let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
-                let hasMRTexture = pbr["metallicRoughnessTexture"] != nil
-                if hasMRTexture || hasNonDefault(pbr["metallicFactor"], default: 1) {
+                if maps.metallicRoughness || hasNonDefault(pbr["metallicFactor"], default: 1) {
                     hasMetallic = true
                 }
-                if hasMRTexture || hasNonDefault(pbr["roughnessFactor"], default: 1) {
+                if maps.metallicRoughness || hasNonDefault(pbr["roughnessFactor"], default: 1) {
                     hasRoughness = true
                 }
             }
 
+            if maps.clearcoat {
+                hasClearcoat = true
+            }
+            if maps.clearcoatRoughness {
+                hasClearcoatRoughness = true
+            }
+            if maps.clearcoatNormal {
+                hasClearcoatNormal = true
+            }
             if let clearcoat = extensions["KHR_materials_clearcoat"] as? [String: Any] {
-                if clearcoat["clearcoatTexture"] != nil
-                    || hasNonDefault(clearcoat["clearcoatFactor"], default: 0) {
+                if hasNonDefault(clearcoat["clearcoatFactor"], default: 0) {
                     hasClearcoat = true
                 }
-                if clearcoat["clearcoatRoughnessTexture"] != nil
-                    || hasNonDefault(clearcoat["clearcoatRoughnessFactor"], default: 0) {
+                if hasNonDefault(clearcoat["clearcoatRoughnessFactor"], default: 0) {
                     hasClearcoatRoughness = true
-                }
-                if clearcoat["clearcoatNormalTexture"] != nil {
-                    hasClearcoatNormal = true
                 }
             }
         }
@@ -215,11 +291,16 @@ private struct Channels {
 }
 
 private func applyWire(_ root: Entity) {
-    visitModels(root) { entity, model in
-        var next = model
-        next.materials = model.materials.map(withWireframe)
-        entity.components.set(next)
-    }
+    mapModelMaterials(root) { withWireframe($0) }
+}
+
+/// White unlit so authored mesh colors (when converted) show without textures/lighting.
+private func applyVertexColors(_ root: Entity) {
+    mapModelMaterials(root) { _ in UnlitMaterial(color: NSColor.white) }
+}
+
+private func applyDoubleSided(_ root: Entity) {
+    mapModelMaterials(root) { withDoubleSided($0) }
 }
 
 private func applyVisualization(
@@ -237,6 +318,17 @@ private func clearDebug(_ root: Entity) {
     }
 }
 
+private func mapModelMaterials(
+    _ root: Entity,
+    _ transform: (any RealityKit.Material) -> any RealityKit.Material
+) {
+    visitModels(root) { entity, model in
+        var next = model
+        next.materials = model.materials.map(transform)
+        entity.components.set(next)
+    }
+}
+
 private func withWireframe(_ material: any RealityKit.Material) -> any RealityKit.Material {
     if var pbr = material as? PhysicallyBasedMaterial {
         pbr.triangleFillMode = .lines
@@ -248,6 +340,22 @@ private func withWireframe(_ material: any RealityKit.Material) -> any RealityKi
     }
     if var simple = material as? SimpleMaterial {
         simple.triangleFillMode = .lines
+        return simple
+    }
+    return material
+}
+
+private func withDoubleSided(_ material: any RealityKit.Material) -> any RealityKit.Material {
+    if var pbr = material as? PhysicallyBasedMaterial {
+        pbr.faceCulling = .none
+        return pbr
+    }
+    if var unlit = material as? UnlitMaterial {
+        unlit.faceCulling = .none
+        return unlit
+    }
+    if var simple = material as? SimpleMaterial {
+        simple.faceCulling = .none
         return simple
     }
     return material
