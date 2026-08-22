@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import RealityKit
 
 /// Session + camera + still-path adapter for `ViewportController`.
 ///
@@ -7,11 +8,18 @@ import Observation
 /// forward to injected `FocusedPreviewCommands` (or a test `screenshotHandler`). Lighting maps
 /// degrees↔radians and `usesFileLights`↔`dimStudioForFileLights`. `usesStudioEnvironment` mirrors
 /// `AppLook.useEnvironmentMap` and is never written here — Settings owns that key.
+///
+/// Settings-backed keys (backdrop / floor / auto-rotate / center / projection) read through
+/// `EngineSettingsStore` when set — untouched keys track app defaults live (P34). Mutators
+/// pin only the key they touch. `hostSession` keeps the RealityKit canvas in sync.
 @MainActor
 @Observable
 final class EngineViewportController: ViewportController {
-    let sidebar: HostSidebarModel
+    var sidebar: HostSidebarModel
     let lookStore: AppLookStore
+
+    /// Per-window lazy overlay. Weak to avoid a cycle with the store held by the window.
+    weak var settings: EngineSettingsStore?
 
     /// Host View-menu / pill command bag. Nil in unit tests that only exercise setters.
     var commands: FocusedPreviewCommands?
@@ -19,24 +27,27 @@ final class EngineViewportController: ViewportController {
     /// Optional override so tests can assert `screenshot()` wires without presenting a panel.
     var screenshotHandler: (() -> Void)?
 
-    private(set) var backdrop: BackdropStyle
-    private(set) var showsFloor: Bool
-    private(set) var autoRotates: Bool
-    private(set) var isCentered: Bool
-    private(set) var viewMode: ViewMode
-    private(set) var projection: Projection
+    /// Live host canvas session. Nil in unit tests.
+    var hostSession: EngineViewportHostSession?
+
+    private var storedBackdrop: BackdropStyle
+    private var storedShowsFloor: Bool
+    private var storedAutoRotates: Bool
+    private var storedIsCentered: Bool
+    private var storedViewMode: ViewMode
+    private var storedProjection: Projection
     private(set) var activeCameraPreset: CameraPreset?
 
     /// Session exposure (stops) — host `sessionExposureEV`.
-    private var exposureEV: Float
+    private var storedExposureEV: Float
     /// Host `sessionDimStudioForFileLights`.
-    private var dimStudioForFileLights: Bool
+    private var storedDimStudioForFileLights: Bool
     /// Host `sessionEnvironmentYaw` (radians).
-    private var environmentYawRadians: Float
+    private var storedEnvironmentYawRadians: Float
 
     init(
         sidebar: HostSidebarModel,
-        lookStore: AppLookStore = .shared,
+        lookStore: AppLookStore? = nil,
         backdrop: BackdropStyle = .window,
         showsFloor: Bool = true,
         autoRotates: Bool = true,
@@ -46,29 +57,66 @@ final class EngineViewportController: ViewportController {
         exposureEV: Float = 0,
         dimStudioForFileLights: Bool = false,
         environmentYawRadians: Float = 0,
+        settings: EngineSettingsStore? = nil,
+        hostSession: EngineViewportHostSession? = nil,
         commands: FocusedPreviewCommands? = nil,
         screenshotHandler: (() -> Void)? = nil
     ) {
         self.sidebar = sidebar
-        self.lookStore = lookStore
-        self.backdrop = backdrop
-        self.showsFloor = showsFloor
-        self.autoRotates = autoRotates
-        self.isCentered = isCentered
-        self.viewMode = viewMode
-        self.projection = projection
-        self.exposureEV = exposureEV
-        self.dimStudioForFileLights = dimStudioForFileLights
-        self.environmentYawRadians = environmentYawRadians
+        self.lookStore = lookStore ?? .shared
+        self.storedBackdrop = backdrop
+        self.storedShowsFloor = showsFloor
+        self.storedAutoRotates = autoRotates
+        self.storedIsCentered = isCentered
+        self.storedViewMode = viewMode
+        self.storedProjection = projection
+        self.storedExposureEV = exposureEV
+        self.storedDimStudioForFileLights = dimStudioForFileLights
+        self.storedEnvironmentYawRadians = environmentYawRadians
+        self.settings = settings
+        self.hostSession = hostSession
         self.commands = commands
         self.screenshotHandler = screenshotHandler
     }
 
+    /// Bind the lazy overlay and push effective session values without pinning untouched keys.
+    func applySession(from settings: EngineSettingsStore) {
+        self.settings = settings
+        storedBackdrop = settings.sessionValue(for: .backdrop)
+        storedShowsFloor = settings.sessionValue(for: .showFloor)
+        storedAutoRotates = settings.sessionValue(for: .autoRotate)
+        storedIsCentered = settings.sessionValue(for: .center)
+        storedProjection = settings.sessionValue(for: .projection)
+        syncHostCanvasFromStored()
+    }
+
+    var backdrop: BackdropStyle {
+        settings?.sessionValue(for: .backdrop) ?? storedBackdrop
+    }
+
+    var showsFloor: Bool {
+        settings?.sessionValue(for: .showFloor) ?? storedShowsFloor
+    }
+
+    var autoRotates: Bool {
+        settings?.sessionValue(for: .autoRotate) ?? storedAutoRotates
+    }
+
+    var isCentered: Bool {
+        settings?.sessionValue(for: .center) ?? storedIsCentered
+    }
+
+    var viewMode: ViewMode { storedViewMode }
+
+    var projection: Projection {
+        settings?.sessionValue(for: .projection) ?? storedProjection
+    }
+
     var lighting: LightingSettings {
         LightingSettings(
-            exposure: Double(exposureEV),
-            environmentRotationDegrees: Double(environmentYawRadians) * 180 / .pi,
-            usesFileLights: dimStudioForFileLights,
+            exposure: Double(storedExposureEV),
+            environmentRotationDegrees: Double(storedEnvironmentYawRadians) * 180 / .pi,
+            usesFileLights: storedDimStudioForFileLights,
             usesStudioEnvironment: lookStore.look.useEnvironmentMap
         )
     }
@@ -84,56 +132,89 @@ final class EngineViewportController: ViewportController {
     }
 
     func setBackdrop(_ style: BackdropStyle) {
-        backdrop = style
+        storedBackdrop = style
+        settings?.setSession(style, for: .backdrop)
+        if let hostSession {
+            let background = PreviewBackground(rawValue: style.rawValue) ?? .window
+            hostSession.backdropIndex.wrappedValue =
+                PreviewBackground.allCases.firstIndex(of: background) ?? 0
+        }
     }
 
     func setFloor(_ isOn: Bool) {
-        showsFloor = isOn
+        storedShowsFloor = isOn
+        settings?.setSession(isOn, for: .showFloor)
+        hostSession?.showFloor.wrappedValue = isOn
     }
 
     func setAutoRotate(_ isOn: Bool) {
-        autoRotates = isOn
+        storedAutoRotates = isOn
+        settings?.setSession(isOn, for: .autoRotate)
+        hostSession?.autoRotate.wrappedValue = isOn
     }
 
     func setCenter(_ isOn: Bool) {
-        isCentered = isOn
+        storedIsCentered = isOn
+        settings?.setSession(isOn, for: .center)
+        hostSession?.centerModel.wrappedValue = isOn
     }
 
     func setViewMode(_ mode: ViewMode) {
-        viewMode = mode
+        storedViewMode = mode
+        if let hostSession {
+            hostSession.debugModeIndex.wrappedValue = Self.debugModeIndex(
+                for: mode,
+                in: hostSession.debugModes
+            )
+        }
     }
 
     func setProjection(_ projection: Projection) {
-        self.projection = projection
+        storedProjection = projection
+        settings?.setSession(projection, for: .projection)
+        hostSession?.orthographic.wrappedValue = projection == .orthographic
     }
 
     func setLighting(_ lighting: LightingSettings) {
-        exposureEV = Float(lighting.exposure)
-        environmentYawRadians = Float(lighting.environmentRotationDegrees * .pi / 180)
-        dimStudioForFileLights = lighting.usesFileLights
+        storedExposureEV = Float(lighting.exposure)
+        storedEnvironmentYawRadians = Float(lighting.environmentRotationDegrees * .pi / 180)
+        storedDimStudioForFileLights = lighting.usesFileLights
+        if let hostSession {
+            hostSession.exposureEV.wrappedValue = storedExposureEV
+            hostSession.environmentYaw.wrappedValue = storedEnvironmentYawRadians
+            hostSession.dimStudioForFileLights.wrappedValue = storedDimStudioForFileLights
+        }
         // Intentionally ignore `usesStudioEnvironment` — do not fight `AppLook.useEnvironmentMap`.
     }
 
     func fit() {
+        sidebar.selectedCameraIndex = nil
         commands?.fit()
         activeCameraPreset = nil
     }
 
     func reset() {
-        backdrop = .window
-        showsFloor = true
-        autoRotates = true
-        isCentered = true
-        viewMode = .shaded
-        projection = .perspective
-        exposureEV = 0
-        dimStudioForFileLights = false
-        environmentYawRadians = 0
+        setBackdrop(settings?.default(for: .backdrop) ?? .window)
+        setFloor(settings?.default(for: .showFloor) ?? true)
+        setAutoRotate(settings?.default(for: .autoRotate) ?? true)
+        setCenter(true)
+        setViewMode(.shaded)
+        setProjection(.perspective)
+        setLighting(
+            LightingSettings(
+                exposure: 0,
+                environmentRotationDegrees: 0,
+                usesFileLights: false,
+                usesStudioEnvironment: lookStore.look.useEnvironmentMap
+            )
+        )
+        sidebar.selectedCameraIndex = nil
         activeCameraPreset = nil
         commands?.reset()
     }
 
     func applyCameraPreset(_ preset: CameraPreset) {
+        sidebar.selectedCameraIndex = nil
         activeCameraPreset = preset
         commands?.applyCameraPreset(Self.hostPreset(preset))
     }
@@ -156,6 +237,17 @@ final class EngineViewportController: ViewportController {
         sidebar.overlayRevision += 1
     }
 
+    func setFileCamera(_ id: NodeID?) {
+        if let id {
+            guard id.kind == .camera else { return }
+            sidebar.selectedCameraIndex = id.index
+        } else {
+            sidebar.selectedCameraIndex = nil
+        }
+        sidebar.overlayRevision += 1
+        activeCameraPreset = nil
+    }
+
     /// Host backdrop index for `PreviewBackground.at`.
     var hostBackdropIndex: Int {
         PreviewBackground.allCases.firstIndex(of: hostBackdrop) ?? 0
@@ -167,9 +259,84 @@ final class EngineViewportController: ViewportController {
 
     var hostOrthographic: Bool { projection == .orthographic }
 
-    var hostExposureEV: Float { exposureEV }
-    var hostDimStudioForFileLights: Bool { dimStudioForFileLights }
-    var hostEnvironmentYawRadians: Float { environmentYawRadians }
+    var hostExposureEV: Float { storedExposureEV }
+
+    var hostDimStudioForFileLights: Bool { storedDimStudioForFileLights }
+
+    var hostEnvironmentYawRadians: Float { storedEnvironmentYawRadians }
+
+    /// Push stored settings-backed values into the RealityKit session bindings (open / clearSession).
+    func syncHostCanvasFromStored() {
+        guard let hostSession else { return }
+        let background = PreviewBackground(rawValue: backdrop.rawValue) ?? .window
+        hostSession.backdropIndex.wrappedValue =
+            PreviewBackground.allCases.firstIndex(of: background) ?? 0
+        hostSession.showFloor.wrappedValue = showsFloor
+        hostSession.autoRotate.wrappedValue = autoRotates
+        hostSession.centerModel.wrappedValue = isCentered
+        hostSession.orthographic.wrappedValue = projection == .orthographic
+    }
+
+    // MARK: - ViewMode ↔ PreviewDebugMode
+
+    static func viewMode(at index: Int, in modes: [PreviewDebugMode]) -> ViewMode {
+        guard modes.indices.contains(index) else { return .shaded }
+        switch modes[index] {
+        case .none:
+            return .shaded
+        case .wire:
+            return .wireframe
+        case .vertexColors:
+            return .shaded
+        case .visualization(let visualization):
+            if let channel = debugChannel(from: visualization) {
+                return .channel(channel)
+            }
+            return .shaded
+        }
+    }
+
+    static func debugModeIndex(for mode: ViewMode, in modes: [PreviewDebugMode]) -> Int {
+        switch mode {
+        case .shaded:
+            return modes.firstIndex(of: .none) ?? 0
+        case .wireframe:
+            return modes.firstIndex(of: .wire) ?? 0
+        case .channel(let channel):
+            if let index = modes.firstIndex(where: { matches($0, channel) }) {
+                return index
+            }
+            return modes.firstIndex(of: .none) ?? 0
+        }
+    }
+
+    private static func matches(_ mode: PreviewDebugMode, _ channel: DebugChannel) -> Bool {
+        guard case .visualization(let visualization) = mode,
+              let mapped = debugChannel(from: visualization)
+        else { return false }
+        return mapped == channel
+    }
+
+    private static func debugChannel(
+        from visualization: ModelDebugOptionsComponent.VisualizationMode
+    ) -> DebugChannel? {
+        switch visualization {
+        case .baseColor: .baseColor
+        case .metallic: .metallic
+        case .roughness: .roughness
+        case .normal: .normals
+        case .tangent: .tangents
+        case .textureCoordinates: .textureCoordinates
+        case .ambientOcclusion: .ambientOcclusion
+        case .emissive: .emissive
+        case .finalAlpha: .alpha
+        case .specular: .specular
+        case .clearcoat: .clearcoat
+        case .clearcoatRoughness: .clearcoatRoughness
+        case .clearcoatNormal: .clearcoatNormal
+        default: nil
+        }
+    }
 
     private static func hostPreset(_ preset: CameraPreset) -> PreviewCamera.CameraPreset {
         switch preset {

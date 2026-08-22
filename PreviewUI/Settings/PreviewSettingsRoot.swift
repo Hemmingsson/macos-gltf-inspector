@@ -30,9 +30,11 @@ enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Three-tab Settings. Writes `AppDefaultsStore` only — never a window session.
-struct PreviewSettingsRoot: View {
-    var store: AppDefaultsStore
+/// Three-tab Settings. Writes app defaults only — never a window session.
+struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
+    var store: Store
+    /// Host: copy + decode HDR into Application Support. Shell: store the file name only.
+    var importCustomEnvironment: ((URL) throws -> String)? = nil
 
     var body: some View {
         TabView {
@@ -40,7 +42,7 @@ struct PreviewSettingsRoot: View {
                 GeneralSettingsPane(store: store)
             }
             Tab("Preview", systemImage: "cube.transparent") {
-                PreviewDefaultsPane(store: store)
+                PreviewDefaultsPane(store: store, importCustomEnvironment: importCustomEnvironment)
             }
             Tab("About", systemImage: "info.circle") {
                 AboutSettingsPane()
@@ -59,8 +61,8 @@ extension View {
     }
 }
 
-private struct GeneralSettingsPane: View {
-    var store: AppDefaultsStore
+private struct GeneralSettingsPane<Store: SettingsDefaultsStore>: View {
+    var store: Store
     @State private var isDefaultApplication = false
     @State private var defaultAppName: String?
     @State private var defaultAppError: String?
@@ -162,8 +164,10 @@ private struct GeneralSettingsPane: View {
     }
 }
 
-private struct PreviewDefaultsPane: View {
-    var store: AppDefaultsStore
+private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
+    var store: Store
+    var importCustomEnvironment: ((URL) throws -> String)?
+    @State private var importError: String?
 
     private let catalog: [(raw: String, title: String)] = [
         ("neutral", "Studio Neutral"),
@@ -203,10 +207,17 @@ private struct PreviewDefaultsPane: View {
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Text("Custom HDR and EXR files are remembered as a path for the host adapter. Decode stays in Shared/PreviewLighting.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Group {
+                    if let importError {
+                        Text(importError)
+                            .foregroundStyle(.red)
+                    } else {
+                        Text("Custom HDR and EXR files are remembered for the host lighting path.")
+                    }
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .settingsFormChrome()
@@ -246,8 +257,22 @@ private struct PreviewDefaultsPane: View {
             UTType(filenameExtension: "exr"),
         ].compactMap { $0 }
         guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        if let importCustomEnvironment {
+            do {
+                let fileName = try importCustomEnvironment(url)
+                store.set(fileName, for: .customEnvironmentFile)
+                store.set(true, for: .useEnvironmentMap)
+                importError = nil
+            } catch {
+                importError = error.localizedDescription
+            }
+            return
+        }
+
         store.set(url.lastPathComponent, for: .customEnvironmentFile)
         store.set(true, for: .useEnvironmentMap)
+        importError = nil
     }
 }
 

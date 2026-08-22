@@ -224,8 +224,7 @@ targets:
           - PreviewView.swift
           - PreviewScene.swift
           - PreviewChrome.swift
-          - PreviewChromeBar.swift
-          - PreviewCycleMenu.swift
+          - PreviewQuickLookChrome.swift
           - PreviewOverlayFacts.swift
           - PreviewOrientationGizmo.swift
           - PreviewFloor.swift

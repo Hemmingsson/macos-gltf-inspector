@@ -6,8 +6,9 @@ private let staleWelcomeFrameAutosaveKey = "NSWindow Frame welcome-AppWindow-1"
 
 final class GLBAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        SettingsAppearance.apply(
-            UserDefaults.standard.string(forKey: SettingsKeys.appearance) ?? SettingsAppearance.system.rawValue
+        AppAppearance.apply(
+            UserDefaults.standard.string(forKey: SettingsKeys.appearance)
+                ?? AppAppearance.system.rawValue
         )
         UserDefaults.standard.set("preferred", forKey: "AppleWindowTabbingMode")
         UserDefaults.standard.removeObject(forKey: staleWelcomeFrameAutosaveKey)
@@ -38,8 +39,6 @@ final class GLBAppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct GLBPreviewApp: App {
     @NSApplicationDelegateAdaptor(GLBAppDelegate.self) private var appDelegate
-    @FocusedValue(\.previewCommands) private var previewCommands
-    @FocusedValue(\.previewSession) private var previewSession
     private let updaterController: SPUStandardUpdaterController
 
     init() {
@@ -66,92 +65,11 @@ struct GLBPreviewApp: App {
         .restorationBehavior(.disabled)
         .commands {
             SidebarCommands()
+            // Seam-driven View menu (pills twin). Do **not** add `CommandMenu("View")`.
+            // Old inline body removed from here; `FocusedPreviewSession` plumbing stays for
+            // double-sided / skeleton / FOV until `vfcn76gm` strips leftovers.
             CommandGroup(after: .sidebar) {
-                // Symbols match PreviewUI Stage / Camera / Look pills (and inspector screenshot).
-                Toggle("Show Floor", systemImage: "circle.grid.cross", isOn: session(\.showFloor, true))
-                    .disabled(previewSession == nil)
-                Toggle(
-                    "Auto-Rotate",
-                    systemImage: "arrow.trianglehead.counterclockwise.rotate.90",
-                    isOn: session(\.autoRotate, true)
-                )
-                .disabled(previewSession == nil)
-                Toggle("Center Model", systemImage: "dot.scope", isOn: session(\.centerModel, true))
-                    .disabled(previewSession == nil)
-                Toggle("Orthographic", systemImage: "perspective", isOn: session(\.orthographic, false))
-                    .disabled(previewSession == nil)
-                Toggle("Double-Sided", systemImage: "square.on.square", isOn: session(\.doubleSided, false))
-                    .disabled(previewSession == nil)
-                Toggle(
-                    "Show Skeleton",
-                    systemImage: "point.3.connected.trianglepath.dotted",
-                    isOn: session(\.showSkeleton, false)
-                )
-                .disabled(previewSession == nil)
-                Button("Widen FOV", systemImage: "plus.magnifyingglass") {
-                    let fov = session(\.fieldOfViewDegrees, PreviewCamera.defaultFieldOfViewDegrees)
-                    fov.wrappedValue = PreviewCamera.clampedFieldOfView(fov.wrappedValue + 5)
-                }
-                .disabled(previewSession == nil || session(\.orthographic, false).wrappedValue)
-                Button("Narrow FOV", systemImage: "minus.magnifyingglass") {
-                    let fov = session(\.fieldOfViewDegrees, PreviewCamera.defaultFieldOfViewDegrees)
-                    fov.wrappedValue = PreviewCamera.clampedFieldOfView(fov.wrappedValue - 5)
-                }
-                .disabled(previewSession == nil || session(\.orthographic, false).wrappedValue)
-                Button("Reset FOV", systemImage: "arrow.counterclockwise") {
-                    session(\.fieldOfViewDegrees, PreviewCamera.defaultFieldOfViewDegrees)
-                        .wrappedValue = PreviewCamera.defaultFieldOfViewDegrees
-                }
-                .disabled(previewSession == nil)
-                Divider()
-                Button("Fit", systemImage: "viewfinder") {
-                    previewCommands?.fit()
-                }
-                .disabled(previewCommands == nil)
-                Button("Reset View", systemImage: "arrow.counterclockwise") {
-                    previewCommands?.reset()
-                }
-                .disabled(previewCommands == nil)
-                Button("Screenshot…", systemImage: "camera") {
-                    previewCommands?.screenshot()
-                }
-                .disabled(previewCommands == nil)
-                Divider()
-                // P3 — session-only camera presets (Camera pill later).
-                ForEach(PreviewCamera.CameraPreset.allCases) { preset in
-                    Button(preset.title, systemImage: preset.menuSymbol) {
-                        previewCommands?.applyCameraPreset(preset)
-                    }
-                    .disabled(previewCommands == nil)
-                }
-                Divider()
-                // P5 throwaway View-menu lighting (Look pill / sun.max).
-                Button("Increase Exposure", systemImage: "sun.max") {
-                    session(\.exposureEV, 0).wrappedValue += 0.5
-                }
-                .disabled(previewSession == nil)
-                Button("Decrease Exposure", systemImage: "sun.min") {
-                    session(\.exposureEV, 0).wrappedValue -= 0.5
-                }
-                .disabled(previewSession == nil)
-                Button("Reset Exposure", systemImage: "sun.max.circle") {
-                    session(\.exposureEV, 0).wrappedValue = 0
-                }
-                .disabled(previewSession == nil)
-                Toggle(
-                    "Dim Studio for File Lights",
-                    systemImage: "lightbulb.min",
-                    isOn: session(\.dimStudioForFileLights, false)
-                )
-                .disabled(previewSession == nil)
-                Button("Rotate Environment 45°", systemImage: "rotate.3d") {
-                    session(\.environmentYaw, 0).wrappedValue += .pi / 4
-                }
-                .disabled(previewSession == nil)
-                Button("Reset Environment Rotation", systemImage: "arrow.counterclockwise") {
-                    session(\.environmentYaw, 0).wrappedValue = 0
-                }
-                .disabled(previewSession == nil)
+                HostViewMenuCommands()
             }
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)
@@ -169,15 +87,12 @@ struct GLBPreviewApp: App {
         .restorationBehavior(.disabled)
 
         Settings {
-            SettingsRootView()
+            PreviewSettingsRoot(
+                store: EngineAppDefaultsBridge.shared,
+                importCustomEnvironment: { url in
+                    try EngineAppDefaultsBridge.shared.importCustomEnvironment(from: url)
+                }
+            )
         }
-    }
-
-    /// P34 View-menu bindings — fall back to constants when no document window is focused.
-    private func session<T>(
-        _ keyPath: KeyPath<FocusedPreviewSession, Binding<T>>,
-        _ fallback: T
-    ) -> Binding<T> {
-        previewSession?[keyPath: keyPath] ?? .constant(fallback)
     }
 }

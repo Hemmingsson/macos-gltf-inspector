@@ -45,10 +45,6 @@ struct PreviewScene: View {
     /// Host passes window-owned bindings (P34). Quick Look leaves this nil and uses local `@State`.
     var session: PreviewSessionBindings?
 
-    /// App-default chrome: Settings may change this live. Canvas stage/look/camera controls
-    /// below are per-window session state (P34) — seeded once, never written back.
-    @AppStorage(SettingsKeys.showToolbar) private var showToolbar = true
-
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var localBackdropIndex: Int
     @State private var localAutoRotate: Bool
@@ -78,7 +74,6 @@ struct PreviewScene: View {
     @State private var isPlaying = false
     @State private var isSeeking = false
     @State private var viewport = CGSize(width: 810, height: 600)
-    @State private var chromeVisible = true
     @State private var debugModeIndex = 0
     @State private var pendingReady: AppLook?
     @State private var appliedLook: AppLook?
@@ -133,7 +128,11 @@ struct PreviewScene: View {
         _localFieldOfViewDegrees = State(initialValue: PreviewCamera.defaultFieldOfViewDegrees)
     }
 
+    /// Host window supplies PreviewUI overlays; Quick Look (`sidebar == nil`) keeps inlined chrome.
     private var isHost: Bool { sidebar != nil }
+
+    /// Quick Look (`sidebar == nil`) draws minimal canvas chrome; host uses PreviewUI.
+    private var showsInlineChrome: Bool { !isHost }
 
     private var backdropIndex: Binding<Int> {
         session?.backdropIndex ?? $localBackdropIndex
@@ -179,6 +178,14 @@ struct PreviewScene: View {
         session?.fieldOfViewDegrees ?? $localFieldOfViewDegrees
     }
 
+    private var debugModeIndexBinding: Binding<Int> {
+        session?.debugModeIndex ?? $debugModeIndex
+    }
+
+    private var debugModeIndexValue: Int {
+        debugModeIndexBinding.wrappedValue
+    }
+
     // Session auto-rotate / floor are ephemeral. `autoRotateActive` layers runtime vetoes
     // (Reduced Motion, geometry) without writing them back to Settings.
     private var showFloorValue: Bool { showFloorBinding.wrappedValue }
@@ -216,11 +223,12 @@ struct PreviewScene: View {
     }
 
     private var tickWhileActive: Bool {
-        autoRotateActive || (isPlaying && playback != nil && (isHost || chromeVisible))
+        autoRotateActive || (isPlaying && playback != nil)
     }
 
     var body: some View {
         let _ = overlayRevision
+        let _ = debugModeIndexValue
         let _ = lookStore.look
         ZStack {
             RealityView { content in
@@ -401,59 +409,23 @@ struct PreviewScene: View {
                 }
             }
             .ignoresSafeArea()
-            .onTapGesture {
-                guard !isHost else { return }
-                chromeVisible.toggle()
-            }
 
-            if showToolbar, isHost || chromeVisible {
-                PreviewChromeBar(
+            if showsInlineChrome {
+                PreviewQuickLookChrome(
                     backdropIndex: backdropIndex,
-                    debugModeIndex: $debugModeIndex,
                     autoRotate: autoRotateBinding,
-                    showFloor: showFloorBinding,
-                    debugModes: debugModes,
-                    isDark: isDark,
-                    isHost: isHost
+                    isDark: isDark
                 )
-                .transition(.opacity)
             }
 
-            // P7 — camera-orbit XYZ; not the Center-off world-origin gizmo.
-            PreviewOrientationGizmo(interaction: interaction)
-                .padding(.leading, 16)
-                .padding(.bottom, 16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .allowsHitTesting(false)
-
-            if !isHost, chromeVisible, let facts = stats?.overlayFacts, !facts.isEmpty {
+            if showsInlineChrome, let facts = stats?.overlayFacts, !facts.isEmpty {
                 PreviewOverlayFacts(facts: facts, tint: chromeTint(active: true))
                     .allowsHitTesting(false)
                     .padding(.leading, 14)
-                    .padding(.bottom, 86)
+                    .padding(.bottom, 14)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                    .transition(.opacity)
-            }
-
-            if showToolbar, !clips.isEmpty, clipDuration > 0, isHost || chromeVisible {
-                PreviewPlaybackBar(
-                    isPlaying: $isPlaying,
-                    isSeeking: $isSeeking,
-                    currentTime: $currentTime,
-                    clipIndex: $clipIndex,
-                    clipTitles: clips.map(\.title),
-                    clipDuration: clipDuration,
-                    tint: chromeTint(active: true),
-                    onSeek: seek(to:)
-                )
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-                .frame(maxWidth: clips.count > 1 ? 520 : 420)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.15), value: chromeVisible)
         .onAppear {
             // Lighting is never part of open — warm HDR after the model is on screen.
             prefetchLook(lookStore.look)
@@ -614,13 +586,6 @@ struct PreviewScene: View {
         PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: active)
     }
 
-    private func seek(to time: TimeInterval) {
-        let duration = max(clipDuration, 0.001)
-        let clamped = min(max(time, 0), duration)
-        currentTime = clamped
-        playback?.time = clamped
-    }
-
     private func startClip(at index: Int, playing: Bool) {
         guard clips.indices.contains(index) else { return }
         let clip = clips[index]
@@ -636,7 +601,7 @@ struct PreviewScene: View {
     }
 
     private func applyDebugIfNeeded(to root: Entity) {
-        let index = debugModes.indices.contains(debugModeIndex) ? debugModeIndex : 0
+        let index = debugModes.indices.contains(debugModeIndexValue) ? debugModeIndexValue : 0
         let doubleSided = doubleSidedValue
         guard frame.debugApplied.index != index || frame.debugApplied.doubleSided != doubleSided
         else { return }

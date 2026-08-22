@@ -65,12 +65,14 @@ RealityKit does not load glTF by default. The file is prepared, decoded with [GL
 flowchart LR
   file[".glb / .gltf"] --> prep["Prepare + GLTFKit2"]
   prep --> rk["RealityKit Entity"]
-  rk --> host["Host app\nRealityView + outliner"]
-  rk --> ql["Quick Look\nRealityView"]
+  rk --> host["Host app\nPreviewUI shell + RealityView"]
+  rk --> ql["Quick Look\norbit + facts + two buttons"]
   rk --> thumb["Finder thumbnail\nRealityRenderer"]
 ```
 
 Prepare rewrites materials and meshes RealityKit will not ingest, then the default scene is converted to a physically based entity on a turntable.
 
-App and Quick Look show that entity in a `RealityView` with studio IBL for light and reflections — not a skybox. Finder thumbnails are a still from `RealityRenderer`.
+The host app window is **`PreviewUI`** chrome (sidebar, inspector, pills, settings) over a real **`PreviewView`** canvas. Thin **`GLBPreview/Engine/`** adapters map the existing engine (`HostSidebarModel`, `EntityLoader`, `AppLook`) onto the UI seam. **`PreviewUIShell`** is a mock-driven design playground that never ships.
+
+App and Quick Look show that entity in a `RealityView` with studio IBL for light and reflections — not a skybox. Quick Look is a light canvas (orbit, bottom-left facts, backdrop + auto-rotate). Finder thumbnails are a still from `RealityRenderer`.
 

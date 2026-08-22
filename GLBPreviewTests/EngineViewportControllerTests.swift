@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import GLBPreview
 
@@ -70,6 +71,28 @@ struct EngineViewportControllerTests {
         #expect(sidebar.selectedMaterialVariantIndex == nil)
     }
 
+    @Test func fileCameraSelectionDrivesSidebar() {
+        var document = GLTFSessionDocument()
+        document.cameras = [
+            .init(name: "Cam", type: "perspective", yfov: 1, znear: 0.1, zfar: 100, xmag: nil, ymag: nil),
+        ]
+        document.nodes = [
+            .init(index: 0, name: "CamNode", children: [], kind: .camera, cameraIndex: 0),
+        ]
+        let sidebar = HostSidebarModel(document: document)
+        let viewport = EngineViewportController(sidebar: sidebar)
+
+        viewport.setFileCamera(NodeID(kind: .camera, index: 0))
+        #expect(sidebar.selectedCameraIndex == 0)
+
+        viewport.setFileCamera(nil)
+        #expect(sidebar.selectedCameraIndex == nil)
+
+        viewport.setFileCamera(NodeID(kind: .camera, index: 0))
+        viewport.fit()
+        #expect(sidebar.selectedCameraIndex == nil)
+    }
+
     @Test func screenshotHandlerWiresWithoutPanel() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         var shotCount = 0
@@ -79,6 +102,91 @@ struct EngineViewportControllerTests {
         )
         viewport.screenshot()
         #expect(shotCount == 1)
+    }
+
+    @Test func settingsOverlayTracksDefaultsInGetters() throws {
+        let suite = "engine.viewport.settings.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let lookDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("engine-viewport-look-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: lookDir) }
+
+        let defaultsStore = AppDefaultsStore(defaults: defaults)
+        let lookStore = AppLookStore(directory: lookDir)
+        let settings = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
+        let sidebar = HostSidebarModel(document: GLTFSessionDocument())
+        let viewport = EngineViewportController(sidebar: sidebar, settings: settings)
+
+        defaultsStore.set(.dark, for: .backdrop)
+        viewport.applySession(from: settings)
+        #expect(viewport.backdrop == .dark)
+
+        defaultsStore.set(.white, for: .backdrop)
+        #expect(viewport.backdrop == .white)
+
+        viewport.setBackdrop(.window)
+        defaultsStore.set(.dark, for: .backdrop)
+        #expect(viewport.backdrop == .window)
+
+        settings.clearSession()
+        #expect(viewport.backdrop == .dark)
+    }
+
+    @Test func hostSessionWriteThroughUpdatesBindings() {
+        let sidebar = HostSidebarModel(document: GLTFSessionDocument())
+        var backdropIndex = 0
+        var showFloor = true
+        var autoRotate = true
+        var centerModel = true
+        var orthographic = false
+        var exposureEV: Float = 0
+        var dimStudio = false
+        var environmentYaw: Float = 0
+        var debugModeIndex = 0
+        let host = EngineViewportHostSession(
+            backdropIndex: Binding(get: { backdropIndex }, set: { backdropIndex = $0 }),
+            showFloor: Binding(get: { showFloor }, set: { showFloor = $0 }),
+            autoRotate: Binding(get: { autoRotate }, set: { autoRotate = $0 }),
+            centerModel: Binding(get: { centerModel }, set: { centerModel = $0 }),
+            orthographic: Binding(get: { orthographic }, set: { orthographic = $0 }),
+            exposureEV: Binding(get: { exposureEV }, set: { exposureEV = $0 }),
+            dimStudioForFileLights: Binding(get: { dimStudio }, set: { dimStudio = $0 }),
+            environmentYaw: Binding(get: { environmentYaw }, set: { environmentYaw = $0 }),
+            debugModeIndex: Binding(get: { debugModeIndex }, set: { debugModeIndex = $0 }),
+            debugModes: [.none, .wire]
+        )
+        let viewport = EngineViewportController(sidebar: sidebar, hostSession: host)
+
+        viewport.setBackdrop(.dark)
+        viewport.setFloor(false)
+        viewport.setAutoRotate(false)
+        viewport.setCenter(false)
+        viewport.setProjection(.orthographic)
+        viewport.setViewMode(.wireframe)
+        viewport.setLighting(
+            LightingSettings(
+                exposure: 0.5,
+                environmentRotationDegrees: 45,
+                usesFileLights: true,
+                usesStudioEnvironment: true
+            )
+        )
+
+        #expect(backdropIndex == PreviewBackground.allCases.firstIndex(of: .dark))
+        #expect(showFloor == false)
+        #expect(autoRotate == false)
+        #expect(centerModel == false)
+        #expect(orthographic == true)
+        #expect(debugModeIndex == 1)
+        #expect(exposureEV == 0.5)
+        #expect(dimStudio == true)
+        #expect(abs(environmentYaw - Float.pi / 4) < 0.0001)
+        #expect(viewport.showsFloor == false)
+        #expect(viewport.viewMode == .wireframe)
     }
 }
 

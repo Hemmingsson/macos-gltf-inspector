@@ -2,7 +2,7 @@ import AppKit
 import RealityKit
 
 /// Offscreen still capture at the live camera pose (not a RealityView framebuffer grab).
-/// Extracted from `ContentView` so `EngineViewportController.screenshot()` can share the path.
+/// Extracted so `EngineViewportController.screenshot()` can share the path.
 enum ScreenshotCameraPose {
     /// Clones `pivot`, samples `camera` into a `StillCameraPose`, and presents the save panel.
     @MainActor

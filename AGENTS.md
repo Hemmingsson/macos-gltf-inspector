@@ -1,6 +1,20 @@
 # GLB Preview
 
-macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/` (+ `Shared/Convert/`); host outliner and settings live in `GLBPreview/`.
+macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host `GLBPreview` embeds `PreviewExtension` and `ThumbnailExtension`. Convert/render live in `Shared/` (+ `Shared/Convert/`).
+
+## Layout (post PreviewUI cutover)
+
+| Path | Role |
+| --- | --- |
+| `PreviewUI/` | Generic UI over seam protocols (`SceneModel`, `ViewportController`, …). Compiled into both `GLBPreview` and `PreviewUIShell`. **Do not import `Shared/`.** |
+| `GLBPreview/Engine/` | `Engine*` adapters — map host engine types to the seam. No PreviewUI rewrites. |
+| `GLBPreview/HostShellRootView.swift` | Document window root: `ShellRootView` + adapters + real `PreviewView` canvas. |
+| `GLBPreview/HostSidebarModel.swift` | Selection, scene/variant re-convert, visibility — guts behind `EngineSelectionModel`. |
+| `PreviewUIShell/` | Mock-driven shell for UI work. **Never ships.** |
+| `Shared/PreviewScene.swift` | RealityView host. **Host-bare** when a sidebar is present (`showsInlineChrome == false`); Quick Look keeps minimal inlined chrome via `PreviewQuickLookChrome.swift`. |
+| `Shared/PreviewChrome.swift` | Interaction + hosting helpers shared by host and QL. |
+
+Cutover plan: `UI-REBUILD/CUTOVER-PLAN.md`. Active integration branch: **`ui-rebuild`** in `.worktrees/ui`.
 
 ## Goal
 

@@ -78,7 +78,7 @@ struct PreviewUIShellApp: App {
 
         // Defaults only — canvas pills never write these.
         Settings {
-            PreviewSettingsRoot(store: .shared)
+            PreviewSettingsRoot(store: AppDefaultsStore.shared)
         }
     }
 }

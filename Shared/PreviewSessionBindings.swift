@@ -14,4 +14,6 @@ struct PreviewSessionBindings {
     var doubleSided: Binding<Bool>
     var showSkeleton: Binding<Bool>
     var fieldOfViewDegrees: Binding<Float>
+    /// Look / view-mode cycle index into `PreviewScene.debugModes` (host pills + old chrome).
+    var debugModeIndex: Binding<Int>
 }

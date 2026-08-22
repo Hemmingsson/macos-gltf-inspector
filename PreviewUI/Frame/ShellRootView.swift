@@ -47,10 +47,11 @@ struct ShellRootView<
     /// Must not run in `init` — see `seedSessionIfNeeded`.
     private let seedSession: (@MainActor (Settings, Viewport) -> Void)?
     private let canvas: () -> Canvas
-    /// Host binds screenshot / Open in… later; shell keeps a shared no-op so collapse overlays
-    /// and the inspector header stay in sync without duplicated stub closures.
-    private let onScreenshot: () -> Void
+    /// Host binds Open in… later; screenshot always goes through `viewport.screenshot()`.
     private let onOpenIn: () -> Void
+    /// Host maps `PreviewMorph` → inspector sliders; shell leaves these empty.
+    private let morphTargets: [MorphTargetControl]
+    private let onSetMorphWeight: (String, Double) -> Void
 
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -64,8 +65,9 @@ struct ShellRootView<
         settings: @autoclosure () -> Settings,
         playback: @autoclosure () -> Playback,
         panels: ShellPanelChrome,
+        morphTargets: [MorphTargetControl] = [],
+        onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in },
         seedSession: (@MainActor (Settings, Viewport) -> Void)? = nil,
-        onScreenshot: @escaping () -> Void = {},
         onOpenIn: @escaping () -> Void = {},
         @ViewBuilder canvas: @escaping () -> Canvas
     ) {
@@ -77,8 +79,9 @@ struct ShellRootView<
         _settings = State(wrappedValue: settings())
         _playback = State(wrappedValue: playback())
         self.panels = panels
+        self.morphTargets = morphTargets
+        self.onSetMorphWeight = onSetMorphWeight
         self.seedSession = seedSession
-        self.onScreenshot = onScreenshot
         self.onOpenIn = onOpenIn
         self.canvas = canvas
     }
@@ -113,9 +116,11 @@ struct ShellRootView<
                     selection: selection,
                     documentState: documentState,
                     isInspectorVisible: panels.isInspectorVisible,
-                    onScreenshot: onScreenshot,
+                    onScreenshot: { viewport.screenshot() },
                     onOpenIn: onOpenIn,
-                    onToggleInspector: { panels.toggleInspector() }
+                    onToggleInspector: { panels.toggleInspector() },
+                    morphTargets: morphTargets,
+                    onSetMorphWeight: onSetMorphWeight
                 )
                 .frame(width: Theme.inspectorWidth)
                 .transition(.opacity)
@@ -166,7 +171,7 @@ struct ShellRootView<
                 ActionRow(
                     isInspectorVisible: false,
                     floating: true,
-                    onScreenshot: onScreenshot,
+                    onScreenshot: { viewport.screenshot() },
                     onOpenIn: onOpenIn,
                     onToggleInspector: { panels.toggleInspector() }
                 )

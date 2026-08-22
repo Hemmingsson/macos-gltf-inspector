@@ -43,6 +43,8 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
                                 onSelect: { item in
                                     if item.id.kind == .scene {
                                         viewport.setScene(item.id)
+                                    } else if item.id.kind == .camera {
+                                        viewport.setFileCamera(item.id)
                                     }
                                     selection.select(selection.selected == item.id ? nil : item.id)
                                 }

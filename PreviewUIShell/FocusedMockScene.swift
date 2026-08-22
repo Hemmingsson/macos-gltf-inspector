@@ -10,7 +10,4 @@ extension FocusedValues {
 
     /// Key-window `MockViewport` for the View menu (keyboard twin of the canvas pills).
     @Entry var mockViewport: MockViewport?
-
-    /// Key-window sidebar / inspector visibility (chrome toggles + View-menu twins).
-    @Entry var shellPanelChrome: ShellPanelChrome?
 }

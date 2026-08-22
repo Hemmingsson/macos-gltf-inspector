@@ -146,6 +146,16 @@ final class MockViewport: ViewportController {
         record("setMaterialVariant(\(index.map(String.init) ?? "nil"))")
     }
 
+    func setFileCamera(_ id: NodeID?) {
+        if let id {
+            guard id.kind == .camera else { return }
+            record("setFileCamera(\(id.kind.rawValue):\(id.index))")
+        } else {
+            record("setFileCamera(nil)")
+        }
+        activeCameraPreset = nil
+    }
+
     // MARK: - Session mirror
 
     /// Mirror every settings-backed key. Used by `reset` and harness `syncSessionFromViewport`.

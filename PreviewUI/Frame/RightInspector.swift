@@ -16,6 +16,9 @@ struct RightInspector<
     var onScreenshot: () -> Void
     var onOpenIn: () -> Void
     var onToggleInspector: () -> Void
+    /// Live morph weights from the host (`PreviewMorph`); empty when the file has none.
+    var morphTargets: [MorphTargetControl] = []
+    var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
 
     @Environment(\.previewHair) private var hair
 
@@ -28,6 +31,10 @@ struct RightInspector<
                     VStack(alignment: .leading, spacing: 0) {
                         if let detail = selection.detail {
                             nodeSections(detail)
+                        }
+
+                        if !morphTargets.isEmpty {
+                            MorphWeightsSection(targets: morphTargets, onSetWeight: onSetMorphWeight)
                         }
 
                         FileSection(stats: model.stats, fileName: model.fileName)

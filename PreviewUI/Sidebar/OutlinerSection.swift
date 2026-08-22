@@ -51,7 +51,7 @@ struct OutlinerSection: Identifiable, Hashable, Sendable {
 extension OutlinerSection {
 
     /// The whole sidebar, in wireframe order: Scene · Cameras · Lights · Meshes · Materials ·
-    /// Animations.
+    /// Animations · Morphs.
     ///
     /// DESIGN.md's "show only what the model has" is enforced *here*, once, by simply not
     /// producing an empty section — rather than by an `if` in every view, which is how a
@@ -82,6 +82,12 @@ extension OutlinerSection {
             OutlinerSection(
                 title: "Animations",
                 items: model.animations.map { OutlinerItem(id: $0.id, name: $0.name) }
+            ),
+            OutlinerSection(
+                title: "Morphs",
+                items: model.morphs.map {
+                    OutlinerItem(id: $0.id, name: $0.meshName)
+                }
             )
         ]
         return candidates.filter { !$0.items.isEmpty }

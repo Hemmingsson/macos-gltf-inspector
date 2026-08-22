@@ -54,8 +54,7 @@ struct ShellWindow: View {
             settings: MockSettings(),
             playback: playback,
             panels: panels,
-            seedSession: seedSession,
-            onScreenshot: { viewport.screenshot() }
+            seedSession: seedSession
         ) {
             CanvasPlaceholder()
         }
