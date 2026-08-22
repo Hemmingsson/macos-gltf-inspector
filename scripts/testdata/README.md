@@ -30,7 +30,7 @@ The `cube/` sidecar is regenerated separately with `python3 scripts/testdata/cub
 | `missing-channels/basecolor-only.gltf` | `.missingChannels` | material with baseColor factor only | view-mode menu shortens; material chips omit absent maps | — (available for UI) |
 | `rigged/two-joint-skin.gltf` | `.rigged` | two-joint skin | skeleton controls | — (available for UI) |
 | `morph/morph-triangle.gltf` | `.morph` | one named morph target ("Blink") | morph controls | — (available for UI) |
-| `corrupt/truncated.glb` | `.corrupt` | valid magic, lying chunk lengths, truncated | hard-failure path — must show `.failed`, never a spinner (AGENTS.md pitfall 2) | — (available for UI) |
+| `corrupt/truncated.glb` | `.corrupt` | valid magic, lying chunk lengths, truncated | hard-failure path — must show `.failed`, never a spinner (AGENTS.md pitfall 2) | PipelineHoleTests |
 
 The last seven are on-disk stand-ins for adaptive UI (DESIGN.md — show only what the model has).
 The in-memory builders in

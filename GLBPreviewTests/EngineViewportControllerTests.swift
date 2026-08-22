@@ -22,8 +22,6 @@ struct EngineViewportControllerTests {
         #expect(viewport.isCentered == false)
         #expect(viewport.projection == .orthographic)
         #expect(viewport.activeCameraPreset == .front)
-        #expect(viewport.hostBackdropIndex == PreviewBackground.allCases.firstIndex(of: .dark))
-        #expect(viewport.hostOrthographic == true)
     }
 
     @Test func lightingMapsDegreesRadiansAndFileLights() {
@@ -39,10 +37,9 @@ struct EngineViewportControllerTests {
             )
         )
 
-        #expect(viewport.hostExposureEV == 1.5)
-        #expect(viewport.hostDimStudioForFileLights == true)
-        #expect(abs(viewport.hostEnvironmentYawRadians - Float.pi / 2) < 0.0001)
+        #expect(viewport.lighting.exposure == 1.5)
         #expect(viewport.lighting.usesFileLights == true)
+        #expect(abs(viewport.lighting.environmentRotationDegrees - 90) < 0.0001)
         // Studio flag mirrors AppLook; setter must not fight it.
         #expect(viewport.lighting.usesStudioEnvironment == AppLookStore.shared.look.useEnvironmentMap)
     }

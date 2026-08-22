@@ -262,23 +262,6 @@ final class EngineViewportController: ViewportController {
         activeCameraPreset = nil
     }
 
-    /// Host backdrop index for `PreviewBackground.at`.
-    var hostBackdropIndex: Int {
-        PreviewBackground.allCases.firstIndex(of: hostBackdrop) ?? 0
-    }
-
-    var hostBackdrop: PreviewBackground {
-        PreviewBackground(rawValue: backdrop.rawValue) ?? .window
-    }
-
-    var hostOrthographic: Bool { projection == .orthographic }
-
-    var hostExposureEV: Float { storedExposureEV }
-
-    var hostDimStudioForFileLights: Bool { storedDimStudioForFileLights }
-
-    var hostEnvironmentYawRadians: Float { storedEnvironmentYawRadians }
-
     var doubleSided: Bool { storedDoubleSided }
 
     var showSkeleton: Bool { storedShowSkeleton }

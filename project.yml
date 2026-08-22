@@ -224,6 +224,10 @@ targets:
           - AppSettings.swift
           - GLTFValidator.swift
           - PreviewFocus.swift
+          - PreviewMorph.swift
+          - SelectionDetail.swift
+          - PreviewSessionBindings.swift
+          - PreviewSkeletonOverlay.swift
       - path: Shared/Convert
         includes:
           - "*.swift"

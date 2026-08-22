@@ -229,9 +229,9 @@ struct HostShellRootView: View {
     /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
     /// Does **not** pin every key into session — only reads effective values (P34).
     @MainActor
-    private func seedSession(settings: EngineSettingsStore, viewport: EngineViewportController) {
-        // ShellRootView may have constructed a fresh viewport via autoclosure after `.id` remount;
-        // keep the window-owned controller as the FocusedValues / pill source of truth.
+    private func seedSession(settings: EngineSettingsStore, viewport _: EngineViewportController) {
+        // Window-owned `engineViewport` is the FocusedValues / pill source of truth. ShellRootView
+        // `@State` holds the same class instance (`viewport: engineViewport`).
         engineViewport.sidebar = sidebar ?? placeholderSidebar
         engineViewport.settings = settings
         engineViewport.commands = focusedPreviewCommands
@@ -239,15 +239,6 @@ struct HostShellRootView: View {
         wireViewportHostSession()
         engineViewport.applySession(from: settings)
         syncCanvasFromSettings()
-        // If ShellRootView's @State viewport is a different instance, mirror settings onto it too.
-        if viewport !== engineViewport {
-            viewport.sidebar = engineViewport.sidebar
-            viewport.settings = settings
-            viewport.hostSession = engineViewport.hostSession
-            viewport.commands = engineViewport.commands
-            viewport.screenshotHandler = engineViewport.screenshotHandler
-            viewport.applySession(from: settings)
-        }
     }
 
     private func wireViewportHostSession() {
