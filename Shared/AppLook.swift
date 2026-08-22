@@ -109,8 +109,4 @@ final class AppLookStore {
         self.look = look
         look.save(to: directory)
     }
-
-    func reloadFromDisk() {
-        look = AppLook.load(from: directory)
-    }
 }

@@ -40,20 +40,6 @@ enum OutlinerTree {
         return ids
     }
 
-    /// Rows that should appear given the current expansion set (ancestors must be expanded).
-    static func visibleItems(roots: [OutlinerItem], expanded: Set<NodeID>) -> [OutlinerItem] {
-        var rows: [OutlinerItem] = []
-        func walk(_ item: OutlinerItem) {
-            rows.append(item)
-            guard !item.children.isEmpty, expanded.contains(item.id) else { return }
-            for child in item.children {
-                walk(child)
-            }
-        }
-        roots.forEach(walk)
-        return rows
-    }
-
     /// Plain click toggles one node; Option-click expands/collapses the whole subtree.
     /// If open but not fully expanded, Option-click finishes expanding (does not collapse).
     static func toggle(

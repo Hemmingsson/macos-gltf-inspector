@@ -193,18 +193,6 @@ enum PreviewLighting {
         return CGImageSourceCreateImageAtIndex(source, 0, options as CFDictionary)
     }
 
-    /// Small SDR preview for Settings (not for IBL).
-    static func thumbnailImage(from url: URL, maxPixelSize: Int = 240) -> CGImage? {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldAllowFloat: true,
-        ]
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
-    }
-
     @MainActor
     private static func applyReceivers(from light: Entity, to entity: Entity) {
         entity.components.set(ImageBasedLightReceiverComponent(imageBasedLight: light))
