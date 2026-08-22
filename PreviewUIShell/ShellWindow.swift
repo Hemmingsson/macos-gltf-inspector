@@ -63,7 +63,6 @@ struct ShellWindow: View {
             if viewport.activeSceneID == nil, let id = scene.model.defaultSceneID {
                 viewport.setScene(id)
             }
-            playback.replaceClips(scene.model.animations)
         }
         .onChange(of: scene.model.animations.map(\.id)) { _, _ in
             playback.replaceClips(scene.model.animations)

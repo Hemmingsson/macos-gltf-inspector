@@ -10,7 +10,6 @@ final class MockSettings: SettingsStore {
     private var sessionBool: [String: Bool] = [:]
     private var sessionBackdrop: [String: BackdropStyle] = [:]
     private var sessionProjection: [String: Projection] = [:]
-    private var sessionString: [String: String] = [:]
 
     init(defaultsStore: AppDefaultsStore = .shared) {
         self.defaultsStore = defaultsStore
@@ -39,11 +38,6 @@ final class MockSettings: SettingsStore {
         sessionBool.removeAll()
         sessionBackdrop.removeAll()
         sessionProjection.removeAll()
-        sessionString.removeAll()
-    }
-
-    func setDefault<Value>(_ value: Value, for key: SettingKey<Value>) {
-        defaultsStore.set(value, for: key)
     }
 
     private func readSession<Value>(_ key: SettingKey<Value>) -> Value? {
@@ -55,9 +49,6 @@ final class MockSettings: SettingsStore {
         }
         if Value.self == Projection.self {
             return sessionProjection[key.name] as? Value
-        }
-        if Value.self == String.self {
-            return sessionString[key.name] as? Value
         }
         return nil
     }
@@ -73,10 +64,6 @@ final class MockSettings: SettingsStore {
         }
         if let projection = value as? Projection {
             sessionProjection[key.name] = projection
-            return
-        }
-        if let string = value as? String {
-            sessionString[key.name] = string
             return
         }
     }

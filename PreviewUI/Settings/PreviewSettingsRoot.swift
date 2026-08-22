@@ -164,7 +164,6 @@ private struct GeneralSettingsPane: View {
 
 private struct PreviewDefaultsPane: View {
     var store: AppDefaultsStore
-    @State private var importError: String?
 
     private let catalog: [(raw: String, title: String)] = [
         ("neutral", "Studio Neutral"),
@@ -204,16 +203,10 @@ private struct PreviewDefaultsPane: View {
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Group {
-                    if let importError {
-                        Text(importError).foregroundStyle(.red)
-                    } else {
-                        Text("Custom HDR and EXR files are remembered as a path for the host adapter. Decode stays in Shared/PreviewLighting.")
-                    }
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Custom HDR and EXR files are remembered as a path for the host adapter. Decode stays in Shared/PreviewLighting.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .settingsFormChrome()
@@ -255,7 +248,6 @@ private struct PreviewDefaultsPane: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         store.set(url.lastPathComponent, for: .customEnvironmentFile)
         store.set(true, for: .useEnvironmentMap)
-        importError = nil
     }
 }
 

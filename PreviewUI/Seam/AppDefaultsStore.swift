@@ -35,8 +35,8 @@ final class AppDefaultsStore {
     }
 
     func set<Value>(_ value: Value, for key: SettingKey<Value>) {
+        // Revision bumps only via `didChangeNotification` — avoid a double poke on each write.
         write(value, for: key)
-        revision &+= 1
     }
 
     private func read<Value>(_ key: SettingKey<Value>) -> Value {
