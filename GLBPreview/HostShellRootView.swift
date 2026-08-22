@@ -325,7 +325,6 @@ struct HostShellRootView: View {
         Task {
             let state = await PreviewView.State.loaded(from: url)
             guard generation == loadGeneration else { return }
-            previewState = state
             if case .ready(let model) = state {
                 let dims = PreviewCamera.dimensions(of: model.entity, relativeTo: model.entity)
                 let clips = PreviewClip.usable(on: model.entity, document: model.document)
@@ -337,15 +336,16 @@ struct HostShellRootView: View {
                     AppLog.host,
                     "open ready \(url.lastPathComponent) nodes=\(model.document.nodes.count) cameras=\(model.document.cameras.count) triangles=\(model.stats.triangleCount) dimensions=\(dims?.readout ?? "empty") emptyBounds=\(dims == nil) clips=\(clipSummary)"
                 )
-                sessionDimStudioForFileLights = model.studioIBLExponent < 0
-                sessionExposureEV = 0
-                sessionEnvironmentYaw = 0
-                sessionDebugModeIndex = 0
                 let modelSidebar = HostSidebarModel(document: model.document)
                 modelSidebar.materialVariantNames = model.materialVariantNames
                 sidebar = modelSidebar
                 engineViewport.sidebar = modelSidebar
                 wireViewportHostSession()
+                engineViewport.applyConvertedLighting(
+                    dimStudioForFileLights: model.studioIBLExponent < 0,
+                    resetExposureAndYaw: true
+                )
+                engineViewport.setViewMode(.shaded)
                 refreshMorphTargets(from: model.entity)
                 AppLog.info(
                     AppLog.host,
@@ -356,6 +356,7 @@ struct HostShellRootView: View {
                 morphTargets = []
                 AppLog.error(AppLog.host, "open failed \(url.lastPathComponent): \(message)")
             }
+            previewState = state
         }
     }
 
@@ -452,7 +453,10 @@ struct HostShellRootView: View {
                     )
                 )
                 if case .ready(let loaded) = previewState {
-                    sessionDimStudioForFileLights = loaded.studioIBLExponent < 0
+                    engineViewport.applyConvertedLighting(
+                        dimStudioForFileLights: loaded.studioIBLExponent < 0,
+                        resetExposureAndYaw: false
+                    )
                     refreshMorphTargets(from: loaded.entity)
                 }
                 sidebar.overlayRevision += 1
@@ -501,7 +505,10 @@ struct HostShellRootView: View {
                     )
                 )
                 sidebar.materialVariantNames = model.materialVariantNames
-                sessionDimStudioForFileLights = model.studioIBLExponent < 0
+                engineViewport.applyConvertedLighting(
+                    dimStudioForFileLights: model.studioIBLExponent < 0,
+                    resetExposureAndYaw: false
+                )
                 refreshMorphTargets(from: entity)
                 sidebar.overlayRevision += 1
                 AppLog.info(

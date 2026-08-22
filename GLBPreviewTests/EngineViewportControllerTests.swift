@@ -220,6 +220,57 @@ struct EngineViewportControllerTests {
         #expect(fieldOfView == PreviewCamera.defaultFieldOfViewDegrees)
         #expect(exposureEV == 0)
     }
+
+    @Test func applySessionRemountDoesNotClobberFileLightDim() {
+        let sidebar = HostSidebarModel(document: GLTFSessionDocument())
+        var backdropIndex = 0
+        var showFloor = true
+        var autoRotate = true
+        var centerModel = true
+        var orthographic = false
+        var exposureEV: Float = 0
+        var dimStudio = false
+        var environmentYaw: Float = 0
+        var debugModeIndex = 0
+        var doubleSided = false
+        var showSkeleton = false
+        var fieldOfView: Float = PreviewCamera.defaultFieldOfViewDegrees
+        let host = PreviewSessionBindings(
+            autoRotate: Binding(get: { autoRotate }, set: { autoRotate = $0 }),
+            showFloor: Binding(get: { showFloor }, set: { showFloor = $0 }),
+            backdropIndex: Binding(get: { backdropIndex }, set: { backdropIndex = $0 }),
+            centerModel: Binding(get: { centerModel }, set: { centerModel = $0 }),
+            orthographic: Binding(get: { orthographic }, set: { orthographic = $0 }),
+            exposureEV: Binding(get: { exposureEV }, set: { exposureEV = $0 }),
+            dimStudioForFileLights: Binding(get: { dimStudio }, set: { dimStudio = $0 }),
+            environmentYaw: Binding(get: { environmentYaw }, set: { environmentYaw = $0 }),
+            doubleSided: Binding(get: { doubleSided }, set: { doubleSided = $0 }),
+            showSkeleton: Binding(get: { showSkeleton }, set: { showSkeleton = $0 }),
+            fieldOfViewDegrees: Binding(get: { fieldOfView }, set: { fieldOfView = $0 }),
+            debugModeIndex: Binding(get: { debugModeIndex }, set: { debugModeIndex = $0 }),
+            debugModes: [.none]
+        )
+        let settings = EngineSettingsStore()
+        let viewport = EngineViewportController(
+            sidebar: sidebar,
+            settings: settings,
+            hostSession: host
+        )
+
+        // Convert-owned dim, as HostShellRootView does on punctual-light open.
+        viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: true)
+        #expect(dimStudio == true)
+        #expect(viewport.lighting.usesFileLights == true)
+
+        // ShellRootView remount: applySession → syncHostCanvasFromStored.
+        viewport.applySession(from: settings)
+        #expect(dimStudio == true)
+        #expect(viewport.lighting.usesFileLights == true)
+        #expect(exposureEV == 0)
+
+        viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: false)
+        #expect(dimStudio == true)
+    }
 }
 
 @MainActor

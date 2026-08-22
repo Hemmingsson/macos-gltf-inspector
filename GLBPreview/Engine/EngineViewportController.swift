@@ -197,6 +197,19 @@ final class EngineViewportController: ViewportController {
         // Intentionally ignore `usesStudioEnvironment` — do not fight `AppLook.useEnvironmentMap`.
     }
 
+    /// Convert-owned file-light dimming. Open resets exposure/yaw; scene/variant keep them.
+    /// Must update `stored*` so `applySession` / remount `syncHostCanvasFromStored` cannot clobber.
+    func applyConvertedLighting(dimStudioForFileLights: Bool, resetExposureAndYaw: Bool) {
+        setLighting(
+            LightingSettings(
+                exposure: resetExposureAndYaw ? 0 : lighting.exposure,
+                environmentRotationDegrees: resetExposureAndYaw ? 0 : lighting.environmentRotationDegrees,
+                usesFileLights: dimStudioForFileLights,
+                usesStudioEnvironment: lookStore.look.useEnvironmentMap
+            )
+        )
+    }
+
     func fit() {
         sidebar.selectedCameraIndex = nil
         commands?.fit()
@@ -282,7 +295,8 @@ final class EngineViewportController: ViewportController {
         hostSession?.fieldOfViewDegrees.wrappedValue = storedFieldOfViewDegrees
     }
 
-    /// Push stored settings-backed values into the RealityKit session bindings (open / clearSession).
+    /// Push stored values into the RealityKit session bindings (open / clearSession / remount).
+    /// Lighting extras must already live in `stored*` — convert applies them via `applyConvertedLighting`.
     func syncHostCanvasFromStored() {
         guard let hostSession else { return }
         hostSession.backdropIndex.wrappedValue =
