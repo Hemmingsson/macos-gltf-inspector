@@ -146,9 +146,8 @@ final class EngineViewportController: ViewportController {
         storedBackdrop = style
         settings?.setSession(style, for: .backdrop)
         if let hostSession {
-            let background = PreviewBackground(rawValue: style.rawValue) ?? .window
             hostSession.backdropIndex.wrappedValue =
-                PreviewBackground.allCases.firstIndex(of: background) ?? 0
+                PreviewBackground.index(matchingRawValue: style.rawValue)
         }
     }
 
@@ -286,9 +285,8 @@ final class EngineViewportController: ViewportController {
     /// Push stored settings-backed values into the RealityKit session bindings (open / clearSession).
     func syncHostCanvasFromStored() {
         guard let hostSession else { return }
-        let background = PreviewBackground(rawValue: backdrop.rawValue) ?? .window
         hostSession.backdropIndex.wrappedValue =
-            PreviewBackground.allCases.firstIndex(of: background) ?? 0
+            PreviewBackground.index(matchingRawValue: backdrop.rawValue)
         hostSession.showFloor.wrappedValue = showsFloor
         hostSession.autoRotate.wrappedValue = autoRotates
         hostSession.centerModel.wrappedValue = isCentered

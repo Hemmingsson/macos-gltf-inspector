@@ -98,7 +98,7 @@ struct HostShellRootView: View {
             }
             .onChange(of: settings.defaultsStore.revision) { _, _ in
                 // Live-track canvas for keys that still have no session override.
-                syncCanvasFromSettings()
+                engineViewport.syncHostCanvasFromStored()
             }
             .onDrop(of: [.fileURL], isTargeted: nil) {
                 GLBDocumentOpening.handleDrop($0, openDocument: openDocument)
@@ -239,7 +239,6 @@ struct HostShellRootView: View {
         engineViewport.screenshotHandler = screenshotCurrentCameraPose
         wireViewportHostSession()
         engineViewport.applySession(from: settings)
-        syncCanvasFromSettings()
     }
 
     private func wireViewportHostSession() {
@@ -247,18 +246,6 @@ struct HostShellRootView: View {
         engineViewport.settings = settings
         engineViewport.commands = focusedPreviewCommands
         engineViewport.screenshotHandler = screenshotCurrentCameraPose
-    }
-
-    /// Push effective settings values into canvas mirrors without writing session overrides.
-    private func syncCanvasFromSettings() {
-        let style = settings.sessionValue(for: .backdrop)
-        let background = PreviewBackground(rawValue: style.rawValue) ?? .window
-        canvasBackdropIndex = PreviewBackground.allCases.firstIndex(of: background) ?? 0
-        canvasShowFloor = settings.sessionValue(for: .showFloor)
-        canvasAutoRotate = settings.sessionValue(for: .autoRotate)
-        canvasCenterModel = settings.sessionValue(for: .center)
-        canvasOrthographic = settings.sessionValue(for: .projection) == .orthographic
-        engineViewport.syncHostCanvasFromStored()
     }
 
     private func reframingCamera(preset: PreviewCamera.CameraPreset? = nil) {
@@ -351,7 +338,7 @@ struct HostShellRootView: View {
         loadGeneration += 1
         // New document in this window: drop session overrides and re-track defaults.
         settings.clearSession()
-        syncCanvasFromSettings()
+        engineViewport.syncHostCanvasFromStored()
         let generation = loadGeneration
         AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
         startValidation(of: url, generation: generation)

@@ -81,6 +81,11 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         allCases[index % allCases.count]
     }
 
+    /// `BackdropStyle` / Settings raw value → `allCases` index (unknown → `.window`).
+    static func index(matchingRawValue rawValue: String) -> Int {
+        allCases.firstIndex(of: PreviewBackground(rawValue: rawValue) ?? .window) ?? 0
+    }
+
     static var stored: PreviewBackground {
         let raw = UserDefaults.standard.string(forKey: SettingsKeys.background) ?? window.rawValue
         return PreviewBackground(rawValue: raw) ?? .window

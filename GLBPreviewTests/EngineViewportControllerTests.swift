@@ -24,6 +24,17 @@ struct EngineViewportControllerTests {
         #expect(viewport.activeCameraPreset == .front)
     }
 
+    @Test func backdropRawValueIndexFallsBackToWindow() {
+        #expect(
+            PreviewBackground.index(matchingRawValue: BackdropStyle.dark.rawValue)
+                == PreviewBackground.allCases.firstIndex(of: .dark)
+        )
+        #expect(
+            PreviewBackground.index(matchingRawValue: "not-a-backdrop")
+                == PreviewBackground.allCases.firstIndex(of: .window)
+        )
+    }
+
     @Test func lightingMapsDegreesRadiansAndFileLights() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let viewport = EngineViewportController(sidebar: sidebar)
@@ -179,7 +190,7 @@ struct EngineViewportControllerTests {
             )
         )
 
-        #expect(backdropIndex == PreviewBackground.allCases.firstIndex(of: .dark))
+        #expect(backdropIndex == PreviewBackground.index(matchingRawValue: BackdropStyle.dark.rawValue))
         #expect(showFloor == false)
         #expect(autoRotate == false)
         #expect(centerModel == false)
