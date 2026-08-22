@@ -109,7 +109,10 @@ struct HostShellRootView: View {
     private var shellRoot: some View {
         let activeSidebar = sidebar ?? placeholderSidebar
         let model = engineSceneModel
-        let availability = EngineAvailability.make(model: model, debugModes: loadedDebugModes)
+        let availability = DerivedAvailability(
+            model: model,
+            channels: EngineSceneModel.mapDebugChannels(loadedDebugModes)
+        )
         let playback: EngineAnimationPlaybackController = {
             if case .ready(let loaded) = previewState {
                 return EngineAnimationPlaybackController(loaded: loaded)

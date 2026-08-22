@@ -20,15 +20,15 @@ final class EngineAppDefaultsBridge {
     }
 
     func value<Value>(for key: SettingKey<Value>) -> Value {
-        if Self.isAppLookKey(key) {
-            return readAppLook(key)
+        if EngineAppLookRouting.isAppLookKey(key) {
+            return EngineAppLookRouting.read(key, from: lookStore)
         }
         return defaultsStore.value(for: key)
     }
 
     func set<Value>(_ value: Value, for key: SettingKey<Value>) {
-        if Self.isAppLookKey(key) {
-            writeAppLook(value, for: key)
+        if EngineAppLookRouting.isAppLookKey(key) {
+            EngineAppLookRouting.write(value, for: key, to: lookStore)
             return
         }
         defaultsStore.set(value, for: key)
@@ -66,52 +66,6 @@ final class EngineAppDefaultsBridge {
         return fileName
     }
 
-    // MARK: - AppLook routing
-
-    private static func isAppLookKey<Value>(_ key: SettingKey<Value>) -> Bool {
-        key.name == SettingKey<Bool>.useEnvironmentMap.name
-            || key.name == SettingKey<String>.environmentCatalog.name
-            || key.name == SettingKey<String>.customEnvironmentFile.name
-    }
-
-    private func readAppLook<Value>(_ key: SettingKey<Value>) -> Value {
-        let look = lookStore.look
-        if key.name == SettingKey<Bool>.useEnvironmentMap.name,
-           let value = look.useEnvironmentMap as? Value {
-            return value
-        }
-        if key.name == SettingKey<String>.environmentCatalog.name,
-           let value = look.catalogRaw as? Value {
-            return value
-        }
-        if key.name == SettingKey<String>.customEnvironmentFile.name {
-            let raw = look.customFileName ?? ""
-            if let value = raw as? Value {
-                return value
-            }
-        }
-        return key.fallback
-    }
-
-    private func writeAppLook<Value>(_ value: Value, for key: SettingKey<Value>) {
-        var look = lookStore.look
-        if key.name == SettingKey<Bool>.useEnvironmentMap.name, let flag = value as? Bool {
-            look.useEnvironmentMap = flag
-            lookStore.apply(look)
-            return
-        }
-        if key.name == SettingKey<String>.environmentCatalog.name, let raw = value as? String {
-            look.catalogRaw = raw
-            look.customFileName = nil
-            lookStore.apply(look)
-            return
-        }
-        if key.name == SettingKey<String>.customEnvironmentFile.name, let raw = value as? String {
-            look.customFileName = raw.isEmpty ? nil : raw
-            lookStore.apply(look)
-            return
-        }
-    }
 }
 
 extension EngineAppDefaultsBridge: SettingsDefaultsStore {}

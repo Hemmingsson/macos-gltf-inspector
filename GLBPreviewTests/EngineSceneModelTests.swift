@@ -9,7 +9,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.cube)
         let loaded = try await EntityLoader.load(from: TestFixtures.cube, includeAnimations: true)
         let model = EngineSceneModel(loaded: loaded, fileName: TestFixtures.cube.lastPathComponent)
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         #expect(!availability.hasAnimations)
         #expect(!availability.hasLights)
@@ -27,7 +27,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.tiny)
         let loaded = try await EntityLoader.load(from: TestFixtures.tiny, includeAnimations: true)
         let model = EngineSceneModel(loaded: loaded, fileName: "tiny.glb")
-        let availability = EngineAvailability.make(from: loaded, fileName: "tiny.glb")
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         #expect(!availability.hasAnimations)
         #expect(!availability.hasLights)
@@ -42,7 +42,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.boxAnimated)
         let loaded = try await EntityLoader.load(from: TestFixtures.boxAnimated, includeAnimations: true)
         let model = EngineSceneModel(loaded: loaded, fileName: "BoxAnimated.glb")
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
         let playback = EngineAnimationPlaybackController(loaded: loaded)
 
         #expect(availability.hasAnimations)
@@ -63,7 +63,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.lights)
         let loaded = try await EntityLoader.load(from: TestFixtures.lights, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "punctual-lights.gltf")
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         #expect(availability.hasLights)
         #expect(model.lights.count >= 3)
@@ -74,7 +74,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.cameras)
         let loaded = try await EntityLoader.load(from: TestFixtures.cameras, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "persp-and-ortho.gltf")
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         #expect(availability.hasCameras)
         #expect(model.cameras.count >= 2)
@@ -89,7 +89,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.multiScene)
         let loaded = try await EntityLoader.load(from: TestFixtures.multiScene, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "two-scenes.gltf")
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         #expect(availability.isMultiScene)
         #expect(model.scenes.count >= 2)
@@ -100,7 +100,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.rigged)
         let loaded = try await EntityLoader.load(from: TestFixtures.rigged, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "two-joint-skin.gltf")
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         #expect(availability.hasSkin)
         #expect(!model.skins.isEmpty)
@@ -111,7 +111,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.morph)
         let loaded = try await EntityLoader.load(from: TestFixtures.morph, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "morph-triangle.gltf")
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         #expect(availability.hasMorphs)
         #expect(!model.morphs.isEmpty)
@@ -122,7 +122,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.missingChannels)
         let loaded = try await EntityLoader.load(from: TestFixtures.missingChannels, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "basecolor-only.gltf")
-        let availability = EngineAvailability.make(model: model, debugModes: loaded.debugModes)
+        let availability = availability(for: model, debugModes: loaded.debugModes)
 
         let full = DerivedAvailability(
             model: model,
@@ -181,6 +181,13 @@ struct EngineSceneModelTests {
         #expect(!material.maps.contains(.emissive))
         #expect(!material.maps.contains(.clearcoat))
     }
+}
+
+private func availability(
+    for model: EngineSceneModel,
+    debugModes: [PreviewDebugMode]
+) -> DerivedAvailability<EngineSceneModel> {
+    DerivedAvailability(model: model, channels: EngineSceneModel.mapDebugChannels(debugModes))
 }
 
 private func requireFixture(_ url: URL) throws {

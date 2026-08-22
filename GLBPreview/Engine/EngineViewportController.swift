@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import RealityKit
+import SwiftUI
 
 /// Session + camera + still-path adapter for `ViewportController`.
 ///
@@ -389,4 +390,9 @@ final class EngineViewportController: ViewportController {
         case .isometric: .iso
         }
     }
+}
+
+extension FocusedValues {
+    /// Key-window engine viewport for the host View menu (pill twin).
+    @Entry var engineViewport: EngineViewportController?
 }

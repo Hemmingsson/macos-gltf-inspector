@@ -26,8 +26,8 @@ final class EngineSettingsStore: SettingsStore {
     }
 
     func `default`<Value>(for key: SettingKey<Value>) -> Value {
-        if Self.isAppLookKey(key) {
-            return readAppLookDefault(key)
+        if EngineAppLookRouting.isAppLookKey(key) {
+            return EngineAppLookRouting.read(key, from: lookStore)
         }
         if Self.isSessionOnly(key) {
             return key.fallback
@@ -51,8 +51,8 @@ final class EngineSettingsStore: SettingsStore {
             return
         }
         let value = sessionValue(for: key)
-        if Self.isAppLookKey(key) {
-            writeAppLookDefault(value, for: key)
+        if EngineAppLookRouting.isAppLookKey(key) {
+            EngineAppLookRouting.write(value, for: key, to: lookStore)
             return
         }
         defaultsStore.set(value, for: key)
@@ -109,49 +109,4 @@ final class EngineSettingsStore: SettingsStore {
             || key.name == SettingKey<Projection>.projection.name
     }
 
-    private static func isAppLookKey<Value>(_ key: SettingKey<Value>) -> Bool {
-        key.name == SettingKey<Bool>.useEnvironmentMap.name
-            || key.name == SettingKey<String>.environmentCatalog.name
-            || key.name == SettingKey<String>.customEnvironmentFile.name
-    }
-
-    // MARK: - AppLook
-
-    private func readAppLookDefault<Value>(_ key: SettingKey<Value>) -> Value {
-        let look = lookStore.look
-        if key.name == SettingKey<Bool>.useEnvironmentMap.name,
-           let value = look.useEnvironmentMap as? Value {
-            return value
-        }
-        if key.name == SettingKey<String>.environmentCatalog.name,
-           let value = look.catalogRaw as? Value {
-            return value
-        }
-        if key.name == SettingKey<String>.customEnvironmentFile.name {
-            let raw = look.customFileName ?? ""
-            if let value = raw as? Value {
-                return value
-            }
-        }
-        return key.fallback
-    }
-
-    private func writeAppLookDefault<Value>(_ value: Value, for key: SettingKey<Value>) {
-        var look = lookStore.look
-        if key.name == SettingKey<Bool>.useEnvironmentMap.name, let flag = value as? Bool {
-            look.useEnvironmentMap = flag
-            lookStore.apply(look)
-            return
-        }
-        if key.name == SettingKey<String>.environmentCatalog.name, let raw = value as? String {
-            look.catalogRaw = raw
-            lookStore.apply(look)
-            return
-        }
-        if key.name == SettingKey<String>.customEnvironmentFile.name, let raw = value as? String {
-            look.customFileName = raw.isEmpty ? nil : raw
-            lookStore.apply(look)
-            return
-        }
-    }
 }

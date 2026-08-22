@@ -17,7 +17,7 @@ final class HostSidebarModel: PreviewOverlay {
     }
     var selectedCameraIndex: Int?
     var selectedNodeIndex: Int?
-    /// Spike P40 — nil keeps authored primitive materials; index applies `KHR_materials_variants`.
+    /// Nil keeps authored primitive materials; index applies `KHR_materials_variants`.
     var selectedMaterialVariantIndex: Int?
     var materialVariantNames: [String] = []
     var overlayRevision = 0
