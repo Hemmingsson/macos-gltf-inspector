@@ -18,6 +18,8 @@ Closest practical **1:1** glTF rendering via **native RealityKit** on Mac. Prefe
 
 Signing team: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof is still PNG via `StillRenderProofTests`.
 
+Test fixtures: reach on-disk models through `GLBPreviewTests/TestFixtures.swift` (not the bundle — read via `#filePath`); catalogue + regen in `scripts/testdata/README.md`.
+
 ```bash
 xcodegen generate   # required: GLBPreview.xcodeproj is gitignored
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
