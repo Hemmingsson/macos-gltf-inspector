@@ -104,3 +104,112 @@ public struct RightInspector<
         }
     }
 }
+
+// MARK: - Previews
+
+private struct PreviewOpenInMenu: View {
+    var body: some View {
+        Menu {
+            Button("Finder") {}
+            Button("Blender") {}
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: ChromeMetrics.glyphSize))
+                .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+    }
+}
+
+private struct RightInspectorPreviewHost: View {
+    enum Mode {
+        case mesh
+        case material
+        case morph
+        case empty
+        case loading
+        case failed
+    }
+
+    var mode: Mode
+    @State private var selection: MockSelectionModel
+
+    init(mode: Mode) {
+        self.mode = mode
+        switch mode {
+        case .mesh:
+            _selection = State(initialValue: MockSelectionModel())
+        case .material:
+            _selection = State(
+                initialValue: MockSelectionModel(
+                    selected: NodeDetailFixtures.material.id,
+                    details: [NodeDetailFixtures.mesh, NodeDetailFixtures.material]
+                )
+            )
+        case .morph:
+            _selection = State(
+                initialValue: MockSelectionModel(
+                    selected: NodeDetailFixtures.morph.id,
+                    details: [NodeDetailFixtures.morph]
+                )
+            )
+        case .empty:
+            _selection = State(initialValue: MockSelectionModel(selected: nil))
+        case .loading, .failed:
+            _selection = State(initialValue: MockSelectionModel())
+        }
+    }
+
+    private var documentState: ShellDocumentState {
+        switch mode {
+        case .mesh, .material, .morph, .empty: .ready
+        case .loading: .loading
+        case .failed: .failed(ShellStatusCopy.invalidFileDetail)
+        }
+    }
+
+    private var height: CGFloat {
+        switch mode {
+        case .mesh, .material, .morph: 520
+        case .empty, .loading, .failed: 240
+        }
+    }
+
+    var body: some View {
+        PreviewCanvas(width: Theme.inspectorWidth, height: height) {
+            RightInspector(
+                model: FixtureSceneModel.cube,
+                selection: selection,
+                documentState: documentState,
+                openInMenu: AnyView(PreviewOpenInMenu()),
+                morphTargets: mode == .morph ? MorphFixtures.faceControls : [],
+                onSetMorphWeight: { _, _ in }
+            )
+        }
+    }
+}
+
+#Preview("mesh", traits: .fixedLayout(width: Theme.inspectorWidth, height: 520)) {
+    RightInspectorPreviewHost(mode: .mesh)
+}
+
+#Preview("material", traits: .fixedLayout(width: Theme.inspectorWidth, height: 520)) {
+    RightInspectorPreviewHost(mode: .material)
+}
+
+#Preview("morph", traits: .fixedLayout(width: Theme.inspectorWidth, height: 520)) {
+    RightInspectorPreviewHost(mode: .morph)
+}
+
+#Preview("empty", traits: .fixedLayout(width: Theme.inspectorWidth, height: 240)) {
+    RightInspectorPreviewHost(mode: .empty)
+}
+
+#Preview("loading", traits: .fixedLayout(width: Theme.inspectorWidth, height: 240)) {
+    RightInspectorPreviewHost(mode: .loading)
+}
+
+#Preview("failed", traits: .fixedLayout(width: Theme.inspectorWidth, height: 240)) {
+    RightInspectorPreviewHost(mode: .failed)
+}

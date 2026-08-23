@@ -51,3 +51,34 @@ private struct FloorIsland<Viewport: ViewportController>: View {
         }
     }
 }
+
+// MARK: - Previews
+
+private struct StagePillPreviewHost: View {
+    @State private var viewport: MockViewportController
+
+    init(viewport: MockViewportController) {
+        _viewport = State(initialValue: viewport)
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 220, height: 64, background: .canvas) {
+            StagePill(viewport: viewport)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.leading, PillMetrics.inset)
+                .chromeBandAligned()
+        }
+    }
+}
+
+#Preview("default", traits: .fixedLayout(width: 220, height: 64)) {
+    StagePillPreviewHost(viewport: MockViewportController())
+}
+
+#Preview("white backdrop", traits: .fixedLayout(width: 220, height: 64)) {
+    StagePillPreviewHost(viewport: MockViewportController(backdrop: .white))
+}
+
+#Preview("floor off", traits: .fixedLayout(width: 220, height: 64)) {
+    StagePillPreviewHost(viewport: MockViewportController(showsFloor: false))
+}

@@ -67,3 +67,37 @@ public struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportControl
         }
     }
 }
+
+// MARK: - Previews
+
+private struct ViewModeMenuPreviewHost: View {
+    var availability: MockAvailability
+    @State private var viewport: MockViewportController
+
+    init(availability: MockAvailability = MockAvailability(), viewport: MockViewportController) {
+        self.availability = availability
+        _viewport = State(initialValue: viewport)
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 180, height: 64, background: .canvas) {
+            Pill(horizontalPadding: 6) {
+                ViewModeMenu(availability: availability, viewport: viewport)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .chromeBandAligned()
+        }
+    }
+}
+
+#Preview("shaded", traits: .fixedLayout(width: 180, height: 64)) {
+    ViewModeMenuPreviewHost(viewport: MockViewportController())
+}
+
+#Preview("wireframe", traits: .fixedLayout(width: 180, height: 64)) {
+    ViewModeMenuPreviewHost(viewport: MockViewportController(viewMode: .wireframe))
+}
+
+#Preview("normals channel", traits: .fixedLayout(width: 180, height: 64)) {
+    ViewModeMenuPreviewHost(viewport: MockViewportController(viewMode: .channel(.normals)))
+}

@@ -124,3 +124,35 @@ public struct NodeExtrasSection: View {
         return String(format: "%.1fs", seconds)
     }
 }
+
+// MARK: - Previews
+
+#Preview("camera") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        NodeExtrasSection(detail: NodeDetailFixtures.camera)
+    }
+}
+
+#Preview("light") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        NodeExtrasSection(detail: NodeDetailFixtures.light)
+    }
+}
+
+#Preview("animation") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        NodeExtrasSection(detail: NodeDetailFixtures.animation)
+    }
+}
+
+#Preview("skin") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        NodeExtrasSection(detail: NodeDetailFixtures.skin)
+    }
+}
+
+#Preview("morph") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        NodeExtrasSection(detail: NodeDetailFixtures.morph)
+    }
+}

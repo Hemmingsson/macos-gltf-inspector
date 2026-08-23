@@ -32,3 +32,27 @@ public struct GeometrySection: View {
         return items
     }
 }
+
+// MARK: - Previews
+
+#Preview("basic") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let detail = NodeDetailFixtures.mesh
+        GeometrySection(geometry: detail.geometry!)
+    }
+}
+
+#Preview("full") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        GeometrySection(
+            geometry: GeometryInfo(
+                triangleCount: 18_240,
+                vertexCount: 21_600,
+                uvSetCount: 2,
+                hasNormals: true,
+                hasTangents: true,
+                hasVertexColors: true
+            )
+        )
+    }
+}

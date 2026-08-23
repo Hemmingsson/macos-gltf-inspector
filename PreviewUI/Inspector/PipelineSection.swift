@@ -50,3 +50,33 @@ public struct PipelineSection: View {
         entry.kind == .lighting ? Theme.text3 : Theme.animation
     }
 }
+
+// MARK: - Previews
+
+#Preview("studio") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        PipelineSection(report: FixtureSceneModel.cube.pipelineReport)
+    }
+}
+
+#Preview("file-lights") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        PipelineSection(report: FixtureSceneModel.lights.pipelineReport)
+    }
+}
+
+#Preview("conversion") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        PipelineSection(
+            report: PipelineReport(entries: [
+                PipelineReport.Entry(kind: .conversion, title: "KHR_materials_clearcoat"),
+                PipelineReport.Entry(kind: .conversion, title: "Dequantized accessors", detail: "12 buffers"),
+                PipelineReport.Entry(
+                    kind: .lighting,
+                    title: "Studio environment",
+                    detail: "Bundled IBL"
+                )
+            ])
+        )
+    }
+}

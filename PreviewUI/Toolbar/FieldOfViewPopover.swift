@@ -95,3 +95,67 @@ public struct FieldOfViewControls<Viewport: ViewportController>: View {
         )
     }
 }
+
+// MARK: - Previews
+
+private struct FieldOfViewControlsPreviewHost: View {
+    var projection: Projection
+    @State private var viewport: MockViewportController
+
+    init(projection: Projection) {
+        self.projection = projection
+        _viewport = State(
+            initialValue: MockViewportController(
+                projection: projection,
+                fieldOfViewDegrees: 45
+            )
+        )
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 250, background: .chrome) {
+            FieldOfViewControls(viewport: viewport)
+        }
+    }
+}
+
+private struct FieldOfViewPopoverPreviewHost: View {
+    var projection: Projection
+    @State private var viewport: MockViewportController
+
+    init(projection: Projection) {
+        self.projection = projection
+        _viewport = State(
+            initialValue: MockViewportController(
+                projection: projection,
+                fieldOfViewDegrees: 45
+            )
+        )
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 400, height: 80, background: .canvas) {
+            Pill(circle: true) {
+                FieldOfViewPopover(viewport: viewport)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(24)
+        }
+    }
+}
+
+#Preview("controls perspective", traits: .fixedLayout(width: 250, height: 120)) {
+    FieldOfViewControlsPreviewHost(projection: .perspective)
+}
+
+#Preview("controls orthographic", traits: .fixedLayout(width: 250, height: 120)) {
+    FieldOfViewControlsPreviewHost(projection: .orthographic)
+}
+
+#Preview("popover perspective", traits: .fixedLayout(width: 400, height: 80)) {
+    FieldOfViewPopoverPreviewHost(projection: .perspective)
+}
+
+#Preview("popover orthographic", traits: .fixedLayout(width: 400, height: 80)) {
+    FieldOfViewPopoverPreviewHost(projection: .orthographic)
+}

@@ -237,3 +237,76 @@ private struct ResizeHandle: View {
             }
     }
 }
+
+// MARK: - Previews
+
+/// Stand-in for the host-injected `RealityView` — flat gray viewport only.
+private struct ShellCanvasPlaceholder: View {
+    var body: some View {
+        Theme.canvasGradient
+    }
+}
+
+private struct PreviewOpenInMenu: View {
+    var body: some View {
+        Menu {
+            Button("Finder") {}
+            Button("Blender") {}
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: ChromeMetrics.glyphSize))
+                .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+    }
+}
+
+@MainActor
+private struct ShellRootViewPreviewHost: View {
+    enum Mode {
+        case fullChrome
+        case sidebarCollapsed
+    }
+
+    var mode: Mode
+    @State private var selection: MockSelectionModel
+    @State private var viewport: MockViewportController
+    @State private var settings: MockSettingsStore
+    @State private var playback: MockPlaybackController
+    @State private var panels: ShellPanelChrome
+
+    init(mode: Mode) {
+        self.mode = mode
+        _selection = State(initialValue: MockSelectionModel())
+        _viewport = State(initialValue: MockViewportController())
+        _settings = State(initialValue: MockSettingsStore())
+        _playback = State(initialValue: MockPlaybackController())
+        _panels = State(
+            initialValue: ShellPanelChrome(isSidebarVisible: mode == .fullChrome)
+        )
+    }
+
+    var body: some View {
+        ShellRootView(
+            model: FixtureSceneModel.cube,
+            availability: MockAvailability(),
+            selection: selection,
+            viewport: viewport,
+            settings: settings,
+            playback: playback,
+            panels: panels,
+            openInMenu: AnyView(PreviewOpenInMenu())
+        ) {
+            ShellCanvasPlaceholder()
+        }
+    }
+}
+
+#Preview("full chrome", traits: .fixedLayout(width: 1_188, height: 640)) {
+    ShellRootViewPreviewHost(mode: .fullChrome)
+}
+
+#Preview("sidebar collapsed", traits: .fixedLayout(width: 940, height: 640)) {
+    ShellRootViewPreviewHost(mode: .sidebarCollapsed)
+}

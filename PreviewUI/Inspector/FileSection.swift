@@ -43,3 +43,19 @@ public struct FileSection: View {
         return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 }
+
+// MARK: - Previews
+
+#Preview("cube") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let model = FixtureSceneModel.cube
+        FileSection(stats: model.stats, fileName: model.fileName)
+    }
+}
+
+#Preview("multi-scene") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let model = FixtureSceneModel.multiScene
+        FileSection(stats: model.stats, fileName: model.fileName)
+    }
+}

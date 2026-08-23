@@ -91,3 +91,69 @@ public struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport
         return model.scenes.first { $0.id == id }?.name
     }
 }
+
+// MARK: - Previews
+
+private struct LeftSidebarPreviewHost: View {
+    enum Mode {
+        case ready
+        case empty
+        case loading
+        case failed
+    }
+
+    var mode: Mode
+    @State private var selection: MockSelectionModel
+    @State private var viewport: MockViewportController
+
+    init(mode: Mode) {
+        self.mode = mode
+        _selection = State(initialValue: MockSelectionModel(selected: nil))
+        _viewport = State(initialValue: MockViewportController())
+    }
+
+    private var documentState: ShellDocumentState {
+        switch mode {
+        case .ready: .ready
+        case .empty: .empty
+        case .loading: .loading
+        case .failed: .failed(ShellStatusCopy.invalidFileDetail)
+        }
+    }
+
+    private var height: CGFloat {
+        switch mode {
+        case .ready: 520
+        case .empty, .loading, .failed: 320
+        }
+    }
+
+    var body: some View {
+        PreviewCanvas(width: Theme.sidebarWidth, height: height) {
+            LeftSidebar(
+                model: FixtureSceneModel.cube,
+                selection: selection,
+                viewport: viewport,
+                documentState: documentState,
+                isSidebarVisible: true,
+                onToggleSidebar: {}
+            )
+        }
+    }
+}
+
+#Preview("ready", traits: .fixedLayout(width: Theme.sidebarWidth, height: 520)) {
+    LeftSidebarPreviewHost(mode: .ready)
+}
+
+#Preview("empty", traits: .fixedLayout(width: Theme.sidebarWidth, height: 320)) {
+    LeftSidebarPreviewHost(mode: .empty)
+}
+
+#Preview("loading", traits: .fixedLayout(width: Theme.sidebarWidth, height: 320)) {
+    LeftSidebarPreviewHost(mode: .loading)
+}
+
+#Preview("failed", traits: .fixedLayout(width: Theme.sidebarWidth, height: 320)) {
+    LeftSidebarPreviewHost(mode: .failed)
+}

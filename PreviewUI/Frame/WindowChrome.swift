@@ -68,3 +68,45 @@ public struct TrafficLightConfigurator: NSViewRepresentable {
         deinit { observers.forEach { NotificationCenter.default.removeObserver($0) } }
     }
 }
+
+// MARK: - Window chrome wrapper
+
+/// Applies traffic-light positioning to window-root chrome.
+///
+/// Thin wrapper over `TrafficLightConfigurator` so previews (and future hosts) can opt in without
+/// duplicating the centerline constant.
+public struct WindowChrome<Content: View>: View {
+    @ViewBuilder private var content: () -> Content
+
+    public init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    public var body: some View {
+        content()
+            .background { TrafficLightConfigurator(centerY: Theme.trafficLightCenterY) }
+    }
+}
+
+// MARK: - Previews
+
+private struct WindowChromePreviewHost: View {
+    var body: some View {
+        WindowChrome {
+            HStack(spacing: 0) {
+                SidebarChromeRow(isSidebarVisible: true, trailingAligned: true) {}
+                    .frame(width: Theme.sidebarWidth)
+                Spacer()
+            }
+            .frame(height: Theme.topChromeHeight)
+            .frame(maxWidth: .infinity)
+            .background(Theme.chrome)
+        }
+        .ignoresSafeArea(.container, edges: .top)
+        .themeContrastEnvironment()
+    }
+}
+
+#Preview("top band", traits: .fixedLayout(width: 900, height: Theme.topChromeHeight)) {
+    WindowChromePreviewHost()
+}

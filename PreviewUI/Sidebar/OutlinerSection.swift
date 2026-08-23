@@ -190,3 +190,82 @@ private struct OutlinerTreeBranch<Selection: SelectionModel>: View {
         OutlinerTree.toggle(item, recursive: recursive, expanded: &expanded)
     }
 }
+
+// MARK: - Previews
+
+private struct OutlinerSectionPreviewHost: View {
+    enum Mode {
+        case materials
+        case sceneGraph
+        case scenes
+        case selected
+    }
+
+    var mode: Mode
+    @State private var selection: MockSelectionModel
+    @State private var expanded: Set<NodeID>
+
+    init(mode: Mode) {
+        self.mode = mode
+        switch mode {
+        case .materials, .scenes:
+            _selection = State(initialValue: MockSelectionModel(selected: nil))
+            _expanded = State(initialValue: [])
+        case .sceneGraph:
+            _selection = State(initialValue: MockSelectionModel(selected: nil))
+            _expanded = State(initialValue: OutlinerFixtures.defaultExpandedNested)
+        case .selected:
+            _selection = State(initialValue: MockSelectionModel(selected: NodeID(kind: .mesh, index: 0)))
+            _expanded = State(initialValue: OutlinerTree.defaultExpandedIDs(roots: OutlinerFixtures.cubeScene))
+        }
+    }
+
+    private var section: OutlinerSection {
+        switch mode {
+        case .materials:
+            OutlinerSection.sections(of: FixtureSceneModel.cube).first { $0.title == "Materials" }
+                ?? OutlinerSection(title: "Materials", items: [])
+        case .sceneGraph:
+            OutlinerSection(title: "Scene", items: [OutlinerFixtures.nestedScene], folds: true)
+        case .scenes:
+            OutlinerSection(title: "Scenes", items: OutlinerFixtures.multiScenePicker)
+        case .selected:
+            OutlinerSection(title: "Scene", items: OutlinerFixtures.cubeScene, folds: true)
+        }
+    }
+
+    private var height: CGFloat {
+        switch mode {
+        case .materials: 80
+        case .sceneGraph: 132
+        case .scenes: 72
+        case .selected: 104
+        }
+    }
+
+    var body: some View {
+        PreviewCanvas(width: Theme.sidebarWidth, height: height) {
+            OutlinerSectionView(
+                section: section,
+                selection: selection,
+                expanded: section.folds ? $expanded : nil
+            )
+        }
+    }
+}
+
+#Preview("materials", traits: .fixedLayout(width: Theme.sidebarWidth, height: 80)) {
+    OutlinerSectionPreviewHost(mode: .materials)
+}
+
+#Preview("scene graph", traits: .fixedLayout(width: Theme.sidebarWidth, height: 132)) {
+    OutlinerSectionPreviewHost(mode: .sceneGraph)
+}
+
+#Preview("scenes", traits: .fixedLayout(width: Theme.sidebarWidth, height: 72)) {
+    OutlinerSectionPreviewHost(mode: .scenes)
+}
+
+#Preview("selected", traits: .fixedLayout(width: Theme.sidebarWidth, height: 104)) {
+    OutlinerSectionPreviewHost(mode: .selected)
+}

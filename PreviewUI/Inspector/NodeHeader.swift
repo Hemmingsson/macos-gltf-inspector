@@ -19,3 +19,44 @@ public struct NodeHeader: View {
         .accessibilityElement(children: .contain)
     }
 }
+
+// MARK: - Previews
+
+private struct PreviewOpenInMenu: View {
+    var body: some View {
+        Menu {
+            Button("Finder") {}
+            Button("Blender") {}
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: ChromeMetrics.glyphSize))
+                .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+    }
+}
+
+#Preview("mesh") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let detail = NodeDetailFixtures.mesh
+        NodeHeader(
+            name: detail.name,
+            kindTitle: detail.kind.displayTitle,
+            kind: detail.kind,
+            openInMenu: AnyView(PreviewOpenInMenu())
+        )
+    }
+}
+
+#Preview("material") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let detail = NodeDetailFixtures.material
+        NodeHeader(
+            name: detail.name,
+            kindTitle: detail.kind.displayTitle,
+            kind: detail.kind,
+            openInMenu: AnyView(PreviewOpenInMenu())
+        )
+    }
+}

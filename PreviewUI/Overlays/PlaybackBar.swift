@@ -121,3 +121,35 @@ public struct PlaybackBar<Playback: ClipPlaybackController>: View {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }
+
+// MARK: - Previews
+
+private struct PlaybackBarPreviewHost: View {
+    @State private var playback: MockPlaybackController
+
+    init(isPlaying: Bool, time: TimeInterval) {
+        _playback = State(
+            initialValue: MockPlaybackController(isPlaying: isPlaying, time: time)
+        )
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 400, height: 100, background: .canvas) {
+            PlaybackBar(playback: playback)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(OverlayMetrics.inset)
+        }
+    }
+}
+
+#Preview("paused", traits: .fixedLayout(width: 400, height: 100)) {
+    PlaybackBarPreviewHost(isPlaying: false, time: 0)
+}
+
+#Preview("playing", traits: .fixedLayout(width: 400, height: 100)) {
+    PlaybackBarPreviewHost(isPlaying: true, time: 0.75)
+}
+
+#Preview("scrubbing", traits: .fixedLayout(width: 400, height: 100)) {
+    PlaybackBarPreviewHost(isPlaying: false, time: 1.25)
+}

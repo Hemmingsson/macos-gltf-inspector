@@ -109,3 +109,72 @@ public struct LightingControls<Capabilities: Availability, Viewport: ViewportCon
         )
     }
 }
+
+// MARK: - Previews
+
+private struct LightingControlsPreviewHost: View {
+    var hasLights: Bool
+    @State private var viewport: MockViewportController
+
+    init(hasLights: Bool) {
+        self.hasLights = hasLights
+        _viewport = State(
+            initialValue: MockViewportController(
+                lighting: LightingSettings(
+                    exposure: 0.5,
+                    environmentRotationDegrees: 120,
+                    usesFileLights: false,
+                    usesStudioEnvironment: true
+                )
+            )
+        )
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 250, background: .chrome) {
+            LightingControls(
+                availability: MockAvailability(hasLights: hasLights),
+                viewport: viewport
+            )
+        }
+    }
+}
+
+private struct LightingPopoverPreviewHost: View {
+    var hasLights: Bool
+    @State private var viewport: MockViewportController
+
+    init(hasLights: Bool) {
+        self.hasLights = hasLights
+        _viewport = State(initialValue: MockViewportController())
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 400, height: 80, background: .canvas) {
+            Pill(circle: true) {
+                LightingPopover(
+                    availability: MockAvailability(hasLights: hasLights),
+                    viewport: viewport
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(24)
+        }
+    }
+}
+
+#Preview("controls studio", traits: .fixedLayout(width: 250, height: 160)) {
+    LightingControlsPreviewHost(hasLights: false)
+}
+
+#Preview("controls file lights", traits: .fixedLayout(width: 250, height: 220)) {
+    LightingControlsPreviewHost(hasLights: true)
+}
+
+#Preview("popover studio", traits: .fixedLayout(width: 400, height: 80)) {
+    LightingPopoverPreviewHost(hasLights: false)
+}
+
+#Preview("popover file lights", traits: .fixedLayout(width: 400, height: 80)) {
+    LightingPopoverPreviewHost(hasLights: true)
+}

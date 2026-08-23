@@ -35,3 +35,23 @@ public struct MorphWeightsSection: View {
         }
     }
 }
+
+// MARK: - Previews
+
+#Preview("1 target") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        MorphWeightsSection(
+            targets: [MorphFixtures.triangleControls[0]],
+            onSetWeight: { _, _ in }
+        )
+    }
+}
+
+#Preview("3 targets") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        MorphWeightsSection(
+            targets: Array(MorphFixtures.faceControls.prefix(3)),
+            onSetWeight: { _, _ in }
+        )
+    }
+}

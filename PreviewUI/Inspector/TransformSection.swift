@@ -46,3 +46,25 @@ public struct TransformSection: View {
         return number
     }
 }
+
+// MARK: - Previews
+
+#Preview("authored") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let detail = NodeDetailFixtures.mesh
+        TransformSection(
+            transform: detail.transform!,
+            isAuthored: detail.isTransformAuthored
+        )
+    }
+}
+
+#Preview("fitted") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let detail = NodeDetailFixtures.mesh
+        TransformSection(
+            transform: detail.transform!,
+            isAuthored: false
+        )
+    }
+}

@@ -231,3 +231,18 @@ public struct MaterialSection: View {
         return parts.joined(separator: ", ")
     }
 }
+
+// MARK: - Previews
+
+#Preview("compact") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        MaterialSection(material: MaterialFixtures.cube, density: .compact)
+    }
+}
+
+#Preview("full") {
+    PreviewCanvas(width: Theme.inspectorWidth) {
+        let detail = NodeDetailFixtures.material
+        MaterialSection(material: detail.material!, density: .full)
+    }
+}

@@ -67,54 +67,12 @@ public struct ValidationSection: View {
     }
 
     private var warningCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button {
-                isExpanded.toggle()
-            } label: {
-                HStack(spacing: 9) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Self.warnStroke)
-                    Text(summaryTitle)
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(Self.warnText)
-                    Spacer(minLength: 0)
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Self.warnText.opacity(0.7))
-                }
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(summaryTitle)
-            .accessibilityHint(isExpanded ? "Collapse warnings" : "Expand warnings")
-
-            if isExpanded {
-                ForEach(Array(validation.issues.enumerated()), id: \.element.id) { index, issue in
-                    HStack(alignment: .top, spacing: 9) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Self.warnStroke)
-                            .padding(.top, 1)
-                        Text(issue.message)
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.text)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.vertical, 8)
-                    .overlay(alignment: .bottom) {
-                        if index < validation.issues.count - 1 {
-                            Theme.hair.frame(height: Theme.hairlineWidth)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Self.warnFill)
+        StatusWarningCard(
+            summaryTitle: summaryTitle,
+            rows: validation.issues.map {
+                StatusWarningCard.Row(id: $0.id, message: $0.message)
+            },
+            isExpanded: $isExpanded
         )
     }
 
@@ -137,11 +95,24 @@ public struct ValidationSection: View {
     )
     public static let validStroke = Color.dynamic(light: 0x2CA24A, dark: 0x30D158)
     public static let validText = Color.dynamic(light: 0x227A3A, dark: 0x6CE08A)
+}
 
-    public static let warnFill = Color.dynamic(
-        light: .init(srgbRed: 245 / 255, green: 166 / 255, blue: 35 / 255, alpha: 0.10),
-        dark: .init(srgbRed: 245 / 255, green: 166 / 255, blue: 35 / 255, alpha: 0.18)
-    )
-    public static let warnStroke = Color.dynamic(light: 0xD6902A, dark: 0xFFC04D)
-    public static let warnText = Color.dynamic(light: 0xA86C1A, dark: 0xFFC04D)
+// MARK: - Previews
+
+#Preview("pending", traits: .fixedLayout(width: Theme.sidebarWidth, height: 72)) {
+    PreviewCanvas(width: Theme.sidebarWidth, height: 72) {
+        ValidationSection(validation: ValidationFixtures.pending)
+    }
+}
+
+#Preview("clean", traits: .fixedLayout(width: Theme.sidebarWidth, height: 56)) {
+    PreviewCanvas(width: Theme.sidebarWidth, height: 56) {
+        ValidationSection(validation: ValidationFixtures.clean)
+    }
+}
+
+#Preview("warnings expanded", traits: .fixedLayout(width: Theme.sidebarWidth, height: 200)) {
+    PreviewCanvas(width: Theme.sidebarWidth, height: 200) {
+        ValidationSection(validation: ValidationFixtures.withErrors)
+    }
 }

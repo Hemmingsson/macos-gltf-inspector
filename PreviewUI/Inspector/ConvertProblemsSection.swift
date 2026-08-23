@@ -15,54 +15,14 @@ public struct ConvertProblemsSection: View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader(title: "Not rendered as authored")
 
-            VStack(alignment: .leading, spacing: 4) {
-                Button {
-                    isExpanded.toggle()
-                } label: {
-                    HStack(spacing: 9) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(ValidationSection.warnStroke)
-                        Text(summaryTitle)
-                            .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundStyle(ValidationSection.warnText)
-                        Spacer(minLength: 0)
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(ValidationSection.warnText.opacity(0.7))
-                    }
-                    .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(summaryTitle)
-                .accessibilityHint(isExpanded ? "Collapse problems" : "Expand problems")
-
-                if isExpanded {
-                    ForEach(Array(problems.entries.enumerated()), id: \.element.id) { index, entry in
-                        HStack(alignment: .top, spacing: 9) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.system(size: 12))
-                                .foregroundStyle(ValidationSection.warnStroke)
-                                .padding(.top, 1)
-                            Text(entry.title)
-                                .font(.system(size: 12))
-                                .foregroundStyle(Theme.text)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.vertical, 8)
-                        .overlay(alignment: .bottom) {
-                            if index < problems.entries.count - 1 {
-                                Theme.hair.frame(height: Theme.hairlineWidth)
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(ValidationSection.warnFill)
+            StatusWarningCard(
+                summaryTitle: summaryTitle,
+                rows: problems.entries.map {
+                    StatusWarningCard.Row(id: $0.id, message: $0.title)
+                },
+                isExpanded: $isExpanded,
+                collapseAccessibilityHint: "Collapse problems",
+                expandAccessibilityHint: "Expand problems"
             )
             .padding(.horizontal, 14)
             .padding(.top, 2)
@@ -83,5 +43,13 @@ public struct ConvertProblemsSection: View {
             return errors == 1 ? "1 error" : "\(errors) errors"
         }
         return warnings == 1 ? "1 warning" : "\(warnings) warnings"
+    }
+}
+
+// MARK: - Previews
+
+#Preview("with issues", traits: .fixedLayout(width: Theme.sidebarWidth, height: 180)) {
+    PreviewCanvas(width: Theme.sidebarWidth, height: 180) {
+        ConvertProblemsSection(problems: ValidationFixtures.convertProblems)
     }
 }

@@ -108,3 +108,124 @@ public struct CanvasRegion<
         isInspectorVisible ? PillMetrics.inset : ChromeMetrics.collapsedTrailingInset
     }
 }
+
+// MARK: - Previews
+
+/// Stand-in for the host-injected `RealityView` — flat gray viewport only.
+private struct CanvasPlaceholder: View {
+    var body: some View {
+        Theme.canvasGradient
+    }
+}
+
+private struct CanvasRegionPreviewHost: View {
+    enum Mode {
+        case ready
+        case animations
+        case collapsedChrome
+        case empty
+        case loading
+        case failed
+    }
+
+    var mode: Mode
+    @State private var viewport: MockViewportController
+    @State private var playback: MockPlaybackController
+
+    init(mode: Mode) {
+        self.mode = mode
+        switch mode {
+        case .ready, .empty, .loading, .failed:
+            _viewport = State(initialValue: MockViewportController())
+            _playback = State(initialValue: MockPlaybackController())
+        case .animations:
+            _viewport = State(initialValue: MockViewportController())
+            _playback = State(initialValue: MockPlaybackController(isPlaying: true, time: 0.75))
+        case .collapsedChrome:
+            _viewport = State(
+                initialValue: MockViewportController(
+                    isCentered: false,
+                    activeSceneID: NodeID(kind: .scene, index: 0)
+                )
+            )
+            _playback = State(initialValue: MockPlaybackController())
+        }
+    }
+
+    private var documentState: ShellDocumentState {
+        switch mode {
+        case .ready, .animations, .collapsedChrome: .ready
+        case .empty: .empty
+        case .loading: .loading
+        case .failed: .failed(ShellStatusCopy.invalidFileDetail)
+        }
+    }
+
+    private var model: FixtureSceneModel {
+        switch mode {
+        case .collapsedChrome:
+            var offcenter = FixtureSceneModel.cube
+            offcenter.dimensions = Dimensions(
+                width: 1,
+                height: 1,
+                depth: 1,
+                authoredOrigin: Vector3(x: 0.42, y: -0.18, z: 1.05)
+            )
+            return offcenter
+        default:
+            return FixtureSceneModel.cube
+        }
+    }
+
+    private var availability: MockAvailability {
+        mode == .animations
+            ? MockAvailability(hasAnimations: true)
+            : MockAvailability()
+    }
+
+    private var size: (width: CGFloat, height: CGFloat) {
+        switch mode {
+        case .ready, .animations, .collapsedChrome: (640, 480)
+        case .empty, .loading, .failed: (480, 320)
+        }
+    }
+
+    var body: some View {
+        PreviewCanvas(width: size.width, height: size.height, background: .canvas) {
+            CanvasRegion(
+                model: model,
+                availability: availability,
+                viewport: viewport,
+                playback: playback,
+                documentState: documentState,
+                isSidebarVisible: mode != .collapsedChrome,
+                isInspectorVisible: mode != .collapsedChrome,
+                content: { CanvasPlaceholder() }
+            )
+        }
+    }
+}
+
+#Preview("ready", traits: .fixedLayout(width: 640, height: 480)) {
+    CanvasRegionPreviewHost(mode: .ready)
+}
+
+#Preview("animations", traits: .fixedLayout(width: 640, height: 480)) {
+    CanvasRegionPreviewHost(mode: .animations)
+}
+
+#Preview("collapsed chrome", traits: .fixedLayout(width: 640, height: 480)) {
+    CanvasRegionPreviewHost(mode: .collapsedChrome)
+}
+
+#Preview("empty", traits: .fixedLayout(width: 480, height: 320)) {
+    CanvasRegionPreviewHost(mode: .empty)
+}
+
+#Preview("loading", traits: .fixedLayout(width: 480, height: 320)) {
+    CanvasRegionPreviewHost(mode: .loading)
+}
+
+#Preview("failed", traits: .fixedLayout(width: 480, height: 320)) {
+    CanvasRegionPreviewHost(mode: .failed)
+}

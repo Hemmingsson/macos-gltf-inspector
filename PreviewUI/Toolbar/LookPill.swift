@@ -18,3 +18,35 @@ public struct LookPill<Capabilities: Availability, Viewport: ViewportController>
         }
     }
 }
+
+// MARK: - Previews
+
+private struct LookPillPreviewHost: View {
+    var availability: MockAvailability
+    @State private var viewport: MockViewportController
+
+    init(availability: MockAvailability = MockAvailability(), viewport: MockViewportController) {
+        self.availability = availability
+        _viewport = State(initialValue: viewport)
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 260, height: 64, background: .canvas) {
+            LookPill(availability: availability, viewport: viewport)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .chromeBandAligned()
+        }
+    }
+}
+
+#Preview("shaded", traits: .fixedLayout(width: 260, height: 64)) {
+    LookPillPreviewHost(viewport: MockViewportController())
+}
+
+#Preview("wireframe", traits: .fixedLayout(width: 260, height: 64)) {
+    LookPillPreviewHost(viewport: MockViewportController(viewMode: .wireframe))
+}
+
+#Preview("normals channel", traits: .fixedLayout(width: 260, height: 64)) {
+    LookPillPreviewHost(viewport: MockViewportController(viewMode: .channel(.normals)))
+}

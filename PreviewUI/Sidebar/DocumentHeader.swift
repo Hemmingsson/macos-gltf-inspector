@@ -72,3 +72,32 @@ public struct DocumentHeader: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+// MARK: - Previews
+
+#Preview("file only", traits: .fixedLayout(width: Theme.sidebarWidth, height: 72)) {
+    PreviewCanvas(width: Theme.sidebarWidth, height: 72) {
+        DocumentHeader(fileName: FixtureSceneModel.cube.fileName)
+    }
+}
+
+#Preview("with scene", traits: .fixedLayout(width: Theme.sidebarWidth, height: 88)) {
+    PreviewCanvas(width: Theme.sidebarWidth, height: 88) {
+        DocumentHeader(
+            fileName: FixtureSceneModel.cube.fileName,
+            sceneName: FixtureSceneModel.cube.scenes.first?.name
+        )
+    }
+}
+
+#Preview("with variants", traits: .fixedLayout(width: Theme.sidebarWidth, height: 116)) {
+    PreviewCanvas(width: Theme.sidebarWidth, height: 116) {
+        DocumentHeader(
+            fileName: "Variants.glb",
+            sceneName: "Scene",
+            variantNames: ["Wood", "Metal", "Paint"],
+            selectedVariantIndex: 1,
+            onSelectVariant: { _ in }
+        )
+    }
+}

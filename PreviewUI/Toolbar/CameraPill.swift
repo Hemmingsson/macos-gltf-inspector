@@ -151,3 +151,38 @@ public struct CameraPresetMenu<Viewport: ViewportController>: View {
         }
     }
 }
+
+// MARK: - Previews
+
+private struct CameraPillPreviewHost: View {
+    @State private var viewport: MockViewportController
+
+    init(viewport: MockViewportController) {
+        _viewport = State(initialValue: viewport)
+    }
+
+    var body: some View {
+        PreviewCanvas(width: 420, height: 64, background: .canvas) {
+            CameraPill(viewport: viewport)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(.trailing, PillMetrics.inset)
+                .chromeBandAligned()
+        }
+    }
+}
+
+#Preview("default", traits: .fixedLayout(width: 420, height: 64)) {
+    CameraPillPreviewHost(viewport: MockViewportController())
+}
+
+#Preview("orthographic", traits: .fixedLayout(width: 420, height: 64)) {
+    CameraPillPreviewHost(viewport: MockViewportController(projection: .orthographic))
+}
+
+#Preview("auto-rotate", traits: .fixedLayout(width: 420, height: 64)) {
+    CameraPillPreviewHost(viewport: MockViewportController(autoRotates: true))
+}
+
+#Preview("preset front", traits: .fixedLayout(width: 420, height: 64)) {
+    CameraPillPreviewHost(viewport: MockViewportController(activeCameraPreset: .front))
+}
