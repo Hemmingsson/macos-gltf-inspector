@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// "What our pipeline did" — silent import changes, so nothing is altered without a receipt.
-struct PipelineSection: View {
-    var report: PipelineReport
+public struct PipelineSection: View {
+    public var report: PipelineReport
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Theme.hair
                 .frame(height: Theme.hairlineWidth)

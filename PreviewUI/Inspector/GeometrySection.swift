@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// Per-node geometry chips — only facts that exist (DESIGN.md: hide what the node lacks).
-struct GeometrySection: View {
-    var geometry: GeometryInfo
+public struct GeometrySection: View {
+    public var geometry: GeometryInfo
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader(title: "Geometry")
 

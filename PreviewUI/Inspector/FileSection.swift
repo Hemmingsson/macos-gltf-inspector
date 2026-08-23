@@ -1,11 +1,11 @@
 import SwiftUI
 
 /// File-level stats rows. Shown in the left sidebar footer for a loaded model.
-struct FileSection: View {
-    var stats: Stats
-    var fileName: String
+public struct FileSection: View {
+    public var stats: Stats
+    public var fileName: String
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader(title: "File")
 

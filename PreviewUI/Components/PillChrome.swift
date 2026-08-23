@@ -5,40 +5,40 @@ import SwiftUI
 /// One place, because the pills only read as *one* distributed toolbar while they agree on
 /// height, radius and rhythm — a 2 pt drift between Stage and Camera is instantly visible when
 /// they sit on the same line.
-enum PillMetrics {
+public enum PillMetrics {
     /// Hit / island height — `Theme.chromeControlSize` (Sketch circle islands).
-    static var height: CGFloat { Theme.chromeControlSize }
+    public static var height: CGFloat { Theme.chromeControlSize }
     /// Full half-height → stadium for multi-control islands, true circle for singles.
-    static var cornerRadius: CGFloat { height / 2 }
+    public static var cornerRadius: CGFloat { height / 2 }
     /// Gap between separate islands (Sketch rhythm — tighter than a crammed mega-pill).
-    static let islandSpacing: CGFloat = 8
+    public static let islandSpacing: CGFloat = 8
     /// Horizontal inset from the canvas edges for leading / trailing clusters.
     /// Vertical placement is `chromeBandAligned()`, not a free top pad.
-    static let inset: CGFloat = 14
+    public static let inset: CGFloat = 14
     /// Gap inside one island.
-    static let itemSpacing: CGFloat = 4
+    public static let itemSpacing: CGFloat = 4
     /// Same as chrome circles — `Theme.chromeControlSize`.
-    static var buttonSize: CGFloat { Theme.chromeControlSize }
+    public static var buttonSize: CGFloat { Theme.chromeControlSize }
     /// Inset selection wash radius inside a multi-control stadium (not used on single circles).
-    static let buttonCornerRadius: CGFloat = 8
+    public static let buttonCornerRadius: CGFloat = 8
     /// Inset of the selected wash from the hit target (keeps fill off the pill glass edge).
-    static let selectionInset: CGFloat = 2
+    public static let selectionInset: CGFloat = 2
     /// Concentric radius for the inset wash (`buttonCornerRadius − selectionInset`).
-    static let selectionCornerRadius: CGFloat = 6
+    public static let selectionCornerRadius: CGFloat = 6
     /// Inset of an icon toggle's circular on-wash inside its 30 pt target. Small, so the selected
     /// circle sits behind the glyph like a normal macOS selected control — filling most of the
     /// button, not a tiny dot and not spilling to the glass edge.
-    static let toggleWashInset: CGFloat = 3
+    public static let toggleWashInset: CGFloat = 3
     /// SF Symbol size inside the control target.
-    static let glyphSize: CGFloat = 13
+    public static let glyphSize: CGFloat = 13
     /// The chevron on a menu chip.
-    static let chevronSize: CGFloat = 9
+    public static let chevronSize: CGFloat = 9
     /// Hairline divider height inside a multi-control island.
-    static let dividerHeight: CGFloat = 18
+    public static let dividerHeight: CGFloat = 18
     /// Extra horizontal pad around an in-island divider.
-    static let dividerMargin: CGFloat = 3
+    public static let dividerMargin: CGFloat = 3
     /// Backdrop swatch disc.
-    static let swatchSize: CGFloat = 18
+    public static let swatchSize: CGFloat = 18
 }
 
 /// One floating glass cluster.
@@ -48,15 +48,15 @@ enum PillMetrics {
 /// `.glassProminent` — so they never fight the capsule or grow the pill.
 ///
 /// Modifier order is load-bearing: font/frame → padding → `.glassEffect` **last**.
-struct Pill<Content: View>: View {
+public struct Pill<Content: View>: View {
     /// `padding: 0 8px` on Stage and Camera, `0 6px` on Look (its chip already carries its own).
-    var horizontalPadding: CGFloat = 8
+    public var horizontalPadding: CGFloat = 8
     /// A single-icon island: force a square so a glyph narrower than the pill height can't collapse
     /// the capsule into a vertical oval — `cornerRadius = height/2` on a square is a true circle.
-    var circle: Bool = false
+    public var circle: Bool = false
     @ViewBuilder var content: () -> Content
 
-    var body: some View {
+    public var body: some View {
         GlassEffectContainer(spacing: PillMetrics.itemSpacing) {
             cluster
                 .glassEffect(.regular, in: .rect(cornerRadius: PillMetrics.cornerRadius))
@@ -74,15 +74,15 @@ struct Pill<Content: View>: View {
 }
 
 /// An icon-only toggle or action inside a pill (`.tbtn`).
-struct PillButton: View {
-    var symbol: String
+public struct PillButton: View {
+    public var symbol: String
     /// Tooltip and VoiceOver label. Icon-only controls have no other name.
-    var title: String
+    public var title: String
     /// Nil for a plain action (Fit), which has no on-state to show.
-    var isOn: Bool = false
-    var action: () -> Void
+    public var isOn: Bool = false
+    public var action: () -> Void
 
-    var body: some View {
+    public var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: PillMetrics.glyphSize, weight: .regular))
@@ -101,10 +101,10 @@ struct PillButton: View {
 }
 
 /// `.divv` — the hairline that separates two groups of controls inside one pill.
-struct PillDivider: View {
+public struct PillDivider: View {
     @Environment(\.previewHair) private var hair
 
-    var body: some View {
+    public var body: some View {
         hair
             .frame(width: Theme.hairlineWidth, height: PillMetrics.dividerHeight)
             .padding(.horizontal, PillMetrics.dividerMargin)
@@ -118,15 +118,15 @@ struct PillDivider: View {
 /// `Theme.selection` wash; a menu answers "which one?", so it takes the quiet `controlFill`
 /// ground, and shifts to the selection tint only while it holds a *non-default* choice — which is
 /// exactly what `Inspect@2x.png` shows for the view-mode chip on Normals.
-struct PillMenuLabel: View {
-    var symbol: String
-    var title: String?
+public struct PillMenuLabel: View {
+    public var symbol: String
+    public var title: String?
     /// True while the menu holds something other than its default — tints the chip.
-    var isEngaged: Bool = false
+    public var isEngaged: Bool = false
     /// Chevron direction; a presented menu points its chevron back at itself.
-    var isExpanded: Bool = false
+    public var isExpanded: Bool = false
 
-    var body: some View {
+    public var body: some View {
         HStack(spacing: title == nil ? 3 : 6) {
             Image(systemName: symbol)
                 .font(.system(size: title == nil ? PillMetrics.glyphSize : 13, weight: .regular))
@@ -151,4 +151,56 @@ struct PillMenuLabel: View {
         )
         .contentShape(.rect)
     }
+}
+
+// MARK: - Previews
+
+#Preview("pill stadium") {
+    Pill {
+        PillButton(symbol: "viewfinder", title: "Fit") {}
+        PillDivider()
+        PillButton(symbol: "arrow.up.left.and.arrow.down.right", title: "Framing", isOn: true) {}
+    }
+    .padding(24)
+}
+
+#Preview("pill circle") {
+    Pill(circle: true) {
+        PillButton(symbol: "circle.grid.cross", title: "Floor", isOn: true) {}
+    }
+    .padding(24)
+}
+
+#Preview("pill button off") {
+    PillButton(symbol: "viewfinder", title: "Fit") {}
+        .padding(24)
+}
+
+#Preview("pill button on") {
+    PillButton(symbol: "circle.grid.cross", title: "Floor", isOn: true) {}
+        .padding(24)
+}
+
+#Preview("pill divider") {
+    Pill {
+        PillButton(symbol: "sun.max", title: "Lighting") {}
+        PillDivider()
+        PillButton(symbol: "camera.aperture", title: "Field of view") {}
+    }
+    .padding(24)
+}
+
+#Preview("menu label default") {
+    PillMenuLabel(symbol: "sun.max")
+        .padding(24)
+}
+
+#Preview("menu label engaged") {
+    PillMenuLabel(symbol: "eye", title: "Normals", isEngaged: true)
+        .padding(24)
+}
+
+#Preview("menu label expanded") {
+    PillMenuLabel(symbol: "camera.aperture", isExpanded: true)
+        .padding(24)
 }

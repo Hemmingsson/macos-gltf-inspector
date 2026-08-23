@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import PreviewUI
 import RealityKit
 
 /// Live clip transport over RealityKit playback + `PreviewClip`.
@@ -7,7 +8,7 @@ import RealityKit
 /// `advance(by:)` mirrors the RealityKit playhead (`PlaybackBar` ticks; RK owns time).
 @MainActor
 @Observable
-final class EngineAnimationPlaybackController: AnimationPlaybackController {
+final class EngineAnimationPlaybackController: ClipPlaybackController {
     private let entity: Entity
     private var previewClips: [PreviewClip]
     private var playback: RealityKit.AnimationPlaybackController?

@@ -4,11 +4,11 @@ import SwiftUI
 ///
 /// Shown at file level whenever the host supplies targets — PreviewUI never imports RealityKit;
 /// the host maps `PreviewMorph` ↔ `MorphTargetControl`.
-struct MorphWeightsSection: View {
-    var targets: [MorphTargetControl]
-    var onSetWeight: (String, Double) -> Void
+public struct MorphWeightsSection: View {
+    public var targets: [MorphTargetControl]
+    public var onSetWeight: (String, Double) -> Void
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader(title: "Morphs")
             VStack(alignment: .leading, spacing: 8) {

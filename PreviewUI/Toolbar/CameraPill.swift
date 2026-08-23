@@ -5,8 +5,8 @@ import SwiftUI
 /// Sketch-style islands: only tightly related controls share glass. Framing toggles
 /// (auto-rotate · center) share one stadium; projection, FOV, Fit, and presets each get their
 /// own circle.
-struct CameraPill<Viewport: ViewportController>: View {
-    var viewport: Viewport
+public struct CameraPill<Viewport: ViewportController>: View {
+    public var viewport: Viewport
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var autoRotateOn: Bool {
@@ -17,7 +17,7 @@ struct CameraPill<Viewport: ViewportController>: View {
         viewport.projection == .orthographic
     }
 
-    var body: some View {
+    public var body: some View {
         HStack(spacing: PillMetrics.islandSpacing) {
             FramingIsland(
                 autoRotateOn: autoRotateOn,
@@ -92,10 +92,10 @@ private struct FramingIsland: View {
 }
 
 /// Canned angles — Front · Back · Left · Right · Top · Bottom · Isometric.
-struct CameraPresetMenu<Viewport: ViewportController>: View {
-    var viewport: Viewport
+public struct CameraPresetMenu<Viewport: ViewportController>: View {
+    public var viewport: Viewport
 
-    var body: some View {
+    public var body: some View {
         Menu {
             Picker("Camera preset", selection: preset) {
                 ForEach(CameraPreset.allCases) { preset in

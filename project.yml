@@ -20,6 +20,11 @@ schemes:
         targets:
           - GLTFInspectorTests
 
+    PreviewUI:
+      build:
+        targets:
+          PreviewUI: all
+
 # Shared across every target so signing and versions live in one place.
 settings:
   base:
@@ -42,12 +47,30 @@ packages:
     from: "1.5.7"
 
 targets:
+  PreviewUI:
+    type: framework
+    platform: macOS
+    sources:
+      - PreviewUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.PreviewUI
+        PRODUCT_MODULE_NAME: PreviewUI
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+      configs:
+        Debug:
+          ENABLE_DEBUG_DYLIB: YES
+        Release:
+          ARCHS: arm64 x86_64
+          ONLY_ACTIVE_ARCH: NO
+
   GLTFInspector:
     type: application
     platform: macOS
     sources:
       - GLTFInspector
-      - PreviewUI
       - path: assets/ICON.icon
         type: file
         buildPhase: resources
@@ -133,17 +156,19 @@ targets:
         PRODUCT_MODULE_NAME: GLTFInspector
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector
         GENERATE_INFOPLIST_FILE: NO
-        ENABLE_DEBUG_DYLIB: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: ICON
       configs:
         Debug:
           ENABLE_TESTABILITY: YES
+          ENABLE_DEBUG_DYLIB: YES
         Release:
           ARCHS: arm64 x86_64
           ONLY_ACTIVE_ARCH: NO
           CODE_SIGN_IDENTITY: "Developer ID Application"
           ENABLE_TESTABILITY: NO
     dependencies:
+      - target: PreviewUI
+        embed: true
       - target: PreviewExtension
         embed: true
       - target: ThumbnailExtension
@@ -293,5 +318,6 @@ targets:
         BUNDLE_LOADER: "$(TEST_HOST)"
     dependencies:
       - target: GLTFInspector
+      - target: PreviewUI
       - package: GLTFKit2
       - package: DracoSwift

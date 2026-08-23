@@ -1,19 +1,30 @@
 import Foundation
 
-/// Indent / disclosure metrics for the Meshes outliner tree (ported from host `LayerOutlineMetrics`).
+/// Layout constants for the Scene outliner tree.
 ///
-/// One step = arrow column + gap, so a child’s chevron left edge lines up under the parent’s title.
-enum OutlinerTreeMetrics {
-    static let arrow: CGFloat = 14
-    static let gap: CGFloat = 4
-    static var step: CGFloat { arrow + gap }
+/// Each depth level indents by `indentPerLevel` (= disclosure column + gap) so a child’s chevron
+/// left edge lines up with the parent row’s icon column.
+public enum OutlinerTreeMetrics {
+    public static let rowMargin: CGFloat = 6
+    public static let treeLeading: CGFloat = 8
+    public static let flatLeading: CGFloat = 14
+    public static let trailing: CGFloat = 12
+    public static let vertical: CGFloat = 5
+
+    public static let disclosureSize: CGFloat = 14
+    public static let disclosureGap: CGFloat = 4
+    public static var indentPerLevel: CGFloat { disclosureSize + disclosureGap }
+
+    public static let iconSize: CGFloat = 16
+    public static let contentGap: CGFloat = 8
+    public static let eyeSize: CGFloat = 18
 }
 
-/// Pure expand/collapse helpers for the Meshes section — kept free of SwiftUI so fold behaviour
+/// Pure expand/collapse helpers for the Scene section — kept free of SwiftUI so fold behaviour
 /// can be proved without driving a window.
-enum OutlinerTree {
+public enum OutlinerTree {
     /// Full scene-graph tree preserving hierarchy for all authored node kinds.
-    static func fullRoots(_ nodes: [SceneNode], depth: Int = 0) -> [OutlinerItem] {
+    public static func fullRoots(_ nodes: [SceneNode], depth: Int = 0) -> [OutlinerItem] {
         nodes.map { node in
             OutlinerItem(
                 id: node.id,
@@ -25,7 +36,7 @@ enum OutlinerTree {
     }
 
     /// Default: expand every node whose depth is strictly less than `maxDepth` (host uses 3).
-    static func defaultExpandedIDs(roots: [OutlinerItem], maxDepth: Int = 3) -> Set<NodeID> {
+    public static func defaultExpandedIDs(roots: [OutlinerItem], maxDepth: Int = 3) -> Set<NodeID> {
         var ids = Set<NodeID>()
         func walk(_ item: OutlinerItem, depth: Int) {
             if depth < maxDepth {
@@ -41,7 +52,7 @@ enum OutlinerTree {
 
     /// Plain click toggles one node; Option-click expands/collapses the whole subtree.
     /// If open but not fully expanded, Option-click finishes expanding (does not collapse).
-    static func toggle(
+    public static func toggle(
         _ item: OutlinerItem,
         recursive: Bool,
         expanded: inout Set<NodeID>
@@ -59,13 +70,13 @@ enum OutlinerTree {
         }
     }
 
-    static func isFullyExpanded(_ item: OutlinerItem, expanded: Set<NodeID>) -> Bool {
+    public static func isFullyExpanded(_ item: OutlinerItem, expanded: Set<NodeID>) -> Bool {
         guard !item.children.isEmpty else { return true }
         guard expanded.contains(item.id) else { return false }
         return item.children.allSatisfy { isFullyExpanded($0, expanded: expanded) }
     }
 
-    static func expandSubtree(_ item: OutlinerItem, expanded: inout Set<NodeID>) {
+    public static func expandSubtree(_ item: OutlinerItem, expanded: inout Set<NodeID>) {
         guard !item.children.isEmpty else { return }
         expanded.insert(item.id)
         for child in item.children {
@@ -73,7 +84,7 @@ enum OutlinerTree {
         }
     }
 
-    static func collapseSubtree(_ item: OutlinerItem, expanded: inout Set<NodeID>) {
+    public static func collapseSubtree(_ item: OutlinerItem, expanded: inout Set<NodeID>) {
         expanded.remove(item.id)
         for child in item.children {
             collapseSubtree(child, expanded: &expanded)
@@ -81,7 +92,7 @@ enum OutlinerTree {
     }
 
     /// Stable identity for “document / fixture tree changed” — reset expansion when this flips.
-    static func treeIdentity(_ roots: [OutlinerItem]) -> [NodeID] {
+    public static func treeIdentity(_ roots: [OutlinerItem]) -> [NodeID] {
         var ids: [NodeID] = []
         func walk(_ item: OutlinerItem) {
             ids.append(item.id)

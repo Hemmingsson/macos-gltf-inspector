@@ -4,12 +4,12 @@ import SwiftUI
 ///
 /// View mode + lighting stay one island: both answer “what light does to the material”
 /// (Sketch-style — only split when controls are not a real bundle).
-struct LookPill<Capabilities: Availability, Viewport: ViewportController>: View {
+public struct LookPill<Capabilities: Availability, Viewport: ViewportController>: View {
     /// Read-only capability snapshot: the view-mode menu offers only channels the file has.
-    var availability: Capabilities
-    var viewport: Viewport
+    public var availability: Capabilities
+    public var viewport: Viewport
 
-    var body: some View {
+    public var body: some View {
         // `padding: 0 6px` — the chip inside carries its own leading padding.
         Pill(horizontalPadding: 6) {
             ViewModeMenu(availability: availability, viewport: viewport)

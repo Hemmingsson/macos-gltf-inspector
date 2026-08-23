@@ -2,18 +2,18 @@ import Foundation
 import Observation
 
 /// A typed settings key. `fallback` is what a fresh install uses.
-struct SettingKey<Value: Sendable>: Sendable {
+public struct SettingKey<Value: Sendable>: Sendable {
     /// Storage name; matches the host's `UserDefaults` key so the engine adapter is a pass-through.
-    let name: String
-    let fallback: Value
+    public let name: String
+    public let fallback: Value
 
-    init(name: String, fallback: Value) {
+    public init(name: String, fallback: Value) {
         self.name = name
         self.fallback = fallback
     }
 }
 
-extension SettingKey where Value == Bool {
+public extension SettingKey where Value == Bool {
     /// Default on for a new window.
     static var autoRotate: SettingKey<Bool> { .init(name: "settings.preview.autoRotate", fallback: true) }
     /// Floor on for a new window; Settings can promote a different app default.
@@ -26,18 +26,18 @@ extension SettingKey where Value == Bool {
     static var useEnvironmentMap: SettingKey<Bool> { .init(name: "settings.preview.useEnvironmentMap", fallback: true) }
 }
 
-extension SettingKey where Value == BackdropStyle {
+public extension SettingKey where Value == BackdropStyle {
     /// Window backdrop ("None") for a new window.
     /// Matches the fresh-install default registered in `GLTFInspectorApp.init`.
     static var backdrop: SettingKey<BackdropStyle> { .init(name: "settings.preview.background", fallback: .window) }
 }
 
-extension SettingKey where Value == Projection {
+public extension SettingKey where Value == Projection {
     /// Session-only. Never registered as a persisted app default.
     static var projection: SettingKey<Projection> { .init(name: "settings.preview.projection", fallback: .perspective) }
 }
 
-extension SettingKey where Value == String {
+public extension SettingKey where Value == String {
     static var appearance: SettingKey<String> { .init(name: "settings.general.appearance", fallback: "system") }
     /// `KhronosEnvironments.rawValue` (`neutral` / `field` / `Colorful_Studio`).
     static var environmentCatalog: SettingKey<String> { .init(name: "settings.preview.environmentCatalog", fallback: "neutral") }
@@ -50,7 +50,7 @@ extension SettingKey where Value == String {
 /// `sessionValue(for:)`. The canvas pills never write defaults — only Settings does,
 /// or an explicit `promoteToDefault` (DESIGN.md three-job rule).
 @MainActor
-protocol SettingsStore: AnyObject, Observable {
+public protocol SettingsStore: AnyObject, Observable {
     /// The app default, as new windows will open.
     func `default`<Value>(for key: SettingKey<Value>) -> Value
     /// The effective value for this window: the session override when there is one,

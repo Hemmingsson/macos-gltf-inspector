@@ -1,4 +1,5 @@
 import Foundation
+import PreviewUI
 import RealityKit
 import Testing
 @testable import GLTFInspector
@@ -24,7 +25,9 @@ struct EngineSceneModelTests {
         #expect(model.pipelineReport.entries.contains { $0.kind == .lighting })
 
         let sections = OutlinerSection.sections(of: model)
-        #expect(!sections.contains { $0.title == "Scene" })
+        // Single-scene models get no scene picker, but always get the "Scene" graph.
+        #expect(!sections.contains { $0.title == "Scenes" })
+        #expect(sections.contains { $0.title == "Scene" })
     }
 
     @Test func tinyIsPlain() async throws {
@@ -99,7 +102,7 @@ struct EngineSceneModelTests {
         #expect(availability.isMultiScene)
         #expect(model.scenes.count >= 2)
         #expect(model.defaultSceneID != nil)
-        #expect(OutlinerSection.sections(of: model).contains { $0.title == "Scene" })
+        #expect(OutlinerSection.sections(of: model).contains { $0.title == "Scenes" })
     }
 
     @Test func riggedHasSkin() async throws {

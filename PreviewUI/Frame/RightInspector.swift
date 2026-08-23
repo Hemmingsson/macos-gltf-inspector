@@ -3,21 +3,37 @@ import SwiftUI
 /// Right column — the selected outliner row. Closed when nothing is selected.
 ///
 /// Node sections bind to `selection.detail` and omit fields the node type does not have.
-struct RightInspector<
+public struct RightInspector<
     Model: SceneModel,
     Selection: SelectionModel
 >: View {
-    var model: Model
-    var selection: Selection
-    var documentState: ShellDocumentState = .ready
-    var openInMenu: AnyView
+    public var model: Model
+    public var selection: Selection
+    public var documentState: ShellDocumentState = .ready
+    public var openInMenu: AnyView
     /// Live morph weights from the host (`PreviewMorph`); shown when a morph is selected.
-    var morphTargets: [MorphTargetControl] = []
-    var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
+    public var morphTargets: [MorphTargetControl] = []
+    public var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
 
     @Environment(\.previewHair) private var hair
 
-    var body: some View {
+    public init(
+        model: Model,
+        selection: Selection,
+        documentState: ShellDocumentState = .ready,
+        openInMenu: AnyView,
+        morphTargets: [MorphTargetControl] = [],
+        onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in }
+    ) {
+        self.model = model
+        self.selection = selection
+        self.documentState = documentState
+        self.openInMenu = openInMenu
+        self.morphTargets = morphTargets
+        self.onSetMorphWeight = onSetMorphWeight
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if documentState.isReady, let detail = selection.detail {
                 header(detail)

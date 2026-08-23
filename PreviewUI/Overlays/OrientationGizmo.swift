@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Bottom-leading corner axes — a fixed isometric triad giving a camera-orientation cue.
 /// Not glass: the wireframe paints bare strokes over the canvas.
-struct OrientationGizmo: View {
-    var body: some View {
+public struct OrientationGizmo: View {
+    public var body: some View {
         Canvas { context, size in
             let origin = CGPoint(x: size.width * 0.30, y: size.height * 0.70)
             OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x + 30, y: origin.y), color: OverlayMetrics.axisX)

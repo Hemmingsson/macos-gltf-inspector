@@ -2,7 +2,7 @@ import Foundation
 
 /// Drives "show only what the model has" (DESIGN.md). Every adaptive section and control
 /// reads its visibility from here — never from a hard-coded `if` in a view.
-protocol Availability: Sendable {
+public protocol Availability: Sendable {
     var hasAnimations: Bool { get }
     var hasLights: Bool { get }
     var hasCameras: Bool { get }
@@ -15,21 +15,21 @@ protocol Availability: Sendable {
 }
 
 /// Availability computed straight from a `SceneModel`.
-struct DerivedAvailability<Model: SceneModel>: Availability {
-    var model: Model
+public struct DerivedAvailability<Model: SceneModel>: Availability {
+    public var model: Model
     /// Channels the file has data for; the base modes are prepended.
-    var channels: [DebugChannel]
+    public var channels: [DebugChannel]
 
-    init(model: Model, channels: [DebugChannel] = DebugChannel.allCases) {
+    public init(model: Model, channels: [DebugChannel] = DebugChannel.allCases) {
         self.model = model
         self.channels = channels
     }
 
-    var hasAnimations: Bool { !model.animations.isEmpty }
-    var hasLights: Bool { !model.lights.isEmpty }
-    var hasCameras: Bool { !model.cameras.isEmpty }
-    var isMultiScene: Bool { model.scenes.count > 1 }
-    var hasSkin: Bool { !model.skins.isEmpty }
-    var hasMorphs: Bool { !model.morphs.isEmpty }
-    var availableDebugChannels: [ViewMode] { ViewMode.base + channels.map(ViewMode.channel) }
+    public var hasAnimations: Bool { !model.animations.isEmpty }
+    public var hasLights: Bool { !model.lights.isEmpty }
+    public var hasCameras: Bool { !model.cameras.isEmpty }
+    public var isMultiScene: Bool { model.scenes.count > 1 }
+    public var hasSkin: Bool { !model.skins.isEmpty }
+    public var hasMorphs: Bool { !model.morphs.isEmpty }
+    public var availableDebugChannels: [ViewMode] { ViewMode.base + channels.map(ViewMode.channel) }
 }

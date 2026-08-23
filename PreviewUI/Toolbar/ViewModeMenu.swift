@@ -10,11 +10,11 @@ import SwiftUI
 /// mentions a channel. A file with no clearcoat map simply has no Clearcoat row; nothing is shown
 /// disabled. That keeps the rule in one place (`Availability`) where a later engine adapter
 /// answers it from real data instead of every menu re-deriving it.
-struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: View {
-    var availability: Capabilities
-    var viewport: Viewport
+public struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: View {
+    public var availability: Capabilities
+    public var viewport: Viewport
 
-    var body: some View {
+    public var body: some View {
         Menu {
             // An inline `Picker` rather than hand-rolled `Button`s: AppKit draws the checkmark
             // column, the selected row, and keyboard navigation for free, and the selection stays
@@ -59,7 +59,7 @@ struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: V
 
     /// One glyph per family, matching the wireframes: the shaded sphere for Shaded, a grid for
     /// Wireframe, and the mesh cube for any channel (`Inspect@2x.png` on Normals).
-    static func symbol(for mode: ViewMode) -> String {
+    public static func symbol(for mode: ViewMode) -> String {
         switch mode {
         case .shaded: "circle.lefthalf.filled"
         case .wireframe: "grid"

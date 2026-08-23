@@ -2,11 +2,11 @@ import SwiftUI
 
 /// World-origin axes shown on the canvas when Center is off, or when the file has a non-zero
 /// authored origin. Drawn as a triad at the canvas centre, with the authored origin on its tag.
-struct OriginGizmo: View {
+public struct OriginGizmo: View {
     /// Authored origin relative to the model, in metres — shown on the tag.
-    var authoredOrigin: Vector3
+    public var authoredOrigin: Vector3
 
-    var body: some View {
+    public var body: some View {
         ZStack {
             Canvas { context, size in
                 let origin = CGPoint(x: size.width * 0.5, y: size.height * 0.58)

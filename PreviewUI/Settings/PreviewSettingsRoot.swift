@@ -2,14 +2,14 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
+public enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
     case system
     case light
     case dark
 
-    var id: Self { self }
+    public var id: Self { self }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .system: "System"
         case .light: "Light"
@@ -17,7 +17,7 @@ enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var nsAppearance: NSAppearance? {
+    public var nsAppearance: NSAppearance? {
         switch self {
         case .system: nil
         case .light: NSAppearance(named: .aqua)
@@ -25,18 +25,26 @@ enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    static func apply(_ raw: String) {
+    public static func apply(_ raw: String) {
         NSApp.appearance = (AppAppearance(rawValue: raw) ?? .system).nsAppearance
     }
 }
 
 /// Three-tab Settings. Writes app defaults only — never a window session.
-struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
-    var store: Store
+public struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
+    public var store: Store
     /// Host: copy + decode HDR into Application Support. Shell: store the file name only.
-    var importCustomEnvironment: ((URL) throws -> String)? = nil
+    public var importCustomEnvironment: ((URL) throws -> String)? = nil
 
-    var body: some View {
+    public init(
+        store: Store,
+        importCustomEnvironment: ((URL) throws -> String)? = nil
+    ) {
+        self.store = store
+        self.importCustomEnvironment = importCustomEnvironment
+    }
+
+    public var body: some View {
         TabView {
             Tab("General", systemImage: "gearshape") {
                 GeneralSettingsPane(store: store)
@@ -53,7 +61,7 @@ struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
     }
 }
 
-extension View {
+public extension View {
     func settingsFormChrome() -> some View {
         formStyle(.grouped)
             .scrollContentBackground(.hidden)

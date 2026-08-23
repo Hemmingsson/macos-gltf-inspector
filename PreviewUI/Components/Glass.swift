@@ -1,6 +1,6 @@
 import SwiftUI
 
-extension View {
+public extension View {
     /// `.buttonStyle` is not a `@ViewBuilder`-friendly value across `.glass` and
     /// `.glassProminent` (different types), so branch on the view instead.
     ///
@@ -41,24 +41,16 @@ private struct PillButtonStyleModifier: ViewModifier {
     }
 }
 
-/// Fixed 30×30 pill glyph button: inset selection wash + accent focus ring.
-struct PillIconButtonStyle: ButtonStyle {
-    var active: Bool
+// MARK: - Previews
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background {
-                if active {
-                    // A contained circle (matching the pane-toggle chrome buttons), not a wide
-                    // rounded rect that reads oversized against the pill it sits in.
-                    Circle()
-                        .fill(Theme.selection)
-                        .padding(PillMetrics.toggleWashInset)
-                }
-            }
-            .overlay {
-                PreviewFocusStroke(shape: .circle)
-            }
-            .opacity(configuration.isPressed ? 0.85 : 1)
-    }
+#Preview("glass resting") {
+    Button("Play") {}
+        .previewGlassButtonStyle(prominent: false)
+        .padding(24)
+}
+
+#Preview("prominent") {
+    Button("Play") {}
+        .previewGlassButtonStyle(prominent: true)
+        .padding(24)
 }

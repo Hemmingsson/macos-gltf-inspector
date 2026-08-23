@@ -6,17 +6,17 @@ import SwiftUI
 /// View-menu twin share one source of truth. Not an app default — collapse is live chrome, not Settings.
 /// Inspector visibility follows selection (open iff something is selected).
 @Observable
-final class ShellPanelChrome {
-    var isSidebarVisible: Bool
+public final class ShellPanelChrome {
+    public var isSidebarVisible: Bool
 
-    init(isSidebarVisible: Bool = true) {
+    public init(isSidebarVisible: Bool = true) {
         self.isSidebarVisible = isSidebarVisible
     }
 
-    func toggleSidebar() { isSidebarVisible.toggle() }
+    public func toggleSidebar() { isSidebarVisible.toggle() }
 }
 
-extension FocusedValues {
+public extension FocusedValues {
     /// Key-window sidebar visibility (chrome toggle + View-menu twin).
     @Entry var shellPanelChrome: ShellPanelChrome?
 }

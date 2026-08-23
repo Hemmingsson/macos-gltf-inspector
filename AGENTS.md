@@ -20,21 +20,26 @@ Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product code on **`main`
 ## Commands & build
 
 ```bash
-./scripts/build.sh              # xcodegen + Debug + install /Applications + verify
-./scripts/build.sh --install-only   # build + copy; no open/verify (VS Code Run preLaunchTask)
-./scripts/verify.sh             # installed app + pluginkit
-./scripts/proof.sh              # StillRenderProofTests (+ optional qlmanage)
-./scripts/release.sh            # Developer ID + notary + Sparkle + gh release
+./scripts/dev.sh install          # worktree-aware → .build/ (+ /Applications on main); no open
+./scripts/dev.sh run cube         # install + launch fixture; logs → .build/logs/debug.log
+./scripts/dev.sh logs             # tail debug log (agents: read .build/logs/debug.log)
+./scripts/build.sh                # install + open /Applications + verify (explicit ship check)
+./scripts/build.sh --install-only # same as dev.sh install (VS Code Build task)
+./scripts/verify.sh               # installed app + pluginkit
+./scripts/proof.sh                # StillRenderProofTests (+ optional qlmanage)
+./scripts/release.sh              # Developer ID + notary + Sparkle + gh release
 ./scripts/vendor-khronos-environments.sh
-./scripts/fetch-test-models.sh  # optional Khronos GLBs → TestModels/Khronos samples (gitignored)
+./scripts/fetch-test-models.sh    # optional Khronos GLBs → TestModels/Khronos samples (gitignored)
 
-xcodegen generate               # GLTFInspector.xcodeproj is gitignored
+xcodegen generate                 # GLTFInspector.xcodeproj is gitignored
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
   -derivedDataPath /tmp/GLTFInspector-dd test
 ```
 
-`xcodebuild` alone writes `/tmp/GLTFInspector-dd/…` — **not** `/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to install.
+**Agents:** use `dev.sh install` / `dev.sh test` — never `open` or `build.sh` without `--install-only` unless the user asked to launch. Debug logs: `.build/logs/debug.log` when `GLTF_LOG_FILE` is set (dev.sh / launch.json).
+
+`xcodebuild` alone writes `/tmp/GLTFInspector-<branch>-dd/…` — **not** `/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to install.
 
 Signing: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof: PNG via `StillRenderProofTests`. Fixtures: `TestModels/Fixture Models/` via `GLTFInspectorTests/TestFixtures.swift` (`#filePath`); regen `scripts/testdata/README.md`.
 

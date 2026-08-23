@@ -4,7 +4,7 @@ import Observation
 /// The per-window "how it is shown" state — what the canvas pills and the View menu drive.
 /// Live and per-window: it never writes app defaults (DESIGN.md three-job rule).
 @MainActor
-protocol ViewportController: AnyObject, Observable {
+public protocol ViewportController: AnyObject, Observable {
     var backdrop: BackdropStyle { get }
     var showsFloor: Bool { get }
     var autoRotates: Bool { get }

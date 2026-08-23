@@ -4,17 +4,17 @@ import SwiftUI
 ///
 /// Generic over both seam types rather than taking existentials: `SceneModel` has `Self`
 /// requirements through its default implementations.
-struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: ViewportController>: View {
-    var model: Model
+public struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: ViewportController>: View {
+    public var model: Model
     /// Injected, not owned — the window root owns it, and the inspector reads the same instance.
-    var selection: Selection
-    var viewport: Viewport
-    var documentState: ShellDocumentState = .ready
+    public var selection: Selection
+    public var viewport: Viewport
+    public var documentState: ShellDocumentState = .ready
     /// Visual state of the leading chrome toggle (accent while the column is open).
-    var isSidebarVisible: Bool
-    var onToggleSidebar: () -> Void
+    public var isSidebarVisible: Bool
+    public var onToggleSidebar: () -> Void
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SidebarChromeRow(
                 isSidebarVisible: isSidebarVisible,
@@ -89,43 +89,5 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
         let id = viewport.activeSceneID ?? model.defaultSceneID
         guard let id else { return nil }
         return model.scenes.first { $0.id == id }?.name
-    }
-}
-
-/// `sidebar.leading` toggle on the unified chrome band.
-///
-/// Two placements: **in-sidebar** (`trailingAligned`) sits at the pane's inner (right) edge, by the
-/// canvas divider — the traffic lights own the pane's outer/left side; **floating restore** (sidebar
-/// collapsed, over the canvas) sits at the leading edge, clearing the three system lights.
-struct SidebarChromeRow: View {
-    var isSidebarVisible: Bool
-    var trailingAligned: Bool = false
-    var onToggleSidebar: () -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            if trailingAligned {
-                Spacer(minLength: 0)
-                toggle
-            } else {
-                Color.clear
-                    .frame(width: Theme.trafficLightLeadingClearance, height: ChromeMetrics.buttonSize)
-                toggle
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(height: ChromeMetrics.buttonSize, alignment: trailingAligned ? .trailing : .leading)
-        .padding(.trailing, trailingAligned ? 12 : 10)
-        .chromeBandAligned()
-        .accessibilityElement(children: .contain)
-    }
-
-    private var toggle: some View {
-        ChromeIconButton(
-            symbol: "sidebar.leading",
-            title: isSidebarVisible ? "Hide Sidebar" : "Show Sidebar",
-            prominent: isSidebarVisible,
-            action: onToggleSidebar
-        )
     }
 }

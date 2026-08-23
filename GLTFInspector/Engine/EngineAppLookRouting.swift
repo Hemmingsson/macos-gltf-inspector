@@ -1,4 +1,5 @@
 import Foundation
+import PreviewUI
 
 /// IBL keys live on `AppLookStore`, not UserDefaults. Shared by the per-window overlay
 /// and the Settings façade so catalog vs custom-HDR writes cannot drift.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-extension View {
+public extension View {
     @ViewBuilder
     func keyboardShortcutIfAvailable(_ shortcut: KeyboardShortcut?) -> some View {
         if let shortcut {

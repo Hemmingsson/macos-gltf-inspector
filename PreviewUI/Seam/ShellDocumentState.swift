@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Host drives this from `EntityLoader` / open. Never leave a failed URL as a spinner
 /// (AGENTS.md pitfall 2).
-enum ShellDocumentState: Equatable, Sendable, Hashable {
+public enum ShellDocumentState: Equatable, Sendable, Hashable {
     /// No document yet — drop / Open invite.
     case empty
     /// Bytes are in flight. Canvas may spin; panels stay quiet.
@@ -14,13 +14,13 @@ enum ShellDocumentState: Equatable, Sendable, Hashable {
     /// Open rejected. Always show the message — never a spinner.
     case failed(String)
 
-    var isReady: Bool {
+    public var isReady: Bool {
         if case .ready = self { return true }
         return false
     }
 
     /// Sidebar / inspector header when there is no ready document name to show.
-    var panelDocumentTitle: String {
+    public var panelDocumentTitle: String {
         switch self {
         case .empty: "No file"
         case .loading: "Opening…"

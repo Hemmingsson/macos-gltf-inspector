@@ -1,6 +1,7 @@
+import AppKit
+import PreviewUI
 import RealityKit
 import SwiftUI
-import AppKit
 
 /// Document window root: PreviewUI `ShellRootView` + engine adapters + real `PreviewView` canvas.
 ///

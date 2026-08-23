@@ -8,22 +8,22 @@ import SwiftUI
 /// `ShellPanelChrome`; the inspector opens only when something is selected.
 ///
 /// Generic over the canvas so the host injects `PreviewView` without PreviewUI importing Shared.
-struct ShellRootView<
+public struct ShellRootView<
     Canvas: View,
     Model: SceneModel,
     Capabilities: Availability,
     Selection: SelectionModel,
     Viewport: ViewportController,
     Settings: SettingsStore,
-    Playback: AnimationPlaybackController
+    Playback: ClipPlaybackController
 >: View {
     /// A snapshot of the loaded file. A value, so a redraw can never see it half-updated.
-    var model: Model
+    public var model: Model
     /// What the file can do, passed in rather than derived here: only the host knows which debug
     /// channels its data actually supports.
-    var availability: Capabilities
+    public var availability: Capabilities
     /// Empty / loading / failed — host open path.
-    var documentState: ShellDocumentState = .ready
+    public var documentState: ShellDocumentState = .ready
     /// The window's selection, owned here.
     ///
     /// `@State` because ownership is per *window*: two windows onto two files must not share a
@@ -37,7 +37,7 @@ struct ShellRootView<
     /// Defaults + this window's session overrides. Seeded in `.onAppear`, never in `init`.
     @State private var settings: Settings
     /// Sidebar visibility — owned by the window host, shared with the View menu.
-    var panels: ShellPanelChrome
+    public var panels: ShellPanelChrome
     /// Clip transport for the playback bar. Owned by the window host.
     @State private var playback: Playback
     /// Guards the one-shot defaults → session → viewport seed (AGENTS.md: sync in onAppear).
@@ -56,7 +56,7 @@ struct ShellRootView<
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(
+    public init(
         model: Model,
         availability: Capabilities,
         documentState: ShellDocumentState = .ready,
@@ -86,7 +86,7 @@ struct ShellRootView<
         self.canvas = canvas
     }
 
-    var body: some View {
+    public var body: some View {
         HStack(spacing: 0) {
             if panels.isSidebarVisible {
                 LeftSidebar(

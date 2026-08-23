@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// Quiet uppercase section label.
-struct InspectorSectionHeader: View {
-    var title: String
+public struct InspectorSectionHeader: View {
+    public var title: String
 
-    var body: some View {
+    public var body: some View {
         Text(title)
             .font(.system(size: 11, weight: .semibold))
             .textCase(.uppercase)
@@ -19,10 +19,10 @@ struct InspectorSectionHeader: View {
 }
 
 /// Compact chip used for geometry facts and present material maps (`.chip`).
-struct InspectorChip: View {
-    var title: String
+public struct InspectorChip: View {
+    public var title: String
 
-    var body: some View {
+    public var body: some View {
         Text(title)
             .font(.system(size: 11))
             .foregroundStyle(Color.dynamic(light: 0x5B5B60, dark: 0xB0B0B6))
@@ -36,11 +36,11 @@ struct InspectorChip: View {
 }
 
 /// Label · value row shared by File / Material / extras facts.
-struct InspectorFactRow: View {
-    var label: String
-    var value: String
+public struct InspectorFactRow: View {
+    public var label: String
+    public var value: String
 
-    var body: some View {
+    public var body: some View {
         HStack {
             Text(label)
                 .font(.system(size: 12))
@@ -56,11 +56,11 @@ struct InspectorFactRow: View {
 }
 
 /// Left-to-right wrap of chips. `chipsPerRow` matches inspector width (geometry ≈3, maps ≈4).
-struct FlexibleChipRow: View {
-    var items: [String]
-    var chipsPerRow: Int = 4
+public struct FlexibleChipRow: View {
+    public var items: [String]
+    public var chipsPerRow: Int = 4
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(rows, id: \.self) { row in
                 HStack(spacing: 6) {
@@ -81,11 +81,11 @@ struct FlexibleChipRow: View {
 }
 
 /// Read-only TRS cell (`.field`). Not editable — this is a viewer, not an editor.
-struct InspectorField: View {
-    var text: String
+public struct InspectorField: View {
+    public var text: String
     @Environment(\.previewBorder) private var border
 
-    var body: some View {
+    public var body: some View {
         Text(text)
             .font(.system(size: 12).monospacedDigit())
             .foregroundStyle(Theme.text)
@@ -105,7 +105,7 @@ struct InspectorField: View {
     }
 }
 
-extension NodeKind {
+public extension NodeKind {
     /// Subtitle under the selected name in the inspector header.
     var displayTitle: String {
         switch self {
@@ -117,7 +117,7 @@ extension NodeKind {
         case .animation: "Animation"
         case .skin: "Skin"
         case .morph: "Morph"
-        case .empty: "Empty"
+        case .empty: "Group"
         }
     }
 }

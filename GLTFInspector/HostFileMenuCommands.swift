@@ -1,3 +1,4 @@
+import PreviewUI
 import SwiftUI
 
 /// Host File menu: export a PNG still for the focused document window.

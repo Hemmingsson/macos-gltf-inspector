@@ -1,3 +1,4 @@
+import PreviewUI
 import SwiftUI
 
 /// Host View menu: drives `EngineViewportController` + panel chrome via `FocusedValues`.

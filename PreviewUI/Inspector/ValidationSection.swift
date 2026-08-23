@@ -1,11 +1,11 @@
 import SwiftUI
 
 /// glTF-validator badge. Clean fixtures stay a quiet green card; warnings expand in place.
-struct ValidationSection: View {
-    var validation: ValidationResult
+public struct ValidationSection: View {
+    public var validation: ValidationResult
     @State private var isExpanded: Bool = false
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if validation.status != .ready || !validation.isClean {
                 InspectorSectionHeader(title: "Validation")
@@ -131,17 +131,17 @@ struct ValidationSection: View {
     }
 
     // Inline greens and ambers — Theme has no dedicated validation colour tokens.
-    static let validFill = Color.dynamic(
+    public static let validFill = Color.dynamic(
         light: .init(srgbRed: 52 / 255, green: 199 / 255, blue: 89 / 255, alpha: 0.10),
         dark: .init(srgbRed: 52 / 255, green: 199 / 255, blue: 89 / 255, alpha: 0.18)
     )
-    static let validStroke = Color.dynamic(light: 0x2CA24A, dark: 0x30D158)
-    static let validText = Color.dynamic(light: 0x227A3A, dark: 0x6CE08A)
+    public static let validStroke = Color.dynamic(light: 0x2CA24A, dark: 0x30D158)
+    public static let validText = Color.dynamic(light: 0x227A3A, dark: 0x6CE08A)
 
-    static let warnFill = Color.dynamic(
+    public static let warnFill = Color.dynamic(
         light: .init(srgbRed: 245 / 255, green: 166 / 255, blue: 35 / 255, alpha: 0.10),
         dark: .init(srgbRed: 245 / 255, green: 166 / 255, blue: 35 / 255, alpha: 0.18)
     )
-    static let warnStroke = Color.dynamic(light: 0xD6902A, dark: 0xFFC04D)
-    static let warnText = Color.dynamic(light: 0xA86C1A, dark: 0xFFC04D)
+    public static let warnStroke = Color.dynamic(light: 0xD6902A, dark: 0xFFC04D)
+    public static let warnText = Color.dynamic(light: 0xA86C1A, dark: 0xFFC04D)
 }

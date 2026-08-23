@@ -1,12 +1,12 @@
 import SwiftUI
 
 /// The camera lens chip and its popover: vertical field of view.
-struct FieldOfViewPopover<Viewport: ViewportController>: View {
-    var viewport: Viewport
+public struct FieldOfViewPopover<Viewport: ViewportController>: View {
+    public var viewport: Viewport
 
     @State private var isPresented = false
 
-    var body: some View {
+    public var body: some View {
         Button {
             isPresented.toggle()
         } label: {
@@ -26,13 +26,13 @@ struct FieldOfViewPopover<Viewport: ViewportController>: View {
     }
 }
 
-struct FieldOfViewControls<Viewport: ViewportController>: View {
-    var viewport: Viewport
+public struct FieldOfViewControls<Viewport: ViewportController>: View {
+    public var viewport: Viewport
 
     private let defaultFieldOfViewDegrees: Double = 35
     private let fieldOfViewRange: ClosedRange<Double> = 15...90
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             slider(
                 "Field of View",

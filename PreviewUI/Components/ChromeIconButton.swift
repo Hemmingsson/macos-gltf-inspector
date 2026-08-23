@@ -4,37 +4,37 @@ import SwiftUI
 ///
 /// Locked to `Theme.chromeControlSize` so open/closed restore chrome and Stage/Camera toggles
 /// share one size.
-enum ChromeMetrics {
+public enum ChromeMetrics {
     /// Same hit target as pill toggles — `Theme.chromeControlSize`.
-    static var buttonSize: CGFloat { Theme.chromeControlSize }
-    static let glyphSize: CGFloat = 13
+    public static var buttonSize: CGFloat { Theme.chromeControlSize }
+    public static let glyphSize: CGFloat = 13
     /// Inset of the selected wash from the circle edge (same idea as pill `.tbtn.on`).
-    static let selectionInset: CGFloat = 2
+    public static let selectionInset: CGFloat = 2
     /// Gap between floating restore chrome and the nearest canvas island.
-    static let pillClearance: CGFloat = 20
+    public static let pillClearance: CGFloat = 20
 
     /// Top pad so a `buttonSize` control’s center lands on `Theme.trafficLightCenterY`.
-    static var bandTopInset: CGFloat {
+    public static var bandTopInset: CGFloat {
         Theme.trafficLightCenterY - buttonSize / 2
     }
 
     /// Stage leading inset when the sidebar is collapsed (lights + toggle + clearance).
-    static var collapsedLeadingInset: CGFloat {
+    public static var collapsedLeadingInset: CGFloat {
         Theme.trafficLightLeadingClearance + buttonSize + pillClearance
     }
 
     /// Trailing inset when the inspector is collapsed — clears the floating ActionRow only.
-    static var collapsedTrailingInset: CGFloat {
+    public static var collapsedTrailingInset: CGFloat {
         floatingActionRowWidth + pillClearance
     }
 
     /// Intrinsic width of `ActionRow`’s trailing cluster (1 circle + pads).
-    static var floatingActionRowWidth: CGFloat {
+    public static var floatingActionRowWidth: CGFloat {
         buttonSize + 12 + 12
     }
 }
 
-extension View {
+public extension View {
     /// Places content in the unified top chrome band with its vertical center on the
     /// system traffic-light centerline (not the geometric mid of a tall band).
     func chromeBandAligned() -> some View {
@@ -48,15 +48,27 @@ extension View {
 ///
 /// Size never changes with `prominent` or open/closed. Selected = inset selection wash +
 /// glyph tint, never `.glassProminent` (that inflated into a huge blue disc).
-struct ChromeIconButton: View {
-    var symbol: String
-    var title: String
-    var prominent: Bool
-    var action: () -> Void
+public struct ChromeIconButton: View {
+    public var symbol: String
+    public var title: String
+    public var prominent: Bool
+    public var action: () -> Void
 
     @FocusState private var isFocused: Bool
 
-    var body: some View {
+    public init(
+        symbol: String,
+        title: String,
+        prominent: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.symbol = symbol
+        self.title = title
+        self.prominent = prominent
+        self.action = action
+    }
+
+    public var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: ChromeMetrics.glyphSize, weight: .regular))
@@ -88,4 +100,16 @@ struct ChromeIconButton: View {
         .accessibilityLabel(title)
         .accessibilityAddTraits(prominent ? [.isSelected] : [])
     }
+}
+
+// MARK: - Previews
+
+#Preview("default") {
+    ChromeIconButton(symbol: "sidebar.leading", title: "Show Sidebar") {}
+        .padding(24)
+}
+
+#Preview("selected") {
+    ChromeIconButton(symbol: "sidebar.leading", title: "Hide Sidebar", prominent: true) {}
+        .padding(24)
 }

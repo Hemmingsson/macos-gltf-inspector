@@ -2,38 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "xcodegen",
+      "label": "dev: install",
       "type": "shell",
-      "command": "xcodegen generate",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "silent",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "xcodebuild: GLTFInspector",
-      "type": "shell",
-      "command": "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -scheme GLTFInspector -destination 'platform=macOS' -derivedDataPath /tmp/GLTFInspector-dd build",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "dependsOn": ["xcodegen"],
-      "group": "build",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "silent",
-        "panel": "shared",
-        "clear": true
-      }
-    },
-    {
-      "label": "build:install",
-      "type": "shell",
-      "command": "./scripts/build.sh --install-only",
+      "command": "./scripts/dev.sh install",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -46,6 +17,47 @@
         "reveal": "always",
         "panel": "shared",
         "clear": true
+      }
+    },
+    {
+      "label": "dev: run cube",
+      "type": "shell",
+      "command": "./scripts/dev.sh run cube",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "dev: logs",
+      "type": "shell",
+      "command": "./scripts/dev.sh logs",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "dev: fixtures",
+      "type": "shell",
+      "command": "./scripts/dev.sh fixtures",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
       }
     }
   ]

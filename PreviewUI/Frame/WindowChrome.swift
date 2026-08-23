@@ -9,16 +9,16 @@ import AppKit
 /// with it — otherwise the two drift apart. AppKit re-lays the buttons on resize / full-screen, so
 /// we reapply, and we set an **absolute** target (never a compounding offset) so repeated calls are
 /// idempotent. Zero-size: it exists only to reach the host `NSWindow`.
-struct TrafficLightConfigurator: NSViewRepresentable {
-    var centerY: CGFloat
+public struct TrafficLightConfigurator: NSViewRepresentable {
+    public var centerY: CGFloat
 
-    func makeNSView(context: Context) -> NSView {
+    public func makeNSView(context: Context) -> NSView {
         let view = PositioningView()
         view.centerY = centerY
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
+    public func updateNSView(_ nsView: NSView, context: Context) {
         guard let view = nsView as? PositioningView else { return }
         view.centerY = centerY
         view.reposition()

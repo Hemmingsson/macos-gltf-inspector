@@ -1,4 +1,5 @@
 import AppKit
+import PreviewUI
 import Sparkle
 import SwiftUI
 
@@ -6,6 +7,12 @@ private let staleWelcomeFrameAutosaveKey = "NSWindow Frame welcome-AppWindow-1"
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !PreviewRuntime.isActive else { return }
+        #if DEBUG
+        DevLaunch.bootstrap()
+        #else
+        AppLog.configureFileSink()
+        #endif
         AppAppearance.apply(
             UserDefaults.standard.string(forKey: SettingsKeys.appearance)
                 ?? AppAppearance.system.rawValue
@@ -40,9 +47,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct GLTFInspectorApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let updaterController: SPUStandardUpdaterController
+    private let updaterController: SPUStandardUpdaterController?
 
     init() {
+        guard !PreviewRuntime.isActive else {
+            updaterController = nil
+            return
+        }
         UserDefaults.standard.register(defaults: [
             SettingsKeys.background: PreviewBackground.window.rawValue,
             SettingsKeys.autoRotate: true,
@@ -72,7 +83,9 @@ struct GLTFInspectorApp: App {
                 HostViewMenuCommands()
             }
             CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(updater: updaterController.updater)
+                if let updaterController {
+                    CheckForUpdatesView(updater: updaterController.updater)
+                }
             }
             CommandGroup(replacing: .saveItem) {
                 HostFileMenuCommands()

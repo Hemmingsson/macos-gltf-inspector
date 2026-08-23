@@ -1,0 +1,16 @@
+{
+  "fixtures": [
+    { "id": "cube", "label": "Cube", "path": "TestModels/Fixture Models/cube/cube.gltf" },
+    { "id": "tiny", "label": "Tiny GLB", "path": "TestModels/Fixture Models/tiny.glb" },
+    { "id": "boxAnimated", "label": "Box Animated", "path": "TestModels/Fixture Models/BoxAnimated/BoxAnimated.glb" },
+    { "id": "rigged", "label": "Rigged skin", "path": "TestModels/Fixture Models/rigged/two-joint-skin.gltf" },
+    { "id": "morph", "label": "Morph", "path": "TestModels/Fixture Models/morph/morph-triangle.gltf" },
+    { "id": "lights", "label": "Lights", "path": "TestModels/Fixture Models/lights/punctual-lights.gltf" },
+    { "id": "cameras", "label": "Cameras", "path": "TestModels/Fixture Models/cameras/persp-and-ortho.gltf" },
+    { "id": "multiScene", "label": "Multi scene", "path": "TestModels/Fixture Models/multiscene/two-scenes.gltf" },
+    { "id": "offcenter", "label": "Off-center", "path": "TestModels/Fixture Models/offcenter/cube-offset.gltf" },
+    { "id": "missingChannels", "label": "Missing channels", "path": "TestModels/Fixture Models/missing-channels/basecolor-only.gltf" },
+    { "id": "invalid", "label": "Invalid mesh", "path": "TestModels/Fixture Models/invalid/unresolved-mesh.gltf" },
+    { "id": "corrupt", "label": "Corrupt GLB", "path": "TestModels/Fixture Models/corrupt/truncated.glb" }
+  ]
+}

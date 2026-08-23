@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import PreviewUI
 
 /// App-defaults façade for `PreviewSettingsRoot`: canvas keys → `AppDefaultsStore`,
 /// IBL keys → `AppLookStore` (no UserDefaults leak for environment).

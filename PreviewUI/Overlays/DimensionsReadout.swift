@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// Bottom-trailing W×H×D pill.
-struct DimensionsReadout: View {
-    var dimensions: Dimensions
+public struct DimensionsReadout: View {
+    public var dimensions: Dimensions
 
-    var body: some View {
+    public var body: some View {
         OverlayChrome(height: OverlayMetrics.dimensionsHeight, cornerRadius: OverlayMetrics.dimensionsRadius) {
             Image(systemName: "cube")
                 .font(.system(size: 12, weight: .regular))

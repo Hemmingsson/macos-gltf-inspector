@@ -7,16 +7,16 @@ import Observation
 /// (no session override) redraw live when Settings changes that key (lazy overlay).
 @MainActor
 @Observable
-final class AppDefaultsStore {
-    static let shared = AppDefaultsStore()
+public final class AppDefaultsStore {
+    public static let shared = AppDefaultsStore()
 
     /// Observation poke — SwiftUI tracks live defaults when Settings changes a key.
-    private(set) var revision: UInt64 = 0
+    public private(set) var revision: UInt64 = 0
 
     private let defaults: UserDefaults
     private var observer: NSObjectProtocol?
 
-    init(defaults: UserDefaults = .standard) {
+    public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         observer = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
@@ -29,12 +29,12 @@ final class AppDefaultsStore {
         }
     }
 
-    func value<Value>(for key: SettingKey<Value>) -> Value {
+    public func value<Value>(for key: SettingKey<Value>) -> Value {
         _ = revision
         return read(key)
     }
 
-    func set<Value>(_ value: Value, for key: SettingKey<Value>) {
+    public func set<Value>(_ value: Value, for key: SettingKey<Value>) {
         // Revision bumps only via `didChangeNotification` — avoid a double poke on each write.
         write(value, for: key)
     }

@@ -5,13 +5,13 @@ import SwiftUI
 /// A popover rather than a menu because these are continuous values. A menu is for picking one of
 /// n; dragging an exposure slider while watching the model is the whole point, and a menu closes
 /// on the first click.
-struct LightingPopover<Capabilities: Availability, Viewport: ViewportController>: View {
-    var availability: Capabilities
-    var viewport: Viewport
+public struct LightingPopover<Capabilities: Availability, Viewport: ViewportController>: View {
+    public var availability: Capabilities
+    public var viewport: Viewport
 
     @State private var isPresented = false
 
-    var body: some View {
+    public var body: some View {
         Button {
             isPresented.toggle()
         } label: {
@@ -28,11 +28,11 @@ struct LightingPopover<Capabilities: Availability, Viewport: ViewportController>
 
 /// The popover's body. Split out so the chip stays about *presentation* and this stays about the
 /// three values, which is also what makes it easy to host alone in Debug fixtures.
-struct LightingControls<Capabilities: Availability, Viewport: ViewportController>: View {
-    var availability: Capabilities
-    var viewport: Viewport
+public struct LightingControls<Capabilities: Availability, Viewport: ViewportController>: View {
+    public var availability: Capabilities
+    public var viewport: Viewport
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             slider(
                 "Exposure",

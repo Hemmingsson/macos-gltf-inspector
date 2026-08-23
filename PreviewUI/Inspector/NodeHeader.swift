@@ -4,13 +4,13 @@ import SwiftUI
 ///
 /// Sketch / DESIGN.md: Open in… shares the window's top band with the sidebar toggle and canvas
 /// pills; selection name sits under that cluster, not beside it.
-struct NodeHeader: View {
-    var name: String
-    var kindTitle: String
-    var kind: NodeKind
-    let openInMenu: AnyView
+public struct NodeHeader: View {
+    public var name: String
+    public var kindTitle: String
+    public var kind: NodeKind
+    public let openInMenu: AnyView
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ActionRow(openInMenu: openInMenu)
 
@@ -24,10 +24,10 @@ struct NodeHeader: View {
 ///
 /// Document actions (Open in…) trail. When floating over the canvas (inspector closed), the same
 /// cluster sits at the trailing edge.
-struct ActionRow: View {
-    let openInMenu: AnyView
+public struct ActionRow: View {
+    public let openInMenu: AnyView
 
-    var body: some View {
+    public var body: some View {
         HStack(spacing: 4) {
             Spacer(minLength: 0)
             openInMenu
@@ -43,12 +43,12 @@ struct ActionRow: View {
 }
 
 /// Selection identity under the action cluster.
-struct IdentityRow: View {
-    var name: String
-    var kindTitle: String
-    var kind: NodeKind
+public struct IdentityRow: View {
+    public var name: String
+    public var kindTitle: String
+    public var kind: NodeKind
 
-    var body: some View {
+    public var body: some View {
         HStack(alignment: .center, spacing: 9) {
             NodeIcon(kind: kind)
 

@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Identity
 
 /// What a row in the outliner is. Drives icon + tint (DESIGN.md: colour = meaning).
-enum NodeKind: String, Sendable, Hashable, Codable, CaseIterable {
+public enum NodeKind: String, Sendable, Hashable, Codable, CaseIterable {
     case scene
     case mesh
     case camera
@@ -17,12 +17,12 @@ enum NodeKind: String, Sendable, Hashable, Codable, CaseIterable {
 }
 
 /// Addresses one row across every kind, so mesh 0 and material 0 never collide.
-struct NodeID: Sendable, Hashable, Codable {
-    var kind: NodeKind
+public struct NodeID: Sendable, Hashable, Codable {
+    public var kind: NodeKind
     /// Index inside its own glTF array (`nodes`, `materials`, `animations`, …).
-    var index: Int
+    public var index: Int
 
-    init(kind: NodeKind, index: Int) {
+    public init(kind: NodeKind, index: Int) {
         self.kind = kind
         self.index = index
     }
@@ -30,15 +30,15 @@ struct NodeID: Sendable, Hashable, Codable {
 
 // MARK: - Geometry primitives
 
-struct Vector3: Sendable, Hashable, Codable {
-    var x: Double
-    var y: Double
-    var z: Double
+public struct Vector3: Sendable, Hashable, Codable {
+    public var x: Double
+    public var y: Double
+    public var z: Double
 
-    static let zero = Vector3(x: 0, y: 0, z: 0)
-    static let one = Vector3(x: 1, y: 1, z: 1)
+    public static let zero = Vector3(x: 0, y: 0, z: 0)
+    public static let one = Vector3(x: 1, y: 1, z: 1)
 
-    init(x: Double, y: Double, z: Double) {
+    public init(x: Double, y: Double, z: Double) {
         self.x = x
         self.y = y
         self.z = z
@@ -46,16 +46,22 @@ struct Vector3: Sendable, Hashable, Codable {
 }
 
 /// Linear sRGB triple. Kept framework-free so engine adapters never hand the UI a `Color`.
-struct RGBColor: Sendable, Hashable, Codable {
-    var red: Double
-    var green: Double
-    var blue: Double
+public struct RGBColor: Sendable, Hashable, Codable {
+    public var red: Double
+    public var green: Double
+    public var blue: Double
 
-    static let white = RGBColor(red: 1, green: 1, blue: 1)
-    static let black = RGBColor(red: 0, green: 0, blue: 0)
+    public static let white = RGBColor(red: 1, green: 1, blue: 1)
+    public static let black = RGBColor(red: 0, green: 0, blue: 0)
+
+    public init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
 
     /// True when each channel is within `epsilon` of `other` (factor default checks).
-    func isApproximatelyEqual(to other: RGBColor, epsilon: Double = 0.004) -> Bool {
+    public func isApproximatelyEqual(to other: RGBColor, epsilon: Double = 0.004) -> Bool {
         abs(red - other.red) <= epsilon
             && abs(green - other.green) <= epsilon
             && abs(blue - other.blue) <= epsilon
@@ -63,24 +69,30 @@ struct RGBColor: Sendable, Hashable, Codable {
 }
 
 /// Authored TRS of one node. Rotation is Euler degrees — the inspector shows degrees.
-struct TransformInfo: Sendable, Hashable {
-    var position: Vector3
-    var rotationDegrees: Vector3
-    var scale: Vector3
+public struct TransformInfo: Sendable, Hashable {
+    public var position: Vector3
+    public var rotationDegrees: Vector3
+    public var scale: Vector3
 
-    static let identity = TransformInfo(position: .zero, rotationDegrees: .zero, scale: .one)
+    public init(position: Vector3, rotationDegrees: Vector3, scale: Vector3) {
+        self.position = position
+        self.rotationDegrees = rotationDegrees
+        self.scale = scale
+    }
+
+    public static let identity = TransformInfo(position: .zero, rotationDegrees: .zero, scale: .one)
 }
 
 /// Bounding size of the model in metres plus where the authored origin sits inside it.
-struct Dimensions: Sendable, Hashable {
-    var width: Double
-    var height: Double
-    var depth: Double
+public struct Dimensions: Sendable, Hashable {
+    public var width: Double
+    public var height: Double
+    public var depth: Double
     /// Authored origin relative to the model, in metres. Shown by the origin gizmo when Center is off.
-    var authoredOrigin: Vector3
-    var unit: String
+    public var authoredOrigin: Vector3
+    public var unit: String
 
-    init(width: Double, height: Double, depth: Double, authoredOrigin: Vector3 = .zero, unit: String = "m") {
+    public init(width: Double, height: Double, depth: Double, authoredOrigin: Vector3 = .zero, unit: String = "m") {
         self.width = width
         self.height = height
         self.depth = depth
@@ -92,31 +104,31 @@ struct Dimensions: Sendable, Hashable {
 // MARK: - Outliner
 
 /// One node of the typed node tree. Children are nested — the outliner renders the tree.
-struct SceneNode: Sendable, Hashable, Identifiable {
-    var id: NodeID
-    var name: String
-    var children: [SceneNode]
+public struct SceneNode: Sendable, Hashable, Identifiable {
+    public var id: NodeID
+    public var name: String
+    public var children: [SceneNode]
 
-    var kind: NodeKind { id.kind }
+    public var kind: NodeKind { id.kind }
 
-    init(id: NodeID, name: String, children: [SceneNode] = []) {
+    public init(id: NodeID, name: String, children: [SceneNode] = []) {
         self.id = id
         self.name = name
         self.children = children
     }
 
-    init(kind: NodeKind, index: Int, name: String, children: [SceneNode] = []) {
+    public init(kind: NodeKind, index: Int, name: String, children: [SceneNode] = []) {
         self.init(id: NodeID(kind: kind, index: index), name: name, children: children)
     }
 }
 
-struct SceneInfo: Sendable, Hashable, Identifiable {
-    var id: NodeID
-    var name: String
+public struct SceneInfo: Sendable, Hashable, Identifiable {
+    public var id: NodeID
+    public var name: String
     /// Roots of this scene inside `SceneModel.nodeTree`.
-    var rootNodeIDs: [NodeID]
+    public var rootNodeIDs: [NodeID]
 
-    init(index: Int, name: String, rootNodeIDs: [NodeID] = []) {
+    public init(index: Int, name: String, rootNodeIDs: [NodeID] = []) {
         self.id = NodeID(kind: .scene, index: index)
         self.name = name
         self.rootNodeIDs = rootNodeIDs
@@ -125,19 +137,19 @@ struct SceneInfo: Sendable, Hashable, Identifiable {
 
 // MARK: - File contents
 
-struct CameraInfo: Sendable, Hashable, Identifiable {
-    var id: NodeID
-    var name: String
-    var projection: Projection
+public struct CameraInfo: Sendable, Hashable, Identifiable {
+    public var id: NodeID
+    public var name: String
+    public var projection: Projection
     /// Vertical field of view in degrees (perspective only).
-    var fieldOfViewDegrees: Double?
+    public var fieldOfViewDegrees: Double?
     /// Orthographic horizontal / vertical magnification (half-extents).
-    var xMag: Double?
-    var yMag: Double?
-    var zNear: Double
-    var zFar: Double?
+    public var xMag: Double?
+    public var yMag: Double?
+    public var zNear: Double
+    public var zFar: Double?
 
-    init(
+    public init(
         index: Int,
         name: String,
         projection: Projection,
@@ -158,25 +170,25 @@ struct CameraInfo: Sendable, Hashable, Identifiable {
     }
 }
 
-struct LightInfo: Sendable, Hashable, Identifiable {
-    enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
+public struct LightInfo: Sendable, Hashable, Identifiable {
+    public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
         case directional
         case point
         case spot
     }
 
-    var id: NodeID
-    var name: String
-    var kind: Kind
-    var color: RGBColor
+    public var id: NodeID
+    public var name: String
+    public var kind: Kind
+    public var color: RGBColor
     /// glTF punctual intensity (lux for directional, candela otherwise).
-    var intensity: Double
-    var range: Double?
+    public var intensity: Double
+    public var range: Double?
     /// Spot cone angles in degrees (`KHR_lights_punctual`).
-    var innerConeDegrees: Double?
-    var outerConeDegrees: Double?
+    public var innerConeDegrees: Double?
+    public var outerConeDegrees: Double?
 
-    init(
+    public init(
         index: Int,
         name: String,
         kind: Kind,
@@ -198,7 +210,7 @@ struct LightInfo: Sendable, Hashable, Identifiable {
 }
 
 /// A texture slot a material can carry. The inspector shows a chip per *present* map only.
-enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
+public enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
     case baseColor
     case normal
     case metallicRoughness
@@ -210,10 +222,10 @@ enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Identifiabl
     case specular
     case transmission
 
-    var id: Self { self }
+    public var id: Self { self }
 
     /// Full name, for menus and accessibility labels.
-    var title: String {
+    public var title: String {
         switch self {
         case .baseColor: "Base Color"
         case .normal: "Normal"
@@ -229,7 +241,7 @@ enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Identifiabl
     }
 
     /// Chip label in the inspector (wireframe: Base · Normal · Rough · AO · Emissive).
-    var shortTitle: String {
+    public var shortTitle: String {
         switch self {
         case .baseColor: "Base"
         case .normal: "Normal"
@@ -247,21 +259,21 @@ enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Identifiabl
 
 /// One *present* texture binding on a material. Width/height and preview tint are optional —
 /// the engine adapter can omit anything it does not know yet.
-struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
-    var map: MaterialMap
-    var width: Int?
-    var height: Int?
+public struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
+    public var map: MaterialMap
+    public var width: Int?
+    public var height: Int?
     /// glTF `texCoord`. Inspector omits the UV set when this is 0.
-    var texCoord: Int
+    public var texCoord: Int
     /// Flat placeholder for the inspector swatch / map strip. Live engine can leave this nil
     /// and later supply an image handle without RealityKit types in the seam.
-    var previewColor: RGBColor?
+    public var previewColor: RGBColor?
     /// Small PNG thumb stamped at convert (max edge 96). Nil when decode failed / KTX2.
-    var thumbnailPNG: Data?
+    public var thumbnailPNG: Data?
 
-    var id: MaterialMap { map }
+    public var id: MaterialMap { map }
 
-    init(
+    public init(
         map: MaterialMap,
         width: Int? = nil,
         height: Int? = nil,
@@ -278,54 +290,54 @@ struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
     }
 
     /// `"2048×2048"` when both edges are known.
-    var sizeLabel: String? {
+    public var sizeLabel: String? {
         guard let width, let height else { return nil }
         return "\(width)×\(height)"
     }
 }
 
-struct MaterialInfo: Sendable, Hashable, Identifiable {
-    enum Workflow: String, Sendable, Hashable, Codable {
+public struct MaterialInfo: Sendable, Hashable, Identifiable {
+    public enum Workflow: String, Sendable, Hashable, Codable {
         case metallicRoughness
         /// Authored as KHR_materials_pbrSpecularGlossiness and converted on import.
         case specularGlossiness
         case unlit
     }
 
-    enum AlphaMode: String, Sendable, Hashable, Codable {
+    public enum AlphaMode: String, Sendable, Hashable, Codable {
         case opaque
         case mask
         case blend
     }
 
-    var id: NodeID
-    var name: String
-    var workflow: Workflow
-    var alphaMode: AlphaMode
-    var isDoubleSided: Bool
+    public var id: NodeID
+    public var name: String
+    public var workflow: Workflow
+    public var alphaMode: AlphaMode
+    public var isDoubleSided: Bool
     /// Only the maps that actually exist on the material. Kept in sync with `textures` when
     /// that list is non-empty so chips and map rows stay consistent.
-    var maps: Set<MaterialMap>
+    public var maps: Set<MaterialMap>
     /// Present map bindings with optional pixel size / UV / preview tint.
-    var textures: [MaterialTextureInfo]
-    var baseColorFactor: RGBColor?
-    var metallicFactor: Double?
-    var roughnessFactor: Double?
-    var emissiveFactor: RGBColor?
+    public var textures: [MaterialTextureInfo]
+    public var baseColorFactor: RGBColor?
+    public var metallicFactor: Double?
+    public var roughnessFactor: Double?
+    public var emissiveFactor: RGBColor?
     /// KHR_materials_emissive_strength multiplier when present.
-    var emissiveStrength: Double?
-    var normalScale: Double?
-    var occlusionStrength: Double?
+    public var emissiveStrength: Double?
+    public var normalScale: Double?
+    public var occlusionStrength: Double?
     /// Meaningful when `alphaMode == .mask`.
-    var alphaCutoff: Double?
+    public var alphaCutoff: Double?
     /// Mesh display names that reference this material (Materials-list selection).
-    var usedByMeshNames: [String]
+    public var usedByMeshNames: [String]
     /// Optional triangle coverage across those meshes.
-    var usedByTriangleCount: Int?
+    public var usedByTriangleCount: Int?
     /// Distinct image count when known (may be lower than `textures.count` if maps share).
-    var uniqueTextureCount: Int?
+    public var uniqueTextureCount: Int?
 
-    init(
+    public init(
         index: Int,
         name: String,
         workflow: Workflow = .metallicRoughness,
@@ -370,36 +382,36 @@ struct MaterialInfo: Sendable, Hashable, Identifiable {
     }
 
     /// Present maps in a stable display order.
-    var orderedMaps: [MaterialMap] {
+    public var orderedMaps: [MaterialMap] {
         MaterialMap.allCases.filter(maps.contains)
     }
 
     /// Present texture rows in the same stable order as chips.
-    var orderedTextures: [MaterialTextureInfo] {
+    public var orderedTextures: [MaterialTextureInfo] {
         let byMap = Dictionary(uniqueKeysWithValues: textures.map { ($0.map, $0) })
         return orderedMaps.compactMap { byMap[$0] }
     }
 }
 
-struct AnimationInfo: Sendable, Hashable, Identifiable {
-    var id: NodeID
-    var name: String
-    var duration: TimeInterval
+public struct AnimationInfo: Sendable, Hashable, Identifiable {
+    public var id: NodeID
+    public var name: String
+    public var duration: TimeInterval
 
-    init(index: Int, name: String, duration: TimeInterval) {
+    public init(index: Int, name: String, duration: TimeInterval) {
         self.id = NodeID(kind: .animation, index: index)
         self.name = name
         self.duration = duration
     }
 }
 
-struct SkinInfo: Sendable, Hashable, Identifiable {
-    var id: NodeID
-    var name: String
-    var jointCount: Int
-    var jointNames: [String]
+public struct SkinInfo: Sendable, Hashable, Identifiable {
+    public var id: NodeID
+    public var name: String
+    public var jointCount: Int
+    public var jointNames: [String]
 
-    init(index: Int, name: String, jointCount: Int, jointNames: [String] = []) {
+    public init(index: Int, name: String, jointCount: Int, jointNames: [String] = []) {
         self.id = NodeID(kind: .skin, index: index)
         self.name = name
         self.jointCount = jointCount
@@ -407,14 +419,14 @@ struct SkinInfo: Sendable, Hashable, Identifiable {
     }
 }
 
-struct MorphInfo: Sendable, Hashable, Identifiable {
-    var id: NodeID
+public struct MorphInfo: Sendable, Hashable, Identifiable {
+    public var id: NodeID
     /// Mesh that owns these targets.
-    var meshName: String
+    public var meshName: String
     /// Target names when authored, otherwise synthesised ("Target 1", …).
-    var targetNames: [String]
+    public var targetNames: [String]
 
-    init(index: Int, meshName: String, targetNames: [String]) {
+    public init(index: Int, meshName: String, targetNames: [String]) {
         self.id = NodeID(kind: .morph, index: index)
         self.meshName = meshName
         self.targetNames = targetNames
@@ -422,22 +434,28 @@ struct MorphInfo: Sendable, Hashable, Identifiable {
 }
 
 /// Live morph-target weight for inspector sliders (host maps from `PreviewMorph`).
-struct MorphTargetControl: Sendable, Hashable, Identifiable {
-    var id: String
-    var name: String
-    var weight: Double
+public struct MorphTargetControl: Sendable, Hashable, Identifiable {
+    public var id: String
+    public var name: String
+    public var weight: Double
+
+    public init(id: String, name: String, weight: Double) {
+        self.id = id
+        self.name = name
+        self.weight = weight
+    }
 }
 
 /// Per-node geometry facts (the inspector's Geometry section).
-struct GeometryInfo: Sendable, Hashable {
-    var triangleCount: Int
-    var vertexCount: Int
-    var uvSetCount: Int
-    var hasNormals: Bool
-    var hasTangents: Bool
-    var hasVertexColors: Bool
+public struct GeometryInfo: Sendable, Hashable {
+    public var triangleCount: Int
+    public var vertexCount: Int
+    public var uvSetCount: Int
+    public var hasNormals: Bool
+    public var hasTangents: Bool
+    public var hasVertexColors: Bool
 
-    init(
+    public init(
         triangleCount: Int,
         vertexCount: Int,
         uvSetCount: Int = 1,
@@ -456,25 +474,25 @@ struct GeometryInfo: Sendable, Hashable {
 
 /// Everything the inspector can show for one selection. Nil fields are fields the
 /// node type does not have — the inspector hides them (DESIGN.md).
-struct NodeDetail: Sendable, Hashable, Identifiable {
-    var id: NodeID
-    var name: String
-    var transform: TransformInfo?
+public struct NodeDetail: Sendable, Hashable, Identifiable {
+    public var id: NodeID
+    public var name: String
+    public var transform: TransformInfo?
     /// True when the transform is the file's own, false when we re-centred/fitted it.
-    var isTransformAuthored: Bool
-    var geometry: GeometryInfo?
-    var material: MaterialInfo?
-    var light: LightInfo?
-    var camera: CameraInfo?
-    var animation: AnimationInfo?
-    var skin: SkinInfo?
-    var morph: MorphInfo?
+    public var isTransformAuthored: Bool
+    public var geometry: GeometryInfo?
+    public var material: MaterialInfo?
+    public var light: LightInfo?
+    public var camera: CameraInfo?
+    public var animation: AnimationInfo?
+    public var skin: SkinInfo?
+    public var morph: MorphInfo?
     /// Scene root count when `kind == .scene`.
-    var sceneRootCount: Int?
+    public var sceneRootCount: Int?
 
-    var kind: NodeKind { id.kind }
+    public var kind: NodeKind { id.kind }
 
-    init(
+    public init(
         id: NodeID,
         name: String,
         transform: TransformInfo? = nil,
@@ -506,21 +524,21 @@ struct NodeDetail: Sendable, Hashable, Identifiable {
 // MARK: - File-level facts
 
 /// The inspector's File section.
-struct Stats: Sendable, Hashable {
-    var triangleCount: Int
-    var vertexCount: Int
-    var meshCount: Int
-    var materialCount: Int
-    var textureCount: Int
+public struct Stats: Sendable, Hashable {
+    public var triangleCount: Int
+    public var vertexCount: Int
+    public var meshCount: Int
+    public var materialCount: Int
+    public var textureCount: Int
     /// Largest texture edge in pixels ("max 2048²"). Nil when there are no textures.
-    var maxTextureDimension: Int?
-    var animationCount: Int
-    var fileSizeBytes: Int64?
-    var hasVertexColors: Bool
-    var isRigged: Bool
-    var morphTargetCount: Int
+    public var maxTextureDimension: Int?
+    public var animationCount: Int
+    public var fileSizeBytes: Int64?
+    public var hasVertexColors: Bool
+    public var isRigged: Bool
+    public var morphTargetCount: Int
 
-    init(
+    public init(
         triangleCount: Int = 0,
         vertexCount: Int = 0,
         meshCount: Int = 0,
@@ -548,42 +566,42 @@ struct Stats: Sendable, Hashable {
 }
 
 /// glTF-validator output, surfaced verbatim — "is the file wrong, or are we?".
-struct ValidationResult: Sendable, Hashable {
-    struct Issue: Sendable, Hashable, Identifiable {
-        enum Severity: String, Sendable, Hashable, Codable, CaseIterable {
+public struct ValidationResult: Sendable, Hashable {
+    public struct Issue: Sendable, Hashable, Identifiable {
+        public enum Severity: String, Sendable, Hashable, Codable, CaseIterable {
             case error
             case warning
             case info
             case hint
         }
 
-        var severity: Severity
-        var message: String
+        public var severity: Severity
+        public var message: String
         /// glTF JSON pointer the validator blamed, when it gave one.
-        var pointer: String?
+        public var pointer: String?
 
-        var id: String { "\(severity.rawValue)|\(pointer ?? "")|\(message)" }
+        public var id: String { "\(severity.rawValue)|\(pointer ?? "")|\(message)" }
 
-        init(severity: Severity, message: String, pointer: String? = nil) {
+        public init(severity: Severity, message: String, pointer: String? = nil) {
             self.severity = severity
             self.message = message
             self.pointer = pointer
         }
     }
 
-    var issues: [Issue]
+    public var issues: [Issue]
     /// "glTF 2.0" — shown next to the clean badge.
-    var formatLabel: String
+    public var formatLabel: String
     /// Pending means the Khronos run has not finished; unavailable is a hard skip/fail.
-    var status: Status
+    public var status: Status
 
-    enum Status: String, Sendable, Hashable {
+    public enum Status: String, Sendable, Hashable {
         case pending
         case ready
         case unavailable
     }
 
-    init(
+    public init(
         issues: [Issue] = [],
         formatLabel: String = "glTF 2.0",
         status: Status = .ready
@@ -593,87 +611,87 @@ struct ValidationResult: Sendable, Hashable {
         self.status = status
     }
 
-    var errorCount: Int { issues.filter { $0.severity == .error }.count }
-    var warningCount: Int { issues.filter { $0.severity == .warning }.count }
+    public var errorCount: Int { issues.filter { $0.severity == .error }.count }
+    public var warningCount: Int { issues.filter { $0.severity == .warning }.count }
     /// Green “Valid” only after a successful run with no errors or warnings.
-    var isClean: Bool { status == .ready && errorCount == 0 && warningCount == 0 }
+    public var isClean: Bool { status == .ready && errorCount == 0 && warningCount == 0 }
 }
 
 /// "What our pipeline did" — every silent change we made on import.
-struct PipelineReport: Sendable, Hashable {
-    struct Entry: Sendable, Hashable, Identifiable {
-        enum Kind: Sendable, Hashable {
+public struct PipelineReport: Sendable, Hashable {
+    public struct Entry: Sendable, Hashable, Identifiable {
+        public enum Kind: Sendable, Hashable {
             /// Conversion / dequant steps — “we did work”.
             case conversion
             /// Status line (file lights / studio IBL).
             case lighting
         }
 
-        var kind: Kind
-        var title: String
-        var detail: String?
+        public var kind: Kind
+        public var title: String
+        public var detail: String?
 
-        var id: String { detail.map { "\(title)|\($0)" } ?? title }
+        public var id: String { detail.map { "\(title)|\($0)" } ?? title }
 
-        init(kind: Kind = .conversion, title: String, detail: String? = nil) {
+        public init(kind: Kind = .conversion, title: String, detail: String? = nil) {
             self.kind = kind
             self.title = title
             self.detail = detail
         }
     }
 
-    var entries: [Entry]
+    public var entries: [Entry]
 
-    init(entries: [Entry] = []) {
+    public init(entries: [Entry] = []) {
         self.entries = entries
     }
 
-    var isEmpty: Bool { entries.isEmpty }
+    public var isEmpty: Bool { entries.isEmpty }
 }
 
 /// Convert losses — “not rendered as authored”. Separate from Khronos validation.
-struct ConvertProblemList: Sendable, Hashable {
-    struct Entry: Sendable, Hashable, Identifiable {
-        enum Severity: String, Sendable, Hashable {
+public struct ConvertProblemList: Sendable, Hashable {
+    public struct Entry: Sendable, Hashable, Identifiable {
+        public enum Severity: String, Sendable, Hashable {
             case error
             case warning
         }
 
-        var severity: Severity
-        var title: String
-        var code: String
+        public var severity: Severity
+        public var title: String
+        public var code: String
 
-        var id: String { "\(code)|\(severity.rawValue)|\(title)" }
+        public var id: String { "\(code)|\(severity.rawValue)|\(title)" }
 
-        init(severity: Severity, title: String, code: String) {
+        public init(severity: Severity, title: String, code: String) {
             self.severity = severity
             self.title = title
             self.code = code
         }
     }
 
-    var entries: [Entry]
+    public var entries: [Entry]
 
-    init(entries: [Entry] = []) {
+    public init(entries: [Entry] = []) {
         self.entries = entries
     }
 
-    var isEmpty: Bool { entries.isEmpty }
-    var errorCount: Int { entries.filter { $0.severity == .error }.count }
-    var warningCount: Int { entries.filter { $0.severity == .warning }.count }
+    public var isEmpty: Bool { entries.isEmpty }
+    public var errorCount: Int { entries.filter { $0.severity == .error }.count }
+    public var warningCount: Int { entries.filter { $0.severity == .warning }.count }
 }
 
 // MARK: - Viewport vocabulary
 
 /// Backdrop behind the model. Mirrors the host's stored backgrounds.
-enum BackdropStyle: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
+public enum BackdropStyle: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
     case window
     case white
     case dark
 
-    var id: Self { self }
+    public var id: Self { self }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .window: "None"
         case .white: "White"
@@ -684,7 +702,7 @@ enum BackdropStyle: String, Sendable, Hashable, Codable, CaseIterable, Identifia
 
 /// A render channel the view-mode menu can offer. Only channels the file actually
 /// has appear (`Availability.availableDebugChannels`).
-enum DebugChannel: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
+public enum DebugChannel: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
     case baseColor
     case metallic
     case roughness
@@ -699,9 +717,9 @@ enum DebugChannel: String, Sendable, Hashable, Codable, CaseIterable, Identifiab
     case clearcoatRoughness
     case clearcoatNormal
 
-    var id: Self { self }
+    public var id: Self { self }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .baseColor: "Base Color"
         case .metallic: "Metallic"
@@ -721,12 +739,12 @@ enum DebugChannel: String, Sendable, Hashable, Codable, CaseIterable, Identifiab
 }
 
 /// How the canvas draws the model. Menu shows full names, never abbreviations.
-enum ViewMode: Sendable, Hashable, Identifiable {
+public enum ViewMode: Sendable, Hashable, Identifiable {
     case shaded
     case wireframe
     case channel(DebugChannel)
 
-    var id: String {
+    public var id: String {
         switch self {
         case .shaded: "shaded"
         case .wireframe: "wireframe"
@@ -734,7 +752,7 @@ enum ViewMode: Sendable, Hashable, Identifiable {
         }
     }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .shaded: "Shaded"
         case .wireframe: "Wireframe"
@@ -743,16 +761,16 @@ enum ViewMode: Sendable, Hashable, Identifiable {
     }
 
     /// Always-available modes; channels are appended per file.
-    static let base: [ViewMode] = [.shaded, .wireframe]
+    public static let base: [ViewMode] = [.shaded, .wireframe]
 }
 
-enum Projection: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
+public enum Projection: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
     case perspective
     case orthographic
 
-    var id: Self { self }
+    public var id: Self { self }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .perspective: "Perspective"
         case .orthographic: "Orthographic"
@@ -761,7 +779,7 @@ enum Projection: String, Sendable, Hashable, Codable, CaseIterable, Identifiable
 }
 
 /// Canned camera angles. File cameras are separate (`SceneModel.cameras`).
-enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
+public enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
     case front
     case back
     case left
@@ -770,9 +788,9 @@ enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable, Identifiab
     case bottom
     case isometric
 
-    var id: Self { self }
+    public var id: Self { self }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .front: "Front"
         case .back: "Back"
@@ -786,24 +804,24 @@ enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable, Identifiab
 }
 
 /// What the lighting popover edits.
-struct LightingSettings: Sendable, Hashable {
+public struct LightingSettings: Sendable, Hashable {
     /// Exposure compensation in stops.
-    var exposure: Double
+    public var exposure: Double
     /// Environment yaw in degrees.
-    var environmentRotationDegrees: Double
+    public var environmentRotationDegrees: Double
     /// Use the file's punctual lights (only meaningful when `Availability.hasLights`).
-    var usesFileLights: Bool
+    public var usesFileLights: Bool
     /// Use the bundled studio IBL.
-    var usesStudioEnvironment: Bool
+    public var usesStudioEnvironment: Bool
 
-    static let standard = LightingSettings(
+    public static let standard = LightingSettings(
         exposure: 0,
         environmentRotationDegrees: 0,
         usesFileLights: false,
         usesStudioEnvironment: true
     )
 
-    init(
+    public init(
         exposure: Double,
         environmentRotationDegrees: Double,
         usesFileLights: Bool,

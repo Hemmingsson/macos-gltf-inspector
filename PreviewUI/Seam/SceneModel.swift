@@ -4,7 +4,7 @@ import Foundation
 /// snapshot, never a live object the UI can write to.
 ///
 /// Host adapters conform over the converted document. The UI never learns which concrete type it has.
-protocol SceneModel: Sendable {
+public protocol SceneModel: Sendable {
     /// Display name for the sidebar header ("Duck.glb").
     var fileName: String { get }
 
@@ -37,7 +37,7 @@ protocol SceneModel: Sendable {
     var convertProblems: ConvertProblemList { get }
 }
 
-extension SceneModel {
+public extension SceneModel {
     var defaultSceneID: NodeID? { scenes.first?.id }
     var materialVariantNames: [String] { [] }
     var convertProblems: ConvertProblemList { ConvertProblemList() }

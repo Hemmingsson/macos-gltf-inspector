@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import PreviewUI
 import simd
 
 /// Selection / visibility / isolation adapter over `HostSidebarModel`.

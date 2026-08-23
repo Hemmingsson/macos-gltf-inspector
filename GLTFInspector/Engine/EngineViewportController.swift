@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import PreviewUI
 import RealityKit
 import SwiftUI
 

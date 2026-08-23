@@ -12,12 +12,12 @@ import SwiftUI
 /// bar, tie their position to window chrome that this window deliberately hides, and put them
 /// *above* the canvas instead of on it. Overlays keep each cluster free to size itself and to
 /// sit exactly at its own edge.
-struct CanvasRegion<
+public struct CanvasRegion<
     Content: View,
     Model: SceneModel,
     Capabilities: Availability,
     Viewport: ViewportController,
-    Playback: AnimationPlaybackController
+    Playback: ClipPlaybackController
 >: View {
     /// File snapshot — dimensions and animation clips for the bottom overlays.
     var model: Model
@@ -37,7 +37,7 @@ struct CanvasRegion<
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
+    public var body: some View {
         Group {
             switch documentState {
             case .ready:

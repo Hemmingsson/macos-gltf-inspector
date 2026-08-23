@@ -3,20 +3,20 @@ import SwiftUI
 /// Canvas / panel copy for non-ready document states.
 ///
 /// Quiet chrome, Theme tokens, no fake progress on `.failed` (AGENTS.md).
-enum ShellStatusCopy {
-    static let emptyTitle = "Open a glTF file"
-    static let emptyDetail = "Drop a .glb or .gltf here, or choose File → Open…"
-    static let loadingTitle = "Loading model…"
-    static let failedTitle = "Couldn’t load model"
+public enum ShellStatusCopy {
+    public static let emptyTitle = "Open a glTF file"
+    public static let emptyDetail = "Drop a .glb or .gltf here, or choose File → Open…"
+    public static let loadingTitle = "Loading model…"
+    public static let failedTitle = "Couldn’t load model"
     /// Debug fixture for `.failed` — keep one string so previews and tests stay in sync.
-    static let invalidFileDetail = "The file isn’t a valid glTF / GLB."
+    public static let invalidFileDetail = "The file isn’t a valid glTF / GLB."
 }
 
 /// Centered status over the canvas (empty / loading / failed).
-struct CanvasStatusView: View {
-    var state: ShellDocumentState
+public struct CanvasStatusView: View {
+    public var state: ShellDocumentState
 
-    var body: some View {
+    public var body: some View {
         ZStack {
             Theme.canvasGradient
 
@@ -98,10 +98,10 @@ struct CanvasStatusView: View {
 }
 
 /// Quiet sidebar filler when there is no ready document.
-struct SidebarStatusView: View {
-    var state: ShellDocumentState
+public struct SidebarStatusView: View {
+    public var state: ShellDocumentState
 
-    var body: some View {
+    public var body: some View {
         VStack(spacing: 10) {
             switch state {
             case .empty:
@@ -136,10 +136,10 @@ struct SidebarStatusView: View {
 }
 
 /// Quiet inspector filler when there is no ready document.
-struct InspectorStatusView: View {
-    var state: ShellDocumentState
+public struct InspectorStatusView: View {
+    public var state: ShellDocumentState
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             switch state {
             case .empty:

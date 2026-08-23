@@ -4,27 +4,37 @@
   "betterStatusBar.reloadButton": null,
   "betterStatusBar.commands": [
     {
-      "id": "glb.debug",
-      "label": "$(play) Debug",
-      "command": "workbench.action.debug.start",
-      "tooltip": "Launch selected debug config",
-      "color": "#3fb950",
+      "id": "glb.build",
+      "label": "$(tools) Build",
+      "command": "workbench.action.tasks.build",
+      "tooltip": "dev.sh install → .build/ (+ /Applications on main). Does not open the app.",
+      "color": "#d29922",
       "useVsCodeApi": true
     },
     {
-      "id": "glb.debugPick",
-      "label": "$(debug-alt) Debug…",
-      "command": "workbench.action.debug.selectandstart",
-      "tooltip": "Pick a launch config (Debug+tiny.glb opens scripts/tiny.glb — not the editor file)",
+      "id": "glb.runCube",
+      "label": "$(rocket) Run cube",
+      "command": "workbench.action.tasks.runTask",
+      "args": ["dev: run cube"],
+      "tooltip": "Build, launch cube.gltf, log to .build/logs/debug.log",
       "color": "#58a6ff",
       "useVsCodeApi": true
     },
     {
-      "id": "glb.build",
-      "label": "$(tools) Build",
-      "command": "workbench.action.tasks.build",
-      "tooltip": "xcodegen + xcodebuild Debug",
-      "color": "#d29922",
+      "id": "glb.debug",
+      "label": "$(debug-alt) Debug",
+      "command": "workbench.action.debug.start",
+      "tooltip": "Debug + fixture picker. Logs → .build/logs/debug.log",
+      "color": "#3fb950",
+      "useVsCodeApi": true
+    },
+    {
+      "id": "glb.logs",
+      "label": "$(output) Logs",
+      "command": "workbench.action.tasks.runTask",
+      "args": ["dev: logs"],
+      "tooltip": "Tail .build/logs/debug.log (or unified log stream)",
+      "color": "#a371f7",
       "useVsCodeApi": true
     },
     {
@@ -35,5 +45,6 @@
       "color": "#f85149",
       "useVsCodeApi": true
     }
-  ]
+  ],
+  "debug.onTaskErrors": "showErrors"
 }

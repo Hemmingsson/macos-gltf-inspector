@@ -5,18 +5,18 @@ import SwiftUI
 /// This is where the document identifies itself. The window has no title band (DESIGN.md: the
 /// file name lives in the sidebar), so if this block is missing there is nothing anywhere on
 /// screen that says which file you are looking at.
-struct DocumentHeader: View {
-    var fileName: String
+public struct DocumentHeader: View {
+    public var fileName: String
     /// The scene being shown. Nil for a file with no named scene — the subtitle then collapses
     /// rather than printing a placeholder.
-    var sceneName: String?
-    var variantNames: [String] = []
-    var selectedVariantIndex: Int?
-    var onSelectVariant: (Int?) -> Void = { _ in }
+    public var sceneName: String?
+    public var variantNames: [String] = []
+    public var selectedVariantIndex: Int?
+    public var onSelectVariant: (Int?) -> Void = { _ in }
 
     @Environment(\.previewHair) private var hair
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 9) {
                 // Accent, not a type tint: this is the document itself, not a row in the outliner.

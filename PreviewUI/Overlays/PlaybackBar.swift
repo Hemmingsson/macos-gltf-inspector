@@ -3,13 +3,13 @@ import SwiftUI
 /// Bottom-centre animation controls.
 ///
 /// Shown only when `Availability.hasAnimations`. Transport lives on
-/// `AnimationPlaybackController` — the bar never owns a local clock.
-struct PlaybackBar<Playback: AnimationPlaybackController>: View {
-    var playback: Playback
+/// `ClipPlaybackController` — the bar never owns a local clock.
+public struct PlaybackBar<Playback: ClipPlaybackController>: View {
+    public var playback: Playback
 
     @State private var isSeeking = false
 
-    var body: some View {
+    public var body: some View {
         OverlayChrome(
             height: OverlayMetrics.playbackHeight,
             cornerRadius: OverlayMetrics.playbackRadius,

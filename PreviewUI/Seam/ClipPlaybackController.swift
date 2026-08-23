@@ -6,7 +6,7 @@ import Observation
 /// `SceneModel.animations` is the file inventory; this is the player. The host engine
 /// adapter wraps RealityKit / `PreviewClip`. `PlaybackBar` ticks `advance(by:)`.
 @MainActor
-protocol AnimationPlaybackController: AnyObject, Observable {
+public protocol ClipPlaybackController: AnyObject, Observable {
     var clips: [AnimationInfo] { get }
     var activeClip: AnimationInfo? { get }
     var isPlaying: Bool { get }

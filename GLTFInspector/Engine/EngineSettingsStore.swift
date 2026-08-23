@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import PreviewUI
 
 /// Per-window lazy overlay on `AppDefaultsStore`, with environment keys routed to `AppLookStore`.
 ///
