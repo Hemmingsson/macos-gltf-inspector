@@ -231,22 +231,3 @@ public struct MaterialSection: View {
         return parts.joined(separator: ", ")
     }
 }
-
-// MARK: - Local chrome
-
-private struct MaterialSwatch: View {
-    var color: Color
-    var size: CGFloat
-    @Environment(\.previewBorder) private var border
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: max(4, size * 0.18), style: .continuous)
-            .fill(color)
-            .frame(width: size, height: size)
-            .overlay {
-                RoundedRectangle(cornerRadius: max(4, size * 0.18), style: .continuous)
-                    .strokeBorder(border, lineWidth: Theme.hairlineWidth)
-            }
-            .accessibilityHidden(true)
-    }
-}

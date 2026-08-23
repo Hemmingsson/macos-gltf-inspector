@@ -41,13 +41,13 @@ public struct SidebarChromeRow: View {
 // MARK: - Previews
 
 #Preview("in sidebar visible") {
-    PreviewCanvas(width: PreviewCanvas.sidebarWidth) {
+    PreviewCanvas(width: Theme.sidebarWidth) {
         SidebarChromeRow(isSidebarVisible: true, trailingAligned: true) {}
     }
 }
 
 #Preview("in sidebar hidden") {
-    PreviewCanvas(width: PreviewCanvas.sidebarWidth) {
+    PreviewCanvas(width: Theme.sidebarWidth) {
         SidebarChromeRow(isSidebarVisible: false, trailingAligned: true) {}
     }
 }

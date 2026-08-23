@@ -25,3 +25,13 @@ public struct OrientationGizmo: View {
         .accessibilityLabel("Orientation gizmo")
     }
 }
+
+// MARK: - Previews
+
+#Preview("default", traits: .fixedLayout(width: 120, height: 120)) {
+    PreviewCanvas(width: 120, height: 120, background: .canvas) {
+        OrientationGizmo()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            .padding(OverlayMetrics.inset)
+    }
+}

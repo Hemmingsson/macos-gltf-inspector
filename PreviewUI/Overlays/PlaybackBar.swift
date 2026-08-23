@@ -121,27 +121,3 @@ public struct PlaybackBar<Playback: ClipPlaybackController>: View {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }
-
-private struct PlaybackPlayButton: View {
-    var isPlaying: Bool
-    var action: () -> Void
-
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isPlaying ? Theme.onGlyph : Theme.glyph)
-                .frame(width: 26, height: 26)
-                .contentShape(.rect)
-        }
-        .previewGlassButtonStyle(prominent: isPlaying)
-        .focused($isFocused)
-        .overlay {
-            PreviewFocusStroke(shape: .roundedRect(8), isFocusedOverride: isFocused)
-        }
-        .help(isPlaying ? "Pause" : "Play")
-        .accessibilityLabel(isPlaying ? "Pause" : "Play")
-    }
-}

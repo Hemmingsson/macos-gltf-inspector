@@ -32,3 +32,22 @@ public struct DimensionsReadout: View {
         )
     }
 }
+
+// MARK: - Previews
+
+private let sampleDimensions = Dimensions(width: 1.23, height: 0.45, depth: 2.10)
+
+#Preview("centered", traits: .fixedLayout(width: 400, height: 200)) {
+    PreviewCanvas(width: 400, height: 200, background: .canvas) {
+        DimensionsReadout(dimensions: sampleDimensions)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+#Preview("off-center", traits: .fixedLayout(width: 400, height: 200)) {
+    PreviewCanvas(width: 400, height: 200, background: .canvas) {
+        DimensionsReadout(dimensions: sampleDimensions)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(OverlayMetrics.inset)
+    }
+}

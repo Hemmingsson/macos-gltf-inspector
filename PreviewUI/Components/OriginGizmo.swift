@@ -88,3 +88,17 @@ public struct OriginGizmo: View {
         )
     }
 }
+
+// MARK: - Previews
+
+#Preview("zero", traits: .fixedLayout(width: 400, height: 240)) {
+    PreviewCanvas(width: 400, height: 240, background: .canvas) {
+        OriginGizmo(authoredOrigin: .zero)
+    }
+}
+
+#Preview("offset", traits: .fixedLayout(width: 400, height: 240)) {
+    PreviewCanvas(width: 400, height: 240, background: .canvas) {
+        OriginGizmo(authoredOrigin: Vector3(x: 0.42, y: -0.18, z: 1.05))
+    }
+}

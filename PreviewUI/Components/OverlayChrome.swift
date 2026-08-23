@@ -56,7 +56,7 @@ public struct OverlayChrome<Content: View>: View {
     public var height: CGFloat
     public var cornerRadius: CGFloat
     public var horizontalPadding: CGFloat = 12
-    @ViewBuilder var content: () -> Content
+    @ViewBuilder public var content: () -> Content
 
     public var body: some View {
         cluster
@@ -70,4 +70,43 @@ public struct OverlayChrome<Content: View>: View {
         .padding(.horizontal, horizontalPadding)
         .frame(height: height)
     }
+}
+
+// MARK: - Previews
+
+#Preview("dimensions slot") {
+    OverlayChrome(
+        height: OverlayMetrics.dimensionsHeight,
+        cornerRadius: OverlayMetrics.dimensionsRadius
+    ) {
+        Image(systemName: "cube")
+            .font(.system(size: 12))
+            .foregroundStyle(Theme.text2)
+        Text("1.00 × 1.00 × 1.00 m")
+            .font(.system(size: 12).monospacedDigit())
+            .foregroundStyle(Theme.glyph)
+    }
+    .padding(24)
+}
+
+#Preview("playback slots") {
+    OverlayChrome(
+        height: OverlayMetrics.playbackHeight,
+        cornerRadius: OverlayMetrics.playbackRadius,
+        horizontalPadding: 14
+    ) {
+        Text("Idle")
+            .font(.system(size: 12))
+            .foregroundStyle(Theme.glyph)
+        Theme.hair
+            .frame(width: Theme.hairlineWidth, height: 20)
+        PlaybackPlayButton(isPlaying: false) {}
+        RoundedRectangle(cornerRadius: 2, style: .continuous)
+            .fill(Theme.controlFill)
+            .frame(width: OverlayMetrics.scrubWidth, height: 4)
+        Text("00:00 / 00:02")
+            .font(.system(size: 11).monospacedDigit())
+            .foregroundStyle(Theme.text2)
+    }
+    .padding(24)
 }
