@@ -25,6 +25,7 @@ build/
 plans/
 test-models/
 Fixtures/
+!PreviewUI/PreviewSupport/Fixtures/
 TestModels/Khronos samples/
 .readme-preview.html
 scripts/.cache/
