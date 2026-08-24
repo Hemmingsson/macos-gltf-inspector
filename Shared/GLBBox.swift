@@ -253,7 +253,8 @@ struct GLBBox {
         return try readURI(uri)
     }
 
-    private static func decodeDataURI(_ uri: String) -> Data? {
+    /// Also used by `GLTFBinaryStore` when a sidecar buffer or image is inlined.
+    static func decodeDataURI(_ uri: String) -> Data? {
         guard uri.hasPrefix("data:"), let comma = uri.firstIndex(of: ",") else { return nil }
         let meta = uri[uri.index(uri.startIndex, offsetBy: 5)..<comma]
         let payload = String(uri[uri.index(after: comma)...])

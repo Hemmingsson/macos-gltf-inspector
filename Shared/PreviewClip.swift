@@ -2,19 +2,15 @@ import Foundation
 import RealityKit
 
 /// Usable RealityKit animation clip for preview playback / seam Availability.
-/// Document mirror is `GLTFSessionDocument.Animation` (name + duration only — no re-parse).
+/// Names come from `GLTFSessionDocument.Animation`, which is parsed from the file.
 struct PreviewClip: Identifiable {
     let id: Int
     let resource: AnimationResource
-    /// Raw clip name from `AnimationResource` (may be empty). Feeds `documentAnimation`.
+    /// Authored clip name (may be empty — the file often leaves animations unnamed).
     let name: String
     /// Picker / playback-bar label — empty names become `Clip N` among usable clips.
     let title: String
     let duration: TimeInterval
-
-    var documentAnimation: GLTFSessionDocument.Animation {
-        GLTFSessionDocument.Animation(name: name, duration: duration)
-    }
 
     /// Sendable name/duration view for PreviewUI when `AnimationResource` is not needed.
     var info: PreviewClipInfo {
@@ -23,19 +19,19 @@ struct PreviewClip: Identifiable {
 
     /// Clips with positive finite duration from `entity.availableAnimations`.
     /// `id` is the index in that array (skipped unusable entries leave gaps).
-    /// When `document` is provided, empty RealityKit names fall back to
-    /// `document.animations[id].name` (convert stamps names; RK often drops them).
+    /// When `document` is provided its authored name wins — GLTFKit2 invents `Animation1`
+    /// for clips the file left unnamed, and the inspector must not present that as authored.
     @MainActor
     static func usable(on entity: Entity, document: GLTFSessionDocument? = nil) -> [PreviewClip] {
         var result: [PreviewClip] = []
         for (offset, resource) in entity.availableAnimations.enumerated() {
             guard let duration = EntityLoader.clipDuration(resource, on: entity) else { continue }
-            var name = resource.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if name.isEmpty,
-               let document,
-               document.animations.indices.contains(offset) {
+            let name: String
+            if let document, document.animations.indices.contains(offset) {
                 name = document.animations[offset].name
                     .trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                name = resource.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             }
             // Fallback index is among *usable* clips (not the raw animation index).
             result.append(
