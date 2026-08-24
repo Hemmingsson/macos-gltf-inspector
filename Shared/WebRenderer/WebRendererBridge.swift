@@ -14,6 +14,8 @@ struct WebRendererCommand: Equatable {
         case setCamera
         case fit
         case setToneMapping
+        case setExposure
+        case setEnvironmentRotation
         case setDebugChannel
         case renderStill
     }
@@ -28,6 +30,7 @@ struct WebRendererCommand: Equatable {
     var elevation: Double?
     var distance: Double?
     var name: String?
+    var value: Double?
 
     private init(id: Int, kind: Kind) {
         self.id = id
@@ -78,6 +81,19 @@ struct WebRendererCommand: Equatable {
         return command
     }
 
+    /// Exposure compensation in stops; the page converts to a linear factor.
+    static func setExposure(id: Int, stops: Double) -> Self {
+        var command = Self(id: id, kind: .setExposure)
+        command.value = stops
+        return command
+    }
+
+    static func setEnvironmentRotation(id: Int, degrees: Double) -> Self {
+        var command = Self(id: id, kind: .setEnvironmentRotation)
+        command.value = degrees
+        return command
+    }
+
     static func setDebugChannel(id: Int, name: String) -> Self {
         var command = Self(id: id, kind: .setDebugChannel)
         command.name = name
@@ -100,6 +116,7 @@ struct WebRendererCommand: Equatable {
         if let elevation { object["elevation"] = elevation }
         if let distance { object["distance"] = distance }
         if let name { object["name"] = name }
+        if let value { object["value"] = value }
         return object
     }
 

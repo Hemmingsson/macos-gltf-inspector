@@ -34,6 +34,8 @@ struct PreviewView: View {
     /// Migration step: overlays and camera chrome still belong to `PreviewScene` and are not
     /// drawn on this path yet.
     var webCanvasURL: URL? = nil
+    /// Look applied to the web canvas.
+    var webCanvasLook = WebPreviewCanvas.Look()
 
     var body: some View {
         Group {
@@ -47,7 +49,7 @@ struct PreviewView: View {
                 }
             case .ready(let model):
                 if let webCanvasURL {
-                    WebPreviewCanvas(url: webCanvasURL)
+                    WebPreviewCanvas(url: webCanvasURL, look: webCanvasLook)
                 } else {
                     PreviewScene(
                         entity: model.entity,

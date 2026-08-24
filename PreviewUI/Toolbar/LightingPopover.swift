@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The lighting chip and its popover: exposure · environment rotation · file-vs-studio.
+/// The lighting chip and its popover: exposure · environment · tone mapping · file-vs-studio.
 ///
 /// A popover rather than a menu because these are continuous values. A menu is for picking one of
 /// n; dragging an exposure slider while watching the model is the whole point, and a menu closes
@@ -47,6 +47,31 @@ public struct LightingControls<Capabilities: Availability, Viewport: ViewportCon
                 range: 0...360,
                 reading: String(format: "%.0f°", viewport.lighting.environmentRotationDegrees)
             )
+
+            VStack(alignment: .leading, spacing: 6) {
+                label("Environment")
+                Picker("Environment", selection: setting(\.environment)) {
+                    ForEach(StudioEnvironment.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
+            // A glTF file carries no tone mapping, so this is the app's call and it belongs on
+            // screen. Neutral is the review-oriented default; ACES is here because that is what
+            // many DCC tools show, and matching what the author saw is half the job.
+            VStack(alignment: .leading, spacing: 6) {
+                label("Tone mapping")
+                Picker("Tone mapping", selection: setting(\.toneMapping)) {
+                    ForEach(ToneMapping.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
 
             // Adaptive, per DESIGN.md: with no punctual lights in the file there is nothing to
             // switch *to*, so the control is absent rather than present-and-useless. The engine

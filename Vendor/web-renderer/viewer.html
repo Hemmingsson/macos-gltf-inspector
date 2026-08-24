@@ -198,6 +198,17 @@ const commands = {
         return {};
     },
 
+    /** Stops in, linear factor out — the renderer multiplies radiance by this. */
+    setExposure({ value }) {
+        state.renderingParameters.exposure = Math.pow(2, value);
+        return {};
+    },
+
+    setEnvironmentRotation({ value }) {
+        state.renderingParameters.environmentRotation = value;
+        return {};
+    },
+
     setToneMapping({ name }) {
         state.renderingParameters.toneMap = name;
         return {};

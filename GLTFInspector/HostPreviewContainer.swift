@@ -12,6 +12,7 @@ struct HostPreviewContainer: NSViewRepresentable {
     var session: PreviewSessionBindings
     /// When set, the model is drawn by the shared web renderer instead of RealityKit.
     var webCanvasURL: URL?
+    var webCanvasLook: WebPreviewCanvas.Look
 
     func makeNSView(context: Context) -> PreviewHostingView {
         let view = PreviewHostingView(
@@ -22,7 +23,8 @@ struct HostPreviewContainer: NSViewRepresentable {
                 sidebar: sidebar,
                 overlayRevision: overlayRevision,
                 session: session,
-                webCanvasURL: webCanvasURL
+                webCanvasURL: webCanvasURL,
+                webCanvasLook: webCanvasLook
             )
         )
         view.interaction = interaction
@@ -38,7 +40,8 @@ struct HostPreviewContainer: NSViewRepresentable {
             sidebar: sidebar,
             overlayRevision: overlayRevision,
             session: session,
-            webCanvasURL: webCanvasURL
+            webCanvasURL: webCanvasURL,
+            webCanvasLook: webCanvasLook
         )
     }
 
