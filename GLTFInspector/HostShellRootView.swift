@@ -130,7 +130,7 @@ struct HostShellRootView: View {
                 overlayRevision: sidebar?.overlayRevision ?? 0,
                 session: previewSession,
                 webCanvasURL: loadingURL ?? documentURL,
-                webCanvasLook: WebPreviewCanvas.Look(engineViewport.lighting)
+                webCanvasLook: WebPreviewCanvas.Look(engineViewport, sceneIndex: sidebar?.activeSceneIndex ?? 0)
             )
         }
         // Remount adapters that capture sidebar/entity once; keep settings + viewport identity.

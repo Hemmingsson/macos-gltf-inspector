@@ -135,6 +135,22 @@ final class WebRendererHost: NSObject {
         }
     }
 
+    /// Evaluates an expression in the page and returns it as a string.
+    ///
+    /// Diagnostics and tests only — real work goes through a typed command so the contract
+    /// stays visible on both sides.
+    func evaluate(_ expression: String) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            webView.evaluateJavaScript("String(\(expression))") { value, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: value as? String ?? "")
+                }
+            }
+        }
+    }
+
     /// Renders one frame and decodes it. `.still` mode only in practice, though nothing stops
     /// a live host from grabbing a frame.
     func renderStill() async throws -> CGImage {

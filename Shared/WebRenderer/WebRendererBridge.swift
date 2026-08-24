@@ -18,6 +18,12 @@ struct WebRendererCommand: Equatable {
         case setEnvironmentRotation
         case setDebugChannel
         case renderStill
+        case setBackdrop
+        case setAutoRotate
+        case setProjection
+        case setFieldOfView
+        case setFileCamera
+        case setMaterialVariant
     }
 
     var id: Int
@@ -31,6 +37,8 @@ struct WebRendererCommand: Equatable {
     var distance: Double?
     var name: String?
     var value: Double?
+    var enabled: Bool?
+    var color: [Double]?
 
     private init(id: Int, kind: Kind) {
         self.id = id
@@ -104,6 +112,46 @@ struct WebRendererCommand: Equatable {
         Self(id: id, kind: .renderStill)
     }
 
+    /// Components in 0-1. Alpha 0 lets the host window show through.
+    static func setBackdrop(id: Int, color: [Double]) -> Self {
+        var command = Self(id: id, kind: .setBackdrop)
+        command.color = color
+        return command
+    }
+
+    static func setAutoRotate(id: Int, enabled: Bool) -> Self {
+        var command = Self(id: id, kind: .setAutoRotate)
+        command.enabled = enabled
+        return command
+    }
+
+    static func setProjection(id: Int, name: String) -> Self {
+        var command = Self(id: id, kind: .setProjection)
+        command.name = name
+        return command
+    }
+
+    /// Vertical field of view in degrees.
+    static func setFieldOfView(id: Int, degrees: Double) -> Self {
+        var command = Self(id: id, kind: .setFieldOfView)
+        command.value = degrees
+        return command
+    }
+
+    /// `nil` returns to the user camera.
+    static func setFileCamera(id: Int, index: Int?) -> Self {
+        var command = Self(id: id, kind: .setFileCamera)
+        command.index = index
+        return command
+    }
+
+    /// `nil` restores the file's default variant.
+    static func setMaterialVariant(id: Int, index: Int?) -> Self {
+        var command = Self(id: id, kind: .setMaterialVariant)
+        command.index = index
+        return command
+    }
+
     /// JSON object literal for `__viewer.exec(...)`. Nil fields are omitted so the page can use
     /// plain `undefined` checks rather than distinguishing null from absent.
     func jsonObject() -> [String: Any] {
@@ -117,6 +165,8 @@ struct WebRendererCommand: Equatable {
         if let distance { object["distance"] = distance }
         if let name { object["name"] = name }
         if let value { object["value"] = value }
+        if let enabled { object["enabled"] = enabled }
+        if let color { object["color"] = color }
         return object
     }
 

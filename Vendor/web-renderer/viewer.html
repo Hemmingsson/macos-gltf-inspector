@@ -56,11 +56,15 @@ const resources = view.createResourceLoader(undefined, undefined, "libs/");
 state.renderingParameters.toneMap = GltfState.ToneMaps.KHR_PBR_NEUTRAL;
 
 let live = false;
+let autoRotate = false;
 
 /** Continuous rendering for the document window and Quick Look. */
 function tick() {
     if (!live) return;
     resize();
+    // Spin the camera around the target rather than the model, so the authored transform is
+    // never misrepresented — an inspector must not move geometry the file did not move.
+    if (autoRotate && state.gltf) state.userCamera.orbit(1.2, 0);
     view.renderFrame(state, canvas.width, canvas.height);
     requestAnimationFrame(tick);
 }
@@ -227,6 +231,61 @@ const commands = {
     /** Pass "None" to leave debug mode. */
     setDebugChannel({ name }) {
         state.renderingParameters.debugOutput = name;
+        return {};
+    },
+
+    /**
+     * `[r, g, b, a]` in 0-1. Alpha 0 lets the host window show through.
+     *
+     * Painted as the page background, not `renderingParameters.clearColor`. The context is
+     * created with `alpha: true` and the renderer's final composite writes transparent, so
+     * `clearColor` only ever tints intermediate framebuffers and never reaches the canvas —
+     * setting it looks like it works and changes nothing.
+     */
+    setBackdrop({ color }) {
+        const [r, g, b, a] = color;
+        document.body.style.background =
+            `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+        return {};
+    },
+
+    setAutoRotate({ enabled }) {
+        autoRotate = enabled;
+        return {};
+    },
+
+    /**
+     * Perspective / orthographic. `UserCamera` keeps its distance either way, so the ortho
+     * magnification is derived from it — otherwise switching projection would silently rescale
+     * the model.
+     */
+    setProjection({ name }) {
+        const camera = state.userCamera;
+        if (name === "orthographic") {
+            camera.type = "orthographic";
+            const mag = camera.distance * Math.tan(camera.perspective.yfov / 2);
+            camera.orthographic = { xmag: mag, ymag: mag, znear: camera.perspective.znear, zfar: camera.perspective.zfar };
+        } else {
+            camera.type = "perspective";
+        }
+        return {};
+    },
+
+    /** Vertical field of view in degrees. */
+    setFieldOfView({ value }) {
+        state.userCamera.perspective.yfov = value * Math.PI / 180;
+        return {};
+    },
+
+    /** `undefined` returns to the user camera. */
+    setFileCamera({ index }) {
+        state.cameraNodeIndex = index ?? undefined;
+        return {};
+    },
+
+    /** `KHR_materials_variants`; `undefined` restores the file default. */
+    setMaterialVariant({ index }) {
+        state.variant = index ?? undefined;
         return {};
     },
 

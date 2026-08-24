@@ -21,6 +21,21 @@ struct WebPreviewCanvas: NSViewRepresentable {
         var exposure: Double = 0
         /// Environment yaw in degrees.
         var environmentRotation: Double = 0
+        /// Backdrop as `[r, g, b, a]` in 0-1. Alpha 0 shows the host window through.
+        var backdrop: [Double] = [0, 0, 0, 0]
+        var autoRotates = false
+        /// `perspective` or `orthographic`.
+        var projection = "perspective"
+        /// Vertical field of view in degrees.
+        var fieldOfView: Double = 45
+        /// Khronos `GltfState.DebugOutput` value; `None` for normal shading.
+        var debugChannel = "None"
+        /// Camera authored in the file, or nil for the user camera.
+        var fileCameraIndex: Int?
+        /// `KHR_materials_variants` index, or nil for the file default.
+        var materialVariantIndex: Int?
+        /// Scene index.
+        var sceneIndex: Int = 0
     }
 
     let url: URL
@@ -109,6 +124,29 @@ struct WebPreviewCanvas: NSViewRepresentable {
                             .setEnvironmentRotation(id: $0, degrees: look.environmentRotation)
                         }
                     }
+                    if previous?.backdrop != look.backdrop {
+                        try await host.send { .setBackdrop(id: $0, color: look.backdrop) }
+                    }
+                    if previous?.autoRotates != look.autoRotates {
+                        try await host.send { .setAutoRotate(id: $0, enabled: look.autoRotates) }
+                    }
+                    if previous?.projection != look.projection {
+                        try await host.send { .setProjection(id: $0, name: look.projection) }
+                    }
+                    if previous?.fieldOfView != look.fieldOfView {
+                        try await host.send { .setFieldOfView(id: $0, degrees: look.fieldOfView) }
+                    }
+                    if previous?.debugChannel != look.debugChannel {
+                        try await host.send { .setDebugChannel(id: $0, name: look.debugChannel) }
+                    }
+                    if previous?.fileCameraIndex != look.fileCameraIndex {
+                        try await host.send { .setFileCamera(id: $0, index: look.fileCameraIndex) }
+                    }
+                    if previous?.materialVariantIndex != look.materialVariantIndex {
+                        try await host.send {
+                            .setMaterialVariant(id: $0, index: look.materialVariantIndex)
+                        }
+                    }
 
                     if modelChanged {
                         let info = try await host.load(model: url)
@@ -116,6 +154,12 @@ struct WebPreviewCanvas: NSViewRepresentable {
                             AppLog.webRenderer,
                             "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height)"
                         )
+                    }
+
+                    // After the load: `load` resets the scene to the file default, so applying
+                    // it earlier would be silently undone.
+                    if modelChanged || previous?.sceneIndex != look.sceneIndex, look.sceneIndex != 0 {
+                        try await host.send { .setScene(id: $0, index: look.sceneIndex) }
                     }
                 } catch is CancellationError {
                     // Superseded by a newer look or model; nothing to report.
