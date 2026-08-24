@@ -203,3 +203,64 @@ on this machine was testing an arbitrary old build. The stale copies were unregi
   requests is defensible but has not been through notarization here.
 - Thumbnail throughput on a folder of hundreds of files, where per-process WebKit start-up
   stops amortizing.
+
+---
+
+## Renderer choice: Khronos glTF Sample Renderer — confirmed
+
+**Date:** 2026-08-24 · prototyped, not decided from documentation.
+
+Built from `KhronosGroup/glTF-Sample-Renderer` at `main` (Apache-2.0), driven headless in an
+off-screen `WKWebView` through the same scheme-handler harness used for the thumbnail spike.
+BoomBox rendered correctly with the vendored `neutral.hdr`. Output is visibly better lit than
+the three.js prototype: correct studio reflections, readable control labels.
+
+### The five checks
+
+| Check | Result |
+| --- | --- |
+| Build story | `npm install && rollup -c`. One-time vendoring step — commit `dist/`, no build at app-build time. |
+| Headless still render | Works. `canvas.toDataURL()` returns a correct PNG. |
+| Byte loading | `loadGltf(ArrayBuffer)` takes GLB bytes directly. Sandboxed file access stays in Swift. |
+| Size / parse cost | 6.4 MB JS evaluates in **~30 ms**. Not the problem it looks like — engines parse lazily. |
+| Debug channels | **More than RealityKit's 13**, including transmission strength, volume thickness, sheen roughness, specular colour and clearcoat normal. |
+
+### Measured against three.js, same file, same machine
+
+| Phase | Khronos | three.js r180 |
+| --- | --- | --- |
+| Renderer import + eval | ~30 ms | ~10–70 ms |
+| Environment / IBL | ~50 ms | ~20–40 ms |
+| **glTF parse** | **11–23 ms** | 114–122 ms |
+| First render (shader compile) | 117–465 ms | 87–121 ms |
+| **Cold process → first frame** | **490–535 ms** | 557–581 ms |
+
+The reference renderer is **faster overall** and parses 5–10x quicker. Its cost sits in shader
+compilation, which is a one-time hit per process, not per file — so it amortizes in the app
+window and in a warm thumbnail process.
+
+### Bundle composition
+
+6.4 MB JS, 7.5 MB `libs/`, 896 KB `assets/` (BRDF LUTs). **5.3 MB of `libs/` is
+`physx-js-webidl.wasm`**, loaded lazily and never fetched unless a file uses
+`KHR_physics_rigid_bodies` — irrelevant to inspection. `libktx.wasm` (1.7 MB) *is* needed:
+`KHR_texture_basisu` is common in web glTF. Trimming physics and `KHR_interactivity` from the
+rollup config is possible later; it is not blocking.
+
+### Two integration gotchas
+
+1. **`libs/libktx.js` must be loaded as a classic `<script>` before the module.** It defines a
+   global `createKtxModule` that `createResourceLoader` reads; without it construction throws
+   `Can't find variable: createKtxModule`.
+2. **The renderer rejects absolute URLs** for LUT and library paths — *"Absolute URLs are not
+   allowed for security reasons"*. Paths must be **relative**, so the page has to be served
+   from a directory root under the custom scheme rather than assembled from absolute URLs.
+
+### Consequences
+
+- `MetalRoughPrepare` can go: `KHR_materials_pbrSpecularGlossiness` is native here. Had three.js
+  won, that pre-pass would have had to survive.
+- `assets/ibl/khronos` already vendors `neutral.hdr`, `field.hdr` and `Colorful_Studio.hdr` with
+  stems matching the Sample Viewer's own keys — the environment work is largely done.
+- `.gltf` sidecars need `loadGltf(buffer, externalFiles)`; only `.glb` loads from a bare buffer.
+  Simplest path is packing sidecars to GLB in Swift, which `GLBBox` already does.
