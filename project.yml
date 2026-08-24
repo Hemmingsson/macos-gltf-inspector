@@ -85,6 +85,9 @@ targets:
       - path: Shared/Convert
         includes:
           - "*.swift"
+      - path: Shared/WebRenderer
+        includes:
+          - "*.swift"
       - path: Vendor/gltf-validator
         includes:
           - gltf_validator.dart.js
@@ -205,6 +208,9 @@ targets:
       - path: Shared/Convert
         includes:
           - "*.swift"
+      - path: Shared/WebRenderer
+        includes:
+          - "*.swift"
     entitlements:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:
@@ -271,6 +277,9 @@ targets:
           - PreviewSkeletonOverlay.swift
           - ModelDimensions.swift
       - path: Shared/Convert
+        includes:
+          - "*.swift"
+      - path: Shared/WebRenderer
         includes:
           - "*.swift"
     entitlements:

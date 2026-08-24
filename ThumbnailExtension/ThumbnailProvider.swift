@@ -25,7 +25,7 @@ class ThumbnailProvider: QLThumbnailProvider {
                     handler(QLThumbnailReply(imageFileURL: fileURL), nil)
                 } catch {
                     AppLog.error(
-                        AppLog.webThumb,
+                        AppLog.webRenderer,
                         "web thumbnail failed \(url.lastPathComponent) \(error)"
                     )
                     handler(nil, error)
@@ -98,24 +98,27 @@ class ThumbnailProvider: QLThumbnailProvider {
     /// Reply mechanism is deliberately identical to the RealityKit path: Finder's generator
     /// consumes `imageFileURL` reliably, while the `CGContext` drawing reply fails with
     /// `QLThumbnailError 102` there even though it works under `qlmanage -x`.
+    @MainActor
     private static func renderWithWebGL(url: URL, pixel: Int) async throws -> URL {
         let started = CFAbsoluteTimeGetCurrent()
-        AppLog.info(AppLog.webThumb, "web thumbnail start \(url.lastPathComponent) \(pixel)px")
+        AppLog.info(AppLog.webRenderer, "web thumbnail start \(url.lastPathComponent) \(pixel)px")
 
-        let result = try await WebStillRenderer(model: url, pixelSize: pixel).capture()
+        let host = try WebRendererHost(mode: .still)
+        try await host.start(size: pixel)
+        try await host.setEnvironment(named: "neutral")
+        let info = try await host.load(model: url)
+        let image = try await host.renderStill()
 
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
-        try await MainActor.run {
-            try StillRenderer.writePNG(result.image, to: fileURL)
-        }
+        try StillRenderer.writePNG(image, to: fileURL)
 
         let elapsed = (CFAbsoluteTimeGetCurrent() - started) * 1000
         AppLog.info(
-            AppLog.webThumb,
+            AppLog.webRenderer,
             String(
-                format: "web thumbnail ready %@ %.0fms total (%dms in page)",
-                url.lastPathComponent, elapsed, result.pageMilliseconds
+                format: "web thumbnail ready %@ %.0fms total (%d triangles)",
+                url.lastPathComponent, elapsed, info.triangles
             )
         )
         return fileURL
