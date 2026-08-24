@@ -1,10 +1,10 @@
 import Foundation
 import simd
 
-/// Host outliner + file-camera graph produced during convert.
-/// Not a full glTF mirror — mesh *payloads* live on the RealityKit entity / PreviewStats.
-/// Node kind/TRS/indices, lights, and materials (map presence) are stamped here at convert
-/// so the sidebar can stay honest without re-parse.
+/// Host outliner + file-camera graph, parsed from the glTF JSON by `GLTFDocumentJSON`.
+/// Not a full glTF mirror — mesh *payloads* live on the renderer's own scene / PreviewStats.
+/// Describes the file as authored, so it lists nodes, materials and clips the renderer
+/// rewrites or cannot show.
 struct GLTFSessionDocument: Sendable, Equatable {
     var defaultSceneIndex: Int = 0
     var scenes: [Scene] = []
