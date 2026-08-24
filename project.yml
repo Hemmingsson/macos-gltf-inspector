@@ -91,6 +91,9 @@ targets:
           - LICENSE
           - NOTICES
         buildPhase: resources
+      - path: Vendor/web-renderer
+        type: file
+        buildPhase: resources
     info:
       path: GLTFInspector/Info.plist
       properties:
@@ -242,6 +245,9 @@ targets:
     sources:
       - ThumbnailExtension
       - path: assets/ibl/khronos
+        type: file
+        buildPhase: resources
+      - path: Vendor/web-renderer
         type: file
         buildPhase: resources
       - path: Shared

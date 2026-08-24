@@ -17,6 +17,8 @@ enum AppLog {
     static let prepare = Logger(subsystem: subsystem, category: "prepare")
     static let lighting = Logger(subsystem: subsystem, category: "lighting")
     static let host = Logger(subsystem: subsystem, category: "host")
+    /// WebGL thumbnail spike. Remove with the spike if it does not ship.
+    static let webThumb = Logger(subsystem: subsystem, category: "webthumb")
 
     private static let fileLock = NSLock()
     private static var logFilePath: String?

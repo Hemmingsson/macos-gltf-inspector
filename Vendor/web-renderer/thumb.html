@@ -1,0 +1,120 @@
+<!doctype html>
+<!--
+  Offscreen still renderer for the WebGL thumbnail spike.
+
+  Loaded by `WebStillRenderer` into a WKWebView that is never added to a window.
+  Every byte it fetches is served by the Swift WKURLSchemeHandler under
+  `gltf-inspector:///renderer/` — there is no network access and no file:// URL.
+
+  Posts exactly one message back on `webkit.messageHandlers.still`:
+    { ok: true,  png: "data:image/png;base64,...", triangles, drawCalls, ms }
+    { ok: false, stage: "<where it broke>", error: "<message>" }
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+  canvas { display: block; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "gltf-inspector:///renderer/three.module.min.js",
+    "three/addons/": "gltf-inspector:///renderer/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<script type="module">
+const post = (payload) => window.webkit.messageHandlers.still.postMessage(payload);
+
+// Anything that escapes the render path still has to produce one message, or the
+// Swift side just times out and we learn nothing about why.
+let stage = "boot";
+const fail = (error) => post({ ok: false, stage, error: String(error && error.message || error) });
+window.addEventListener("error", (e) => fail(e.error || e.message));
+window.addEventListener("unhandledrejection", (e) => fail(e.reason));
+
+try {
+  const t0 = performance.now();
+
+  stage = "import";
+  const THREE = await import("three");
+  const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
+  const { RoomEnvironment } = await import("three/addons/environments/RoomEnvironment.js");
+
+  const params = new URLSearchParams(location.search);
+  const size = parseInt(params.get("size") || "512", 10);
+  const modelURL = params.get("model");
+
+  stage = "renderer";
+  // preserveDrawingBuffer is mandatory: without it toDataURL() reads an already
+  // cleared buffer and returns a blank image.
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    preserveDrawingBuffer: true,
+    alpha: true,
+  });
+  renderer.setPixelRatio(1);
+  renderer.setSize(size, size);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  document.body.appendChild(renderer.domElement);
+
+  stage = "environment";
+  // PMREMGenerator.fromScene renders scene *geometry* into the probe. A scene
+  // holding only lights renders black, which looks exactly like broken WebGL.
+  // RoomEnvironment is actual boxes, so it produces a real IBL.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
+
+  const scene = new THREE.Scene();
+  scene.environment = envRT.texture;
+
+  stage = "fetch";
+  const response = await fetch(modelURL);
+  if (!response.ok) throw new Error(`model fetch ${response.status}`);
+  const bytes = await response.arrayBuffer();
+
+  stage = "parse";
+  const gltf = await new GLTFLoader().parseAsync(bytes, "");
+  scene.add(gltf.scene);
+
+  stage = "frame";
+  const box = new THREE.Box3().setFromObject(gltf.scene);
+  if (box.isEmpty()) throw new Error("model has no visible geometry");
+  const center = box.getCenter(new THREE.Vector3());
+  const radius = box.getSize(new THREE.Vector3()).length() * 0.5;
+
+  const fov = 45;
+  const camera = new THREE.PerspectiveCamera(fov, 1, radius / 100, radius * 100);
+  // Three-quarter view, matching the turntable pose the RealityKit thumbnail uses.
+  const dir = new THREE.Vector3(0.5, 0.35, 0.9).normalize();
+  // Distance at which the bounding sphere exactly fills the vertical FOV, plus the same
+  // 1.08 margin PreviewCamera.thumbnailFitPadding uses, so the two paths frame alike.
+  const distance = radius / Math.sin(THREE.MathUtils.degToRad(fov) * 0.5) * 1.08;
+  camera.position.copy(center).add(dir.multiplyScalar(distance));
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+
+  stage = "render";
+  renderer.render(scene, camera);
+
+  stage = "encode";
+  const png = renderer.domElement.toDataURL("image/png");
+
+  post({
+    ok: true,
+    png,
+    triangles: renderer.info.render.triangles,
+    drawCalls: renderer.info.render.calls,
+    ms: Math.round(performance.now() - t0),
+  });
+} catch (error) {
+  fail(error);
+}
+</script>
+</body>
+</html>
