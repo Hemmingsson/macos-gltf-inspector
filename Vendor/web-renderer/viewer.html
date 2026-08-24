@@ -75,6 +75,24 @@ function resize() {
 }
 
 /**
+ * Frames the current scene.
+ *
+ * The `applyTransformHierarchy` call is load-bearing. `fitViewToScene` measures the scene
+ * through `getSceneExtents`, which reads each node's *rendered world transform* — and those are
+ * only computed inside `renderFrame`. Fitting straight after a load therefore measures
+ * untransformed local geometry: AnimatedMorphCube is a single node scaled 100x, so its extents
+ * come back a hundredth of their real size and the camera is placed inside the cube. Models
+ * whose geometry is one small mesh instanced by node translations — MetalRoughSpheres,
+ * ClearCoatTest — are framed to a single instance and overflow the frame.
+ */
+function fitCamera() {
+    const scene = state.gltf?.scenes?.[state.sceneIndex];
+    if (scene === undefined) return;
+    scene.applyTransformHierarchy(state.gltf);
+    state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+}
+
+/**
  * Orbit, dolly and pan are handled here rather than round-tripping every mouse delta through
  * Swift — input has to feel immediate, and a bridge hop per event would not.
  *
@@ -153,7 +171,7 @@ const commands = {
         const bytes = await (await fetch(url)).arrayBuffer();
         state.gltf = await resources.loadGltf(bytes);
         state.sceneIndex = state.gltf.scene ?? 0;
-        state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+        fitCamera();
         const stats = view.gatherStatistics(state) ?? {};
         return {
             sceneCount: state.gltf.scenes?.length ?? 0,
@@ -165,7 +183,7 @@ const commands = {
 
     setScene({ index }) {
         state.sceneIndex = index;
-        state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+        fitCamera();
         return {};
     },
 
@@ -193,8 +211,68 @@ const commands = {
         return {};
     },
 
+    /**
+     * The whole camera, stated outright: target, distance, orbit angles and the projection
+     * planes. Nothing is inherited from `fitViewToScene`.
+     *
+     * `setCamera` above is the interactive command — it keeps whatever distance and target the
+     * fit heuristic produced. That is right for a user turning a model and wrong for a
+     * reference render, where a future change to `fitDistanceToExtents` would silently rewrite
+     * every committed PNG. The pixel-diff harness records a pose once and replays it through
+     * here, so the fit code is no longer in the picture at compare time.
+     */
+    setCameraPose({ target, distance, azimuth, elevation, yfov, znear, zfar }) {
+        const camera = state.userCamera;
+        camera.perspective.yfov = yfov;
+        camera.perspective.znear = znear;
+        camera.perspective.zfar = zfar;
+        camera.rotAroundY = azimuth * Math.PI / 180;
+        camera.rotAroundX = elevation * Math.PI / 180;
+        camera.setRotation(camera.rotAroundY, camera.rotAroundX);
+        camera.setDistanceFromTarget(distance, target);
+        // Pan and zoom scale off baseDistance; leaving it stale would make a later live
+        // interaction behave differently depending on how the camera was set.
+        camera.baseDistance = distance;
+        return {};
+    },
+
+    /**
+     * Reads the pose back, along with the scene extents the last fit measured, for recording a
+     * pose. Callers that want to frame the model themselves need the bounds — `distance` alone
+     * only says where this renderer version chose to put the camera.
+     *
+     * The target is recomputed here rather than taken from `UserCamera.getTarget()`, which
+     * skips the distance multiply when `distance` happens to be exactly 1 and would hand back
+     * a point one unit from the camera.
+     */
+    getCamera() {
+        const camera = state.userCamera;
+        const position = camera.getPosition();
+        const look = camera.getLookDirection();
+        const distance = camera.distance;
+        return {
+            camera: {
+                azimuth: camera.rotAroundY * 180 / Math.PI,
+                elevation: camera.rotAroundX * 180 / Math.PI,
+                distance,
+                target: [
+                    position[0] + look[0] * distance,
+                    position[1] + look[1] * distance,
+                    position[2] + look[2] * distance,
+                ],
+                yfov: camera.perspective.yfov,
+                znear: camera.perspective.znear,
+                // A camera that has never been fitted still carries the class default of
+                // Infinity, which is not representable in the recorded JSON.
+                zfar: Number.isFinite(camera.perspective.zfar) ? camera.perspective.zfar : 0,
+            },
+            sceneMin: Array.from(camera.sceneExtents.min),
+            sceneMax: Array.from(camera.sceneExtents.max),
+        };
+    },
+
     fit() {
-        state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+        fitCamera();
         return {};
     },
 
