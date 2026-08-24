@@ -18,6 +18,10 @@ final class WebRendererHost: NSObject {
         var meshes: Int
         var sceneCount: Int
         var animationCount: Int
+        /// Drawing-buffer size the page ended up with. Zero-ish values mean the view was never
+        /// laid out, which renders blank rather than failing.
+        var width: Int
+        var height: Int
     }
 
     private static let messageName = "viewer"
@@ -118,7 +122,9 @@ final class WebRendererHost: NSObject {
             triangles: event.triangles ?? 0,
             meshes: event.meshes ?? 0,
             sceneCount: event.sceneCount ?? 0,
-            animationCount: event.animationCount ?? 0
+            animationCount: event.animationCount ?? 0,
+            width: event.width ?? 0,
+            height: event.height ?? 0
         )
     }
 

@@ -38,21 +38,22 @@ class PreviewViewController: NSViewController, QLPreviewingController {
 
     func preparePreviewOfFile(at url: URL) async throws {
         let dark = Self.systemIsDark()
-        // Detached so Quick Look can present the loading view on the main actor
-        // before GLTFKit2 convert occupies it.
+        // No RealityKit convert on this path: the web canvas loads the file itself. That
+        // matters more here than anywhere — the extension process is cold on every spacebar
+        // press, so the convert was pure latency before the first frame.
         loadTask?.cancel()
-        loadTask = Task.detached { [weak self] in
-            await Task.yield()
-            let state = await PreviewView.State.loaded(from: url)
-            guard !Task.isCancelled else { return }
-            await self?.present(state, dark: dark)
-        }
+        await present(url: url, dark: dark)
     }
 
     @MainActor
-    private func present(_ state: PreviewView.State, dark: Bool) {
+    private func present(url: URL, dark: Bool) {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        hostingView.rootView = PreviewView(state: state, interaction: interaction, isDark: dark)
+        hostingView.rootView = PreviewView(
+            state: .loading,
+            interaction: interaction,
+            isDark: dark,
+            webCanvasURL: url
+        )
     }
 
     private static func systemIsDark() -> Bool {

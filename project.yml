@@ -194,6 +194,9 @@ targets:
       - path: assets/ibl/khronos
         type: file
         buildPhase: resources
+      - path: Vendor/web-renderer
+        type: file
+        buildPhase: resources
       - path: Shared
         includes:
           - "*.swift"
@@ -221,6 +224,9 @@ targets:
         # user opens from, so the sandboxed extensions need read access beyond the opened file.
         com.apple.security.temporary-exception.files.home-relative-path.read-only:
           - /
+        # WKWebView spawns a Networking XPC service even with no network use; without this the
+        # extension is denied the mach extension WebContent needs and WebContent dies on launch.
+        com.apple.security.network.client: true
     info:
       path: PreviewExtension/Info.plist
       properties:

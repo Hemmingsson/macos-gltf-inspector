@@ -8,6 +8,11 @@ struct PreviewView: View {
         /// User-visible reason. Open never waits on IBL — lighting is applied later by `PreviewScene`.
         case failed(String)
 
+        var isFailed: Bool {
+            if case .failed = self { return true }
+            return false
+        }
+
         /// Model bytes → RealityKit only. No HDR / EnvironmentResource on this path.
         static func loaded(from url: URL) async -> State {
             do {
@@ -39,18 +44,21 @@ struct PreviewView: View {
 
     var body: some View {
         Group {
-            switch state {
-            case .loading:
-                ZStack {
-                    PreviewBackground.window.color.ignoresSafeArea()
-                    ProgressView()
-                        .controlSize(.regular)
-                        .progressViewStyle(.circular)
-                }
-            case .ready(let model):
-                if let webCanvasURL {
-                    WebPreviewCanvas(url: webCanvasURL, look: webCanvasLook)
-                } else {
+            // The web canvas does its own loading, so it does not wait on the RealityKit
+            // convert. Quick Look takes this path with no convert at all, which is where the
+            // saved work matters most — its process is cold on every spacebar press.
+            if let webCanvasURL, !state.isFailed {
+                WebPreviewCanvas(url: webCanvasURL, look: webCanvasLook)
+            } else {
+                switch state {
+                case .loading:
+                    ZStack {
+                        PreviewBackground.window.color.ignoresSafeArea()
+                        ProgressView()
+                            .controlSize(.regular)
+                            .progressViewStyle(.circular)
+                    }
+                case .ready(let model):
                     PreviewScene(
                         entity: model.entity,
                         document: model.document,
@@ -64,22 +72,22 @@ struct PreviewView: View {
                         session: session
                     )
                     .id("\(ObjectIdentifier(model.entity))-\(session?.centerModel.wrappedValue ?? true)")
-                }
-            case .failed(let message):
-                ZStack {
-                    PreviewBackground.window.color.ignoresSafeArea()
-                    VStack(spacing: 8) {
-                        Text("Failed to load model")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(message)
-                            .font(.system(size: 12))
-                            .multilineTextAlignment(.center)
-                            .opacity(0.7)
+                case .failed(let message):
+                    ZStack {
+                        PreviewBackground.window.color.ignoresSafeArea()
+                        VStack(spacing: 8) {
+                            Text("Failed to load model")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(message)
+                                .font(.system(size: 12))
+                                .multilineTextAlignment(.center)
+                                .opacity(0.7)
+                        }
+                        .foregroundStyle(
+                            PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
+                        )
+                        .padding()
                     }
-                    .foregroundStyle(
-                        PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
-                    )
-                    .padding()
                 }
             }
         }

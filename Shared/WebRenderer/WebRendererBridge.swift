@@ -164,6 +164,8 @@ struct WebRendererEvent: Equatable {
     var sceneCount: Int?
     var animationCount: Int?
     var mode: String?
+    var width: Int?
+    var height: Int?
 
     /// Returns nil for a body that is not a recognisable event, so the host can report a
     /// malformed message rather than silently ignoring it.
@@ -184,6 +186,8 @@ struct WebRendererEvent: Equatable {
         self.sceneCount = object["sceneCount"] as? Int
         self.animationCount = object["animationCount"] as? Int
         self.mode = object["mode"] as? String
+        self.width = object["width"] as? Int
+        self.height = object["height"] as? Int
     }
 }
 

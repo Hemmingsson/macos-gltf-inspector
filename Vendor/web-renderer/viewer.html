@@ -66,8 +66,12 @@ function tick() {
 }
 
 function resize() {
-    const w = Math.max(1, Math.round(canvas.clientWidth * window.devicePixelRatio));
-    const h = Math.max(1, Math.round(canvas.clientHeight * window.devicePixelRatio));
+    // Size from the viewport, not clientWidth: a canvas whose container has not been laid out
+    // yet reports 0 and silently renders 1x1, which looks exactly like a broken renderer.
+    const cssW = canvas.clientWidth || window.innerWidth;
+    const cssH = canvas.clientHeight || window.innerHeight;
+    const w = Math.max(1, Math.round(cssW * window.devicePixelRatio));
+    const h = Math.max(1, Math.round(cssH * window.devicePixelRatio));
     if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
@@ -155,7 +159,13 @@ const commands = {
         state.sceneIndex = state.gltf.scene ?? 0;
         state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
         const stats = view.gatherStatistics(state) ?? {};
+        // Still mode keeps the exact size `configure` was given; only live mode follows the
+        // view. Resizing here would silently multiply a requested 512 by the device pixel
+        // ratio and hand back a 1024 thumbnail.
+        if (live) resize();
         return {
+            width: canvas.width,
+            height: canvas.height,
             sceneCount: state.gltf.scenes?.length ?? 0,
             animationCount: state.gltf.animations?.length ?? 0,
             triangles: stats.faceCount ?? 0,

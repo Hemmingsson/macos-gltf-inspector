@@ -114,7 +114,7 @@ struct WebPreviewCanvas: NSViewRepresentable {
                         let info = try await host.load(model: url)
                         AppLog.info(
                             AppLog.webRenderer,
-                            "viewport ready \(url.lastPathComponent) tris=\(info.triangles) meshes=\(info.meshes)"
+                            "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height)"
                         )
                     }
                 } catch is CancellationError {
