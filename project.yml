@@ -283,6 +283,8 @@ targets:
         # user opens from, so the sandboxed extensions need read access beyond the opened file.
         com.apple.security.temporary-exception.files.home-relative-path.read-only:
           - /
+        # SPIKE: WKWebView spawns Networking/GPU XPC services even with no network use.
+        com.apple.security.network.client: true
     info:
       path: ThumbnailExtension/Info.plist
       properties:

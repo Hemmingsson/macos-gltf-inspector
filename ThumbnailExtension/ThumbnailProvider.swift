@@ -13,11 +13,11 @@ class ThumbnailProvider: QLThumbnailProvider {
         // extension gets no completion callback — so clear PNGs left by earlier requests.
         Self.sweepStaleThumbnails()
 
-        // SPIKE: route to the WebGL renderer when the shared suite says so. Extensions do
-        // not inherit the shell environment, so a defaults key is the only switch that works
-        // without a rebuild:
-        //     defaults write lol.mattias.gltf-inspector.spike WebThumbnail -bool YES
-        // Default stays NO, so the shipping RealityKit path is untouched.
+        // SPIKE: route to the WebGL renderer when the marker file is present. Extensions do
+        // not inherit the shell environment, and a sandboxed extension cannot see a shared
+        // UserDefaults suite either, so a home-directory marker file is the switch:
+        //     touch ~/.gltf-inspector-web-thumbnail
+        // Absent by default, so the shipping RealityKit path is untouched.
         if Self.usesWebRenderer {
             Task.detached {
                 do {
@@ -69,9 +69,28 @@ class ThumbnailProvider: QLThumbnailProvider {
     // MARK: - WebGL spike
 
     /// Feature flag for the WebGL thumbnail spike. Remove with the spike.
+    ///
+    /// A marker file, not a `UserDefaults` suite: the extension is sandboxed, so it reads
+    /// preferences from its own container and never sees `defaults write` on a shared suite.
+    /// That failed silently — the flag read `false` and the RealityKit path ran while looking
+    /// like a successful web render. The existing home-relative read-only exception in
+    /// `ThumbnailExtension.entitlements` makes a file in the home directory readable, so this
+    /// needs no entitlement change and leaves the sandbox profile untouched for the spike.
+    ///
+    ///     touch ~/.gltf-inspector-web-thumbnail     # web
+    ///     rm    ~/.gltf-inspector-web-thumbnail     # RealityKit
+    /// `homeDirectoryForCurrentUser` and `NSHomeDirectory()` both return the *container* home
+    /// inside a sandboxed extension, so they look for the marker in the wrong place and
+    /// silently report false. `getpwuid` reports the real home, which is also what the
+    /// home-relative read-only exception is scoped against.
     private static var usesWebRenderer: Bool {
-        UserDefaults(suiteName: "lol.mattias.gltf-inspector.spike")?
-            .bool(forKey: "WebThumbnail") ?? false
+        guard let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir else { return false }
+        let home = FileManager.default.string(
+            withFileSystemRepresentation: dir, length: strlen(dir)
+        )
+        let marker = URL(fileURLWithPath: home)
+            .appendingPathComponent(".gltf-inspector-web-thumbnail")
+        return FileManager.default.fileExists(atPath: marker.path)
     }
 
     /// Renders through `WKWebView` and writes the PNG where Quick Look can pick it up.
