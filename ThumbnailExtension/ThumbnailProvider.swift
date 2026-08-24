@@ -13,6 +13,27 @@ class ThumbnailProvider: QLThumbnailProvider {
         // extension gets no completion callback — so clear PNGs left by earlier requests.
         Self.sweepStaleThumbnails()
 
+        // SPIKE: route to the WebGL renderer when the shared suite says so. Extensions do
+        // not inherit the shell environment, so a defaults key is the only switch that works
+        // without a rebuild:
+        //     defaults write lol.mattias.gltf-inspector.spike WebThumbnail -bool YES
+        // Default stays NO, so the shipping RealityKit path is untouched.
+        if Self.usesWebRenderer {
+            Task.detached {
+                do {
+                    let fileURL = try await Self.renderWithWebGL(url: url, pixel: pixel)
+                    handler(QLThumbnailReply(imageFileURL: fileURL), nil)
+                } catch {
+                    AppLog.error(
+                        AppLog.webThumb,
+                        "web thumbnail failed \(url.lastPathComponent) \(error)"
+                    )
+                    handler(nil, error)
+                }
+            }
+            return
+        }
+
         // Detached like Quick Look: prepare/parse off the main actor; RealityKit
         // convert and StillRenderer hop to MainActor inside EntityLoader / capture.
         Task.detached {
@@ -43,6 +64,42 @@ class ThumbnailProvider: QLThumbnailProvider {
                 handler(nil, error)
             }
         }
+    }
+
+    // MARK: - WebGL spike
+
+    /// Feature flag for the WebGL thumbnail spike. Remove with the spike.
+    private static var usesWebRenderer: Bool {
+        UserDefaults(suiteName: "lol.mattias.gltf-inspector.spike")?
+            .bool(forKey: "WebThumbnail") ?? false
+    }
+
+    /// Renders through `WKWebView` and writes the PNG where Quick Look can pick it up.
+    ///
+    /// Reply mechanism is deliberately identical to the RealityKit path: Finder's generator
+    /// consumes `imageFileURL` reliably, while the `CGContext` drawing reply fails with
+    /// `QLThumbnailError 102` there even though it works under `qlmanage -x`.
+    private static func renderWithWebGL(url: URL, pixel: Int) async throws -> URL {
+        let started = CFAbsoluteTimeGetCurrent()
+        AppLog.info(AppLog.webThumb, "web thumbnail start \(url.lastPathComponent) \(pixel)px")
+
+        let result = try await WebStillRenderer(model: url, pixelSize: pixel).capture()
+
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
+        try await MainActor.run {
+            try StillRenderer.writePNG(result.image, to: fileURL)
+        }
+
+        let elapsed = (CFAbsoluteTimeGetCurrent() - started) * 1000
+        AppLog.info(
+            AppLog.webThumb,
+            String(
+                format: "web thumbnail ready %@ %.0fms total (%dms in page)",
+                url.lastPathComponent, elapsed, result.pageMilliseconds
+            )
+        )
+        return fileURL
     }
 
     /// Remove `glb-thumb-*.png` files older than a minute. Best-effort: the age guard keeps a
