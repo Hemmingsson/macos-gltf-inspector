@@ -128,7 +128,8 @@ struct HostShellRootView: View {
                 isDark: colorScheme == .dark,
                 sidebar: sidebar,
                 overlayRevision: sidebar?.overlayRevision ?? 0,
-                session: previewSession
+                session: previewSession,
+                webCanvasURL: loadingURL ?? documentURL
             )
         }
         // Remount adapters that capture sidebar/entity once; keep settings + viewport identity.

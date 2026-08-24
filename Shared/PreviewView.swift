@@ -30,6 +30,10 @@ struct PreviewView: View {
     var overlayRevision: Int = 0
     /// Host-owned session; nil in Quick Look (PreviewScene seeds local `@State`).
     var session: PreviewSessionBindings? = nil
+    /// When set, the model canvas is drawn by the shared web renderer instead of RealityKit.
+    /// Migration step: overlays and camera chrome still belong to `PreviewScene` and are not
+    /// drawn on this path yet.
+    var webCanvasURL: URL? = nil
 
     var body: some View {
         Group {
@@ -42,19 +46,23 @@ struct PreviewView: View {
                         .progressViewStyle(.circular)
                 }
             case .ready(let model):
-                PreviewScene(
-                    entity: model.entity,
-                    document: model.document,
-                    stats: model.stats,
-                    debugModes: model.debugModes,
-                    studioIBLExponent: model.studioIBLExponent,
-                    interaction: interaction,
-                    isDark: isDark,
-                    sidebar: sidebar,
-                    overlayRevision: overlayRevision,
-                    session: session
-                )
-                .id("\(ObjectIdentifier(model.entity))-\(session?.centerModel.wrappedValue ?? true)")
+                if let webCanvasURL {
+                    WebPreviewCanvas(url: webCanvasURL)
+                } else {
+                    PreviewScene(
+                        entity: model.entity,
+                        document: model.document,
+                        stats: model.stats,
+                        debugModes: model.debugModes,
+                        studioIBLExponent: model.studioIBLExponent,
+                        interaction: interaction,
+                        isDark: isDark,
+                        sidebar: sidebar,
+                        overlayRevision: overlayRevision,
+                        session: session
+                    )
+                    .id("\(ObjectIdentifier(model.entity))-\(session?.centerModel.wrappedValue ?? true)")
+                }
             case .failed(let message):
                 ZStack {
                     PreviewBackground.window.color.ignoresSafeArea()

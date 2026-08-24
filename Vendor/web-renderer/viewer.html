@@ -74,6 +74,56 @@ function resize() {
     }
 }
 
+/**
+ * Orbit, dolly and pan are handled here rather than round-tripping every mouse delta through
+ * Swift — input has to feel immediate, and a bridge hop per event would not.
+ *
+ * Carried over from the RealityKit implementation, per AGENTS.md: scroll is an *infinite*
+ * dolly rather than a clamped zoom, and shift-drag pans.
+ */
+function installPointerControls() {
+    let dragging = false;
+    let panning = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    canvas.addEventListener("pointerdown", (e) => {
+        if (!live || !state.gltf) return;
+        dragging = true;
+        panning = e.shiftKey || e.button === 1;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        canvas.setPointerCapture(e.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        if (panning) {
+            state.userCamera.pan(-dx, dy);
+        } else {
+            state.userCamera.orbit(dx, dy);
+        }
+    });
+
+    const endDrag = (e) => {
+        dragging = false;
+        panning = false;
+        if (canvas.hasPointerCapture?.(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    };
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+
+    canvas.addEventListener("wheel", (e) => {
+        if (!live || !state.gltf) return;
+        e.preventDefault();
+        state.userCamera.zoomBy(e.deltaY * 0.01);
+    }, { passive: false });
+}
+
 const commands = {
     /** Fixed pixel size for still mode; live mode follows the view instead. */
     configure({ mode, size }) {
@@ -82,7 +132,10 @@ const commands = {
             canvas.style.width = canvas.style.height = "auto";
             canvas.width = canvas.height = size;
         }
-        if (live) requestAnimationFrame(tick);
+        if (live) {
+            installPointerControls();
+            requestAnimationFrame(tick);
+        }
         return { mode };
     },
 

@@ -10,6 +10,8 @@ struct HostPreviewContainer: NSViewRepresentable {
     /// Mirrors `HostSidebarModel.overlayRevision` so selection/hide triggers `updateNSView`.
     var overlayRevision: Int
     var session: PreviewSessionBindings
+    /// When set, the model is drawn by the shared web renderer instead of RealityKit.
+    var webCanvasURL: URL?
 
     func makeNSView(context: Context) -> PreviewHostingView {
         let view = PreviewHostingView(
@@ -19,7 +21,8 @@ struct HostPreviewContainer: NSViewRepresentable {
                 isDark: isDark,
                 sidebar: sidebar,
                 overlayRevision: overlayRevision,
-                session: session
+                session: session,
+                webCanvasURL: webCanvasURL
             )
         )
         view.interaction = interaction
@@ -34,7 +37,8 @@ struct HostPreviewContainer: NSViewRepresentable {
             isDark: isDark,
             sidebar: sidebar,
             overlayRevision: overlayRevision,
-            session: session
+            session: session,
+            webCanvasURL: webCanvasURL
         )
     }
 
