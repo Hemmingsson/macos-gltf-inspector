@@ -105,7 +105,10 @@ class ThumbnailProvider: QLThumbnailProvider {
 
         let host = try WebRendererHost(mode: .still)
         try await host.start(size: pixel)
-        try await host.setEnvironment(named: "neutral")
+        // App default, so a file's Finder icon matches how it opens.
+        let look = RendererLookDefaults.current()
+        try await host.setEnvironment(named: look.environment)
+        try await host.send { .setToneMapping(id: $0, name: look.toneMapping) }
         let info = try await host.load(model: url)
         let image = try await host.renderStill()
 

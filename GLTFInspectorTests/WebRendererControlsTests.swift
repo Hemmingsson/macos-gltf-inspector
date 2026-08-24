@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PreviewUI
 import Testing
 @testable import GLTFInspector
 
@@ -153,5 +154,93 @@ struct WebRendererControlsTests {
 
         #expect(opaqueSamples(in: studio) > 50, "studio frame is empty")
         #expect(png(neutral) != png(studio), "environment switch did not change the lighting")
+    }
+}
+
+/// The one-renderer rule applied to *look*, not just to renderer.
+///
+/// Same renderer is necessary but not sufficient: if the window, Quick Look and the thumbnail
+/// disagree about environment or tone mapping, the same file still renders three ways.
+@MainActor
+struct RendererLookDefaultsTests {
+    private let environmentKey = "settings.preview.environmentCatalog"
+    private let toneMappingKey = "settings.preview.toneMapping"
+
+    private func withDefaults(
+        environment: String?,
+        toneMapping: String?,
+        _ body: () throws -> Void
+    ) rethrows {
+        let suite = UserDefaults.standard
+        let previousEnvironment = suite.object(forKey: environmentKey)
+        let previousToneMapping = suite.object(forKey: toneMappingKey)
+        defer {
+            suite.set(previousEnvironment, forKey: environmentKey)
+            suite.set(previousToneMapping, forKey: toneMappingKey)
+        }
+        suite.set(environment, forKey: environmentKey)
+        suite.set(toneMapping, forKey: toneMappingKey)
+        try body()
+    }
+
+    @Test
+    func fallsBackToTheReviewOrientedDefaults() {
+        withDefaults(environment: nil, toneMapping: nil) {
+            let look = RendererLookDefaults.current()
+            #expect(look.environment == "neutral")
+            // Khronos PBR Neutral distorts authored colour least — the right default for a tool
+            // whose job is showing what is in the file.
+            #expect(look.toneMapping == "Khronos PBR Neutral")
+        }
+    }
+
+    @Test
+    func readsWhatTheAppStored() {
+        withDefaults(environment: "field", toneMapping: "ACES Filmic Tone Mapping (Hill)") {
+            let look = RendererLookDefaults.current()
+            #expect(look.environment == "field")
+            #expect(look.toneMapping == "ACES Filmic Tone Mapping (Hill)")
+        }
+    }
+
+    /// The stored string is what reaches the renderer, so a mismatch between the enum and the
+    /// persisted name silently renders with the wrong curve.
+    @Test
+    func everyToneMappingRoundTripsThroughItsStoredName() {
+        for option in ToneMapping.allCases {
+            #expect(ToneMapping.fromKhronosName(option.khronosName) == option)
+        }
+    }
+
+    /// Renders the same file twice with different stored defaults and requires the pixels to
+    /// differ — proof the setting reaches the renderer, not just that it was stored.
+    @Test(.enabled(if: TestModels.hasKhronosSamples))
+    func changingTheDefaultChangesWhatTheThumbnailPathRenders() async throws {
+        let model = TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
+
+        func render() async throws -> Data? {
+            let look = RendererLookDefaults.current()
+            let host = try WebRendererHost(mode: .still)
+            try await host.start(size: 160)
+            try await host.setEnvironment(named: look.environment)
+            try await host.send { .setToneMapping(id: $0, name: look.toneMapping) }
+            _ = try await host.load(model: model)
+            let image = try await host.renderStill()
+            return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+        }
+
+        var neutral: Data?
+        var studio: Data?
+        withDefaults(environment: "neutral", toneMapping: "Khronos PBR Neutral") {}
+        neutral = try await render()
+
+        let suite = UserDefaults.standard
+        let previous = suite.object(forKey: environmentKey)
+        suite.set("Colorful_Studio", forKey: environmentKey)
+        studio = try await render()
+        suite.set(previous, forKey: environmentKey)
+
+        #expect(neutral != nil && studio != nil)
+        #expect(neutral != studio, "changing the app default did not change the render")
     }
 }

@@ -48,11 +48,17 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     @MainActor
     private func present(url: URL, dark: Bool) {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        // Same app default the thumbnail uses, so preview and Finder icon agree.
+        let defaults = RendererLookDefaults.current()
         hostingView.rootView = PreviewView(
             state: .loading,
             interaction: interaction,
             isDark: dark,
-            webCanvasURL: url
+            webCanvasURL: url,
+            webCanvasLook: WebPreviewCanvas.Look(
+                environment: defaults.environment,
+                toneMapping: defaults.toneMapping
+            )
         )
     }
 

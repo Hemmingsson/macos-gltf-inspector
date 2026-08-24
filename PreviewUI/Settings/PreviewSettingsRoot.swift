@@ -206,6 +206,13 @@ private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
                         Text(item.title).tag(item.raw)
                     }
                 }
+                // App default, not per-window: this is what thumbnails and Quick Look read,
+                // so a file's Finder icon matches how it opens.
+                Picker("Tone mapping", selection: toneMappingBinding) {
+                    ForEach(ToneMapping.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
                 Button("Add your own…") {
                     addCustomHDR()
                 }
@@ -252,6 +259,15 @@ private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
                 store.set(raw, for: .environmentCatalog)
                 store.set("", for: .customEnvironmentFile)
             }
+        )
+    }
+
+    /// Stored as the Khronos tone-map name so the sandboxed extensions can read the raw value
+    /// without linking this framework.
+    private var toneMappingBinding: Binding<ToneMapping> {
+        Binding(
+            get: { ToneMapping.fromKhronosName(store.value(for: .toneMapping)) },
+            set: { store.set($0.khronosName, for: .toneMapping) }
         )
     }
 

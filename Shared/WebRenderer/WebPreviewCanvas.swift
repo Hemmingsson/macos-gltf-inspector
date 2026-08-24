@@ -14,9 +14,9 @@ struct WebPreviewCanvas: NSViewRepresentable {
     /// all three surfaces.
     struct Look: Equatable {
         /// Bundled `.hdr` stem — `neutral`, `field`, `Colorful_Studio`.
-        var environment: String = "neutral"
+        var environment: String = RendererLookDefaults.defaultEnvironment
         /// Khronos `GltfState.ToneMaps` value.
-        var toneMapping: String = "Khronos PBR Neutral"
+        var toneMapping: String = RendererLookDefaults.defaultToneMapping
         /// Exposure compensation in stops.
         var exposure: Double = 0
         /// Environment yaw in degrees.

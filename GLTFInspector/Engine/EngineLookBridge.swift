@@ -11,7 +11,7 @@ extension WebPreviewCanvas.Look {
         let lighting = viewport.lighting
         self.init(
             environment: lighting.environment.rawValue,
-            toneMapping: Self.khronosToneMap(lighting.toneMapping),
+            toneMapping: lighting.toneMapping.khronosName,
             exposure: lighting.exposure,
             environmentRotation: lighting.environmentRotationDegrees,
             backdrop: Self.clearColor(viewport.backdrop),
@@ -64,12 +64,4 @@ extension WebPreviewCanvas.Look {
 
     /// Values are `GltfState.ToneMaps` strings — the renderer matches on the string, so these
     /// have to stay exact.
-    private static func khronosToneMap(_ toneMapping: ToneMapping) -> String {
-        switch toneMapping {
-        case .neutral: "Khronos PBR Neutral"
-        case .acesHill: "ACES Filmic Tone Mapping (Hill)"
-        case .acesNarkowicz: "ACES Filmic Tone Mapping (Narkowicz)"
-        case .linear: "None (Linear mapping, clamped at 1.0)"
-        }
-    }
 }

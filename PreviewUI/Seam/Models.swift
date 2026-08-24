@@ -846,6 +846,21 @@ public enum ToneMapping: String, Sendable, Hashable, CaseIterable, Identifiable 
         case .linear: "Linear"
         }
     }
+
+    /// Persisted and sent to the renderer as this exact string — the renderer matches on it, and
+    /// the sandboxed extensions read the stored value without linking this framework.
+    public var khronosName: String {
+        switch self {
+        case .neutral: "Khronos PBR Neutral"
+        case .acesHill: "ACES Filmic Tone Mapping (Hill)"
+        case .acesNarkowicz: "ACES Filmic Tone Mapping (Narkowicz)"
+        case .linear: "None (Linear mapping, clamped at 1.0)"
+        }
+    }
+
+    public static func fromKhronosName(_ name: String) -> ToneMapping {
+        allCases.first { $0.khronosName == name } ?? .neutral
+    }
 }
 
 public struct LightingSettings: Sendable, Hashable {

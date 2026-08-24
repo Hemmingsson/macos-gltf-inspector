@@ -41,6 +41,9 @@ public extension SettingKey where Value == String {
     static var appearance: SettingKey<String> { .init(name: "settings.general.appearance", fallback: "system") }
     /// `KhronosEnvironments.rawValue` (`neutral` / `field` / `Colorful_Studio`).
     static var environmentCatalog: SettingKey<String> { .init(name: "settings.preview.environmentCatalog", fallback: "neutral") }
+    /// Stored as the Khronos tone-map name so the extensions can read it without linking this
+    /// framework — see `RendererLookDefaults`.
+    static var toneMapping: SettingKey<String> { .init(name: "settings.preview.toneMapping", fallback: "Khronos PBR Neutral") }
     static var customEnvironmentFile: SettingKey<String> { .init(name: "settings.preview.customEnvironmentFile", fallback: "") }
 }
 

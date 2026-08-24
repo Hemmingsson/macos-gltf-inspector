@@ -50,6 +50,9 @@ final class EngineViewportController: ViewportController {
     private var storedDoubleSided: Bool
     private var storedShowSkeleton: Bool
     private var storedFieldOfViewDegrees: Float
+    /// Seeded from app defaults on open (DESIGN.md three-job rule), then per-window.
+    private var storedEnvironment: StudioEnvironment = .neutral
+    private var storedToneMapping: ToneMapping = .neutral
 
     init(
         sidebar: HostSidebarModel,
@@ -99,6 +102,10 @@ final class EngineViewportController: ViewportController {
         storedAutoRotates = settings.sessionValue(for: .autoRotate)
         storedIsCentered = settings.sessionValue(for: .center)
         storedProjection = settings.sessionValue(for: .projection)
+        // Environment and tone mapping have no session override yet: they are app defaults, and
+        // the extensions read the same two keys so all three surfaces agree.
+        storedEnvironment = StudioEnvironment(rawValue: settings.default(for: .environmentCatalog)) ?? .neutral
+        storedToneMapping = ToneMapping.fromKhronosName(settings.default(for: .toneMapping))
         syncHostCanvasFromStored()
     }
 
@@ -129,7 +136,9 @@ final class EngineViewportController: ViewportController {
             exposure: Double(storedExposureEV),
             environmentRotationDegrees: Double(storedEnvironmentYawRadians) * 180 / .pi,
             usesFileLights: storedDimStudioForFileLights,
-            usesStudioEnvironment: lookStore.look.useEnvironmentMap
+            usesStudioEnvironment: lookStore.look.useEnvironmentMap,
+            environment: storedEnvironment,
+            toneMapping: storedToneMapping
         )
     }
 
@@ -190,6 +199,9 @@ final class EngineViewportController: ViewportController {
         storedExposureEV = Float(lighting.exposure)
         storedEnvironmentYawRadians = Float(lighting.environmentRotationDegrees * .pi / 180)
         storedDimStudioForFileLights = lighting.usesFileLights
+        // Per-window override; deliberately does not write the app default back.
+        storedEnvironment = lighting.environment
+        storedToneMapping = lighting.toneMapping
         if let hostSession {
             hostSession.exposureEV.wrappedValue = storedExposureEV
             hostSession.environmentYaw.wrappedValue = storedEnvironmentYawRadians
