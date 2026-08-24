@@ -56,3 +56,5 @@ __pycache__/
 
 # Accidental Peekaboo window captures at worktree root
 /window-*.png
+
+TestModels/References/REGENERATE

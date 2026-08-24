@@ -151,6 +151,21 @@ final class WebRendererHost: NSObject {
         }
     }
 
+    /// Replays a complete camera pose. Nothing is inherited from the renderer's fit heuristic,
+    /// which is what lets a recorded pose stay valid across renderer upgrades.
+    func setCameraPose(_ pose: CameraPose) async throws {
+        try await send { .setCameraPose(id: $0, pose: pose) }
+    }
+
+    /// Reads the current camera back, with the scene bounds the last fit measured — used to
+    /// record a pose.
+    func cameraState() async throws -> RendererCameraState {
+        let event = try await send { .getCamera(id: $0) }
+        guard let camera = event.camera else { throw WebRendererError.undecodableCameraPose }
+        guard camera.isMeasurable else { throw WebRendererError.unmeasurableScene }
+        return camera
+    }
+
     /// Renders one frame and decodes it. `.still` mode only in practice, though nothing stops
     /// a live host from grabbing a frame.
     func renderStill() async throws -> CGImage {

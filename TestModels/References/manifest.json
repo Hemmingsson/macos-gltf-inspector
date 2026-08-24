@@ -1,0 +1,229 @@
+{
+  "canvasSize" : 512,
+  "entries" : [
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 21.643612319720845,
+        "elevation" : -18,
+        "target" : [
+          0,
+          1.0997666120529175,
+          -0.09999990463256836
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 37.27125732215502,
+        "znear" : 6.015967317286666
+      },
+      "model" : "TestModels/Khronos samples/AlphaBlendModeTest/AlphaBlendModeTest.glb",
+      "name" : "AlphaBlendModeTest",
+      "reference" : "AlphaBlendModeTest.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 8.309742595157289,
+        "elevation" : -18,
+        "target" : [
+          0,
+          0,
+          1.1920928955078125e-07
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 14.30974413928027,
+        "znear" : 2.309741051034308
+      },
+      "model" : "TestModels/Khronos samples/AnimatedMorphCube/AnimatedMorphCube.glb",
+      "name" : "AnimatedMorphCube",
+      "reference" : "AnimatedMorphCube.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 0.1938466136501684,
+        "elevation" : -18,
+        "target" : [
+          0,
+          0.03140016179531813,
+          -1.862645149230957e-09
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 0.3338124390539342,
+        "znear" : 0.05388078824640255
+      },
+      "model" : "TestModels/Khronos samples/Avocado/Avocado.glb",
+      "name" : "Avocado",
+      "reference" : "Avocado.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 1.7242688475581385,
+        "elevation" : -18,
+        "target" : [
+          0.0023898184299468994,
+          0.14287492632865906,
+          -0.0038172900676727295
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 2.9692671888859614,
+        "znear" : 0.47927050623031553
+      },
+      "model" : "TestModels/Khronos samples/BarramundiFish/BarramundiFish.glb",
+      "name" : "BarramundiFish",
+      "reference" : "BarramundiFish.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 0.08246410829422227,
+        "elevation" : -18,
+        "target" : [
+          0,
+          0,
+          0
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 0.14200684038659858,
+        "znear" : 0.022921376201845957
+      },
+      "model" : "TestModels/Khronos samples/BoomBox/BoomBox.glb",
+      "name" : "BoomBox",
+      "reference" : "BoomBox.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 4.154870153734305,
+        "elevation" : -18,
+        "target" : [
+          0,
+          0,
+          0
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 7.15487009988961,
+        "znear" : 1.1548702075789996
+      },
+      "model" : "TestModels/Khronos samples/BoxInterleaved/BoxInterleaved.glb",
+      "name" : "BoxInterleaved",
+      "reference" : "BoxInterleaved.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 4.154870368205119,
+        "elevation" : -18,
+        "target" : [
+          0.5000000149011612,
+          0.5000000149011612,
+          0.5000000149011612
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 7.154870469217834,
+        "znear" : 1.1548702671924032
+      },
+      "model" : "TestModels/Khronos samples/BoxVertexColors/BoxVertexColors.glb",
+      "name" : "BoxVertexColors",
+      "reference" : "BoxVertexColors.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 26.252165316854573,
+        "elevation" : -18,
+        "target" : [
+          -1.875901460647583,
+          0.19083499908447266,
+          -0.0019997358322143555
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 45.20738933660867,
+        "znear" : 7.296941297100474
+      },
+      "model" : "TestModels/Khronos samples/ClearCoatTest/ClearCoatTest.glb",
+      "name" : "ClearCoatTest",
+      "reference" : "ClearCoatTest.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 0.19160224509630727,
+        "elevation" : -18,
+        "target" : [
+          5.587935447692871e-09,
+          0.028920765034854412,
+          1.862645149230957e-09
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 0.32994753717614134,
+        "znear" : 0.05325695301647321
+      },
+      "model" : "TestModels/Khronos samples/Corset/Corset.glb",
+      "name" : "Corset",
+      "reference" : "Corset.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 46.28658238329389,
+        "elevation" : -18,
+        "target" : [
+          -0.0007495880126953125,
+          -0.9958338737487793,
+          -0.0005335807800292969
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 79.70754128685692,
+        "znear" : 12.865623479730864
+      },
+      "model" : "TestModels/Khronos samples/EmissiveStrengthTest/EmissiveStrengthTest.glb",
+      "name" : "EmissiveStrengthTest",
+      "reference" : "EmissiveStrengthTest.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 27.318650313940804,
+        "elevation" : -18,
+        "target" : [
+          0,
+          1.2517194747924805,
+          1.0036747455596924
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 47.043923653036096,
+        "znear" : 7.593376974845512
+      },
+      "model" : "TestModels/Khronos samples/InterpolationTest/InterpolationTest.glb",
+      "name" : "InterpolationTest",
+      "reference" : "InterpolationTest.png"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 0.016038978682179815,
+        "elevation" : -18,
+        "target" : [
+          0.0028085585799999535,
+          0.0027758896467275918,
+          -0.0015000000421423465
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 0.027619830406193167,
+        "znear" : 0.004458126958166464
+      },
+      "model" : "TestModels/Khronos samples/MetalRoughSpheresNoTextures/MetalRoughSpheresNoTextures.glb",
+      "name" : "MetalRoughSpheresNoTextures",
+      "reference" : "MetalRoughSpheresNoTextures.png"
+    }
+  ],
+  "environment" : "neutral",
+  "tolerance" : {
+    "badPixelChannelDelta" : 24,
+    "badPixelFraction" : 0.005,
+    "meanAbsoluteError" : 2
+  },
+  "toneMapping" : "Khronos PBR Neutral",
+  "version" : 1
+}

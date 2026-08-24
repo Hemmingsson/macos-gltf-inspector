@@ -30,6 +30,7 @@ Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product code on **`main`
 ./scripts/release.sh              # Developer ID + notary + Sparkle + gh release
 ./scripts/vendor-khronos-environments.sh
 ./scripts/fetch-test-models.sh    # optional Khronos GLBs → TestModels/Khronos samples (gitignored)
+./scripts/regenerate-pixel-references.sh  # rewrite TestModels/References/*.png after a renderer change
 
 xcodegen generate                 # GLTFInspector.xcodeproj is gitignored
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
@@ -40,6 +41,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 **Agents:** use `dev.sh install` / `dev.sh test` — never `open` or `build.sh` without `--install-only` unless the user asked to launch. Debug logs: `.build/logs/debug.log` when `GLTF_LOG_FILE` is set (dev.sh / launch.json).
 
 `xcodebuild` alone writes `/tmp/GLTFInspector-<branch>-dd/…` — **not** `/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to install.
+
+**Renderer regressions:** `GLTFInspectorTests/PixelDiffTests.swift` re-renders every Khronos sample through `WebRendererHost` and compares against the committed PNGs in `TestModels/References/` — the safety net for the WebKit migration, since `xcodebuild` cannot assert on a scene built in JavaScript. Comparison is perceptual (mean error *and* a bad-pixel count, because a mean absorbs local damage); failures write actual/expected/diff PNGs to `/tmp/GLTFInspector-pixel-diff/`. Missing fixtures **fail** rather than skip. See [`TestModels/References/README.md`](TestModels/References/README.md).
 
 Signing: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof: PNG via `StillRenderProofTests`. Fixtures: `TestModels/Fixture Models/` via `GLTFInspectorTests/TestFixtures.swift` (`#filePath`); regen `scripts/testdata/README.md`.
 

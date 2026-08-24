@@ -12,6 +12,8 @@ struct WebRendererCommand: Equatable {
         case load
         case setScene
         case setCamera
+        case setCameraPose
+        case getCamera
         case fit
         case setToneMapping
         case setExposure
@@ -39,6 +41,7 @@ struct WebRendererCommand: Equatable {
     var value: Double?
     var enabled: Bool?
     var color: [Double]?
+    var pose: CameraPose?
 
     private init(id: Int, kind: Kind) {
         self.id = id
@@ -77,6 +80,20 @@ struct WebRendererCommand: Equatable {
         command.elevation = elevation
         command.distance = distance
         return command
+    }
+
+    /// The whole camera stated outright, so a change to the renderer's fit heuristic cannot
+    /// move it. `setCamera` above deliberately inherits distance and target from the last fit;
+    /// this one inherits nothing.
+    static func setCameraPose(id: Int, pose: CameraPose) -> Self {
+        var command = Self(id: id, kind: .setCameraPose)
+        command.pose = pose
+        return command
+    }
+
+    /// Reads the current pose back, for recording one after a fit.
+    static func getCamera(id: Int) -> Self {
+        Self(id: id, kind: .getCamera)
     }
 
     static func fit(id: Int) -> Self {
@@ -167,6 +184,15 @@ struct WebRendererCommand: Equatable {
         if let value { object["value"] = value }
         if let enabled { object["enabled"] = enabled }
         if let color { object["color"] = color }
+        if let pose {
+            object["target"] = pose.target
+            object["distance"] = pose.distance
+            object["azimuth"] = pose.azimuth
+            object["elevation"] = pose.elevation
+            object["yfov"] = pose.yfov
+            object["znear"] = pose.znear
+            object["zfar"] = pose.zfar
+        }
         return object
     }
 
@@ -181,6 +207,112 @@ struct WebRendererCommand: Equatable {
             throw WebRendererError.unencodableCommand(kind.rawValue)
         }
         return "void window.__viewer.exec(\(json))"
+    }
+}
+
+/// A camera stated completely: where it looks, from how far, at what angles, through which
+/// projection. Every field the renderer reads is here, so replaying a pose does not depend on
+/// scene extents or on `UserCamera.fitViewToScene`.
+///
+/// Angles are degrees, `yfov` is radians — that split matches the page, which converts the
+/// orbit angles and hands `yfov` straight to the projection.
+struct CameraPose: Equatable, Codable, Sendable {
+    var azimuth: Double
+    var elevation: Double
+    var distance: Double
+    /// Scene-space point the camera looks at.
+    var target: [Double]
+    var yfov: Double
+    var znear: Double
+    var zfar: Double
+
+    /// Nil for anything the renderer could not express as finite numbers — an unfitted camera
+    /// carries `zfar == .infinity`, which no recorded pose should contain.
+    init?(json: [String: Any]) {
+        guard
+            let azimuth = json["azimuth"] as? Double,
+            let elevation = json["elevation"] as? Double,
+            let distance = json["distance"] as? Double,
+            let target = json["target"] as? [Double], target.count == 3,
+            let yfov = json["yfov"] as? Double,
+            let znear = json["znear"] as? Double,
+            let zfar = json["zfar"] as? Double
+        else { return nil }
+
+        self.azimuth = azimuth
+        self.elevation = elevation
+        self.distance = distance
+        self.target = target
+        self.yfov = yfov
+        self.znear = znear
+        self.zfar = zfar
+        guard isFinite else { return nil }
+    }
+
+    init(
+        azimuth: Double,
+        elevation: Double,
+        distance: Double,
+        target: [Double],
+        yfov: Double,
+        znear: Double,
+        zfar: Double
+    ) {
+        self.azimuth = azimuth
+        self.elevation = elevation
+        self.distance = distance
+        self.target = target
+        self.yfov = yfov
+        self.znear = znear
+        self.zfar = zfar
+    }
+
+    var isFinite: Bool {
+        ([azimuth, elevation, distance, yfov, znear, zfar] + target).allSatisfy(\.isFinite)
+    }
+}
+
+/// The world-space box the renderer measured for the current scene, and the pose it is looking
+/// at it from.
+///
+/// The bounds come along because a caller that wants to frame the model on its own terms needs
+/// them: `pose.distance` only reports where this version of the renderer put the camera.
+struct RendererCameraState: Equatable, Sendable {
+    var pose: CameraPose
+    var sceneMin: [Double]
+    var sceneMax: [Double]
+
+    /// Centre of the measured box.
+    var sceneCenter: [Double] {
+        (0..<3).map { (sceneMin[$0] + sceneMax[$0]) / 2 }
+    }
+
+    /// Radius of the sphere enclosing the measured box.
+    ///
+    /// Framing to a sphere rather than to the box is what makes a recorded pose independent of
+    /// the angle it is viewed from — a box that just fits the frame head on will not fit once
+    /// the camera orbits off axis.
+    var boundingRadius: Double {
+        let diagonal = (0..<3).map { sceneMax[$0] - sceneMin[$0] }
+        return (diagonal.reduce(0) { $0 + $1 * $1 }).squareRoot() / 2
+    }
+
+    var isMeasurable: Bool {
+        sceneMin.count == 3 && sceneMax.count == 3
+            && (sceneMin + sceneMax).allSatisfy(\.isFinite)
+            && boundingRadius > 0
+    }
+
+    init?(json: [String: Any]) {
+        guard
+            let camera = json["camera"] as? [String: Any],
+            let pose = CameraPose(json: camera),
+            let sceneMin = json["sceneMin"] as? [Double],
+            let sceneMax = json["sceneMax"] as? [Double]
+        else { return nil }
+        self.pose = pose
+        self.sceneMin = sceneMin
+        self.sceneMax = sceneMax
     }
 }
 
@@ -216,6 +348,7 @@ struct WebRendererEvent: Equatable {
     var mode: String?
     var width: Int?
     var height: Int?
+    var camera: RendererCameraState?
 
     /// Returns nil for a body that is not a recognisable event, so the host can report a
     /// malformed message rather than silently ignoring it.
@@ -238,6 +371,7 @@ struct WebRendererEvent: Equatable {
         self.mode = object["mode"] as? String
         self.width = object["width"] as? Int
         self.height = object["height"] as? Int
+        self.camera = RendererCameraState(json: object)
     }
 }
 
@@ -257,6 +391,10 @@ enum WebRendererError: LocalizedError, Equatable {
     case missingRendererBundle
     case undecodableImage
     case unencodableCommand(String)
+    /// The page answered `getCamera` with something that is not a complete, finite pose.
+    case undecodableCameraPose
+    /// The renderer measured a scene with no size — nothing to frame.
+    case unmeasurableScene
 
     var errorDescription: String? {
         switch self {
@@ -280,6 +418,10 @@ enum WebRendererError: LocalizedError, Equatable {
             "Web renderer returned an image that could not be decoded"
         case .unencodableCommand(let kind):
             "Could not encode '\(kind)' as JSON"
+        case .undecodableCameraPose:
+            "Web renderer returned an incomplete camera pose"
+        case .unmeasurableScene:
+            "Web renderer measured a scene with no extent"
         }
     }
 }
