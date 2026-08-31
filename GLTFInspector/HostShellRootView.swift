@@ -25,22 +25,8 @@ struct HostShellRootView: View {
 
     /// Per-window lazy overlay — not seed-once `@State` from UserDefaults.
     @State private var settings = EngineSettingsStore()
+    @State private var previewSession = PreviewSession()
     @State private var engineViewport: EngineViewportController
-
-    /// Session-only canvas extras (not SettingsStore keys yet).
-    @State private var sessionExposureEV: Float = 0
-    @State private var sessionDimStudioForFileLights = false
-    @State private var sessionEnvironmentYaw: Float = 0
-    @State private var sessionDoubleSided = false
-    @State private var sessionShowSkeleton = false
-    @State private var sessionFieldOfViewDegrees = PreviewCamera.defaultFieldOfViewDegrees
-    @State private var sessionDebugModeIndex = 0
-    /// Mirror of settings-backed + session-only keys for `PreviewView` / RealityKit.
-    @State private var canvasAutoRotate = true
-    @State private var canvasShowFloor = true
-    @State private var canvasBackdropIndex = 0
-    @State private var canvasCenterModel = true
-    @State private var canvasOrthographic = false
 
     @State private var validation: GLTFValidationState?
     @State private var validationGeneration = 0
@@ -57,8 +43,10 @@ struct HostShellRootView: View {
         self.documentURL = documentURL
         let placeholder = HostSidebarModel(document: GLTFSessionDocument())
         _placeholderSidebar = State(wrappedValue: placeholder)
+        let session = PreviewSession()
+        _previewSession = State(wrappedValue: session)
         _engineViewport = State(
-            wrappedValue: EngineViewportController(sidebar: placeholder)
+            wrappedValue: EngineViewportController(sidebar: placeholder, previewSession: session)
         )
     }
 
@@ -91,7 +79,7 @@ struct HostShellRootView: View {
             }
             .onChange(of: settings.defaultsStore.revision) { _, _ in
                 // Live-track canvas for keys that still have no session override.
-                engineViewport.syncHostCanvasFromStored()
+                engineViewport.syncFromSettings()
             }
             .onDrop(of: [.fileURL], isTargeted: nil) {
                 DocumentOpening.handleDrop($0, openDocument: openDocument)
@@ -128,7 +116,7 @@ struct HostShellRootView: View {
                 isDark: colorScheme == .dark,
                 sidebar: sidebar,
                 overlayRevision: sidebar?.overlayRevision ?? 0,
-                session: previewSession
+                session: previewSession.bindings
             )
         }
         // Remount adapters that capture sidebar/entity once; keep settings + viewport identity.
@@ -186,24 +174,6 @@ struct HostShellRootView: View {
     private var loadedModel: EntityLoader.LoadedModel? {
         if case .ready(let model) = previewState { return model }
         return nil
-    }
-
-    private var previewSession: PreviewSessionBindings {
-        PreviewSessionBindings(
-            autoRotate: $canvasAutoRotate,
-            showFloor: $canvasShowFloor,
-            backdropIndex: $canvasBackdropIndex,
-            centerModel: $canvasCenterModel,
-            orthographic: $canvasOrthographic,
-            exposureEV: $sessionExposureEV,
-            dimStudioForFileLights: $sessionDimStudioForFileLights,
-            environmentYaw: $sessionEnvironmentYaw,
-            doubleSided: $sessionDoubleSided,
-            showSkeleton: $sessionShowSkeleton,
-            fieldOfViewDegrees: $sessionFieldOfViewDegrees,
-            debugModeIndex: $sessionDebugModeIndex,
-            debugModes: loadedDebugModes.isEmpty ? [.none] : loadedDebugModes
-        )
     }
 
     private var focusedPreviewCommands: FocusedPreviewCommands? {
@@ -297,10 +267,11 @@ struct HostShellRootView: View {
     }
 
     private func wireViewportHostSession() {
-        engineViewport.hostSession = previewSession
+        engineViewport.previewSession = previewSession
         engineViewport.settings = settings
         engineViewport.commands = focusedPreviewCommands
         engineViewport.screenshotHandler = screenshotCurrentCameraPose
+        previewSession.debugModes = loadedDebugModes.isEmpty ? [.none] : loadedDebugModes
     }
 
     private func reframingCamera(preset: PreviewCamera.CameraPreset? = nil) {
@@ -321,17 +292,17 @@ struct HostShellRootView: View {
                 to: camera,
                 bounds: bounds,
                 orbitFocus: interaction.orbitFocus,
-                orthographic: canvasOrthographic,
+                orthographic: previewSession.orthographic,
                 preset: preset,
-                fieldOfViewInDegrees: sessionFieldOfViewDegrees
+                fieldOfViewInDegrees: previewSession.fieldOfViewDegrees
             )
         } else {
             PreviewCamera.applyFit(
                 to: camera,
                 bounds: bounds,
                 orbitFocus: interaction.orbitFocus,
-                orthographic: canvasOrthographic,
-                fieldOfViewInDegrees: sessionFieldOfViewDegrees
+                orthographic: previewSession.orthographic,
+                fieldOfViewInDegrees: previewSession.fieldOfViewDegrees
             )
         }
         interaction.markFitted()
@@ -340,7 +311,7 @@ struct HostShellRootView: View {
 
     private func resetPreviewView() {
         sidebar?.selectedCameraIndex = nil
-        if !canvasCenterModel {
+        if !previewSession.centerModel {
             engineViewport.setCenter(true)
             sidebar?.overlayRevision += 1
             return
@@ -364,10 +335,10 @@ struct HostShellRootView: View {
         ScreenshotCameraPose.capture(
             camera: camera,
             pivot: pivot,
-            dimStudioForFileLights: sessionDimStudioForFileLights,
-            exposureEV: sessionExposureEV,
-            backdropIndex: canvasBackdropIndex,
-            environmentYaw: sessionEnvironmentYaw,
+            dimStudioForFileLights: previewSession.dimStudioForFileLights,
+            exposureEV: previewSession.exposureEV,
+            backdropIndex: previewSession.backdropIndex,
+            environmentYaw: previewSession.environmentYaw,
             suggestedName: suggested
         )
     }
@@ -397,7 +368,7 @@ struct HostShellRootView: View {
         loadGeneration += 1
         // New document in this window: drop session overrides and re-track defaults.
         settings.clearSession()
-        engineViewport.syncHostCanvasFromStored()
+        engineViewport.applySession(from: settings)
         let generation = loadGeneration
         AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
         startValidation(of: url, generation: generation)
@@ -568,37 +539,18 @@ struct HostShellRootView: View {
         let generation = loadGeneration
         let variantIndex = sidebar.selectedMaterialVariantIndex
         let sceneIndex = sidebar.activeSceneIndex
+        let isMultiScene = sidebar.document.scenes.count > 1
         Task {
             do {
                 let model = try await EntityLoader.load(
                     from: url,
-                    materialVariantIndex: variantIndex
+                    materialVariantIndex: variantIndex,
+                    sceneIndex: isMultiScene ? sceneIndex : nil
                 )
-                guard generation == loadGeneration else { return }
-                let entity: Entity
-                if model.document.scenes.count > 1 {
-                    entity = try await EntityLoader.convertScene(
-                        index: sceneIndex,
-                        from: url,
-                        materialVariantIndex: variantIndex
-                    )
-                } else {
-                    entity = model.entity
-                }
                 guard generation == loadGeneration else { return }
                 interaction = PreviewInteraction()
-                let reloaded = EntityLoader.LoadedModel(
-                    entity: entity,
-                    stats: model.stats,
-                    document: model.document,
-                    debugModes: model.debugModes,
-                    studioIBLExponent: model.studioIBLExponent,
-                    pipelineReport: model.pipelineReport,
-                    convertProblems: model.convertProblems,
-                    materialVariantNames: model.materialVariantNames
-                )
                 sidebar.materialVariantNames = model.materialVariantNames
-                applyReloaded(reloaded, fileName: url.lastPathComponent, sidebar: sidebar)
+                applyReloaded(model, fileName: url.lastPathComponent, sidebar: sidebar)
                 AppLog.info(
                     AppLog.host,
                     "variant reload \(url.lastPathComponent) index=\(variantIndex.map(String.init) ?? "default")"

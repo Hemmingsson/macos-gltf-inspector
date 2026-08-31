@@ -4,6 +4,9 @@ import Metal
 import simd
 
 extension RealityKitConvert {
+    // MeshResource / LowLevelMesh generation is MainActor-bound; primitive attribute
+    // helpers (`triangleIndices`, `tightFloatAccessor`) stay nonisolated.
+
     func convert(skin gltfSkin: GLTFSkin) -> MeshResource.Skeleton? {
         let skeletonName = gltfSkin.name ?? nextUniqueName(prefix: "Skin")
         let jointNames = gltfSkin.joints.enumerated().map { index, joint in
@@ -105,22 +108,7 @@ extension RealityKitConvert {
         _ gltfMesh: GLTFMesh,
         context: RealityKitResourceContext
     ) throws -> ModelComponent? {
-        struct Plan {
-            let primitive: GLTFPrimitive
-            let materialIndex: Int
-            let positions: GLTFAccessor
-            let normals: GLTFAccessor?
-            let tangents: GLTFAccessor?
-            let bakedUVs: [SIMD2<Float>]?
-            /// Packed RGBA; RealityKit has no MeshBuffers.colors — only LowLevelMesh `.color`.
-            let colors: [SIMD4<Float>]?
-            let indices: [UInt32]
-            let bounds: BoundingBox
-            var vertexCount: Int { positions.count }
-            var indexCount: Int { indices.count }
-        }
-
-        var plans: [Plan] = []
+        var plans: [TightMeshPrimitivePlan] = []
         plans.reserveCapacity(gltfMesh.primitives.count)
         var totalVertices = 0
         var totalIndices = 0
@@ -130,225 +118,128 @@ extension RealityKitConvert {
         var anyColors = false
 
         for primitive in gltfMesh.primitives {
-            guard primitive.primitiveType == .triangles,
-                  primitive.targets.isEmpty,
-                  primitive.attribute(forName: "JOINTS_0") == nil,
-                  let positionAttr = primitive.attribute(forName: "POSITION"),
-                  Packed.isTightFloat(positionAttr.accessor, dimension: .vector3),
-                  let bounds = boundingBox(for: positionAttr.accessor)
-            else { return nil }
+            guard let gathered = makeTightMeshPrimitivePlan(
+                primitive: primitive,
+                materialIndex: plans.count,
+                context: context
+            ) else { return nil }
 
-            let normalsAccessor: GLTFAccessor?
-            if let normalAttr = primitive.attribute(forName: "NORMAL") {
-                guard Packed.isTightFloat(normalAttr.accessor, dimension: .vector3),
-                      normalAttr.accessor.count == positionAttr.accessor.count
-                else { return nil }
-                normalsAccessor = normalAttr.accessor
-                anyNormals = true
-            } else {
-                normalsAccessor = nil
-            }
-
-            let tangentsAccessor: GLTFAccessor?
-            if let tangentAttr = primitive.attribute(forName: "TANGENT") {
-                // glTF tangents are VEC4 (xyz + handedness); keep packed float4 as-is.
-                guard Packed.isTightFloat(tangentAttr.accessor, dimension: .vector4),
-                      tangentAttr.accessor.count == positionAttr.accessor.count
-                else { return nil }
-                tangentsAccessor = tangentAttr.accessor
-                anyTangents = true
-            } else {
-                tangentsAccessor = nil
-            }
-
-            let bakedUVs = bakedTextureCoordinates(for: primitive, context: context)
-            if let bakedUVs {
-                guard bakedUVs.count == positionAttr.accessor.count else { return nil }
-                anyUVs = true
-            }
-
-            let colors: [SIMD4<Float>]?
-            if let colorAttr = primitive.attribute(forName: "COLOR_0") {
-                guard let packed = Packed.color4Array(for: colorAttr.accessor),
-                      packed.count == positionAttr.accessor.count
-                else { return nil }
-                colors = packed
-                anyColors = true
-            } else {
-                colors = nil
-            }
-
-            let indices: [UInt32]
-            if let indexAccessor = primitive.indices {
-                guard let packed = Packed.uint32Array(for: indexAccessor), !packed.isEmpty else { return nil }
-                indices = packed
-            } else {
-                let count = positionAttr.accessor.count
-                indices = [UInt32](UInt32(0)..<UInt32(count))
-            }
-
-            plans.append(
-                Plan(
-                    primitive: primitive,
-                    materialIndex: plans.count,
-                    positions: positionAttr.accessor,
-                    normals: normalsAccessor,
-                    tangents: tangentsAccessor,
-                    bakedUVs: bakedUVs,
-                    colors: colors,
-                    indices: indices,
-                    bounds: bounds
-                )
-            )
-            totalVertices += positionAttr.accessor.count
-            totalIndices += indices.count
+            plans.append(gathered.plan)
+            totalVertices += gathered.plan.vertexCount
+            totalIndices += gathered.plan.indexCount
+            anyNormals = anyNormals || gathered.hasNormals
+            anyTangents = anyTangents || gathered.hasTangents
+            anyUVs = anyUVs || gathered.hasUVs
+            anyColors = anyColors || gathered.hasColors
         }
 
         guard !plans.isEmpty, totalVertices > 0, totalIndices > 0 else { return nil }
 
-        var attributes: [LowLevelMesh.Attribute] = [
-            .init(semantic: .position, format: .float3, layoutIndex: 0, offset: 0)
-        ]
-        var layouts: [LowLevelMesh.Layout] = [
-            .init(bufferIndex: 0, bufferStride: 12)
-        ]
-        var normalBufferIndex: Int?
-        var tangentBufferIndex: Int?
-        var uvBufferIndex: Int?
-        var colorBufferIndex: Int?
-        if anyNormals {
-            let idx = layouts.count
-            normalBufferIndex = idx
-            attributes.append(.init(semantic: .normal, format: .float3, layoutIndex: idx, offset: 0))
-            layouts.append(.init(bufferIndex: idx, bufferStride: 12))
-        }
-        if anyTangents {
-            let idx = layouts.count
-            tangentBufferIndex = idx
-            attributes.append(.init(semantic: .tangent, format: .float4, layoutIndex: idx, offset: 0))
-            layouts.append(.init(bufferIndex: idx, bufferStride: 16))
-        }
-        if anyUVs {
-            let idx = layouts.count
-            uvBufferIndex = idx
-            attributes.append(.init(semantic: .uv0, format: .float2, layoutIndex: idx, offset: 0))
-            layouts.append(.init(bufferIndex: idx, bufferStride: 8))
-        }
-        if anyColors {
-            let idx = layouts.count
-            colorBufferIndex = idx
-            attributes.append(.init(semantic: .color, format: .float4, layoutIndex: idx, offset: 0))
-            layouts.append(.init(bufferIndex: idx, bufferStride: 16))
-        }
-
+        let meshLayout = TightLowLevelLayout.make(
+            anyNormals: anyNormals,
+            anyTangents: anyTangents,
+            anyUVs: anyUVs,
+            anyColors: anyColors
+        )
         let descriptor = LowLevelMesh.Descriptor(
             vertexCapacity: totalVertices,
-            vertexAttributes: attributes,
-            vertexLayouts: layouts,
+            vertexAttributes: meshLayout.attributes,
+            vertexLayouts: meshLayout.layouts,
             indexCapacity: totalIndices,
             indexType: .uint32
         )
         let lowLevelMesh = try LowLevelMesh(descriptor: descriptor)
 
-        lowLevelMesh.withUnsafeMutableBytes(bufferIndex: 0) { dest in
-            var byteOffset = 0
-            for plan in plans {
-                let nbytes = plan.vertexCount * 12
-                Packed.copyTight(plan.positions, elementFloats: 3, to: dest.baseAddress! + byteOffset)
-                byteOffset += nbytes
+        fillLowLevelVertexBuffer(
+            lowLevelMesh,
+            bufferIndex: 0,
+            plans: plans,
+            bytesPerVertex: 12,
+            write: { plan, dest in
+                Packed.copyTight(plan.positions, elementFloats: 3, to: dest)
             }
-        }
+        )
 
-        if let normalBufferIndex {
-            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: normalBufferIndex) { dest in
-                var byteOffset = 0
-                for plan in plans {
+        if let normalBufferIndex = meshLayout.normalBufferIndex {
+            fillLowLevelVertexBuffer(
+                lowLevelMesh,
+                bufferIndex: normalBufferIndex,
+                plans: plans,
+                bytesPerVertex: 12,
+                write: { plan, dest in
                     let nbytes = plan.vertexCount * 12
                     if let normals = plan.normals {
-                        Packed.copyTight(normals, elementFloats: 3, to: dest.baseAddress! + byteOffset)
+                        Packed.copyTight(normals, elementFloats: 3, to: dest)
                     } else {
-                        memset(dest.baseAddress! + byteOffset, 0, nbytes)
+                        memset(dest, 0, nbytes)
                     }
-                    byteOffset += nbytes
                 }
-            }
+            )
         }
 
-        if let tangentBufferIndex {
-            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: tangentBufferIndex) { dest in
-                var byteOffset = 0
-                for plan in plans {
+        if let tangentBufferIndex = meshLayout.tangentBufferIndex {
+            fillLowLevelVertexBuffer(
+                lowLevelMesh,
+                bufferIndex: tangentBufferIndex,
+                plans: plans,
+                bytesPerVertex: 16,
+                write: { plan, dest in
                     let nbytes = plan.vertexCount * 16
                     if let tangents = plan.tangents {
-                        Packed.copyTight(tangents, elementFloats: 4, to: dest.baseAddress! + byteOffset)
+                        Packed.copyTight(tangents, elementFloats: 4, to: dest)
                     } else {
-                        memset(dest.baseAddress! + byteOffset, 0, nbytes)
+                        memset(dest, 0, nbytes)
                     }
-                    byteOffset += nbytes
                 }
-            }
+            )
         }
 
-        if let uvBufferIndex {
-            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: uvBufferIndex) { dest in
-                var byteOffset = 0
-                for plan in plans {
+        if let uvBufferIndex = meshLayout.uvBufferIndex {
+            fillLowLevelVertexBuffer(
+                lowLevelMesh,
+                bufferIndex: uvBufferIndex,
+                plans: plans,
+                bytesPerVertex: 8,
+                write: { plan, dest in
                     let nbytes = plan.vertexCount * 8
                     if let uvs = plan.bakedUVs {
                         uvs.withUnsafeBytes { src in
                             guard let base = src.baseAddress else { return }
-                            memcpy(dest.baseAddress! + byteOffset, base, min(nbytes, src.count))
+                            memcpy(dest, base, min(nbytes, src.count))
                         }
                     } else {
-                        memset(dest.baseAddress! + byteOffset, 0, nbytes)
+                        memset(dest, 0, nbytes)
                     }
-                    byteOffset += nbytes
                 }
-            }
+            )
         }
 
-        if let colorBufferIndex {
-            lowLevelMesh.withUnsafeMutableBytes(bufferIndex: colorBufferIndex) { dest in
-                var byteOffset = 0
-                for plan in plans {
+        if let colorBufferIndex = meshLayout.colorBufferIndex {
+            fillLowLevelVertexBuffer(
+                lowLevelMesh,
+                bufferIndex: colorBufferIndex,
+                plans: plans,
+                bytesPerVertex: 16,
+                write: { plan, dest in
                     let nbytes = plan.vertexCount * 16
                     if let colors = plan.colors {
                         colors.withUnsafeBytes { src in
                             guard let base = src.baseAddress else { return }
-                            memcpy(dest.baseAddress! + byteOffset, base, min(nbytes, src.count))
+                            memcpy(dest, base, min(nbytes, src.count))
                         }
                     } else {
                         // Missing COLOR on a sibling primitive → opaque white.
                         let white = SIMD4<Float>(1, 1, 1, 1)
-                        let out = (dest.baseAddress! + byteOffset).assumingMemoryBound(to: SIMD4<Float>.self)
+                        let out = dest.assumingMemoryBound(to: SIMD4<Float>.self)
                         for i in 0..<plan.vertexCount {
                             out[i] = white
                         }
                     }
-                    byteOffset += nbytes
                 }
-            }
+            )
         }
 
-        lowLevelMesh.withUnsafeMutableIndices { dest in
-            var vertexBase: UInt32 = 0
-            var byteOffset = 0
-            for plan in plans {
-                let indexBytes = plan.indexCount * MemoryLayout<UInt32>.size
-                let out = (dest.baseAddress! + byteOffset).assumingMemoryBound(to: UInt32.self)
-                if vertexBase == 0 {
-                    plan.indices.withUnsafeBufferPointer { src in
-                        _ = memcpy(out, src.baseAddress!, indexBytes)
-                    }
-                } else {
-                    for i in 0..<plan.indexCount {
-                        out[i] = plan.indices[i] &+ vertexBase
-                    }
-                }
-                byteOffset += indexBytes
-                vertexBase &+= UInt32(plan.vertexCount)
-            }
-        }
+        fillLowLevelIndexBuffer(lowLevelMesh, plans: plans)
 
         var parts: [LowLevelMesh.Part] = []
         parts.reserveCapacity(plans.count)
@@ -483,11 +374,8 @@ extension RealityKitConvert {
 
         // TODO: Support explicit bitangents and other user attributes?
 
-        if let indexAccessor = gltfPrimitive.indices, let indices = Packed.uint32Array(for: indexAccessor) {
-            part.triangleIndices = MeshBuffers.TriangleIndices(indices)
-        } else {
-            let vertexCount = gltfPrimitive.attribute(forName: "POSITION")?.accessor.count ?? 0
-            let indices = [UInt32](UInt32(0)..<UInt32(vertexCount))
+        let vertexCount = gltfPrimitive.attribute(forName: "POSITION")?.accessor.count ?? 0
+        if let indices = triangleIndices(for: gltfPrimitive, vertexCount: vertexCount) {
             part.triangleIndices = MeshBuffers.TriangleIndices(indices)
         }
 
@@ -559,5 +447,244 @@ extension RealityKitConvert {
         }
         uvs = TextureUV.wrapSingleTile(uvs)
         return uvs.map { SIMD2($0.x, 1 - $0.y) }
+    }
+
+    private struct TightMeshPrimitivePlan {
+        let primitive: GLTFPrimitive
+        let materialIndex: Int
+        let positions: GLTFAccessor
+        let normals: GLTFAccessor?
+        let tangents: GLTFAccessor?
+        let bakedUVs: [SIMD2<Float>]?
+        /// Packed RGBA; RealityKit has no MeshBuffers.colors — only LowLevelMesh `.color`.
+        let colors: [SIMD4<Float>]?
+        let indices: [UInt32]
+        let bounds: BoundingBox
+        var vertexCount: Int { positions.count }
+        var indexCount: Int { indices.count }
+    }
+
+    private struct TightMeshGatherResult {
+        let plan: TightMeshPrimitivePlan
+        let hasNormals: Bool
+        let hasTangents: Bool
+        let hasUVs: Bool
+        let hasColors: Bool
+    }
+
+    private struct TightLowLevelLayout {
+        let attributes: [LowLevelMesh.Attribute]
+        let layouts: [LowLevelMesh.Layout]
+        let normalBufferIndex: Int?
+        let tangentBufferIndex: Int?
+        let uvBufferIndex: Int?
+        let colorBufferIndex: Int?
+
+        static func make(
+            anyNormals: Bool,
+            anyTangents: Bool,
+            anyUVs: Bool,
+            anyColors: Bool
+        ) -> TightLowLevelLayout {
+            var attributes: [LowLevelMesh.Attribute] = [
+                .init(semantic: .position, format: .float3, layoutIndex: 0, offset: 0)
+            ]
+            var layouts: [LowLevelMesh.Layout] = [
+                .init(bufferIndex: 0, bufferStride: 12)
+            ]
+            var normalBufferIndex: Int?
+            var tangentBufferIndex: Int?
+            var uvBufferIndex: Int?
+            var colorBufferIndex: Int?
+            if anyNormals {
+                let idx = layouts.count
+                normalBufferIndex = idx
+                attributes.append(.init(semantic: .normal, format: .float3, layoutIndex: idx, offset: 0))
+                layouts.append(.init(bufferIndex: idx, bufferStride: 12))
+            }
+            if anyTangents {
+                let idx = layouts.count
+                tangentBufferIndex = idx
+                attributes.append(.init(semantic: .tangent, format: .float4, layoutIndex: idx, offset: 0))
+                layouts.append(.init(bufferIndex: idx, bufferStride: 16))
+            }
+            if anyUVs {
+                let idx = layouts.count
+                uvBufferIndex = idx
+                attributes.append(.init(semantic: .uv0, format: .float2, layoutIndex: idx, offset: 0))
+                layouts.append(.init(bufferIndex: idx, bufferStride: 8))
+            }
+            if anyColors {
+                let idx = layouts.count
+                colorBufferIndex = idx
+                attributes.append(.init(semantic: .color, format: .float4, layoutIndex: idx, offset: 0))
+                layouts.append(.init(bufferIndex: idx, bufferStride: 16))
+            }
+            return TightLowLevelLayout(
+                attributes: attributes,
+                layouts: layouts,
+                normalBufferIndex: normalBufferIndex,
+                tangentBufferIndex: tangentBufferIndex,
+                uvBufferIndex: uvBufferIndex,
+                colorBufferIndex: colorBufferIndex
+            )
+        }
+    }
+
+    private func triangleIndices(for primitive: GLTFPrimitive, vertexCount: Int) -> [UInt32]? {
+        if let indexAccessor = primitive.indices {
+            guard let packed = Packed.uint32Array(for: indexAccessor), !packed.isEmpty else { return nil }
+            return packed
+        }
+        return [UInt32](UInt32(0)..<UInt32(vertexCount))
+    }
+
+    private func tightFloatAccessor(
+        primitive: GLTFPrimitive,
+        attribute name: String,
+        dimension: GLTFValueDimension,
+        vertexCount: Int
+    ) -> GLTFAccessor? {
+        guard let attr = primitive.attribute(forName: name) else { return nil }
+        guard Packed.isTightFloat(attr.accessor, dimension: dimension),
+              attr.accessor.count == vertexCount
+        else { return nil }
+        return attr.accessor
+    }
+
+    @MainActor private func makeTightMeshPrimitivePlan(
+        primitive: GLTFPrimitive,
+        materialIndex: Int,
+        context: RealityKitResourceContext
+    ) -> TightMeshGatherResult? {
+        guard primitive.primitiveType == .triangles,
+              primitive.targets.isEmpty,
+              primitive.attribute(forName: "JOINTS_0") == nil,
+              let positionAttr = primitive.attribute(forName: "POSITION"),
+              Packed.isTightFloat(positionAttr.accessor, dimension: .vector3),
+              let bounds = boundingBox(for: positionAttr.accessor)
+        else { return nil }
+
+        let vertexCount = positionAttr.accessor.count
+
+        let normalsAccessor: GLTFAccessor?
+        let hasNormals: Bool
+        if primitive.attribute(forName: "NORMAL") != nil {
+            guard let accessor = tightFloatAccessor(
+                primitive: primitive,
+                attribute: "NORMAL",
+                dimension: .vector3,
+                vertexCount: vertexCount
+            ) else { return nil }
+            normalsAccessor = accessor
+            hasNormals = true
+        } else {
+            normalsAccessor = nil
+            hasNormals = false
+        }
+
+        let tangentsAccessor: GLTFAccessor?
+        let hasTangents: Bool
+        if primitive.attribute(forName: "TANGENT") != nil {
+            // glTF tangents are VEC4 (xyz + handedness); keep packed float4 as-is.
+            guard let accessor = tightFloatAccessor(
+                primitive: primitive,
+                attribute: "TANGENT",
+                dimension: .vector4,
+                vertexCount: vertexCount
+            ) else { return nil }
+            tangentsAccessor = accessor
+            hasTangents = true
+        } else {
+            tangentsAccessor = nil
+            hasTangents = false
+        }
+
+        let bakedUVs = bakedTextureCoordinates(for: primitive, context: context)
+        let hasUVs: Bool
+        if let bakedUVs {
+            guard bakedUVs.count == vertexCount else { return nil }
+            hasUVs = true
+        } else {
+            hasUVs = false
+        }
+
+        let colors: [SIMD4<Float>]?
+        let hasColors: Bool
+        if let colorAttr = primitive.attribute(forName: "COLOR_0") {
+            guard let packed = Packed.color4Array(for: colorAttr.accessor),
+                  packed.count == vertexCount
+            else { return nil }
+            colors = packed
+            hasColors = true
+        } else {
+            colors = nil
+            hasColors = false
+        }
+
+        guard let indices = triangleIndices(for: primitive, vertexCount: vertexCount) else { return nil }
+
+        let plan = TightMeshPrimitivePlan(
+            primitive: primitive,
+            materialIndex: materialIndex,
+            positions: positionAttr.accessor,
+            normals: normalsAccessor,
+            tangents: tangentsAccessor,
+            bakedUVs: bakedUVs,
+            colors: colors,
+            indices: indices,
+            bounds: bounds
+        )
+        return TightMeshGatherResult(
+            plan: plan,
+            hasNormals: hasNormals,
+            hasTangents: hasTangents,
+            hasUVs: hasUVs,
+            hasColors: hasColors
+        )
+    }
+
+    @MainActor private func fillLowLevelVertexBuffer(
+        _ lowLevelMesh: LowLevelMesh,
+        bufferIndex: Int,
+        plans: [TightMeshPrimitivePlan],
+        bytesPerVertex: Int,
+        write: (TightMeshPrimitivePlan, UnsafeMutableRawPointer) -> Void
+    ) {
+        lowLevelMesh.withUnsafeMutableBytes(bufferIndex: bufferIndex) { dest in
+            guard let destBase = dest.baseAddress else { return }
+            var byteOffset = 0
+            for plan in plans {
+                write(plan, destBase + byteOffset)
+                byteOffset += plan.vertexCount * bytesPerVertex
+            }
+        }
+    }
+
+    @MainActor private func fillLowLevelIndexBuffer(
+        _ lowLevelMesh: LowLevelMesh,
+        plans: [TightMeshPrimitivePlan]
+    ) {
+        lowLevelMesh.withUnsafeMutableIndices { dest in
+            guard let destBase = dest.baseAddress else { return }
+            var vertexBase: UInt32 = 0
+            var byteOffset = 0
+            for plan in plans {
+                let indexBytes = plan.indexCount * MemoryLayout<UInt32>.size
+                let out = (destBase + byteOffset).assumingMemoryBound(to: UInt32.self)
+                if vertexBase == 0 {
+                    plan.indices.withUnsafeBufferPointer { src in
+                        guard let srcBase = src.baseAddress else { return }
+                        memcpy(out, srcBase, indexBytes)
+                    }
+                } else {
+                    for i in 0..<plan.indexCount {
+                        out[i] = plan.indices[i] &+ vertexBase
+                    }
+                }
+                byteOffset += indexBytes
+                vertexBase &+= UInt32(plan.vertexCount)
+            }
+        }
     }
 }

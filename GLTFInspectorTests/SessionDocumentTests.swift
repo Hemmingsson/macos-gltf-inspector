@@ -68,6 +68,18 @@ struct SessionDocumentTests {
     }
 
     @MainActor
+    @Test func loadWithSceneIndexMatchesConvertSceneForMultiSceneFixture() async throws {
+        let url = TestFixtures.multiScene
+
+        let loaded = try await EntityLoader.load(from: url, includeAnimations: false, sceneIndex: 1)
+        let converted = try await EntityLoader.convertScene(index: 1, from: url, includeAnimations: false)
+
+        #expect(loaded.document.scenes.count == 2)
+        #expect(stampedNodeIndices(in: loaded.entity) == stampedNodeIndices(in: converted))
+        #expect(stampedNodeIndices(in: loaded.entity).contains(1))
+    }
+
+    @MainActor
     @Test func convertSceneOutOfRangeThrows1020() async throws {
         let url = try writeTempTwoSceneGLB()
         defer { try? FileManager.default.removeItem(at: url) }

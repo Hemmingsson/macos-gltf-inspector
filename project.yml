@@ -262,6 +262,7 @@ targets:
           - PreviewMorph.swift
           - SelectionDetail.swift
           - PreviewSessionBindings.swift
+          - PreviewSession.swift
           - PreviewSkeletonOverlay.swift
           - ModelDimensions.swift
       - path: Shared/Convert

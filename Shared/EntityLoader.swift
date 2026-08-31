@@ -56,14 +56,15 @@ enum EntityLoader {
     static func load(
         from url: URL,
         includeAnimations: Bool = true,
-        materialVariantIndex: Int? = nil
+        materialVariantIndex: Int? = nil,
+        sceneIndex: Int? = nil
     ) async throws -> LoadedModel {
         try await withPreparedAsset(from: url) { prepared in
             let (entity, document, variantNames) = try await convertPreparedOrOriginal(
                 prepared,
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent,
-                sceneIndex: nil,
+                sceneIndex: sceneIndex,
                 buildDocument: true,
                 materialVariantIndex: materialVariantIndex
             )
