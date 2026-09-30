@@ -101,7 +101,7 @@ targets:
       path: GLTFInspector/Info.plist
       properties:
         CFBundleIconName: ICON
-        CFBundleDisplayName: glTF Inspector (WebKit)
+        CFBundleDisplayName: glTF Inspector
         CFBundleDocumentTypes:
           - CFBundleTypeName: GL Transmission Format Binary
             CFBundleTypeRole: Viewer
