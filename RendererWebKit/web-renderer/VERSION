@@ -1,0 +1,23 @@
+# Vendored Khronos glTF Sample Renderer. Checked by scripts/vendor-web-renderer.sh.
+upstream=https://github.com/KhronosGroup/glTF-Sample-Renderer
+# main at the build date (2026-08-24); package.json there is 1.1.0 with the exact dependency set
+# the bundle banner lists (gl-matrix, interactivity-engine 1.0.0, physx-js-webidl 2.7.2, ...).
+upstream_commit=863b981fb755359063e370ff7b6e956bda0716e2
+package=@khronosgroup/gltf-viewer 1.1.0 (rollup build, banner "Generated: 2026-08-24")
+# Unminified build as first vendored: git show f1fd1af:Vendor/web-renderer/gltf-viewer.module.js
+# gltf-viewer.module.js = esbuild --minify of that file (EXP-010); not patched or forked.
+unminified_source=f1fd1af:Vendor/web-renderer/gltf-viewer.module.js
+licences=LICENSE.md (Apache-2.0), THIRD_PARTY_NOTICES.txt, LICENSE-draco.txt
+# sha256
+6a747fa8da7022d5139b7c668151ff03daad97c04fa5b08579d6353a24924262  gltf-viewer.module.js
+281d30b3c42dd8c9a89bb683b1b53625fddc6df5ade0910e3e8900e0b308cb91  libs/libktx.js
+2692cde644f685dc299d2ecd7464b2f375b332d62f8934307bb611b1fcb74981  libs/libktx.wasm
+ebbe14687b162108d5839c89c2d67df42fa918e48cbe8e24de7dbef979ad776e  libs/mikktspace.js
+d734e040ae6480a0d00ba08b8aaae29c2eb59c8705c38b7bc120885fc94c54e2  libs/mikktspace_bg.wasm
+2806ea24338265e17968b7d3d104cd699936463de29b13632675d56e6fcb0f9f  libs/mkkellogg-sort.worker.js
+a1ac52dfba8fe0a3c4f525f1449aeb679d17fa40ab0bf16cdeeac0cfbc3cc43b  libs/sorter_no_simd_non_shared.wasm
+8bb2952d2ba7d67e1414f8df819410cb0434a666be53f671fff75f68843d76f6  libs/draco_wasm_wrapper_gltf.js
+712db3449ae2041d6e8a224c395bda6cedb49e51322fae38b7db9beb8b381889  libs/draco_decoder_gltf.wasm
+94b7fcafe6313206e57c3904501605524581062b370161b5dad05e5d8408efe8  assets/lut_ggx.png
+b346fbd8e60ea0eb96006c07dcd0014066df6870c2b0499d10dfc1fb2d6093e8  assets/lut_charlie.png
+7f21d7754dd3a2a972d9d1298ee3e67e20c5b2f21969095d322a1bc20f8b2f04  assets/lut_sheen_E.png

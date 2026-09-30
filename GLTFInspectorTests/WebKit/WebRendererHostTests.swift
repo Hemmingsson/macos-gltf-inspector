@@ -187,6 +187,10 @@ struct WebRendererHostTests {
             "libs/libktx.js",
             "libs/libktx.wasm",
             "assets/lut_ggx.png",
+            // Licence notices and the upstream pin ship with the bundle.
+            "LICENSE.md",
+            "THIRD_PARTY_NOTICES.txt",
+            "VERSION",
         ] {
             let file = root.appendingPathComponent(relative)
             #expect(FileManager.default.fileExists(atPath: file.path), "missing \(relative)")
