@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 
 /// Counts from the glTF JSON header only — no BIN, no ImageIO.
 struct WebRendererAssetInventory: Equatable, Sendable {

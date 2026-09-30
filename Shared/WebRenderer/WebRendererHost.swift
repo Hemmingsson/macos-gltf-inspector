@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import GLTFCore
 import WebKit
 
 /// Owns the `WKWebView` that every surface renders through — Finder thumbnail, Quick Look
@@ -57,7 +58,7 @@ final class WebRendererHost: NSObject {
         guard let rendererRoot = bundle.url(forResource: "web-renderer", withExtension: nil) else {
             throw WebRendererError.missingRendererBundle
         }
-        let environmentRoot = bundle.url(forResource: "khronos", withExtension: nil)
+        let environmentRoot = KhronosEnvironments.bundledDirectory
 
         self.mode = mode
         self.timeout = timeout

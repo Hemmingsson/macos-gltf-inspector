@@ -1,4 +1,5 @@
 import Foundation
+@testable import GLTFCore
 import PreviewUI
 import Testing
 @testable import GLTFInspector

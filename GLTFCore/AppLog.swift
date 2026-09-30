@@ -8,23 +8,23 @@ import os
 ///
 /// When `GLTF_LOG_FILE` is set (dev.sh / launch.json), messages mirror to that file so agents
 /// can read `.build/logs/debug.log` without `log stream`.
-enum AppLog {
-    static let subsystem = "lol.mattias.gltf-inspector"
+public enum AppLog {
+    public static let subsystem = "lol.mattias.gltf-inspector"
 
-    static let load = Logger(subsystem: subsystem, category: "load")
-    static let preview = Logger(subsystem: subsystem, category: "preview")
-    static let thumbnail = Logger(subsystem: subsystem, category: "thumbnail")
-    static let prepare = Logger(subsystem: subsystem, category: "prepare")
-    static let lighting = Logger(subsystem: subsystem, category: "lighting")
-    static let host = Logger(subsystem: subsystem, category: "host")
+    public static let load = Logger(subsystem: subsystem, category: "load")
+    public static let preview = Logger(subsystem: subsystem, category: "preview")
+    public static let thumbnail = Logger(subsystem: subsystem, category: "thumbnail")
+    public static let prepare = Logger(subsystem: subsystem, category: "prepare")
+    public static let lighting = Logger(subsystem: subsystem, category: "lighting")
+    public static let host = Logger(subsystem: subsystem, category: "host")
     /// Everything rendered through WebKit — host, bridge and resource serving.
-    static let webRenderer = Logger(subsystem: subsystem, category: "webrenderer")
+    public static let webRenderer = Logger(subsystem: subsystem, category: "webrenderer")
 
     private static let fileLock = NSLock()
     private static var logFilePath: String?
 
     /// Truncates and opens `GLTF_LOG_FILE` when set. Safe to call more than once.
-    static func configureFileSink() {
+    public static func configureFileSink() {
         guard let path = ProcessInfo.processInfo.environment["GLTF_LOG_FILE"], !path.isEmpty else { return }
 
         let url = URL(fileURLWithPath: path)
@@ -39,12 +39,12 @@ enum AppLog {
         appendToFile("[\(stamp)] [INFO] --- session start ---\n")
     }
 
-    static func info(_ logger: Logger, _ message: String) {
+    public static func info(_ logger: Logger, _ message: String) {
         logger.info("\(message, privacy: .public)")
         mirrorToFile(level: "INFO", message: message)
     }
 
-    static func error(_ logger: Logger, _ message: String) {
+    public static func error(_ logger: Logger, _ message: String) {
         logger.error("\(message, privacy: .public)")
         mirrorToFile(level: "ERROR", message: message)
     }

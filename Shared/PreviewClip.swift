@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import RealityKit
 
 /// Usable RealityKit animation clip for preview playback / seam Availability.

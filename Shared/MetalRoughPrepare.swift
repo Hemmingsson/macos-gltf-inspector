@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import GLTFCore
 import ImageIO
 import simd
 import UniformTypeIdentifiers

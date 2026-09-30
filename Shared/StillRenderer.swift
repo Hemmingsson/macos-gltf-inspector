@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import GLTFCore
 import ImageIO
 @preconcurrency import Metal
 import RealityKit
@@ -224,16 +225,6 @@ final class StillRenderer {
         }
     }
 
-    static func writePNG(_ image: CGImage, to url: URL) throws {
-        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
-            throw error("Could not create PNG destination", code: 4)
-        }
-        CGImageDestinationAddImage(dest, image, nil)
-        if !CGImageDestinationFinalize(dest) {
-            throw error("Could not write PNG", code: 5)
-        }
-    }
-
     /// Save-panel + offscreen re-render at `cameraPose`. Returns the written URL, or `nil` if cancelled.
     ///
     /// Prefer a sheet on the key window so AX / Peekaboo can target it; fall back to `runModal`
@@ -281,7 +272,7 @@ final class StillRenderer {
             environmentYaw: environmentYaw
         )
         let image = try await still.capture()
-        try writePNG(image, to: url)
+        try PNGWriter.write(image, to: url)
         return url
     }
 }

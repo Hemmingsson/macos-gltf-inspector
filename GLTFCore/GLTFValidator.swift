@@ -2,34 +2,34 @@ import Foundation
 import JavaScriptCore
 
 /// Issue from the Khronos glTF-Validator report (`issues.messages[]`).
-struct GLTFValidationIssue: Sendable, Equatable, Identifiable {
-    var id: String { "\(severity)-\(code)-\(pointer ?? "")-\(message)" }
-    var code: String
-    var message: String
+public struct GLTFValidationIssue: Sendable, Equatable, Identifiable {
+    public var id: String { "\(severity)-\(code)-\(pointer ?? "")-\(message)" }
+    public var code: String
+    public var message: String
     /// 0 = error, 1 = warning, 2 = info, 3 = hint (Khronos severity).
-    var severity: Int
-    var pointer: String?
+    public var severity: Int
+    public var pointer: String?
 
-    var isError: Bool { severity == 0 }
-    var isWarning: Bool { severity == 1 }
+    public var isError: Bool { severity == 0 }
+    public var isWarning: Bool { severity == 1 }
 }
 
 /// Mapped Khronos validation report for inspector honesty.
-struct GLTFValidationReport: Sendable, Equatable {
-    var validatorVersion: String
-    var errorCount: Int
-    var warningCount: Int
-    var infoCount: Int
-    var hintCount: Int
-    var messages: [GLTFValidationIssue]
+public struct GLTFValidationReport: Sendable, Equatable {
+    public var validatorVersion: String
+    public var errorCount: Int
+    public var warningCount: Int
+    public var infoCount: Int
+    public var hintCount: Int
+    public var messages: [GLTFValidationIssue]
 
     /// Green badge when there are no errors or warnings (infos/hints OK).
-    var isClean: Bool { errorCount == 0 && warningCount == 0 }
+    public var isClean: Bool { errorCount == 0 && warningCount == 0 }
 
     /// Orange badge count — errors + warnings.
-    var badgeCount: Int { errorCount + warningCount }
+    public var badgeCount: Int { errorCount + warningCount }
 
-    var badgeTitle: String {
+    public var badgeTitle: String {
         if isClean { return "Valid glTF 2.0" }
         if errorCount > 0 {
             return badgeCount == 1 ? "1 issue" : "\(badgeCount) issues"
@@ -39,12 +39,12 @@ struct GLTFValidationReport: Sendable, Equatable {
 }
 
 /// Host sidebar outcome — success report, soft failure, or intentional skip.
-enum GLTFValidationState: Sendable, Equatable {
+public enum GLTFValidationState: Sendable, Equatable {
     case success(GLTFValidationReport)
     case failed(String)
     case skipped(String)
 
-    var badgeTitle: String {
+    public var badgeTitle: String {
         switch self {
         case .success(let report): report.badgeTitle
         case .failed(let message): message
@@ -52,7 +52,7 @@ enum GLTFValidationState: Sendable, Equatable {
         }
     }
 
-    var report: GLTFValidationReport? {
+    public var report: GLTFValidationReport? {
         if case .success(let report) = self { return report }
         return nil
     }
@@ -60,23 +60,23 @@ enum GLTFValidationState: Sendable, Equatable {
 
 /// Runs the official Khronos `gltf-validator` (Dart→JS) inside `JavaScriptCore`.
 /// Does not block model open — call after first paint.
-enum GLTFValidator {
+public enum GLTFValidator {
     private static let scriptName = "gltf_validator.dart.js"
     private static let queue = DispatchQueue(label: "lol.mattias.gltf-inspector.gltf-validator", qos: .utility)
 
     /// Raw file/byte ceiling before base64→JavaScriptCore.
     /// Above this we soft-skip: Dart validator expands the asset via `atob` into a `Uint8Array`
     /// (~4/3 of raw size as base64 string, then another full copy as bytes), which can OOM.
-    static let maxRawAssetBytes = 48 * 1024 * 1024
+    public static let maxRawAssetBytes = 48 * 1024 * 1024
 
-    enum Error: Swift.Error, LocalizedError, Equatable {
+    public enum Error: Swift.Error, LocalizedError, Equatable {
         case scriptMissing
         case contextFailed
         case invalidReport
         case assetTooLarge(byteCount: Int, limit: Int)
         case validator(String)
 
-        var errorDescription: String? {
+        public var errorDescription: String? {
             switch self {
             case .scriptMissing:
                 return "Khronos glTF-Validator script missing from the app bundle."
@@ -98,20 +98,20 @@ enum GLTFValidator {
         }
 
         /// Soft-skip (size guard) vs hard unavailable (script/JSC/report failures).
-        var isSoftSkip: Bool {
+        public var isSoftSkip: Bool {
             if case .assetTooLarge = self { return true }
             return false
         }
     }
 
-    static func validate(fileAt url: URL, maxIssues: Int = 100) async throws -> GLTFValidationReport {
+    public static func validate(fileAt url: URL, maxIssues: Int = 100) async throws -> GLTFValidationReport {
         try rejectIfTooLarge(url: url)
         let data = try Data(contentsOf: url)
         let base = url.deletingLastPathComponent()
         return try await validate(data: data, uri: url.lastPathComponent, externalBase: base, maxIssues: maxIssues)
     }
 
-    static func validate(
+    public static func validate(
         data: Data,
         uri: String,
         externalBase: URL?,
@@ -215,10 +215,8 @@ enum GLTFValidator {
     }
 
     private static func loadScriptSource() throws -> String {
-        if let url = Bundle.main.url(forResource: "gltf_validator.dart", withExtension: "js")
-            ?? Bundle.main.url(forResource: scriptName, withExtension: nil)
-            ?? Bundle(for: BundleToken.self).url(forResource: "gltf_validator.dart", withExtension: "js")
-        {
+        // GLTFCore owns the script; `Bundle.main` is the host app or an appex, never this framework.
+        if let url = Bundle(for: BundleToken.self).url(forResource: "gltf_validator.dart", withExtension: "js") {
             return try String(contentsOf: url, encoding: .utf8)
         }
         // Worktree / test without copied resource: Vendor path next to sources.

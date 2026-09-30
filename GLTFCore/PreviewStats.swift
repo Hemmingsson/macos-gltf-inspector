@@ -3,30 +3,45 @@ import ImageIO
 
 /// Mesh / material / node / texture from the glTF JSON header. Animation count
 /// comes from converted usable clips, not `json["animations"]`.
-struct PreviewStats: Equatable {
-    struct Row: Equatable {
-        let label: String
-        let value: String
+public struct PreviewStats: Equatable {
+    public struct Row: Equatable {
+        public let label: String
+        public let value: String
     }
 
-    let triangleCount: Int
-    let vertexCount: Int
-    let materialCount: Int
-    let pbrLabel: String
-    let animationCount: Int
-    let textureCount: Int
+    public let triangleCount: Int
+    public let vertexCount: Int
+    public let materialCount: Int
+    public let pbrLabel: String
+    public let animationCount: Int
+    public let textureCount: Int
     /// Longest edge among decoded images (`max(width, height)`). Nil when unknown.
-    let maxTextureEdge: Int?
-    let hasVertexColors: Bool
-    let isRigged: Bool
-    let morphGeometryCount: Int
-    let fileSizeBytes: Int64?
+    public let maxTextureEdge: Int?
+    public let hasVertexColors: Bool
+    public let isRigged: Bool
+    public let morphGeometryCount: Int
+    public let fileSizeBytes: Int64?
 
-    static func from(json: [String: Any], fileSizeBytes: Int64? = nil) -> PreviewStats {
+    /// Placeholder before a model loads.
+    public static let empty = PreviewStats(
+        triangleCount: 0,
+        vertexCount: 0,
+        materialCount: 0,
+        pbrLabel: "—",
+        animationCount: 0,
+        textureCount: 0,
+        maxTextureEdge: nil,
+        hasVertexColors: false,
+        isRigged: false,
+        morphGeometryCount: 0,
+        fileSizeBytes: nil
+    )
+
+    public static func from(json: [String: Any], fileSizeBytes: Int64? = nil) -> PreviewStats {
         fromJSONCounts(json, animationCount: 0, fileSizeBytes: fileSizeBytes, resourceURL: nil)
     }
 
-    static func from(
+    public static func from(
         json: [String: Any],
         animationCount: Int,
         fileSizeBytes: Int64? = nil,
@@ -41,7 +56,7 @@ struct PreviewStats: Equatable {
     }
 
     /// One left-aligned fact per line for Quick Look. `noun` is the dimmed unit.
-    var overlayFacts: [Row] {
+    public var overlayFacts: [Row] {
         var lines: [Row] = []
         if triangleCount > 0 {
             lines.append(Row(label: "triangles", value: compact(triangleCount)))

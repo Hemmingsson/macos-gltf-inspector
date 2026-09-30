@@ -1,3 +1,4 @@
+import GLTFCore
 import SwiftUI
 
 /// Quick Look overlay fact list: value then dimmed noun, adjacent.

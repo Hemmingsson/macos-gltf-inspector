@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import PreviewUI
 
 /// IBL keys live on `AppLookStore`, not UserDefaults. Shared by the per-window overlay

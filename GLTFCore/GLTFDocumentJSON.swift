@@ -8,10 +8,10 @@ import simd
 /// `RealityPrepare` rewrite it — prepare turns spec-gloss into metal-rough, expands
 /// `EXT_mesh_gpu_instancing` into extra nodes, and strips extension lists, all of which
 /// would otherwise be reported as file truth.
-enum GLTFDocumentJSON {
+public enum GLTFDocumentJSON {
     /// `fileURL` is only needed for binary payloads (texture thumbs, keyframe times when an
     /// animation input accessor omits `min`/`max`). Structure parses without it.
-    static func makeDocument(json: [String: Any], fileURL: URL? = nil) -> GLTFSessionDocument {
+    public static func makeDocument(json: [String: Any], fileURL: URL? = nil) -> GLTFSessionDocument {
         makeDocument(json: json, binary: GLTFBinaryStore(json: json, fileURL: fileURL))
     }
 
@@ -69,7 +69,7 @@ enum GLTFDocumentJSON {
     /// `KHR_materials_variants` names, in file order. Empty when the extension is absent.
     /// Read from JSON so the variant picker lists what the file declares, even for a
     /// variant the renderer cannot show.
-    static func materialVariantNames(json: [String: Any]) -> [String] {
+    public static func materialVariantNames(json: [String: Any]) -> [String] {
         let extensions = json["extensions"] as? [String: Any] ?? [:]
         let variants = (extensions["KHR_materials_variants"] as? [String: Any])?["variants"]
         guard let entries = variants as? [[String: Any]], !entries.isEmpty else { return [] }
@@ -503,7 +503,7 @@ enum GLTFDocumentJSON {
             }
         }
         let jointNames = joints.enumerated().map { offset, nodeIndex in
-            Skin.resolvedName(nodes[nodeIndex]["name"] as? String, index: offset)
+            JointNames.resolved(nodes[nodeIndex]["name"] as? String, index: offset)
         }
         // Parent index is into *this skin's* joint list, not the node list; roots stay nil.
         let jointParentIndices: [Int?] = joints.map { nodeIndex in

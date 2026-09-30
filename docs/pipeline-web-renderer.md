@@ -70,7 +70,7 @@ Classic scripts before the module, or construction throws:
 Thumbnail, Quick Look, and a new document window must agree on lighting and tone mapping.
 
 All settings live in the App Group `94A9N4B67S.lol.mattias.gltf-inspector`, which the host
-and both extensions claim (`Shared/AppGroupSettings.swift`): `settings.*` keys in the group's
+and both extensions claim (`GLTFCore/AppGroupSettings.swift`): `settings.*` keys in the group's
 `UserDefaults` suite, `look.json` + custom `ibl/` in the group container.
 `AppGroupSettings.rendererLook()` returns the environment catalog stem (from `look.json`) and
 the Khronos tone-map name (from the suite). Each process registers the same fresh-install

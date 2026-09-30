@@ -1,13 +1,13 @@
+import GLTFCore
 import GLTFKit2
 
 enum Skin {
     static func synthesizedName(index: Int) -> String {
-        "joint-\(index)"
+        JointNames.synthesized(index: index)
     }
 
     static func resolvedName(_ raw: String?, index: Int) -> String {
-        let name = raw ?? ""
-        return name.isEmpty ? synthesizedName(index: index) : name
+        JointNames.resolved(raw, index: index)
     }
 
     static func jointIndex(of node: GLTFNode, in skins: [GLTFSkin]) -> Int? {

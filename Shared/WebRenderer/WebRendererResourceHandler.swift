@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import WebKit
 
 /// Serves the bundled renderer and the file under inspection over a private scheme.

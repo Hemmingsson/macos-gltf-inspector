@@ -1,4 +1,5 @@
 import CoreGraphics
+import GLTFCore
 import ImageIO
 import RealityKit
 import SwiftUI
@@ -156,12 +157,6 @@ enum PreviewLighting {
         }
     }
 
-    static func catalogURL(_ environment: KhronosEnvironments, bundle: Bundle = .main) -> URL? {
-        let name = environment.rawValue
-        return bundle.url(forResource: name, withExtension: "hdr", subdirectory: "khronos")
-            ?? bundle.url(forResource: name, withExtension: "hdr")
-    }
-
     static func canDecodeHDR(at url: URL) -> Bool {
         loadEquirectangular(from: url) != nil
     }
@@ -181,7 +176,7 @@ enum PreviewLighting {
     }
 
     private static func hdrURL() -> URL? {
-        catalogURL(KhronosEnvironments.defaultLook)
+        KhronosEnvironments.defaultLook.bundledURL
     }
 
     static func loadEquirectangular(from url: URL) -> CGImage? {

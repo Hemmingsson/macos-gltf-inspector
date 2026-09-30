@@ -1,4 +1,5 @@
 import AppKit
+import GLTFCore
 import SwiftUI
 
 /// Centered spinner + honest file facts while the live web view stays hidden.

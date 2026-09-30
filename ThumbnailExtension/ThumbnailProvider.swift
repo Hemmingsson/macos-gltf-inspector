@@ -1,3 +1,4 @@
+import GLTFCore
 import QuickLookThumbnailing
 import CoreGraphics
 import Foundation
@@ -67,7 +68,7 @@ class ThumbnailProvider: QLThumbnailProvider {
 
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
-        try StillRenderer.writePNG(image, to: fileURL)
+        try PNGWriter.write(image, to: fileURL)
 
         AppLog.info(
             AppLog.webRenderer,

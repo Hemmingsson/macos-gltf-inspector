@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import GLTFCore
 import RealityKit
 
 /// glTF-relevant preview debug modes. The cycle list is filtered per asset.

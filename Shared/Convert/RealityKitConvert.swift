@@ -2,6 +2,7 @@
 // Packed accessor helpers live in PackedAccessors.swift. Patched: sheen, transmission, POINTS, unnamed joints.
 
 import AppKit
+import GLTFCore
 import RealityKit
 import GLTFKit2
 import simd

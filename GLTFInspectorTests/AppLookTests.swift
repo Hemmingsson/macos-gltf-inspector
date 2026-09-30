@@ -1,4 +1,5 @@
 import Foundation
+@testable import GLTFCore
 import Testing
 @testable import GLTFInspector
 
@@ -88,7 +89,7 @@ struct AppLookTests {
     }
 
     @Test func studioNeutralHDRIsInBundle() {
-        #expect(PreviewLighting.catalogURL(.studioNeutral) != nil)
+        #expect(KhronosEnvironments.studioNeutral.bundledURL != nil)
     }
 
     @Test @MainActor func storeApplyPersistsToInjectedDirectory() throws {

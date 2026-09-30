@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+@testable import GLTFCore
 import RealityKit
 import Testing
 import simd
@@ -95,7 +96,7 @@ struct StillCameraPoseTests {
         #expect(image.height == 180)
 
         let out = URL(fileURLWithPath: "/tmp/GLTFInspector-pose-screenshot-proof.png")
-        try StillRenderer.writePNG(image, to: out)
+        try PNGWriter.write(image, to: out)
         let attrs = try FileManager.default.attributesOfItem(atPath: out.path)
         #expect((attrs[.size] as? NSNumber)?.intValue ?? 0 > 800)
     }

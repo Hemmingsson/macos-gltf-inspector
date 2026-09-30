@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 
 /// Convert/render losses — “did we drop or fake something?”, not Khronos spec validity.
 struct ConvertProblem: Equatable, Sendable {

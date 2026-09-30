@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import GLTFKit2
 import simd
 

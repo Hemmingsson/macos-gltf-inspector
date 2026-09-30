@@ -1,4 +1,5 @@
 import AppKit
+import GLTFCore
 import SwiftUI
 
 enum PreviewBackground: String, CaseIterable, Identifiable {

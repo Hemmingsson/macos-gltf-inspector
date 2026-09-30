@@ -66,15 +66,44 @@ targets:
           ARCHS: arm64 x86_64
           ONLY_ACTIVE_ARCH: NO
 
+  # Renderer-neutral, extension-safe core: glTF file model, validator, stats, App Group
+  # settings, bundled Khronos HDRs. Linked by the host (embedded once), both extensions and the
+  # tests. Must not import RealityKit, WebKit, AppKit or PreviewUI.
+  GLTFCore:
+    type: framework
+    platform: macOS
+    sources:
+      - GLTFCore
+      - path: assets/ibl/khronos
+        type: file
+        buildPhase: resources
+      - path: Vendor/gltf-validator
+        includes:
+          - gltf_validator.dart.js
+          - LICENSE
+          - NOTICES
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.GLTFCore
+        PRODUCT_MODULE_NAME: GLTFCore
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        APPLICATION_EXTENSION_API_ONLY: YES
+      configs:
+        Debug:
+          ENABLE_TESTABILITY: YES
+        Release:
+          ARCHS: arm64 x86_64
+          ONLY_ACTIVE_ARCH: NO
+
   GLTFInspector:
     type: application
     platform: macOS
     sources:
       - GLTFInspector
       - path: assets/ICON.icon
-        type: file
-        buildPhase: resources
-      - path: assets/ibl/khronos
         type: file
         buildPhase: resources
       - path: Shared
@@ -88,12 +117,6 @@ targets:
       - path: Shared/WebRenderer
         includes:
           - "*.swift"
-      - path: Vendor/gltf-validator
-        includes:
-          - gltf_validator.dart.js
-          - LICENSE
-          - NOTICES
-        buildPhase: resources
       - path: Vendor/web-renderer
         type: file
         buildPhase: resources
@@ -180,6 +203,8 @@ targets:
           CODE_SIGN_IDENTITY: "Developer ID Application"
           ENABLE_TESTABILITY: NO
     dependencies:
+      - target: GLTFCore
+        embed: true
       - target: PreviewUI
         embed: true
       - target: PreviewExtension
@@ -198,9 +223,6 @@ targets:
       - path: PreviewExtension
         includes:
           - "*.swift"
-      - path: assets/ibl/khronos
-        type: file
-        buildPhase: resources
       - path: Vendor/web-renderer
         type: file
         buildPhase: resources
@@ -210,7 +232,6 @@ targets:
           - GLBDracoDecompressor.mm
           - GLBTry.mm
         excludes:
-          - GLTFValidator.swift
           - PreviewFocus.swift
           - PreviewMorph.swift
           - SelectionDetail.swift
@@ -225,7 +246,7 @@ targets:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        # Settings live in the App Group shared with the host (Shared/AppGroupSettings.swift).
+        # Settings live in the App Group shared with the host (GLTFCore/AppGroupSettings.swift).
         com.apple.security.application-groups:
           - 94A9N4B67S.lol.mattias.gltf-inspector
         com.apple.security.files.user-selected.read-only: true
@@ -258,6 +279,8 @@ targets:
         SKIP_INSTALL: YES
         ENABLE_DEBUG_DYLIB: NO
     dependencies:
+      - target: GLTFCore
+        embed: false
       - package: GLTFKit2
       - package: DracoSwift
 
@@ -266,9 +289,6 @@ targets:
     platform: macOS
     sources:
       - ThumbnailExtension
-      - path: assets/ibl/khronos
-        type: file
-        buildPhase: resources
       - path: Vendor/web-renderer
         type: file
         buildPhase: resources
@@ -285,7 +305,6 @@ targets:
           - PreviewOverlayFacts.swift
           - PreviewFloor.swift
           - AppSettings.swift
-          - GLTFValidator.swift
           - PreviewFocus.swift
           - PreviewMorph.swift
           - SelectionDetail.swift
@@ -303,7 +322,7 @@ targets:
       path: ThumbnailExtension/ThumbnailExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        # Settings live in the App Group shared with the host (Shared/AppGroupSettings.swift).
+        # Settings live in the App Group shared with the host (GLTFCore/AppGroupSettings.swift).
         com.apple.security.application-groups:
           - 94A9N4B67S.lol.mattias.gltf-inspector
         com.apple.security.files.user-selected.read-only: true
@@ -335,6 +354,8 @@ targets:
         SKIP_INSTALL: YES
         ENABLE_DEBUG_DYLIB: NO
     dependencies:
+      - target: GLTFCore
+        embed: false
       - package: GLTFKit2
       - package: DracoSwift
 
@@ -343,9 +364,6 @@ targets:
     platform: macOS
     sources:
       - GLTFInspectorTests
-      - path: assets/ibl/khronos
-        type: file
-        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.tests
@@ -355,6 +373,8 @@ targets:
         BUNDLE_LOADER: "$(TEST_HOST)"
     dependencies:
       - target: GLTFInspector
+      - target: GLTFCore
+        embed: false
       - target: PreviewUI
       - package: GLTFKit2
       - package: DracoSwift

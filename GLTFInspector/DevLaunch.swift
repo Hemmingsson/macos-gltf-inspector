@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import GLTFCore
 
 #if DEBUG
 /// Reads `scripts/fixtures.manifest.json` under `GLTF_REPO_ROOT` for dev launches.

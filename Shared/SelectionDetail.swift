@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import simd
 
 /// Inspector fields for one selected node — only what `GLTFSessionDocument` already stores.

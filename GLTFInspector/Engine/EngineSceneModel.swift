@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import PreviewUI
 import RealityKit
 import simd

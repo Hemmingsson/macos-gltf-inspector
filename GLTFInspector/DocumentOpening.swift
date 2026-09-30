@@ -1,4 +1,5 @@
 import AppKit
+import GLTFCore
 import SwiftUI
 import UniformTypeIdentifiers
 

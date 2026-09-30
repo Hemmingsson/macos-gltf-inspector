@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import Observation
 import PreviewUI
 import simd

@@ -1,4 +1,5 @@
 import Cocoa
+import GLTFCore
 import QuickLookUI
 import SwiftUI
 

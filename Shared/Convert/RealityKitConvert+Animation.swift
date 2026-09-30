@@ -1,3 +1,4 @@
+import GLTFCore
 import RealityKit
 import GLTFKit2
 

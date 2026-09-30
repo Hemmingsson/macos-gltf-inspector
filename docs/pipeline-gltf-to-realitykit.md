@@ -513,7 +513,7 @@ orbit controls, clip playback. Convert ends at the entity subtree; mount applies
 
 ### Validation (async)
 
-Khronos validator (`Shared/GLTFValidator.swift`) runs on the host **in parallel** with
+Khronos validator (`GLTFCore/GLTFValidator.swift`) runs on the host **in parallel** with
 `EntityLoader.load` — validates the **original document URL** on disk (not prepared temp bytes).
 Soft-skips assets `> 48` MB. Does not gate load success; merged into UI via
 `replacingValidation`. Not run for Finder thumbnails.
@@ -542,15 +542,15 @@ the enum but is not logged when nil materials get the gray default.)
 | Area | Files |
 | --- | --- |
 | Orchestration | `Shared/EntityLoader.swift` |
-| Pack / peek JSON | `Shared/GLBBox.swift` |
+| Pack / peek JSON | `GLTFCore/GLBBox.swift` (read), `Shared/GLBBox+Write.swift` (pack / serialize) |
 | Prepare | `Shared/MetalRoughPrepare.swift`, `Shared/RealityPrepare.swift` |
 | Variants | `Shared/MaterialVariants.swift` |
 | Animation sampling | `Shared/Convert/AnimationHelpers.swift` (`AnimationSampling`) |
 | Parse | GLTFKit2 `GLTFAsset` |
 | Convert | `Shared/Convert/RealityKitConvert*.swift`, `Shared/Convert/RealityKitResourceContext.swift` |
-| Session document | `Shared/GLTFSessionDocument.swift`, `Shared/Convert/RealityKitConvert+Document.swift` |
+| Session document | `GLTFCore/GLTFSessionDocument.swift`, `GLTFCore/GLTFDocumentJSON.swift`, `Shared/Convert/RealityKitConvert+Document.swift` |
 | Reports | `Shared/PreparePipelineReport.swift`, `Shared/ConvertProblemReport.swift` |
-| Validation | `Shared/GLTFValidator.swift` |
+| Validation | `GLTFCore/GLTFValidator.swift` |
 | Mount / view | `Shared/PreviewScene.swift`, `Shared/PreviewView.swift`, `Shared/PreviewLighting.swift`, `Shared/PreviewCamera.swift` |
 | Thumbnail | `ThumbnailExtension/ThumbnailProvider.swift`, `Shared/StillRenderer.swift` |
 | Host wiring | `GLTFInspector/HostShellRootView.swift` |

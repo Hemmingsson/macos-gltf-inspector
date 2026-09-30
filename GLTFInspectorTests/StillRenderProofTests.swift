@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+@testable import GLTFCore
 import Testing
 @testable import GLTFInspector
 
@@ -30,7 +31,7 @@ struct StillRenderProofTests {
             fileURLWithPath: ProcessInfo.processInfo.environment["GLB_PROOF_PNG"]
                 ?? "/tmp/GLTFInspector-proof.png"
         )
-        try StillRenderer.writePNG(image, to: out)
+        try PNGWriter.write(image, to: out)
         #expect(FileManager.default.fileExists(atPath: out.path))
         #expect(try Self.modelCoverage(image) > 0.005, "tiny.glb rendered as an empty frame")
     }
@@ -72,7 +73,7 @@ struct StillRenderProofTests {
             fileURLWithPath: ProcessInfo.processInfo.environment["GLB_CUBE_PROOF_PNG"]
                 ?? "/tmp/GLTFInspector-cube-proof.png"
         )
-        try StillRenderer.writePNG(image, to: out)
+        try PNGWriter.write(image, to: out)
         #expect(try Self.modelCoverage(image) > 0.05, "cube rendered as an empty frame")
     }
 

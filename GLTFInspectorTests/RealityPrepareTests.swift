@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+@testable import GLTFCore
 import RealityKit
 import Testing
 import simd

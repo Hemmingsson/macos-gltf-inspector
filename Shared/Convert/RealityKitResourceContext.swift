@@ -1,4 +1,5 @@
 import Accelerate
+import GLTFCore
 import GLTFKit2
 import Metal
 import RealityKit

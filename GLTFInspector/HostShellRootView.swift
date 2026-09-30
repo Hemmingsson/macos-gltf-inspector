@@ -1,4 +1,5 @@
 import AppKit
+import GLTFCore
 import PreviewUI
 import RealityKit
 import SwiftUI
@@ -162,7 +163,7 @@ struct HostShellRootView: View {
         return EngineSceneModel(
             fileName: fileName,
             document: GLTFSessionDocument(),
-            stats: Self.emptyStats,
+            stats: PreviewStats.empty,
             dimensions: Dimensions(width: 0, height: 0, depth: 0, authoredOrigin: .zero),
             validation: validation,
             pipelineReport: PreparePipelineReport(),
@@ -567,20 +568,6 @@ struct HostShellRootView: View {
             }
         }
     }
-
-    private static let emptyStats = PreviewStats(
-        triangleCount: 0,
-        vertexCount: 0,
-        materialCount: 0,
-        pbrLabel: "—",
-        animationCount: 0,
-        textureCount: 0,
-        maxTextureEdge: nil,
-        hasVertexColors: false,
-        isRigged: false,
-        morphGeometryCount: 0,
-        fileSizeBytes: nil
-    )
 }
 
 private func fileSize(_ url: URL) -> Int64 {

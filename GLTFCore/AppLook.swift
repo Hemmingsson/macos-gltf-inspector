@@ -1,50 +1,64 @@
 import Foundation
 
-enum KhronosEnvironments: String, CaseIterable, Sendable {
+public enum KhronosEnvironments: String, CaseIterable, Sendable {
     case field = "field"
     case studioNeutral = "neutral"
     case colorfulStudio = "Colorful_Studio"
 
-    static var defaultLook: Self { .studioNeutral }
+    public static var defaultLook: Self { .studioNeutral }
 
-    var title: String {
+    public var title: String {
         switch self {
         case .field: "Field"
         case .studioNeutral: "Studio Neutral"
         case .colorfulStudio: "Colorful Studio"
         }
     }
+
+    /// The bundled `khronos/` HDR folder. It ships once, inside GLTFCore.framework; the host and
+    /// both extensions resolve it here. `Bundle.main` is the appex in an extension, so never
+    /// look there.
+    public static var bundledDirectory: URL? {
+        Bundle(for: CoreBundleToken.self).url(forResource: "khronos", withExtension: nil)
+    }
+
+    /// This environment's bundled `.hdr`; nil when it is missing from the bundle.
+    public var bundledURL: URL? {
+        Bundle(for: CoreBundleToken.self).url(forResource: rawValue, withExtension: "hdr", subdirectory: "khronos")
+    }
 }
 
-struct AppLook: Codable, Equatable, Sendable {
-    var useEnvironmentMap: Bool
-    var catalogRaw: String
-    var customFileName: String?
+private final class CoreBundleToken {}
 
-    static let `default` = AppLook(
+public struct AppLook: Codable, Equatable, Sendable {
+    public var useEnvironmentMap: Bool
+    public var catalogRaw: String
+    public var customFileName: String?
+
+    public static let `default` = AppLook(
         useEnvironmentMap: true,
         catalogRaw: KhronosEnvironments.studioNeutral.rawValue,
         customFileName: nil
     )
 
-    var catalog: KhronosEnvironments {
+    public var catalog: KhronosEnvironments {
         KhronosEnvironments(rawValue: catalogRaw) ?? .studioNeutral
     }
 
     /// App Group container — the same directory in the host and both extensions.
-    static func supportDirectory() -> URL {
+    public static func supportDirectory() -> URL {
         AppGroupSettings.containerURL
     }
 
-    static func lookURL(in directory: URL) -> URL {
+    public static func lookURL(in directory: URL) -> URL {
         directory.appendingPathComponent("look.json")
     }
 
-    static func iblDirectory(in directory: URL) -> URL {
+    public static func iblDirectory(in directory: URL) -> URL {
         directory.appendingPathComponent("ibl", isDirectory: true)
     }
 
-    static func load(from directory: URL) -> AppLook {
+    public static func load(from directory: URL) -> AppLook {
         let url = lookURL(in: directory)
         guard let data = try? Data(contentsOf: url),
               var look = try? JSONDecoder().decode(AppLook.self, from: data)
@@ -58,7 +72,7 @@ struct AppLook: Codable, Equatable, Sendable {
         return look
     }
 
-    func save(to directory: URL) {
+    public func save(to directory: URL) {
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(self)
@@ -68,44 +82,40 @@ struct AppLook: Codable, Equatable, Sendable {
         }
     }
 
-    static var current: AppLook {
+    public static var current: AppLook {
         load(from: supportDirectory())
     }
 
-    func resolvedHDRURL(bundle: Bundle = .main) -> URL? {
-        resolvedHDRURL(in: Self.supportDirectory(), bundle: bundle)
+    public func resolvedHDRURL() -> URL? {
+        resolvedHDRURL(in: Self.supportDirectory())
     }
 
-    func resolvedHDRURL(in directory: URL, bundle: Bundle = .main) -> URL? {
+    public func resolvedHDRURL(in directory: URL) -> URL? {
         if let name = customFileName, !name.isEmpty {
             let custom = Self.iblDirectory(in: directory).appendingPathComponent(name)
             if FileManager.default.fileExists(atPath: custom.path) {
                 return custom
             }
         }
-        return Self.catalogURL(catalog, bundle: bundle)
-    }
-
-    private static func catalogURL(_ environment: KhronosEnvironments, bundle: Bundle) -> URL? {
-        PreviewLighting.catalogURL(environment, bundle: bundle)
+        return catalog.bundledURL
     }
 }
 
 @MainActor
 @Observable
-final class AppLookStore {
-    static let shared = AppLookStore(directory: AppLook.supportDirectory())
+public final class AppLookStore {
+    public static let shared = AppLookStore(directory: AppLook.supportDirectory())
 
     /// App Group container (or test) directory that holds `look.json` + `ibl/`.
-    let directory: URL
-    var look: AppLook
+    public let directory: URL
+    public var look: AppLook
 
-    init(directory: URL) {
+    public init(directory: URL) {
         self.directory = directory
         self.look = AppLook.load(from: directory)
     }
 
-    func apply(_ look: AppLook) {
+    public func apply(_ look: AppLook) {
         self.look = look
         look.save(to: directory)
     }
