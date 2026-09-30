@@ -136,6 +136,38 @@ targets:
       - package: GLTFKit2
       - package: DracoSwift
 
+  # WebKit renderer: one WKWebView page (the vendored Khronos glTF Sample Renderer) driven from
+  # Swift — host, scheme handler, command bridge, the SwiftUI canvas. Extension-safe. The page
+  # ships once, inside this framework; `WebRendererHost` finds it with `Bundle(for:)` (the HDRs
+  # come from GLTFCore).
+  RendererWebKit:
+    type: framework
+    platform: macOS
+    sources:
+      - path: RendererWebKit
+        excludes:
+          - web-renderer
+      - path: RendererWebKit/web-renderer
+        type: file
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.RendererWebKit
+        PRODUCT_MODULE_NAME: RendererWebKit
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        APPLICATION_EXTENSION_API_ONLY: YES
+      configs:
+        Debug:
+          ENABLE_TESTABILITY: YES
+        Release:
+          ARCHS: arm64 x86_64
+          ONLY_ACTIVE_ARCH: NO
+    dependencies:
+      - target: GLTFCore
+        embed: false
+
   GLTFInspector:
     type: application
     platform: macOS
@@ -145,9 +177,6 @@ targets:
         type: file
         buildPhase: resources
       - Shared
-      - path: Vendor/web-renderer
-        type: file
-        buildPhase: resources
     # Not sandboxed. The only entitlement is the App Group, so Settings (group suite + look.json
     # in the group container) is visible to both extensions.
     entitlements:
@@ -235,6 +264,8 @@ targets:
         embed: true
       - target: RendererRealityKit
         embed: true
+      - target: RendererWebKit
+        embed: true
       - target: PreviewUI
         embed: true
       - target: PreviewExtension
@@ -255,14 +286,10 @@ targets:
       - path: PreviewExtension
         includes:
           - "*.swift"
-      - path: Vendor/web-renderer
-        type: file
-        buildPhase: resources
       - path: Shared
         includes:
           - PreviewView.swift
           - PreviewHosting.swift
-      - Shared/WebRenderer
     entitlements:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:
@@ -304,16 +331,14 @@ targets:
         embed: false
       - target: RendererRealityKit
         embed: false
+      - target: RendererWebKit
+        embed: false
 
   ThumbnailExtension:
     type: app-extension
     platform: macOS
     sources:
       - ThumbnailExtension
-      - path: Vendor/web-renderer
-        type: file
-        buildPhase: resources
-      - Shared/WebRenderer
     entitlements:
       path: ThumbnailExtension/ThumbnailExtension.entitlements
       properties:
@@ -352,6 +377,8 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: false
+      - target: RendererWebKit
+        embed: false
 
   GLTFInspectorTests:
     type: bundle.unit-test
@@ -370,5 +397,7 @@ targets:
       - target: GLTFCore
         embed: false
       - target: RendererRealityKit
+        embed: false
+      - target: RendererWebKit
         embed: false
       - target: PreviewUI

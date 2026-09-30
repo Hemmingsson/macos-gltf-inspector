@@ -1,5 +1,6 @@
 import Foundation
 import PreviewUI
+import RendererWebKit
 
 /// Maps the seam's look vocabulary onto the web renderer's.
 ///

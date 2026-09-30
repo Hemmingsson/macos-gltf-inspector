@@ -1,5 +1,6 @@
 import GLTFCore
 import QuickLookThumbnailing
+import RendererWebKit
 import CoreGraphics
 import Foundation
 
@@ -91,7 +92,7 @@ class ThumbnailProvider: QLThumbnailProvider {
         try await host.start(size: pixel)
         // Cheap first call: load proceeds without waiting on HDR. `renderStill` joins IBL.
         try await host.setEnvironment(named: environment)
-        try await host.send { .setToneMapping(id: $0, name: toneMapping) }
+        try await host.setToneMapping(named: toneMapping)
         shared = SharedHost(host: host, environment: environment, toneMapping: toneMapping)
         return host
     }

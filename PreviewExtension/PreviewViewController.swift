@@ -2,6 +2,7 @@ import Cocoa
 import GLTFCore
 import QuickLookUI
 import RendererRealityKit
+import RendererWebKit
 import SwiftUI
 
 class PreviewViewController: NSViewController, QLPreviewingController {

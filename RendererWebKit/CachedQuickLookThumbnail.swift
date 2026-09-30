@@ -10,12 +10,12 @@ import UniformTypeIdentifiers
 /// generator. `icon(forFile:)` reads the current icon; a never-thumbnailed file matches
 /// the UTI icon and we skip so QL does not flash a generic document glyph.
 @MainActor
-enum CachedQuickLookThumbnail {
+public enum CachedQuickLookThumbnail {
     private static let compareSize = CGSize(width: 128, height: 128)
     /// Fraction of 128² pixels that must differ before we treat the file icon as a real thumb.
     private static let differenceFloor = 0.08
 
-    static func existingIcon(for url: URL) -> NSImage? {
+    public static func existingIcon(for url: URL) -> NSImage? {
         let fileIcon = NSWorkspace.shared.icon(forFile: url.path)
         let typeIcon = Self.typeIcon(for: url)
         guard differsFromTypeIcon(fileIcon, typeIcon: typeIcon) else { return nil }

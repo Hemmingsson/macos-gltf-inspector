@@ -2,6 +2,7 @@ import AppKit
 import GLTFCore
 import PreviewUI
 import RendererRealityKit
+import RendererWebKit
 import SwiftUI
 
 /// Document window root: PreviewUI `ShellRootView` + engine adapters + real `PreviewView` canvas.

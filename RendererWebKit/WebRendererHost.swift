@@ -12,10 +12,10 @@ import WebKit
 /// `canvas.toDataURL()` rather than `takeSnapshot`, so nothing depends on the view being
 /// layer-backed or on screen. In `.live` the same page renders continuously into `view`.
 @MainActor
-final class WebRendererHost: NSObject {
+public final class WebRendererHost: NSObject {
     /// Model, environment and stats reported by the page after a load.
-    struct LoadInfo: Equatable {
-        var triangles: Int
+    public struct LoadInfo: Equatable {
+        public var triangles: Int
         var meshes: Int
         var sceneCount: Int
         var animationCount: Int
@@ -53,7 +53,7 @@ final class WebRendererHost: NSObject {
     /// The renderer surface, for `.live` hosting. Untouched in `.still`.
     var view: NSView { webView }
 
-    init(mode: WebRendererMode, timeout: Duration = .seconds(15)) throws {
+    public init(mode: WebRendererMode, timeout: Duration = .seconds(15)) throws {
         let bundle = Bundle(for: WebRendererHost.self)
         guard let rendererRoot = bundle.url(forResource: "web-renderer", withExtension: nil) else {
             throw WebRendererError.missingRendererBundle
@@ -85,7 +85,7 @@ final class WebRendererHost: NSObject {
 
     /// Loads the page and resolves once it reports `ready`. Safe to call repeatedly; the work
     /// happens once.
-    func start(size: Int? = nil) async throws {
+    public func start(size: Int? = nil) async throws {
         if let startTask {
             try await startTask.value
             if let size {
@@ -140,7 +140,7 @@ final class WebRendererHost: NSObject {
     /// Does not wait for HDR IBL. A prior `setEnvironment` is optional; the page draws
     /// key+fill until the probe lands. IBL is kicked off after `loadGltf` returns.
     @discardableResult
-    func load(model url: URL) async throws -> LoadInfo {
+    public func load(model url: URL) async throws -> LoadInfo {
         resources.setModel(url)
         let name = url.lastPathComponent.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? url.lastPathComponent
         let event = try await send {
@@ -164,12 +164,17 @@ final class WebRendererHost: NSObject {
     /// Records the bundled `.hdr` stem. Before the first model load this is a cheap
     /// bookkeeping call — the HDR fetch runs after `load` so first paint is not gated on IBL.
     /// After a model is on screen, a new name applies immediately (look changes).
-    func setEnvironment(named name: String) async throws {
+    public func setEnvironment(named name: String) async throws {
         pendingEnvironmentName = name
         guard hasLoadedModel else { return }
         try await finishEnvironment()
         if appliedEnvironmentName == name { return }
         try await applyEnvironment(named: name)
+    }
+
+    /// Khronos `GltfState.ToneMaps` value, by name.
+    public func setToneMapping(named name: String) async throws {
+        try await send { .setToneMapping(id: $0, name: name) }
     }
 
     /// Evaluates an expression in the page and returns it as a string.
@@ -207,7 +212,7 @@ final class WebRendererHost: NSObject {
     /// a live host from grabbing a frame.
     ///
     /// Joins deferred IBL first so a thumbnail taken after `load` is still a lit model.
-    func renderStill() async throws -> CGImage {
+    public func renderStill() async throws -> CGImage {
         try await finishEnvironment()
         let event = try await send { .renderStill(id: $0) }
         guard
@@ -303,7 +308,7 @@ final class WebRendererHost: NSObject {
 // MARK: - Page messages
 
 extension WebRendererHost: WKScriptMessageHandler {
-    nonisolated func userContentController(
+    public nonisolated func userContentController(
         _ controller: WKUserContentController,
         didReceive message: WKScriptMessage
     ) {
@@ -357,7 +362,7 @@ extension WebRendererHost: WKScriptMessageHandler {
 // MARK: - Navigation failures
 
 extension WebRendererHost: WKNavigationDelegate {
-    nonisolated func webView(
+    public nonisolated func webView(
         _ webView: WKWebView,
         didFailProvisionalNavigation navigation: WKNavigation!,
         withError error: Error
@@ -367,7 +372,7 @@ extension WebRendererHost: WKNavigationDelegate {
         }
     }
 
-    nonisolated func webView(
+    public nonisolated func webView(
         _ webView: WKWebView,
         didFail navigation: WKNavigation!,
         withError error: Error
@@ -379,7 +384,7 @@ extension WebRendererHost: WKNavigationDelegate {
 
     /// A seatbelt denial surfaces here, not as a navigation error. Adding
     /// `com.apple.security.network.client` to a sandboxed target is what prevents it.
-    nonisolated func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    public nonisolated func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         MainActor.assumeIsolated {
             failAll(WebRendererError.webContentTerminated)
         }

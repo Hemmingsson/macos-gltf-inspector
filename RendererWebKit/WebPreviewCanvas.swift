@@ -37,42 +37,78 @@ private struct WebCanvasLoadingChrome: View {
 /// First step of the viewport migration: this replaces `PreviewScene`'s `RealityView` as the
 /// thing that draws the model. Sidebar, inspector and overlays still read the RealityKit
 /// document — decoupling those is `SceneModel from glTF JSON`, a separate task.
-struct WebPreviewCanvas: NSViewRepresentable {
+public struct WebPreviewCanvas: NSViewRepresentable {
     /// Look settings as plain values.
     ///
     /// Deliberately not `LightingSettings`: that type lives in `PreviewUI`, which the Quick Look
     /// and thumbnail extensions do not link. Keeping this primitive is what lets one canvas serve
     /// all three surfaces.
-    struct Look: Equatable {
+    public struct Look: Equatable {
         /// Bundled `.hdr` stem — `neutral`, `field`, `Colorful_Studio`.
-        var environment: String = AppGroupSettings.defaultEnvironment
+        var environment: String
         /// Khronos `GltfState.ToneMaps` value.
-        var toneMapping: String = AppGroupSettings.defaultToneMapping
+        var toneMapping: String
         /// Exposure compensation in stops.
-        var exposure: Double = 0
+        var exposure: Double
         /// Environment yaw in degrees.
-        var environmentRotation: Double = 0
+        var environmentRotation: Double
         /// Backdrop as `[r, g, b, a]` in 0-1. Alpha 0 shows the host window through.
-        var backdrop: [Double] = [0, 0, 0, 0]
-        var autoRotates = false
+        var backdrop: [Double]
+        var autoRotates: Bool
         /// `perspective` or `orthographic`.
-        var projection = "perspective"
+        var projection: String
         /// Vertical field of view in degrees.
-        var fieldOfView: Double = 45
+        var fieldOfView: Double
         /// Khronos `GltfState.DebugOutput` value; `None` for normal shading.
-        var debugChannel = "None"
+        var debugChannel: String
         /// Camera authored in the file, or nil for the user camera.
         var fileCameraIndex: Int?
         /// `KHR_materials_variants` index, or nil for the file default.
         var materialVariantIndex: Int?
         /// Scene index.
-        var sceneIndex: Int = 0
-        var showsFloor = true
+        var sceneIndex: Int
+        var showsFloor: Bool
         /// False shows the authored-origin gizmo and frames so the origin is visible.
-        var isCentered = true
-        var wireframe = false
+        var isCentered: Bool
+        var wireframe: Bool
         /// glTF node index highlighted on the canvas.
         var selectedNodeIndex: Int?
+
+        public init(
+            environment: String = AppGroupSettings.defaultEnvironment,
+            toneMapping: String = AppGroupSettings.defaultToneMapping,
+            exposure: Double = 0,
+            environmentRotation: Double = 0,
+            backdrop: [Double] = [0, 0, 0, 0],
+            autoRotates: Bool = false,
+            projection: String = "perspective",
+            fieldOfView: Double = 45,
+            debugChannel: String = "None",
+            fileCameraIndex: Int? = nil,
+            materialVariantIndex: Int? = nil,
+            sceneIndex: Int = 0,
+            showsFloor: Bool = true,
+            isCentered: Bool = true,
+            wireframe: Bool = false,
+            selectedNodeIndex: Int? = nil
+        ) {
+            self.environment = environment
+            self.toneMapping = toneMapping
+            self.exposure = exposure
+            self.environmentRotation = environmentRotation
+            self.backdrop = backdrop
+            self.autoRotates = autoRotates
+            self.projection = projection
+            self.fieldOfView = fieldOfView
+            self.debugChannel = debugChannel
+            self.fileCameraIndex = fileCameraIndex
+            self.materialVariantIndex = materialVariantIndex
+            self.sceneIndex = sceneIndex
+            self.showsFloor = showsFloor
+            self.isCentered = isCentered
+            self.wireframe = wireframe
+            self.selectedNodeIndex = selectedNodeIndex
+        }
     }
 
     let url: URL
@@ -82,11 +118,23 @@ struct WebPreviewCanvas: NSViewRepresentable {
     /// Live host already constructed (Quick Look `loadView` prestart). Nil in the document window.
     var host: WebRendererHost? = nil
 
-    func makeCoordinator() -> Coordinator {
+    public init(
+        url: URL,
+        look: Look = Look(),
+        placeholderImage: NSImage? = nil,
+        host: WebRendererHost? = nil
+    ) {
+        self.url = url
+        self.look = look
+        self.placeholderImage = placeholderImage
+        self.host = host
+    }
+
+    public func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
-    func makeNSView(context: Context) -> NSView {
+    public func makeNSView(context: Context) -> NSView {
         let container = ContainerView()
         context.coordinator.attach(
             to: container, url: url, look: look, placeholder: placeholderImage, existing: host
@@ -94,12 +142,12 @@ struct WebPreviewCanvas: NSViewRepresentable {
         return container
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
+    public func updateNSView(_ nsView: NSView, context: Context) {
         context.coordinator.setPlaceholder(placeholderImage, in: nsView)
         context.coordinator.reload(url: url, look: look)
     }
 
-    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+    public static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
         coordinator.cancel()
     }
 
@@ -109,7 +157,7 @@ struct WebPreviewCanvas: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator {
+    public final class Coordinator {
         private var host: WebRendererHost?
         private var loaded: URL?
         private var appliedLook: Look?

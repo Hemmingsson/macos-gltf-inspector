@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import Testing
 @testable import GLTFInspector
+@testable import RendererWebKit
 
 /// Writes the three files a failure needs: what was rendered, what was expected, and where they
 /// disagree.

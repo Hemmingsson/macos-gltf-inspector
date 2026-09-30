@@ -4,6 +4,7 @@ import Foundation
 @testable import GLTFInspector
 import RealityKit
 @testable import RendererRealityKit
+@testable import RendererWebKit
 import simd
 
 /// The renderers that keep their own goldens. Never compared against each other — each has its

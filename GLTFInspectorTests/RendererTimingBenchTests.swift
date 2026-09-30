@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import GLTFInspector
+@testable import RendererWebKit
 
 /// Phased first-paint timings for the WebKit renderer.
 ///

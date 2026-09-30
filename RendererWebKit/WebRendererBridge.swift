@@ -345,7 +345,7 @@ struct RendererCameraState: Equatable, Sendable {
     }
 }
 
-enum WebRendererMode: String {
+public enum WebRendererMode: String {
     /// No window, render one frame, hand back pixels. Finder thumbnails.
     case still
     /// Hosted in a view, continuous rendering. Document window and Quick Look.

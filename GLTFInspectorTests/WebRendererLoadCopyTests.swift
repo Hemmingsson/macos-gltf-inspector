@@ -2,6 +2,7 @@ import Foundation
 @testable import GLTFCore
 import Testing
 @testable import GLTFInspector
+@testable import RendererWebKit
 
 struct WebRendererLoadCopyTests {
     @Test func texturesWinTheHeadline() {

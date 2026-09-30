@@ -8,6 +8,7 @@ import simd
 import Testing
 @testable import GLTFInspector
 @testable import RendererRealityKit
+@testable import RendererWebKit
 
 /// Look probes (renderer-separation seam 5): measure what each renderer does with one look
 /// quantity at a time, so `RenderLook` → renderer mappings are numbers rather than guesses.

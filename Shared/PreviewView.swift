@@ -1,6 +1,7 @@
 import AppKit
 import GLTFCore
 import RendererRealityKit
+import RendererWebKit
 import SwiftUI
 
 struct PreviewView: View {

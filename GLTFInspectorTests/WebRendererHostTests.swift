@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Testing
 @testable import GLTFInspector
+@testable import RendererWebKit
 
 /// Codec tests for the command channel. Pure value work — no web view involved.
 struct WebRendererBridgeTests {

@@ -4,6 +4,7 @@ import Foundation
 import PreviewUI
 import Testing
 @testable import GLTFInspector
+@testable import RendererWebKit
 
 /// Every viewport control, asserted against **rendered pixels**.
 ///
