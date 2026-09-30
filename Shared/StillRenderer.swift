@@ -111,7 +111,8 @@ final class StillRenderer {
             background: background,
             intensityExponent: intensityExponent,
             environmentYaw: 0,
-            useEntityIBL: false
+            useEntityIBL: false,
+            look: nil
         )
         self.renderer = built.renderer
         self.texture = built.texture
@@ -120,6 +121,7 @@ final class StillRenderer {
     }
 
     /// Host PNG export — re-render at the current live camera pose.
+    /// `look` defaults to the user's; the pixel-diff harness pins its own.
     init(
         root: Entity,
         cameraPose: StillCameraPose,
@@ -127,7 +129,8 @@ final class StillRenderer {
         height: Int,
         background: CGColor,
         intensityExponent: Float = 0,
-        environmentYaw: Float = 0
+        environmentYaw: Float = 0,
+        look: AppLook = .current
     ) async throws {
         let built = try await Self.build(
             root: root,
@@ -137,7 +140,8 @@ final class StillRenderer {
             background: background,
             intensityExponent: intensityExponent,
             environmentYaw: environmentYaw,
-            useEntityIBL: true
+            useEntityIBL: true,
+            look: look
         )
         self.renderer = built.renderer
         self.texture = built.texture
@@ -153,7 +157,8 @@ final class StillRenderer {
         background: CGColor,
         intensityExponent: Float,
         environmentYaw: Float,
-        useEntityIBL: Bool
+        useEntityIBL: Bool,
+        look: AppLook?
     ) async throws -> (renderer: RealityRenderer, texture: MTLTexture) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw error("No Metal device", code: 1)
@@ -167,12 +172,14 @@ final class StillRenderer {
         renderer.entities.append(root)
         if useEntityIBL {
             // Match live Look path (incl. session env yaw). Thumbnails use renderer.lighting.
-            await PreviewLighting.prefetchLook(AppLook.current)
+            let look = look ?? .current
+            await PreviewLighting.prefetchLook(look)
             let lookRoot = Entity()
             lookRoot.name = PreviewLighting.lookRootName
             PreviewLighting.applyLook(
                 lookRoot: lookRoot,
                 pivot: root,
+                look: look,
                 intensityExponent: intensityExponent,
                 environmentYaw: environmentYaw
             )
