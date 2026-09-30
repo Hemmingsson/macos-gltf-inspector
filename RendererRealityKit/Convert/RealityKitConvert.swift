@@ -32,7 +32,7 @@ extension GLTFNode {
     }
 }
 
-public class RealityKitConvert {
+final class RealityKitConvert {
 
     let colorSpace = NSColorSpace(cgColorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)!)!
     fileprivate let nameGenerator = UniqueNameGenerator()
