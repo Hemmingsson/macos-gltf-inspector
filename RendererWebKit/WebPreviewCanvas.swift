@@ -181,6 +181,10 @@ public struct WebPreviewCanvas: NSViewRepresentable {
             do {
                 let host = try existing ?? WebRendererHost(mode: .live)
                 self.host = host
+                AppLog.info(
+                    AppLog.webRenderer,
+                    "viewport attach \(url.lastPathComponent) host=\(host.logID) reused=\(existing != nil) uptimeMs=\(WebRendererHost.uptimeMs())"
+                )
 
                 let view = host.view
                 view.removeFromSuperview()
@@ -316,7 +320,7 @@ public struct WebPreviewCanvas: NSViewRepresentable {
                         revealLive(host: host)
                         AppLog.info(
                             AppLog.webRenderer,
-                            "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height) firstFrameMs=\(info.firstFrameMs)"
+                            "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height) firstFrameMs=\(info.firstFrameMs) uptimeMs=\(WebRendererHost.uptimeMs())"
                         )
                     }
 
@@ -347,6 +351,12 @@ public struct WebPreviewCanvas: NSViewRepresentable {
         }
 
         func cancel() {
+            if let host {
+                AppLog.info(
+                    AppLog.webRenderer,
+                    "viewport dismantle \(loaded?.lastPathComponent ?? "-") host=\(host.logID) revealed=\(didRevealLive) uptimeMs=\(WebRendererHost.uptimeMs())"
+                )
+            }
             work?.cancel()
             work = nil
             host = nil

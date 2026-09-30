@@ -347,7 +347,7 @@ struct HostShellRootView: View {
         settings.clearSession()
         engineViewport.applySession(from: settings)
         let generation = loadGeneration
-        AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url))")
+        AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(uptimeMs())")
         startValidation(of: url, generation: generation)
         Task {
             let state = await PreviewView.State.loaded(from: url)
@@ -362,7 +362,7 @@ struct HostShellRootView: View {
                         .joined(separator: ",")
                 AppLog.info(
                     AppLog.host,
-                    "open ready \(url.lastPathComponent) nodes=\(model.document.nodes.count) cameras=\(model.document.cameras.count) triangles=\(model.stats.triangleCount) dimensions=\(dims?.readout ?? "empty") emptyBounds=\(dims == nil) clips=\(clipSummary)"
+                    "open ready \(url.lastPathComponent) nodes=\(model.document.nodes.count) cameras=\(model.document.cameras.count) triangles=\(model.stats.triangleCount) dimensions=\(dims?.readout ?? "empty") emptyBounds=\(dims == nil) clips=\(clipSummary) uptimeMs=\(uptimeMs())"
                 )
                 let modelSidebar = HostSidebarModel(document: model.document)
                 modelSidebar.materialVariantNames = model.materialVariantNames
@@ -523,6 +523,11 @@ struct HostShellRootView: View {
             }
         }
     }
+}
+
+/// Process uptime in ms, for ordering host and web-canvas log lines (the log stamps are seconds).
+private func uptimeMs() -> Int {
+    Int(ProcessInfo.processInfo.systemUptime * 1000)
 }
 
 private func fileSize(_ url: URL) -> Int64 {

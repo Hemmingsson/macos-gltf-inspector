@@ -53,6 +53,12 @@ public final class WebRendererHost: NSObject {
     /// The renderer surface, for `.live` hosting. Untouched in `.still`.
     var view: NSView { webView }
 
+    /// Short per-instance tag so the log shows whether a page start came from a new web view.
+    var logID: String { String(UInt(bitPattern: ObjectIdentifier(self).hashValue), radix: 36) }
+
+    /// Process uptime in ms — the debug log's wall stamps are whole seconds.
+    static func uptimeMs() -> Int { Int(ProcessInfo.processInfo.systemUptime * 1000) }
+
     public init(mode: WebRendererMode, timeout: Duration = .seconds(15)) throws {
         let bundle = Bundle(for: WebRendererHost.self)
         guard let rendererRoot = bundle.url(forResource: "web-renderer", withExtension: nil) else {
@@ -95,8 +101,28 @@ public final class WebRendererHost: NSObject {
         }
         let task = Task { [weak self] in
             guard let self else { return }
-            try await self.loadPage()
-            _ = try await self.send { .configure(id: $0, mode: self.mode, size: size) }
+            let clock = ContinuousClock()
+            let began = clock.now
+            AppLog.info(
+                AppLog.webRenderer,
+                "page start begin host=\(self.logID) mode=\(self.mode.rawValue) uptimeMs=\(Self.uptimeMs())"
+            )
+            do {
+                try await self.loadPage()
+                _ = try await self.send { .configure(id: $0, mode: self.mode, size: size) }
+            } catch {
+                AppLog.error(
+                    AppLog.webRenderer,
+                    "page start failed host=\(self.logID): \(error.localizedDescription)"
+                )
+                throw error
+            }
+            let elapsed = (clock.now - began).components
+            let ms = elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000
+            AppLog.info(
+                AppLog.webRenderer,
+                "page start ready host=\(self.logID) mode=\(self.mode.rawValue) pageMs=\(ms) uptimeMs=\(Self.uptimeMs())"
+            )
         }
         startTask = task
         try await task.value
