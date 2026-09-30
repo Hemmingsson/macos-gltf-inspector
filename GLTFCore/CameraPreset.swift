@@ -12,4 +12,10 @@ public enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable {
 public enum RenderCamera {
     /// Vertical field of view of the orbit camera before the user changes it.
     public static let defaultFieldOfViewDegrees: Float = 35
+    /// Field of view the user can pick (degrees).
+    public static let fieldOfViewRange: ClosedRange<Float> = 15...90
+
+    public static func clampedFieldOfView(_ degrees: Float) -> Float {
+        min(max(degrees, fieldOfViewRange.lowerBound), fieldOfViewRange.upperBound)
+    }
 }

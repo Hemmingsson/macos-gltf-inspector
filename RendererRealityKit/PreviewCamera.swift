@@ -6,7 +6,7 @@ import simd
 public enum PreviewCamera {
     public static let defaultFieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
     /// Session FOV slider range (degrees). Fit distance uses the live value.
-    static let fieldOfViewRange: ClosedRange<Float> = 15...90
+    static let fieldOfViewRange = RenderCamera.fieldOfViewRange
     /// Default front-three-quarter yaw (degrees). Iso preset uses the same value.
     static let yawDegrees: Float = 35
     /// Default front-three-quarter pitch (degrees). Iso preset uses the same value.
@@ -225,7 +225,7 @@ public enum PreviewCamera {
     }
 
     public static func clampedFieldOfView(_ degrees: Float) -> Float {
-        min(max(degrees, fieldOfViewRange.lowerBound), fieldOfViewRange.upperBound)
+        RenderCamera.clampedFieldOfView(degrees)
     }
 
     /// Vertical world height that fills the view for an orthographic fit of `bounds`

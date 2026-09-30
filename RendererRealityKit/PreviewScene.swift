@@ -704,3 +704,10 @@ public struct RealityPreviewCanvas: View {
         .id("\(ObjectIdentifier(model.entity))-\(session?.centerModel.wrappedValue ?? true)")
     }
 }
+
+extension RealityPreviewCanvas {
+    /// Every `RendererFeature`: the RealityKit canvas drives all of the host chrome. What it
+    /// cannot draw is per file, not per feature — convert's ignored-extension list
+    /// (`ConvertProblemReport.ignoredExtensions`) reports those in the problem list.
+    public static let features = Set(RendererFeature.allCases)
+}

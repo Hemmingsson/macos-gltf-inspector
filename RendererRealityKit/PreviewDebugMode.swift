@@ -60,31 +60,14 @@ public enum PreviewDebugMode: Equatable, Hashable {
         }
     }
 
-    /// Modes present and used in `json`, in cycle order.
+    /// Modes present and used in `json`, in cycle order: the file's channels
+    /// (`ViewModeAvailability`, shared with the web path) plus RealityKit-only extras.
     /// `lightingDiffuse` / `lightingSpecular` are SDK cases confirmed on this macOS SDK.
     static func available(from json: [String: Any]) -> [PreviewDebugMode] {
-        let flags = Channels(json: json)
+        let flags = ViewModeAvailability(json: json)
         var modes: [PreviewDebugMode] = [.none]
         if flags.hasTriangles { modes.append(.wire) }
-
-        let gated: [(Bool, ModelDebugOptionsComponent.VisualizationMode)] = [
-            (flags.hasNormals, .normal),
-            (flags.hasUVs, .textureCoordinates),
-            (flags.hasBase, .baseColor),
-            (flags.hasMetallic, .metallic),
-            (flags.hasRoughness, .roughness),
-            (flags.hasAO, .ambientOcclusion),
-            (flags.hasEmissive, .emissive),
-            (flags.hasAlpha, .finalAlpha),
-            (flags.hasSpecular, .specular),
-            (flags.hasTangents, .tangent),
-            (flags.hasClearcoat, .clearcoat),
-            (flags.hasClearcoatRoughness, .clearcoatRoughness),
-            (flags.hasClearcoatNormal, .clearcoatNormal),
-        ]
-        for (present, mode) in gated where present {
-            modes.append(.visualization(mode))
-        }
+        modes += flags.channels.map { .visualization(visualization(for: $0)) }
         // Always useful once geometry exists — not gated on textures.
         if flags.hasTriangles {
             modes.append(.visualization(.lightingDiffuse))
@@ -92,6 +75,26 @@ public enum PreviewDebugMode: Equatable, Hashable {
         }
         if flags.hasVertexColors { modes.append(.vertexColors) }
         return modes
+    }
+
+    static func visualization(
+        for channel: RenderViewMode.Channel
+    ) -> ModelDebugOptionsComponent.VisualizationMode {
+        switch channel {
+        case .baseColor: .baseColor
+        case .metallic: .metallic
+        case .roughness: .roughness
+        case .normals: .normal
+        case .tangents: .tangent
+        case .textureCoordinates: .textureCoordinates
+        case .ambientOcclusion: .ambientOcclusion
+        case .emissive: .emissive
+        case .alpha: .finalAlpha
+        case .specular: .specular
+        case .clearcoat: .clearcoat
+        case .clearcoatRoughness: .clearcoatRoughness
+        case .clearcoatNormal: .clearcoatNormal
+        }
     }
 
     /// PreviewUI `Availability.availableDebugChannels` — same filter as `available(from:)`,
@@ -196,128 +199,6 @@ final class DebugMaterialStore {
         for child in entity.children {
             visit(child, body)
         }
-    }
-}
-
-private struct Channels {
-    var hasTriangles = false
-    var hasNormals = false
-    var hasUVs = false
-    var hasTangents = false
-    var hasVertexColors = false
-    var hasBase = false
-    var hasMetallic = false
-    var hasRoughness = false
-    var hasAO = false
-    var hasEmissive = false
-    var hasAlpha = false
-    var hasSpecular = false
-    var hasClearcoat = false
-    var hasClearcoatRoughness = false
-    var hasClearcoatNormal = false
-
-    init(json: [String: Any]) {
-        scanMeshes(json["meshes"] as? [[String: Any]] ?? [])
-        scanMaterials(json["materials"] as? [[String: Any]] ?? [])
-    }
-
-    private mutating func scanMeshes(_ meshes: [[String: Any]]) {
-        for mesh in meshes {
-            for primitive in mesh["primitives"] as? [[String: Any]] ?? [] {
-                let attributes = primitive["attributes"] as? [String: Any] ?? [:]
-                if attributes["NORMAL"] != nil { hasNormals = true }
-                if attributes["TANGENT"] != nil { hasTangents = true }
-                if attributes.keys.contains(where: { $0.hasPrefix("TEXCOORD_") }) {
-                    hasUVs = true
-                }
-                if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) {
-                    hasVertexColors = true
-                }
-                let mode = GLBBox.intValue(primitive["mode"]) ?? 4
-                if mode == 4 || mode == 5 || mode == 6 {
-                    hasTriangles = true
-                }
-            }
-        }
-    }
-
-    private mutating func scanMaterials(_ materials: [[String: Any]]) {
-        if !materials.isEmpty {
-            hasBase = true
-        }
-        for material in materials {
-            let extensions = material["extensions"] as? [String: Any] ?? [:]
-            let unlit = extensions["KHR_materials_unlit"] != nil
-            let specGloss = extensions["KHR_materials_pbrSpecularGlossiness"] != nil
-            let maps = MaterialMapPresence.from(json: material)
-
-            if maps.specular || extensions["KHR_materials_specular"] != nil || specGloss {
-                hasSpecular = true
-            }
-            if let alpha = material["alphaMode"] as? String,
-               alpha == "MASK" || alpha == "BLEND" {
-                hasAlpha = true
-            }
-            if maps.normal {
-                hasNormals = true
-            }
-            if maps.occlusion {
-                hasAO = true
-            }
-            if maps.emissive {
-                hasEmissive = true
-            }
-            if let emissive = float3(material["emissiveFactor"]), !nearZero(emissive) {
-                hasEmissive = true
-            }
-
-            let metalRough = !unlit && !specGloss
-            if metalRough {
-                let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
-                if maps.metallicRoughness || hasNonDefault(pbr["metallicFactor"], default: 1) {
-                    hasMetallic = true
-                }
-                if maps.metallicRoughness || hasNonDefault(pbr["roughnessFactor"], default: 1) {
-                    hasRoughness = true
-                }
-            }
-
-            if maps.clearcoat {
-                hasClearcoat = true
-            }
-            if maps.clearcoatRoughness {
-                hasClearcoatRoughness = true
-            }
-            if maps.clearcoatNormal {
-                hasClearcoatNormal = true
-            }
-            if let clearcoat = extensions["KHR_materials_clearcoat"] as? [String: Any] {
-                if hasNonDefault(clearcoat["clearcoatFactor"], default: 0) {
-                    hasClearcoat = true
-                }
-                if hasNonDefault(clearcoat["clearcoatRoughnessFactor"], default: 0) {
-                    hasClearcoatRoughness = true
-                }
-            }
-        }
-    }
-
-    private func hasNonDefault(_ value: Any?, default expected: Double) -> Bool {
-        guard let number = GLBBox.doubleValue(value) else { return false }
-        return abs(number - expected) > 0.0001
-    }
-
-    private func float3(_ value: Any?) -> SIMD3<Float>? {
-        guard let values = value as? [Any], values.count >= 3 else { return nil }
-        return SIMD3(
-            Float(GLBBox.doubleValue(values[0]) ?? 0),
-            Float(GLBBox.doubleValue(values[1]) ?? 0),
-            Float(GLBBox.doubleValue(values[2]) ?? 0)
-        )
-    }
-
-    private func nearZero(_ value: SIMD3<Float>) -> Bool {
-        abs(value.x) < 0.0001 && abs(value.y) < 0.0001 && abs(value.z) < 0.0001
     }
 }
 

@@ -2,7 +2,6 @@ import Foundation
 import GLTFCore
 import Observation
 import PreviewUI
-import RendererRealityKit
 
 /// App-defaults façade for `PreviewSettingsRoot`: canvas keys → `AppDefaultsStore`,
 /// IBL keys → `AppLookStore` (no UserDefaults leak for environment).
@@ -57,7 +56,7 @@ final class EngineAppDefaultsBridge {
         }
         try FileManager.default.copyItem(at: source, to: dest)
 
-        guard PreviewLighting.canDecodeHDR(at: dest) else {
+        guard EquirectangularImage.canDecode(at: dest) else {
             try? FileManager.default.removeItem(at: dest)
             throw EngineIBLImportError.undecodable(source.lastPathComponent)
         }

@@ -21,6 +21,8 @@ public enum AppGroupSettings {
         public static let showFloor = "settings.preview.showFloor"
         public static let appearance = "settings.general.appearance"
         public static let toneMapping = "settings.preview.toneMapping"
+        /// Developer switch, hidden from Settings (`RendererKind`).
+        public static let renderer = "settings.preview.renderer"
         // `useEnvironmentMap` / `environmentCatalog` / `customEnvironmentFile` are not
         // UserDefaults keys: the host routes them into `look.json` (`AppLook`).
     }

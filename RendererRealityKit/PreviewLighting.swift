@@ -157,10 +157,6 @@ public enum PreviewLighting {
         }
     }
 
-    public static func canDecodeHDR(at url: URL) -> Bool {
-        loadEquirectangular(from: url) != nil
-    }
-
     @MainActor
     static func loadEnvironmentResource(from url: URL) async -> EnvironmentResource? {
         guard let image = loadEquirectangular(from: url) else {
@@ -180,12 +176,7 @@ public enum PreviewLighting {
     }
 
     static func loadEquirectangular(from url: URL) -> CGImage? {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-        let options: [CFString: Any] = [
-            kCGImageSourceShouldAllowFloat: true,
-            kCGImageSourceShouldCache: true,
-        ]
-        return CGImageSourceCreateImageAtIndex(source, 0, options as CFDictionary)
+        EquirectangularImage.load(from: url)
     }
 
     @MainActor
