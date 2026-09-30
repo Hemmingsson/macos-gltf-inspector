@@ -357,7 +357,7 @@ enum PreviewCamera {
     /// A leftover mesh this many times larger than the median mesh is ignored
     /// for Fit. Typical case: Blender cm-scale helper beside a `0.01` asset.
     /// Equal-sized city tiles stay; they share one scale.
-    static let outlierExtentRatio: Float = 32
+    static let outlierExtentRatio = ModelBounds.outlierExtentRatio
 
     /// Union of `ModelComponent` visual bounds. Helper/empty nodes are ignored so
     /// collision boxes do not push the camera out. Falls back to the full entity
