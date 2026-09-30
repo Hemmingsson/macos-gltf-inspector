@@ -67,7 +67,7 @@ struct GLTFInspectorApp: App {
 
     var body: some Scene {
         DocumentGroup(viewing: GLTFInspectorFileDocument.self) { file in
-            HostShellRootView(documentURL: file.fileURL)
+            DocumentWindowRouter(documentURL: file.fileURL)
         }
         .defaultSize(width: 1280, height: 820)
         .windowResizability(.contentMinSize)
@@ -88,6 +88,11 @@ struct GLTFInspectorApp: App {
             CommandGroup(replacing: .saveItem) {
                 HostFileMenuCommands()
             }
+            #if DEBUG
+            CommandMenu("Develop") {
+                DevelopMenuCommands()
+            }
+            #endif
         }
 
         WindowGroup(id: WelcomeWindow.id) {

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Per-window sidebar open state.
 ///
-/// Owned by the window host (`ShellWindow` / `HostShellRootView`) so the chrome toggle and the
+/// Owned by the window host (`ShellWindow` / `DocumentShell`) so the chrome toggle and the
 /// View-menu twin share one source of truth. Not an app default — collapse is live chrome, not Settings.
 /// Inspector visibility follows selection (open iff something is selected).
 @Observable

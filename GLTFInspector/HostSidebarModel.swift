@@ -1,10 +1,11 @@
 import GLTFCore
-import RendererRealityKit
-import SwiftUI
+import Observation
 
 @Observable
 @MainActor
-final class HostSidebarModel: PreviewOverlay {
+/// Selection, scenes, variants and hide/solo over the JSON-backed document. Renderer-neutral;
+/// the RealityKit canvas reads it as a `PreviewOverlay` (`RealityKit/HostSidebarModel+RealityKit.swift`).
+final class HostSidebarModel {
     var hide = Set<Int>()
     /// When set, only this node, its ancestors, and its descendants stay visible.
     var soloRoot: Int?
@@ -59,8 +60,9 @@ final class HostSidebarModel: PreviewOverlay {
         return !isolatedVisibleIndices(of: soloRoot).contains(id)
     }
 
-    var nodeVisibility: PreviewNodeVisibility {
-        PreviewNodeVisibility(hidden: hide, soloVisible: soloRoot.map { isolatedVisibleIndices(of: $0) })
+    /// Nodes that stay enabled while soloing; nil when not soloing.
+    var soloVisibleIndices: Set<Int>? {
+        soloRoot.map { isolatedVisibleIndices(of: $0) }
     }
 
     /// Solo root + ancestors + descendants (the nodes that stay enabled).

@@ -1,10 +1,11 @@
 import Foundation
 import GLTFCore
 import PreviewUI
-import RendererRealityKit
 import simd
 
-/// Thin `SceneModel` snapshot over convert/load outputs. Rebuild when async validation resolves.
+/// Thin `SceneModel` snapshot of the open document. Built from the JSON summary (WebKit window) or
+/// from the RealityKit load (`RealityKit/EngineSceneModel+RealityKit.swift`). Rebuild when async
+/// validation resolves.
 struct EngineSceneModel: SceneModel {
     var fileName: String
     var scenes: [SceneInfo]
@@ -23,23 +24,16 @@ struct EngineSceneModel: SceneModel {
     var pipelineReport: PipelineReport
     var convertProblems: ConvertProblemList
 
-    /// Build from a loaded model. Pass `validation: nil` while the Khronos run is pending;
-    /// call again with `.success` / `.failed` / `.skipped` when it resolves.
-    @MainActor
-    init(
-        loaded: EntityLoader.LoadedModel,
-        fileName: String? = nil,
-        validation: GLTFValidationState? = nil
-    ) {
+    /// Build from the file's JSON alone. Pass `validation: nil` while the Khronos run is pending.
+    /// No convert ran, so there is no pipeline or convert-problem report.
+    init(summary: GLTFDocumentSummary, fileName: String, validation: GLTFValidationState? = nil) {
         self.init(
-            fileName: fileName ?? loaded.name,
-            document: loaded.document,
-            stats: loaded.stats,
-            dimensions: Self.mapDimensions(loaded),
+            fileName: fileName,
+            document: summary.document,
+            stats: summary.stats,
+            dimensions: Self.mapDimensions(summary.bounds),
             validation: validation,
-            pipelineReport: loaded.pipelineReport,
-            convertProblems: loaded.convertProblems,
-            materialVariantNames: loaded.materialVariantNames
+            materialVariantNames: summary.materialVariantNames
         )
     }
 
@@ -49,15 +43,15 @@ struct EngineSceneModel: SceneModel {
         stats: PreviewStats,
         dimensions: Dimensions,
         validation: GLTFValidationState? = nil,
-        pipelineReport: PreparePipelineReport,
-        convertProblems: ConvertProblemReport = ConvertProblemReport(),
+        pipelineReport: PipelineReport = PipelineReport(),
+        convertProblems: ConvertProblemList = ConvertProblemList(),
         materialVariantNames: [String] = []
     ) {
         let displayName = fileName.isEmpty ? "Model" : fileName
         self.fileName = displayName
         self.materialVariantNames = materialVariantNames
-        self.pipelineReport = Self.mapPipelineReport(pipelineReport)
-        self.convertProblems = Self.mapConvertProblems(convertProblems)
+        self.pipelineReport = pipelineReport
+        self.convertProblems = convertProblems
         self.validation = Self.mapValidation(validation)
 
         let scenes = Self.mapScenes(document)
@@ -124,38 +118,12 @@ extension EngineSceneModel {
         }
     }
 
-    static func mapConvertProblems(_ report: ConvertProblemReport) -> ConvertProblemList {
-        ConvertProblemList(
-            entries: report.items.map { item in
-                ConvertProblemList.Entry(
-                    severity: item.severity == .error ? .error : .warning,
-                    title: item.message,
-                    code: item.code.rawValue
-                )
-            }
-        )
-    }
-
-    static func mapPipelineReport(_ report: PreparePipelineReport) -> PipelineReport {
-        var entries: [PipelineReport.Entry] = report.entries.map { line in
-            let kind: PipelineReport.Entry.Kind =
-                line.contains("File lights") || line.contains("Studio IBL")
-                ? .lighting
-                : .conversion
-            return PipelineReport.Entry(kind: kind, title: line)
-        }
-        for name in report.extensionEntries {
-            entries.append(
-                PipelineReport.Entry(kind: .conversion, title: name)
-            )
-        }
-        return PipelineReport(entries: entries)
-    }
-
-    static func mapDebugChannels(_ modes: [PreviewDebugMode]) -> [DebugChannel] {
-        modes.compactMap { mode in
-            guard case .channel(let channel) = mode.renderViewMode else { return nil }
-            return DebugChannel(channel)
+    static func mapDebugChannels(_ modes: [RenderViewMode]) -> [DebugChannel] {
+        var seen = Set<DebugChannel>()
+        return modes.compactMap { mode in
+            guard case .channel(let channel) = mode else { return nil }
+            let mapped = DebugChannel(channel)
+            return seen.insert(mapped).inserted ? mapped : nil
         }
     }
 
@@ -386,20 +354,21 @@ extension EngineSceneModel {
         )
     }
 
-    @MainActor
-    static func mapDimensions(_ loaded: EntityLoader.LoadedModel) -> Dimensions {
-        let (dims, center) = loaded.extent
-        // Authored glTF origin (entity local 0) relative to the visual AABB centre.
-        let authored = Vector3(
-            x: Double(-center.x),
-            y: Double(-center.y),
-            z: Double(-center.z)
-        )
+    /// JSON bounds → seam dimensions. The authored glTF origin is reported relative to the box
+    /// centre (the canvas frames the centre).
+    static func mapDimensions(_ bounds: ModelBounds?) -> Dimensions {
+        guard let bounds else {
+            return Dimensions(width: 0, height: 0, depth: 0, authoredOrigin: .zero)
+        }
         return Dimensions(
-            width: Double(dims?.width ?? 0),
-            height: Double(dims?.height ?? 0),
-            depth: Double(dims?.depth ?? 0),
-            authoredOrigin: authored
+            width: Double(bounds.size.x),
+            height: Double(bounds.size.y),
+            depth: Double(bounds.size.z),
+            authoredOrigin: Vector3(
+                x: Double(-bounds.center.x),
+                y: Double(-bounds.center.y),
+                z: Double(-bounds.center.z)
+            )
         )
     }
 

@@ -197,7 +197,7 @@ struct EngineViewportControllerTests {
     @Test func hostSessionWriteThroughUpdatesBindings() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let session = PreviewSession()
-        session.debugModes = [.none, .wire]
+        session.viewModes = [.shaded, .wireframe]
         let viewport = EngineViewportController(sidebar: sidebar, previewSession: session)
 
         viewport.setBackdrop(.dark)
@@ -215,12 +215,12 @@ struct EngineViewportControllerTests {
             )
         )
 
-        #expect(session.backdropIndex == PreviewBackground.index(matchingRawValue: BackdropStyle.dark.rawValue))
+        #expect(session.backdrop == .dark)
         #expect(session.showFloor == false)
         #expect(session.autoRotate == false)
         #expect(session.centerModel == false)
         #expect(session.orthographic == true)
-        #expect(session.debugModeIndex == 1)
+        #expect(session.viewMode == .wireframe)
         #expect(session.exposureEV == 0.5)
         #expect(session.dimStudioForFileLights == true)
         #expect(abs(session.environmentYaw - Float.pi / 4) < 0.0001)
@@ -238,11 +238,11 @@ struct EngineViewportControllerTests {
         #expect(viewport.fieldOfViewDegrees == 90)
 
         viewport.setFieldOfViewDegrees(5)
-        #expect(session.fieldOfViewDegrees == PreviewCamera.clampedFieldOfView(5))
+        #expect(session.fieldOfViewDegrees == RenderCamera.clampedFieldOfView(5))
         viewport.reset()
         #expect(session.doubleSided == false)
         #expect(session.showSkeleton == false)
-        #expect(session.fieldOfViewDegrees == PreviewCamera.defaultFieldOfViewDegrees)
+        #expect(session.fieldOfViewDegrees == RenderCamera.defaultFieldOfViewDegrees)
         #expect(session.exposureEV == 0)
     }
 
@@ -256,7 +256,7 @@ struct EngineViewportControllerTests {
             settings: settings
         )
 
-        // Convert-owned dim, as HostShellRootView does on punctual-light open.
+        // Convert-owned dim, as the RealityKit window does on punctual-light open.
         viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: true)
         #expect(session.dimStudioForFileLights == true)
         #expect(viewport.lighting.usesFileLights == true)

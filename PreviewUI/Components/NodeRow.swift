@@ -57,7 +57,9 @@ public struct NodeRow<Selection: SelectionModel>: View {
             .accessibilityValue(isVisible ? "Visible" : "Hidden")
             .accessibilityAddTraits(isSelected ? [.isSelected] : [])
 
-            eyeButton
+            if selection.canHideNodes {
+                eyeButton
+            }
         }
         .padding(.leading, treeFolding ? OutlinerTreeMetrics.treeLeading : OutlinerTreeMetrics.flatLeading)
         .padding(.trailing, OutlinerTreeMetrics.trailing)

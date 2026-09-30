@@ -81,7 +81,7 @@ private struct HostViewMenuBody: View {
         ForEach(CameraPreset.allCases) { preset in
             Button(
                 preset.title,
-                systemImage: EngineViewportController.previewCameraPreset(from: preset).menuSymbol
+                systemImage: Self.menuSymbol(for: preset)
             ) {
                 viewport.applyCameraPreset(preset)
             }
@@ -89,6 +89,19 @@ private struct HostViewMenuBody: View {
             .disabled(previewCommands == nil)
         }
 
+    }
+
+    /// SF Symbols for the View menu (the Camera pill uses `cube` for the group).
+    private static func menuSymbol(for preset: CameraPreset) -> String {
+        switch preset {
+        case .front: "arrow.up.to.line"
+        case .back: "arrow.down.to.line"
+        case .left: "arrow.left.to.line"
+        case .right: "arrow.right.to.line"
+        case .top: "arrow.up.to.line.compact"
+        case .bottom: "arrow.down.to.line.compact"
+        case .isometric: "cube"
+        }
     }
 
     private var backdrop: Binding<BackdropStyle> {

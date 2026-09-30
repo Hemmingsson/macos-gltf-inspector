@@ -1,0 +1,184 @@
+import AppKit
+import GLTFCore
+import PreviewUI
+import SwiftUI
+
+/// Document window chrome: PreviewUI `ShellRootView` + engine adapters around one renderer's
+/// canvas. Renderer-neutral — the window roots in `RealityKit/` and `WebKit/` own loading and
+/// the canvas, and pass in what their renderer offers (`features`, playback, morph sliders).
+///
+/// Pills / selection / export / playback / scene+variant write through the engine adapters into
+/// the window's `DocumentWindowModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
+/// (untouched keys track defaults live).
+struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
+    let window: DocumentWindowModel
+    /// Canvas region state; the panels follow `window.phase`.
+    let canvasState: ShellDocumentState
+    let features: Set<RendererFeature>
+    let playback: Playback
+    var morphTargets: [MorphTargetControl] = []
+    var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
+    @ViewBuilder let canvas: () -> Canvas
+
+    @Environment(\.openDocument) private var openDocument
+    @Environment(\.dismissWindow) private var dismissWindow
+
+    var body: some View {
+        let viewport = window.engineViewport
+        shellRoot
+            .focusedSceneValue(\.previewCommands, viewport.commands)
+            // A canvas can take View-menu commands before (or without) the panels' document.
+            .focusedSceneValue(
+                \.engineViewport,
+                !window.hasLoadedDocument && viewport.commands == nil ? nil : viewport
+            )
+            .focusedSceneValue(\.shellPanelChrome, window.panels)
+            .onAppear {
+                dismissWindow(id: WelcomeWindow.id)
+                window.wire()
+            }
+            .onChange(of: window.settings.defaultsStore.revision) { _, _ in
+                // Live-track canvas for keys that still have no session override.
+                viewport.syncFromSettings()
+            }
+            .onDrop(of: [.fileURL], isTargeted: nil) {
+                DocumentOpening.handleDrop($0, openDocument: openDocument)
+            }
+    }
+
+    @ViewBuilder
+    private var shellRoot: some View {
+        let availability = RendererAvailability(
+            model: window.sceneModel,
+            viewModes: window.previewSession.viewModes,
+            features: features
+        )
+        ShellRootView(
+            model: window.sceneModel,
+            availability: availability,
+            documentState: window.phase,
+            canvasState: canvasState,
+            selection: EngineSelectionModel(
+                sidebar: window.activeSidebar,
+                canHideNodes: availability.canHideNodes
+            ),
+            viewport: window.engineViewport,
+            settings: window.settings,
+            playback: playback,
+            panels: window.panels,
+            morphTargets: morphTargets,
+            onSetMorphWeight: onSetMorphWeight,
+            seedSession: { window.seedSession(settings: $0) },
+            openInMenu: AnyView(OpenInChromeMenu(documentURL: window.documentURL))
+        ) {
+            canvas()
+        }
+        // Remount adapters that capture sidebar/playback once; keep settings + viewport identity.
+        .id(window.mountID)
+    }
+}
+
+/// "Open in…" menu: Reveal in Finder, and Blender when installed.
+private struct OpenInChromeMenu: View {
+    let documentURL: URL?
+
+    private var blenderAppURL: URL? {
+        let workspace = NSWorkspace.shared
+        if let bundleIDURL = workspace.urlForApplication(withBundleIdentifier: "org.blenderfoundation.blender") {
+            return bundleIDURL
+        }
+        if let known = workspace
+            .urlsForApplications(withBundleIdentifier: "org.blenderfoundation.blender")
+            .first {
+            return known
+        }
+        return nil
+    }
+
+    var body: some View {
+        Menu {
+            Button {
+                guard let documentURL else { return }
+                NSWorkspace.shared.activateFileViewerSelecting([documentURL])
+            } label: {
+                appMenuLabel(title: "Reveal in Finder", appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder"), fallbackSymbol: "folder")
+            }
+            .disabled(documentURL == nil)
+
+            if let blenderAppURL {
+                Button {
+                    guard let documentURL else { return }
+                    let config = NSWorkspace.OpenConfiguration()
+                    NSWorkspace.shared.open([documentURL], withApplicationAt: blenderAppURL, configuration: config)
+                } label: {
+                    appMenuLabel(title: "Open in Blender", appURL: blenderAppURL, fallbackSymbol: "cube")
+                }
+                .disabled(documentURL == nil)
+            }
+        } label: {
+            ChromeIconButton(
+                symbol: "square.and.arrow.up",
+                title: "Open in…",
+                prominent: false,
+                action: {}
+            )
+            .allowsHitTesting(false)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private func appMenuLabel(title: String, appURL: URL?, fallbackSymbol: String) -> some View {
+        if let appURL,
+           let icon = NSWorkspace.shared.icon(forFile: appURL.path).copy() as? NSImage {
+            HStack(spacing: 8) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 16, height: 16)
+                    .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                Text(title)
+            }
+        } else {
+            Label(title, systemImage: fallbackSymbol)
+        }
+    }
+}
+
+/// Loading spinner / failure message over the window backdrop, for a canvas that has nothing to
+/// draw. Text colour follows the window appearance (the backdrop is clear).
+struct CanvasStatusView: View {
+    enum Status {
+        case loading
+        case failed(String)
+    }
+
+    let status: Status
+    var isDark: Bool
+
+    var body: some View {
+        ZStack {
+            Color.clear.ignoresSafeArea()
+            switch status {
+            case .loading:
+                ProgressView()
+                    .controlSize(.regular)
+                    .progressViewStyle(.circular)
+            case .failed(let message):
+                VStack(spacing: 8) {
+                    Text("Failed to load model")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(message)
+                        .font(.system(size: 12))
+                        .multilineTextAlignment(.center)
+                        .opacity(0.7)
+                }
+                .foregroundStyle(isDark ? Color.white : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255))
+                .padding()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}

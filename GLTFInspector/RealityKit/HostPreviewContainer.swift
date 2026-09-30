@@ -1,8 +1,8 @@
 import RendererRealityKit
-import RendererWebKit
 import SwiftUI
 
-/// Host canvas for `HostShellRootView` (`ShellRootView` canvas): hosts the `PreviewView` router.
+/// Hosts the RealityKit `PreviewView` in a `PreviewHostingView`, which forwards trackpad
+/// scroll / magnify and orbit drags into `PreviewInteraction`.
 struct HostPreviewContainer: NSViewRepresentable {
     var state: PreviewView.State
     var interaction: PreviewInteraction
@@ -11,11 +11,7 @@ struct HostPreviewContainer: NSViewRepresentable {
     /// Mirrors `HostSidebarModel.overlayRevision` so selection/hide triggers `updateNSView`.
     var overlayRevision: Int
     var session: PreviewSessionBindings
-    /// When set, the model is drawn by the shared web renderer instead of RealityKit.
-    var webCanvasURL: URL?
-    var webCanvasLook: WebPreviewCanvas.Look
-    var webCanvas: WebCanvasController?
-    var realityCommands: FocusedPreviewCommands?
+    var commands: FocusedPreviewCommands?
     var registerCommands: (FocusedPreviewCommands?) -> Void
 
     private var rootView: PreviewView {
@@ -26,10 +22,7 @@ struct HostPreviewContainer: NSViewRepresentable {
             sidebar: sidebar,
             overlayRevision: overlayRevision,
             session: session,
-            webCanvasURL: webCanvasURL,
-            webCanvasLook: webCanvasLook,
-            webCanvas: webCanvas,
-            realityCommands: realityCommands,
+            commands: commands,
             registerCommands: registerCommands
         )
     }

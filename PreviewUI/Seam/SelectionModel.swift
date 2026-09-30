@@ -17,4 +17,10 @@ public protocol SelectionModel: AnyObject, Observable {
     func isVisible(_ id: NodeID) -> Bool
     /// Pass nil to leave isolation.
     func isolate(_ id: NodeID?)
+    /// False when the canvas cannot hide or isolate nodes; the outliner then shows no eye.
+    var canHideNodes: Bool { get }
+}
+
+extension SelectionModel {
+    public var canHideNodes: Bool { true }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Stub viewer document. Actual mesh load uses `FileDocumentConfiguration.fileURL` via `EntityLoader`.
+/// Stub viewer document. The renderer window loads from `FileDocumentConfiguration.fileURL`.
 struct GLTFInspectorFileDocument: FileDocument {
     static var readableContentTypes: [UTType] {
         [

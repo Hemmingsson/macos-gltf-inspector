@@ -89,10 +89,12 @@ flowchart LR
   convert --> chrome["Morphs, stats, some controls"]
 ```
 
-The host window is **`PreviewUI`** chrome over `PreviewView`. When `webCanvasURL` is set,
-`PreviewView` hosts `WebPreviewCanvas` and does not wait on convert for first paint. Quick Look
-skips convert entirely. The host still runs `EntityLoader` so the outliner can describe the
-**file** (`GLTFDocumentJSON` from original JSON), not the subset that survived convert.
+The host window is **`PreviewUI`** chrome over one renderer's canvas. A hidden developer switch
+(`settings.preview.renderer`, Debug ▸ Develop menu) picks RealityKit (default) or WebKit for new
+windows, Quick Look and Finder thumbnails. On WebKit the page loads the file itself and the panels
+come from the JSON alone — no convert runs; on RealityKit one convert feeds canvas and chrome.
+Either way the outliner describes the **file** (`GLTFDocumentJSON` from original JSON), not the
+subset that survived convert.
 
 Look defaults (environment + tone map) are shared: extensions read the app's preferences
 plist, because a sandboxed `UserDefaults` suite is invisible. Thumbnail and preview

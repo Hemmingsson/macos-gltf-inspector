@@ -15,8 +15,12 @@ final class EngineSelectionModel: SelectionModel {
     /// Non-mesh outliner selection (material, camera, light, scene, animation, morph, skin).
     private(set) var resourceSelection: NodeID?
 
-    init(sidebar: HostSidebarModel) {
+    /// From the mounted renderer's `RendererFeature.nodeVisibility`.
+    let canHideNodes: Bool
+
+    init(sidebar: HostSidebarModel, canHideNodes: Bool = true) {
         self.sidebar = sidebar
+        self.canHideNodes = canHideNodes
     }
 
     var selected: NodeID? {

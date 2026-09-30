@@ -3,7 +3,6 @@ import Foundation
 import GLTFCore
 import Observation
 import PreviewUI
-import RendererRealityKit
 import SwiftUI
 
 /// Session + camera + still-path adapter for `ViewportController`.
@@ -29,7 +28,7 @@ final class EngineViewportController: ViewportController {
     /// Host-owned canvas session. Nil only in isolated unit tests.
     var previewSession: PreviewSession?
 
-    /// Commands of the mounted canvas (`PreviewView` registers them). Nil while no canvas can
+    /// Commands of the mounted canvas (the renderer window registers them). Nil while no canvas can
     /// take them, and in unit tests that only exercise setters.
     var commands: FocusedPreviewCommands?
 
@@ -72,8 +71,7 @@ final class EngineViewportController: ViewportController {
     /// Refresh settings-backed session fields when app defaults change (untouched keys only).
     func syncFromSettings() {
         guard let settings, let previewSession else { return }
-        let backdrop: BackdropStyle = settings.sessionValue(for: .backdrop)
-        previewSession.backdropIndex = PreviewBackground.index(matchingRawValue: backdrop.rawValue)
+        previewSession.backdrop = settings.sessionValue(for: .backdrop)
         previewSession.showFloor = settings.sessionValue(for: .showFloor)
         previewSession.autoRotate = settings.sessionValue(for: .autoRotate)
         previewSession.centerModel = settings.sessionValue(for: .center)
@@ -85,9 +83,7 @@ final class EngineViewportController: ViewportController {
         if let settings {
             return settings.sessionValue(for: .backdrop)
         }
-        guard let previewSession else { return .window }
-        let raw = PreviewBackground.at(previewSession.backdropIndex).rawValue
-        return BackdropStyle(rawValue: raw) ?? .window
+        return previewSession?.backdrop ?? .window
     }
 
     var showsFloor: Bool {
@@ -103,11 +99,7 @@ final class EngineViewportController: ViewportController {
     }
 
     var viewMode: ViewMode {
-        guard let previewSession else { return .shaded }
-        let modes = previewSession.debugModes
-        let index = previewSession.debugModeIndex
-        guard modes.indices.contains(index) else { return .shaded }
-        return Self.viewMode(for: modes[index])
+        ViewMode(previewSession?.viewMode ?? .shaded)
     }
 
     var projection: Projection {
@@ -140,7 +132,7 @@ final class EngineViewportController: ViewportController {
 
     func setBackdrop(_ style: BackdropStyle) {
         settings?.setSession(style, for: .backdrop)
-        previewSession?.backdropIndex = PreviewBackground.index(matchingRawValue: style.rawValue)
+        previewSession?.backdrop = style
     }
 
     func setFloor(_ isOn: Bool) {
@@ -160,10 +152,9 @@ final class EngineViewportController: ViewportController {
 
     func setViewMode(_ mode: ViewMode) {
         guard let previewSession else { return }
-        previewSession.debugModeIndex = Self.debugModeIndex(
-            for: mode,
-            in: previewSession.debugModes
-        )
+        // A mode the file does not offer falls back to shaded, as the menu never lists it.
+        let wanted = RenderViewMode(mode)
+        previewSession.viewMode = previewSession.viewModes.contains(wanted) ? wanted : .shaded
     }
 
     func setProjection(_ projection: Projection) {
@@ -219,7 +210,7 @@ final class EngineViewportController: ViewportController {
         )
         setDoubleSided(false)
         setShowSkeleton(false)
-        setFieldOfViewDegrees(PreviewCamera.defaultFieldOfViewDegrees)
+        setFieldOfViewDegrees(RenderCamera.defaultFieldOfViewDegrees)
         sidebar.selectedCameraIndex = nil
         activeCameraPreset = nil
         commands?.reset()
@@ -272,7 +263,7 @@ final class EngineViewportController: ViewportController {
     var showSkeleton: Bool { previewSession?.showSkeleton ?? false }
 
     var fieldOfViewDegrees: Float {
-        previewSession?.fieldOfViewDegrees ?? PreviewCamera.defaultFieldOfViewDegrees
+        previewSession?.fieldOfViewDegrees ?? RenderCamera.defaultFieldOfViewDegrees
     }
 
     func setDoubleSided(_ isOn: Bool) {
@@ -284,37 +275,7 @@ final class EngineViewportController: ViewportController {
     }
 
     func setFieldOfViewDegrees(_ degrees: Float) {
-        previewSession?.fieldOfViewDegrees = PreviewCamera.clampedFieldOfView(degrees)
-    }
-
-    // MARK: - ViewMode ↔ PreviewDebugMode
-
-    static func debugModeIndex(for mode: ViewMode, in modes: [PreviewDebugMode]) -> Int {
-        switch mode {
-        case .shaded:
-            return modes.firstIndex(of: .none) ?? 0
-        case .wireframe:
-            return modes.firstIndex(of: .wire) ?? 0
-        case .channel(let channel):
-            if let index = modes.firstIndex(where: { matches($0, channel) }) {
-                return index
-            }
-            return modes.firstIndex(of: .none) ?? 0
-        }
-    }
-
-    static func viewMode(for mode: PreviewDebugMode) -> ViewMode {
-        ViewMode(mode.renderViewMode)
-    }
-
-    private static func matches(_ mode: PreviewDebugMode, _ channel: DebugChannel) -> Bool {
-        mode.renderViewMode == .channel(RenderViewMode.Channel(channel))
-    }
-
-    /// Maps the PreviewUI seam preset to `PreviewCamera.CameraPreset` (menu symbols).
-    /// Shared with `HostViewMenuCommands`.
-    static func previewCameraPreset(from preset: PreviewUI.CameraPreset) -> PreviewCamera.CameraPreset {
-        PreviewCamera.CameraPreset(rawValue: preset.rawValue)!
+        previewSession?.fieldOfViewDegrees = RenderCamera.clampedFieldOfView(degrees)
     }
 }
 
