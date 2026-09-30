@@ -43,11 +43,10 @@ enum WebThumbnail {
             info = try await host.load(model: url)
             image = try await host.renderStill()
         } catch {
-            // A timed-out or crashed page stays wedged: drop it so the next file in this process
-            // starts a fresh page instead of waiting out another timeout. A file the page merely
-            // rejected keeps the warm host. Either way the error goes back to Quick Look, which
-            // falls back to the generic icon.
-            if host.isBroken { shared = nil }
+            // A crashed page, or one still busy on a call that timed out, is dropped so the next
+            // file in this process starts a fresh page. A file the page merely rejected keeps the
+            // warm host. Either way the error goes back to Quick Look (generic icon).
+            if host.isBroken || error as? WebRendererError == .timedOut { shared = nil }
             throw error
         }
 

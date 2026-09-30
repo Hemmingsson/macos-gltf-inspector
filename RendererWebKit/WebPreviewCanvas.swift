@@ -186,7 +186,7 @@ public final class WebCanvasController {
     public private(set) var phase: Phase = .loading
 
     @ObservationIgnored private let outlivesMount: Bool
-    @ObservationIgnored private var host: WebRendererHost?
+    @ObservationIgnored private(set) var host: WebRendererHost?
     @ObservationIgnored private weak var container: NSView?
     @ObservationIgnored private var loaded: URL?
     @ObservationIgnored private var appliedLook: WebPreviewCanvas.Look?
@@ -194,6 +194,9 @@ public final class WebCanvasController {
     @ObservationIgnored private var placeholderView: NSImageView?
     @ObservationIgnored private var loadingHost: NSHostingView<WebCanvasLoadingChrome>?
     @ObservationIgnored private var didRevealLive = false
+    /// The model the page was last restarted for. One restart per model: a file that kills the
+    /// page twice (jetsam on a huge file) ends in `.failed`, not a restart loop.
+    @ObservationIgnored private var restartedFor: URL?
 
     /// A controller the caller holds across mounts.
     public convenience init() {
@@ -282,6 +285,7 @@ public final class WebCanvasController {
         do {
             let host = try existing ?? WebRendererHost(mode: .live)
             self.host = host
+            host.onFailure = { [weak self] error in self?.pageDied(error) }
             AppLog.info(
                 AppLog.webRenderer,
                 "viewport attach \(url.lastPathComponent) host=\(host.logID) reused=\(existing != nil) uptimeMs=\(WebRendererHost.uptimeMs())"
@@ -300,7 +304,7 @@ public final class WebCanvasController {
 
             reload(url: url, look: look)
         } catch {
-            fail(error.localizedDescription, loading: url)
+            fail(error, loading: url)
         }
     }
 
@@ -446,20 +450,35 @@ public final class WebCanvasController {
                 }
             } catch is CancellationError {
                 // Superseded by a newer look or model; nothing to report.
+            } catch where Task.isCancelled {
+                // Superseded while the page was failing (a restart already took over).
             } catch {
                 // Before the model is on screen every error is a failed load (a page that never
                 // started, a file the page rejected, a timeout). After it, a look command that
                 // fails leaves the drawn model in place.
                 if didRevealLive {
-                    AppLog.error(
-                        AppLog.webRenderer,
-                        "viewport update failed \(url.lastPathComponent): \(error.localizedDescription)"
-                    )
+                    AppLog.error(AppLog.webRenderer, "viewport update failed \(url.lastPathComponent): \(error)")
                 } else {
-                    fail(error.localizedDescription, loading: url)
+                    fail(error, loading: url)
                 }
             }
         }
+    }
+
+    /// The running page died (WebContent crash, WebGL context loss). Load a fresh page into the
+    /// same web view and redraw the model once; a second death for the same model fails.
+    private func pageDied(_ error: WebRendererError) {
+        guard let url = loaded, let look = appliedLook else { return }
+        guard restartedFor != url else {
+            work?.cancel()
+            fail(error, loading: url)
+            return
+        }
+        restartedFor = url
+        AppLog.info(AppLog.webRenderer, "viewport restart \(url.lastPathComponent) after \(error)")
+        loaded = nil
+        appliedLook = nil
+        reload(url: url, look: look)
     }
 
     func setPlaceholder(_ image: NSImage?, in container: NSView) {
@@ -473,9 +492,11 @@ public final class WebCanvasController {
     }
 
     /// Terminal load failure: stop the spinner here too, so an owner that does not route on
-    /// `phase` still never shows an endless spinner.
-    private func fail(_ message: String, loading url: URL) {
-        AppLog.error(AppLog.webRenderer, "viewport failed \(url.lastPathComponent): \(message)")
+    /// `phase` still never shows an endless spinner. The log keeps the raw error; the person
+    /// sees `WebRendererError.userMessage`.
+    private func fail(_ error: Error, loading url: URL) {
+        AppLog.error(AppLog.webRenderer, "viewport failed \(url.lastPathComponent): \(error)")
+        let message = WebRendererError.userMessage(for: error)
         phase = .failed(message)
         guard let loadingHost else { return }
         loadingHost.rootView = WebCanvasLoadingChrome(

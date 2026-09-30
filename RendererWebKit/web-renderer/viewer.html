@@ -41,7 +41,20 @@ import { GltfView, GltfState } from "./gltf-viewer.module.js";
 
 const send = (payload) => window.webkit.messageHandlers.viewer.postMessage(payload);
 
+// Khronos reports many load problems with console.error instead of throwing. Forward them so
+// they reach the app's log as warnings; the console still gets them.
+const consoleError = console.error.bind(console);
+console.error = (...args) => {
+    consoleError(...args);
+    send({ event: "warning", message: args.map((a) => String(a?.message ?? a)).join(" ") });
+};
+
 const canvas = document.getElementById("stage");
+// Nothing on the GPU survives this; Swift treats it as a dead page and restarts it.
+canvas.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
+    send({ event: "contextlost" });
+});
 const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, alpha: true });
 if (!gl) {
     send({ event: "error", stage: "context", message: "WebGL 2 unavailable" });

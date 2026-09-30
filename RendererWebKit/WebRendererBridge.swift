@@ -405,6 +405,10 @@ struct WebRendererEvent: Equatable {
         case error
         /// Load-stage ping from the page. Not tied to a command id.
         case progress
+        /// A `console.error` from the renderer — Khronos reports many load problems that way.
+        case warning
+        /// `webglcontextlost`: nothing the page holds on the GPU is valid any more.
+        case contextLost = "contextlost"
     }
 
     var name: Name
@@ -460,11 +464,15 @@ struct WebRendererEvent: Equatable {
     }
 }
 
-enum WebRendererError: LocalizedError, Equatable {
-    /// The page never answered. Usually a WebContent that could not start.
+/// `errorDescription` is what a person sees (the canvas's failure state); the case and its
+/// payload, which keep the page's raw message, are what the log records (`String(describing:)`).
+public enum WebRendererError: LocalizedError, Equatable {
+    /// A call (or the page start) got no answer within its own budget.
     case timedOut
-    /// WebContent died — the shape a sandbox denial takes.
+    /// WebContent died: a crash, jetsam on a huge file, or a sandbox denial.
     case webContentTerminated
+    /// The page lost its WebGL context.
+    case contextLost
     case navigationFailed(String)
     /// A command handler in the page threw.
     case commandFailed(String)
@@ -481,32 +489,30 @@ enum WebRendererError: LocalizedError, Equatable {
     /// The renderer measured a scene with no size — nothing to frame.
     case unmeasurableScene
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .timedOut:
-            "Web renderer did not respond"
+            "The renderer took too long to respond."
         case .webContentTerminated:
-            "Web content process terminated (sandbox denial?)"
-        case .navigationFailed(let message):
-            "Web renderer navigation failed: \(message)"
-        case .commandFailed(let message):
-            "Web renderer command failed: \(message)"
-        case .pageError(let stage, let message):
-            "Web renderer failed at \(stage): \(message)"
+            "The renderer stopped unexpectedly."
+        case .contextLost:
+            "The renderer lost its graphics context."
+        case .navigationFailed, .missingRendererBundle, .malformedMessage:
+            "The renderer couldn't start."
+        case .commandFailed, .pageError:
+            "The model couldn't be displayed. The file may be damaged or use features the renderer doesn't support."
         case .notReady:
-            "Web renderer is not ready yet"
-        case .malformedMessage:
-            "Web renderer sent a message that could not be understood"
-        case .missingRendererBundle:
-            "web-renderer resources missing from bundle"
-        case .undecodableImage:
-            "Web renderer returned an image that could not be decoded"
-        case .unencodableCommand(let kind):
-            "Could not encode '\(kind)' as JSON"
-        case .undecodableCameraPose:
-            "Web renderer returned an incomplete camera pose"
+            "The renderer isn't ready yet."
+        case .undecodableImage, .unencodableCommand, .undecodableCameraPose:
+            "The renderer returned something unexpected."
         case .unmeasurableScene:
-            "Web renderer measured a scene with no extent"
+            "The model has no visible extent."
         }
+    }
+
+    /// User-facing text for any error a web canvas can end in. Anything that is not ours
+    /// (a WebKit error, say) gets the generic renderer message rather than its raw text.
+    public static func userMessage(for error: Error) -> String {
+        (error as? WebRendererError)?.errorDescription ?? "The renderer couldn't display this model."
     }
 }

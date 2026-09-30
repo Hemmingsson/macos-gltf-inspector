@@ -36,11 +36,16 @@ public final class WebRendererHost: NSObject {
     let mode: WebRendererMode
 
     private let resources: WebRendererResourceHandler
-    private let timeout: Duration
+    /// Budget for each call on its own — never shared, so a slow call cannot time out another.
+    var timeout: Duration
     private var webView: WKWebView!
+    /// Navigation + page-message delegate. Private so the host's public API stays the renderer's,
+    /// and weak back to the host, so the web view's configuration does not retain it.
+    private var delegate: Delegate!
 
     private var nextCommandID = 1
     private var pending: [Int: CheckedContinuation<WebRendererEvent, Error>] = [:]
+    private var timers: [Int: Task<Void, Never>] = [:]
     private var readyContinuation: CheckedContinuation<Void, Error>?
     private var isReady = false
     private var startTask: Task<Void, Error>?
@@ -50,10 +55,15 @@ public final class WebRendererHost: NSObject {
     private var hasLoadedModel = false
     private var environmentTask: Task<Void, Error>?
 
-    /// True once the page timed out, crashed or failed outside a command. Every later command
-    /// would wait out the timeout again, so owners that cache a host drop it.
+    /// True once the page failed to start, crashed, lost its WebGL context or failed outside a
+    /// call. Calls then fail fast with that error; the next `start()` loads a fresh page (a new
+    /// WebContent process) instead of rethrowing it.
     public var isBroken: Bool { brokenBy != nil }
     private var brokenBy: Error?
+
+    /// Called when a page that was running dies (WebContent crash, WebGL context loss, error
+    /// outside a call). The owner decides whether to `start()` again and reload.
+    var onFailure: ((WebRendererError) -> Void)?
 
     /// The renderer surface, for `.live` hosting. Untouched in `.still`.
     var view: NSView { webView }
@@ -83,10 +93,11 @@ public final class WebRendererHost: NSObject {
         // An extension has no business persisting caches into its container.
         configuration.websiteDataStore = .nonPersistent()
         configuration.setURLSchemeHandler(resources, forURLScheme: WebRendererResourceHandler.scheme)
-        configuration.userContentController.add(self, name: Self.messageName)
+        delegate = Delegate(host: self)
+        configuration.userContentController.add(delegate, name: Self.messageName)
 
         webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 512, height: 512), configuration: configuration)
-        webView.navigationDelegate = self
+        webView.navigationDelegate = delegate
         webView.setValue(false, forKey: "drawsBackground")
         webView.underPageBackgroundColor = .clear
         webView.wantsLayer = true
@@ -94,8 +105,8 @@ public final class WebRendererHost: NSObject {
         webView.layer?.backgroundColor = NSColor.clear.cgColor
     }
 
-    /// Loads the page and resolves once it reports `ready`. Safe to call repeatedly; the work
-    /// happens once.
+    /// Loads the page and resolves once it reports `ready`. Safe to call repeatedly: a running
+    /// or started page is joined; a page that failed or died is loaded again.
     public func start(size: Int? = nil) async throws {
         if let startTask {
             try await startTask.value
@@ -110,16 +121,20 @@ public final class WebRendererHost: NSObject {
             let began = clock.now
             AppLog.info(
                 AppLog.webRenderer,
-                "page start begin host=\(self.logID) mode=\(self.mode.rawValue) uptimeMs=\(Self.uptimeMs())"
+                "page start begin host=\(self.logID) mode=\(self.mode.rawValue) retry=\(self.brokenBy != nil) uptimeMs=\(Self.uptimeMs())"
             )
+            self.brokenBy = nil
+            self.isReady = false
+            self.hasLoadedModel = false
+            self.appliedEnvironmentName = nil
+            self.environmentTask = nil
             do {
                 try await self.loadPage()
                 _ = try await self.send { .configure(id: $0, mode: self.mode, size: size) }
             } catch {
-                AppLog.error(
-                    AppLog.webRenderer,
-                    "page start failed host=\(self.logID): \(error.localizedDescription)"
-                )
+                AppLog.error(AppLog.webRenderer, "page start failed host=\(self.logID): \(error)")
+                self.brokenBy = error
+                self.startTask = nil
                 throw error
             }
             let elapsed = (clock.now - began).components
@@ -135,9 +150,15 @@ public final class WebRendererHost: NSObject {
 
     private func loadPage() async throws {
         let url = URL(string: "\(WebRendererResourceHandler.scheme):///viewer.html")!
+        let timer = Task { [weak self, timeout] in
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled, let self, let ready = self.readyContinuation else { return }
+            self.readyContinuation = nil
+            ready.resume(throwing: WebRendererError.timedOut)
+        }
+        defer { timer.cancel() }
         return try await withCheckedThrowingContinuation { continuation in
             readyContinuation = continuation
-            armTimeout()
             webView.load(URLRequest(url: url))
         }
     }
@@ -158,7 +179,11 @@ public final class WebRendererHost: NSObject {
 
         return try await withCheckedThrowingContinuation { continuation in
             pending[id] = continuation
-            armTimeout()
+            timers[id] = Task { [weak self, timeout] in
+                try? await Task.sleep(for: timeout)
+                guard !Task.isCancelled else { return }
+                self?.fail(id: id, with: WebRendererError.timedOut)
+            }
             webView.evaluateJavaScript(script) { [weak self] _, error in
                 guard let error else { return }
                 MainActor.assumeIsolated { self?.fail(id: id, with: error) }
@@ -213,6 +238,7 @@ public final class WebRendererHost: NSObject {
     ///
     /// Diagnostics and tests only — real work goes through a typed command so the contract
     /// stays visible on both sides.
+    @discardableResult
     func evaluate(_ expression: String) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             webView.evaluateJavaScript("String(\(expression))") { value, error in
@@ -295,6 +321,7 @@ public final class WebRendererHost: NSObject {
     /// and the page's own error handler can all fire for a single cause — so everything funnels
     /// through here and later calls are dropped.
     private func finish(id: Int, with result: Result<WebRendererEvent, Error>) {
+        timers.removeValue(forKey: id)?.cancel()
         guard let continuation = pending.removeValue(forKey: id) else { return }
         continuation.resume(with: result)
     }
@@ -303,29 +330,26 @@ public final class WebRendererHost: NSObject {
         finish(id: id, with: .failure(error))
     }
 
-    /// Fails every outstanding waiter, including the page load.
-    private func failAll(_ error: Error) {
+    /// The page is gone or unusable: fails every outstanding waiter, including the page load,
+    /// and tells the owner when a page that had started dies.
+    fileprivate func failAll(_ error: WebRendererError) {
+        let wasRunning = isReady
         brokenBy = error
+        isReady = false
+        startTask = nil
         if let readyContinuation {
             self.readyContinuation = nil
             readyContinuation.resume(throwing: error)
         }
         let waiters = pending
         pending.removeAll()
+        timers.values.forEach { $0.cancel() }
+        timers.removeAll()
         for (_, continuation) in waiters {
             continuation.resume(throwing: error)
         }
-        AppLog.error(AppLog.webRenderer, "web renderer failed: \(error.localizedDescription)")
-    }
-
-    private func armTimeout() {
-        Task { [timeout] in
-            try? await Task.sleep(for: timeout)
-            guard !Task.isCancelled else { return }
-            if !self.pending.isEmpty || self.readyContinuation != nil {
-                self.failAll(WebRendererError.timedOut)
-            }
-        }
+        AppLog.error(AppLog.webRenderer, "web renderer failed host=\(logID): \(error)")
+        if wasRunning { onFailure?(error) }
     }
 
     private static func decodePNGDataURI(_ uri: String) -> CGImage? {
@@ -340,16 +364,8 @@ public final class WebRendererHost: NSObject {
 
 // MARK: - Page messages
 
-extension WebRendererHost: WKScriptMessageHandler {
-    public nonisolated func userContentController(
-        _ controller: WKUserContentController,
-        didReceive message: WKScriptMessage
-    ) {
-        let body = message.body
-        MainActor.assumeIsolated { handle(body) }
-    }
-
-    private func handle(_ body: Any) {
+extension WebRendererHost {
+    fileprivate func handle(_ body: Any) {
         guard let event = WebRendererEvent(body: body) else {
             failAll(WebRendererError.malformedMessage)
             return
@@ -382,6 +398,13 @@ extension WebRendererHost: WKScriptMessageHandler {
             // ping cannot fail an in-flight `load`.
             return
 
+        case .warning:
+            // Khronos reports many load problems through `console.error` rather than throwing.
+            AppLog.info(AppLog.webRenderer, "page warning host=\(logID): \(event.message ?? "")")
+
+        case .contextLost:
+            failAll(WebRendererError.contextLost)
+
         case .error:
             // Outside any command handler, so there is no id to blame — fail everyone waiting.
             failAll(WebRendererError.pageError(
@@ -392,34 +415,33 @@ extension WebRendererHost: WKScriptMessageHandler {
     }
 }
 
-// MARK: - Navigation failures
+/// Page messages and navigation failures, kept off the host's public surface. Holds the host
+/// weakly: `WKUserContentController` retains its handlers.
+private final class Delegate: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+    weak var host: WebRendererHost?
 
-extension WebRendererHost: WKNavigationDelegate {
-    public nonisolated func webView(
-        _ webView: WKWebView,
-        didFailProvisionalNavigation navigation: WKNavigation!,
-        withError error: Error
-    ) {
-        MainActor.assumeIsolated {
-            failAll(WebRendererError.navigationFailed(error.localizedDescription))
-        }
+    init(host: WebRendererHost) {
+        self.host = host
     }
 
-    public nonisolated func webView(
-        _ webView: WKWebView,
-        didFail navigation: WKNavigation!,
-        withError error: Error
-    ) {
-        MainActor.assumeIsolated {
-            failAll(WebRendererError.navigationFailed(error.localizedDescription))
-        }
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        let body = message.body
+        MainActor.assumeIsolated { host?.handle(body) }
     }
 
-    /// A seatbelt denial surfaces here, not as a navigation error. Adding
-    /// `com.apple.security.network.client` to a sandboxed target is what prevents it.
-    public nonisolated func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        MainActor.assumeIsolated {
-            failAll(WebRendererError.webContentTerminated)
-        }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        let message = error.localizedDescription
+        MainActor.assumeIsolated { host?.failAll(WebRendererError.navigationFailed(message)) }
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        let message = error.localizedDescription
+        MainActor.assumeIsolated { host?.failAll(WebRendererError.navigationFailed(message)) }
+    }
+
+    /// A crash, jetsam, or a seatbelt denial (which surfaces here, not as a navigation error —
+    /// `com.apple.security.network.client` on a sandboxed target is what prevents that one).
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        MainActor.assumeIsolated { host?.failAll(WebRendererError.webContentTerminated) }
     }
 }

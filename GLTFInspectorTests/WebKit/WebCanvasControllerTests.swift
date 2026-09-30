@@ -86,6 +86,33 @@ struct WebCanvasControllerTests {
         #expect(frame.width > 1)
     }
 
+    /// A lost WebGL context kills the page. The canvas loads a fresh page and redraws once;
+    /// a second loss for the same model ends in `.failed`, not a restart loop.
+    @Test
+    func lostContextRestartsThePageOnceThenFails() async throws {
+        let canvas = WebCanvasController()
+        _ = mount(canvas, url: TestFixtures.cube)
+        #expect(try await settledPhase(of: canvas) == .ready)
+        let host = try #require(canvas.host)
+
+        try await host.evaluate(Self.loseContext)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(try await settledPhase(of: canvas) == .ready)
+        let frame = try await canvas.snapshot()
+        #expect(frame.width > 1)
+
+        try await host.evaluate(Self.loseContext)
+        try await Task.sleep(for: .milliseconds(100))
+        guard case .failed(let message) = try await settledPhase(of: canvas) else {
+            Issue.record("expected .failed after a second context loss, got \(canvas.phase)")
+            return
+        }
+        #expect(message == WebRendererError.contextLost.errorDescription)
+    }
+
+    private static let loseContext =
+        "document.getElementById('stage').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext()"
+
     @Test
     func timedOutHostFailsFastAfterwards() async throws {
         let host = try WebRendererHost(mode: .still, timeout: .milliseconds(1))
@@ -96,6 +123,28 @@ struct WebCanvasControllerTests {
         await #expect(throws: WebRendererError.timedOut) {
             try await host.send { .fit(id: $0) }
         }
+        // A later start loads a fresh page instead of rethrowing the old failure.
+        host.timeout = .seconds(30)
+        try await host.start(size: 64)
+        #expect(!host.isBroken)
+    }
+
+    /// Each call has its own budget: one that never answers times out alone, and the page keeps
+    /// serving the next call.
+    @Test
+    func aHungCallTimesOutWithoutFailingTheNext() async throws {
+        let host = try WebRendererHost(mode: .still, timeout: .seconds(30))
+        try await host.start(size: 64)
+        try await host.evaluate(
+            "(() => { const exec = window.__viewer.exec; window.__viewer.exec = (c) => c.type === 'fit' ? new Promise(() => {}) : exec(c); return 1 })()"
+        )
+        host.timeout = .milliseconds(300)
+        await #expect(throws: WebRendererError.timedOut) {
+            try await host.send { .fit(id: $0) }
+        }
+        host.timeout = .seconds(30)
+        try await host.send { .setExposure(id: $0, stops: 0) }
+        #expect(!host.isBroken)
     }
 }
 
