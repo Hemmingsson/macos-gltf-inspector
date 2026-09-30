@@ -193,8 +193,10 @@ final class StillRenderer {
         renderer.entities.append(camera)
         renderer.activeCamera = camera
 
+        // `_srgb` so the GPU applies the sRGB OETF on store: a plain `.bgra8Unorm` target holds
+        // scene-linear bytes (look probes), which read as far too dark once wrapped as sRGB.
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
+            pixelFormat: .bgra8Unorm_srgb,
             width: width,
             height: height,
             mipmapped: false
@@ -265,7 +267,7 @@ private func image(from texture: MTLTexture, width: Int, height: Int) throws -> 
         height: height,
         bitsPerComponent: 8,
         bytesPerRow: bytesPerRow,
-        space: CGColorSpaceCreateDeviceRGB(),
+        space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
         bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.noneSkipFirst.rawValue
     ), let image = context.makeImage() else {
         throw error("Could not wrap texture as image", code: 3)

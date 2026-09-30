@@ -77,6 +77,27 @@ struct StillRenderProofTests {
         #expect(try Self.modelCoverage(image) > 0.05, "cube rendered as an empty frame")
     }
 
+    /// The still target stores sRGB-encoded bytes and is tagged sRGB, so an sRGB backdrop comes
+    /// back unchanged. The old `.bgra8Unorm` + DeviceRGB path wrote scene-linear bytes and turned
+    /// 128 into 55 (look probes, seam 5).
+    @MainActor
+    @Test func srgbBackdropRoundTrips() async throws {
+        let model = try await EntityLoader.loadThumbnail(from: TestFixtures.tiny)
+        let assembled = PreviewCamera.makeTurntable(for: model.entity)
+        let still = try await StillRenderer(
+            root: assembled.pivot,
+            bounds: assembled.bounds,
+            width: 64,
+            height: 64,
+            background: CGColor(srgbRed: 128 / 255, green: 128 / 255, blue: 128 / 255, alpha: 1),
+            padding: PreviewCamera.thumbnailFitPadding
+        )
+        let raster = try PixelDiff.raster(from: try await still.capture())
+        for channel in 0..<3 {
+            #expect(abs(Int(raster.bytes[channel]) - 128) <= 1, "corner channel \(channel) = \(raster.bytes[channel])")
+        }
+    }
+
     /// Share of the frame that differs visibly from the background corner pixel — a real
     /// image assertion rather than a PNG byte count, which a blank frame also passes. Per-sample
     /// pixel goldens for this path live in `PixelDiffRealityKitTests`.

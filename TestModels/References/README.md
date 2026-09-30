@@ -95,5 +95,7 @@ The RealityKit goldens pin today's behaviour, including visible errors that late
 - `TextureEncodingTest` — the four columns must match; on RealityKit the textured emissive
   spheres are grey and the "custom gamma" / "ICC profile" base colours are black and red.
 - `PointLightIntensityTest` — the point lights barely register on the panels.
-- `BoomBox` — much darker than web; the emissive display is missing.
-- Background — the requested mid-grey clear colour comes out dark grey (system tone map).
+- `BoomBox` — the emissive display is missing.
+- ~~Background dark grey~~ fixed in seam 11 step 0a: `StillRenderer` renders into
+  `.bgra8Unorm_srgb` and tags the image sRGB, so the sRGB 128 backdrop comes out 128 and the
+  whole frame is no longer a gamma step too dark.
