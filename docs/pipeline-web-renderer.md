@@ -69,9 +69,12 @@ Classic scripts before the module, or construction throws:
 
 Thumbnail, Quick Look, and a new document window must agree on lighting and tone mapping.
 
-`RendererLookDefaults.current()` reads environment catalog stem + Khronos tone-map name.
-Extensions cannot see `UserDefaults(suiteName:)` — that reads the **extension** container.
-They open the app's `Library/Preferences/lol.mattias.gltf-inspector.plist` instead.
+All settings live in the App Group `94A9N4B67S.lol.mattias.gltf-inspector`, which the host
+and both extensions claim (`Shared/AppGroupSettings.swift`): `settings.*` keys in the group's
+`UserDefaults` suite, `look.json` + custom `ibl/` in the group container.
+`AppGroupSettings.rendererLook()` returns the environment catalog stem (from `look.json`) and
+the Khronos tone-map name (from the suite). Each process registers the same fresh-install
+defaults — `register(defaults:)` is per process.
 
 The document window then applies the full live look through `EngineLookBridge` →
 `WebPreviewCanvas.Look` (scene index, variant, selection, floor, wireframe, …).

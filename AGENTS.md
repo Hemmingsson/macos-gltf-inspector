@@ -107,8 +107,9 @@ rejects absolute library/LUT URLs; serve from the scheme-handler root. Load `lib
 the Draco wrapper as classic scripts *before* the module (`createKtxModule` /
 `DracoDecoderModule`).
 
-**5. Extension look + sandbox** — `UserDefaults(suiteName:)` is invisible in a sandboxed
-extension. Read the app plist via `RendererLookDefaults`. Thumbnail/preview need
+**5. Extension look + sandbox** — settings are shared only through the App Group
+(`AppGroupSettings`: group suite + group container). Never read `UserDefaults.standard` or
+Application Support for settings — in an appex that is its own container. Thumbnail/preview need
 `com.apple.security.network.client` for WebKit XPC even with no network I/O. Reply with
 `QLThumbnailReply(imageFileURL:)` — the CGContext drawing reply fails under Finder
 (`QLThumbnailError 102`).
