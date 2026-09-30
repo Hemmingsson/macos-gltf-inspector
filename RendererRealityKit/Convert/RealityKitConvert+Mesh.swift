@@ -103,8 +103,9 @@ extension RealityKitConvert {
         return modelComponent
     }
 
-    /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts and
-    /// memcpy tight glTF bufferViews (no `[SIMD3<Float>]` expansion).
+    /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts. Tight float
+    /// bufferViews are memcpy'd (EXP-017); strided, sparse, meshopt and quantized
+    /// (`KHR_mesh_quantization`, normalized ints) accessors go through one packed float copy.
     @MainActor private func convertTightFloatMesh(
         _ gltfMesh: GLTFMesh,
         context: RealityKitResourceContext
@@ -157,7 +158,7 @@ extension RealityKitConvert {
             plans: plans,
             bytesPerVertex: 12,
             write: { plan, dest in
-                Packed.copyTight(plan.positions, elementFloats: 3, to: dest)
+                plan.positions.copy(elementFloats: 3, count: plan.vertexCount, to: dest)
             }
         )
 
@@ -170,7 +171,7 @@ extension RealityKitConvert {
                 write: { plan, dest in
                     let nbytes = plan.vertexCount * 12
                     if let normals = plan.normals {
-                        Packed.copyTight(normals, elementFloats: 3, to: dest)
+                        normals.copy(elementFloats: 3, count: plan.vertexCount, to: dest)
                     } else {
                         memset(dest, 0, nbytes)
                     }
@@ -187,7 +188,7 @@ extension RealityKitConvert {
                 write: { plan, dest in
                     let nbytes = plan.vertexCount * 16
                     if let tangents = plan.tangents {
-                        Packed.copyTight(tangents, elementFloats: 4, to: dest)
+                        tangents.copy(elementFloats: 4, count: plan.vertexCount, to: dest)
                     } else {
                         memset(dest, 0, nbytes)
                     }
@@ -264,6 +265,20 @@ extension RealityKitConvert {
             try convert(material: plan.primitive.material, context: context)
         }
         return ModelComponent(mesh: meshResource, materials: materials)
+    }
+
+    /// Declared `min`/`max` for float positions; computed from the copied floats otherwise
+    /// (quantized bounds are in integer units, and `min`/`max` may be missing).
+    private func positionBounds(_ accessor: GLTFAccessor, _ positions: VertexFloats) -> BoundingBox? {
+        if accessor.componentType == .float, let declared = boundingBox(for: accessor) {
+            return declared
+        }
+        guard let points = Packed.float3Array(for: accessor), let first = points.first else { return nil }
+        var bounds = BoundingBox(min: first, max: first)
+        for point in points {
+            bounds.formUnion(point)
+        }
+        return bounds
     }
 
     private func boundingBox(for positionAccessor: GLTFAccessor) -> BoundingBox? {
@@ -450,18 +465,49 @@ extension RealityKitConvert {
         return uvs.map { SIMD2($0.x, 1 - $0.y) }
     }
 
+    /// One vertex attribute as float components: a tight float bufferView to memcpy, or a
+    /// packed float copy (`Packed.floatData`) of anything else.
+    private enum VertexFloats {
+        case tight(GLTFAccessor)
+        case packed(Data)
+
+        init?(_ accessor: GLTFAccessor, dimension: GLTFValueDimension, elementFloats: Int, count: Int) {
+            guard accessor.count == count, accessor.dimension == dimension else { return nil }
+            if Packed.isTightFloat(accessor, dimension: dimension) {
+                self = .tight(accessor)
+                return
+            }
+            guard let data = Packed.floatData(for: accessor),
+                  data.count >= count * elementFloats * MemoryLayout<Float>.size
+            else { return nil }
+            self = .packed(data)
+        }
+
+        func copy(elementFloats: Int, count: Int, to dest: UnsafeMutableRawPointer) {
+            switch self {
+            case .tight(let accessor):
+                Packed.copyTight(accessor, elementFloats: elementFloats, to: dest)
+            case .packed(let data):
+                data.withUnsafeBytes { raw in
+                    guard let base = raw.baseAddress else { return }
+                    memcpy(dest, base, count * elementFloats * MemoryLayout<Float>.size)
+                }
+            }
+        }
+    }
+
     private struct TightMeshPrimitivePlan {
         let primitive: GLTFPrimitive
         let materialIndex: Int
-        let positions: GLTFAccessor
-        let normals: GLTFAccessor?
-        let tangents: GLTFAccessor?
+        let positions: VertexFloats
+        let normals: VertexFloats?
+        let tangents: VertexFloats?
+        let vertexCount: Int
         let bakedUVs: [SIMD2<Float>]?
         /// Packed RGBA; RealityKit has no MeshBuffers.colors — only LowLevelMesh `.color`.
         let colors: [SIMD4<Float>]?
         let indices: [UInt32]
         let bounds: BoundingBox
-        var vertexCount: Int { positions.count }
         var indexCount: Int { indices.count }
     }
 
@@ -540,17 +586,18 @@ extension RealityKitConvert {
         return [UInt32](UInt32(0)..<UInt32(vertexCount))
     }
 
-    private func tightFloatAccessor(
-        primitive: GLTFPrimitive,
-        attribute name: String,
+    /// `nil` = attribute present but unusable (whole mesh falls back); `.some(nil)` = absent.
+    private func optionalVertexFloats(
+        _ primitive: GLTFPrimitive,
+        _ name: String,
         dimension: GLTFValueDimension,
-        vertexCount: Int
-    ) -> GLTFAccessor? {
-        guard let attr = primitive.attribute(forName: name) else { return nil }
-        guard Packed.isTightFloat(attr.accessor, dimension: dimension),
-              attr.accessor.count == vertexCount
+        elementFloats: Int,
+        count: Int
+    ) -> VertexFloats?? {
+        guard let attribute = primitive.attribute(forName: name) else { return .some(nil) }
+        guard let floats = VertexFloats(attribute.accessor, dimension: dimension, elementFloats: elementFloats, count: count)
         else { return nil }
-        return attr.accessor
+        return .some(floats)
     }
 
     @MainActor private func makeTightMeshPrimitivePlan(
@@ -561,45 +608,16 @@ extension RealityKitConvert {
         guard primitive.primitiveType == .triangles,
               primitive.targets.isEmpty,
               primitive.attribute(forName: "JOINTS_0") == nil,
-              let positionAttr = primitive.attribute(forName: "POSITION"),
-              Packed.isTightFloat(positionAttr.accessor, dimension: .vector3),
-              let bounds = boundingBox(for: positionAttr.accessor)
+              let positionAttr = primitive.attribute(forName: "POSITION")
         else { return nil }
-
         let vertexCount = positionAttr.accessor.count
-
-        let normalsAccessor: GLTFAccessor?
-        let hasNormals: Bool
-        if primitive.attribute(forName: "NORMAL") != nil {
-            guard let accessor = tightFloatAccessor(
-                primitive: primitive,
-                attribute: "NORMAL",
-                dimension: .vector3,
-                vertexCount: vertexCount
-            ) else { return nil }
-            normalsAccessor = accessor
-            hasNormals = true
-        } else {
-            normalsAccessor = nil
-            hasNormals = false
-        }
-
-        let tangentsAccessor: GLTFAccessor?
-        let hasTangents: Bool
-        if primitive.attribute(forName: "TANGENT") != nil {
-            // glTF tangents are VEC4 (xyz + handedness); keep packed float4 as-is.
-            guard let accessor = tightFloatAccessor(
-                primitive: primitive,
-                attribute: "TANGENT",
-                dimension: .vector4,
-                vertexCount: vertexCount
-            ) else { return nil }
-            tangentsAccessor = accessor
-            hasTangents = true
-        } else {
-            tangentsAccessor = nil
-            hasTangents = false
-        }
+        guard vertexCount > 0,
+              let positions = VertexFloats(positionAttr.accessor, dimension: .vector3, elementFloats: 3, count: vertexCount),
+              let bounds = positionBounds(positionAttr.accessor, positions),
+              // glTF tangents are VEC4 (xyz + handedness); kept as float4.
+              let normals = optionalVertexFloats(primitive, "NORMAL", dimension: .vector3, elementFloats: 3, count: vertexCount),
+              let tangents = optionalVertexFloats(primitive, "TANGENT", dimension: .vector4, elementFloats: 4, count: vertexCount)
+        else { return nil }
 
         let bakedUVs = bakedTextureCoordinates(for: primitive, context: context)
         let hasUVs: Bool
@@ -628,9 +646,10 @@ extension RealityKitConvert {
         let plan = TightMeshPrimitivePlan(
             primitive: primitive,
             materialIndex: materialIndex,
-            positions: positionAttr.accessor,
-            normals: normalsAccessor,
-            tangents: tangentsAccessor,
+            positions: positions,
+            normals: normals,
+            tangents: tangents,
+            vertexCount: vertexCount,
             bakedUVs: bakedUVs,
             colors: colors,
             indices: indices,
@@ -638,8 +657,8 @@ extension RealityKitConvert {
         )
         return TightMeshGatherResult(
             plan: plan,
-            hasNormals: hasNormals,
-            hasTangents: hasTangents,
+            hasNormals: normals != nil,
+            hasTangents: tangents != nil,
             hasUVs: hasUVs,
             hasColors: hasColors
         )

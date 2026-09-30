@@ -1,30 +1,17 @@
 import Foundation
 import GLTFCore
 
-/// Rewrites a GLB so RealityKit convert can see meshes: float positions, expanded GPU
-/// instances. Meshopt and WebP stay — GLTFKit2 decompresses / decodes them; unnamed skin joints
-/// are named at convert (`Skin.resolvedName`).
+/// Rewrites a GLB so RealityKit convert can see meshes: expanded GPU instances. Meshopt, WebP
+/// and quantized accessors stay — GLTFKit2 decompresses / decodes / converts them
+/// (`Packed.floatData`); unnamed skin joints are named at convert (`Skin.resolvedName`).
 enum RealityPrepare {
-    private static let quantization = "KHR_mesh_quantization"
     private static let instancing = "EXT_mesh_gpu_instancing"
-    private static let floatType = 5126
 
     static func needsPrepare(_ json: [String: Any]) -> Bool {
-        let used = (json["extensionsUsed"] as? [String]) ?? []
-        if used.contains(quantization) || used.contains(instancing) {
-            return true
-        }
-        let skip = skipAccessorIndices(json)
-        let accessors = json["accessors"] as? [[String: Any]] ?? []
-        for (i, accessor) in accessors.enumerated() where !skip.contains(i) {
-            if let type = GLBBox.intValue(accessor["componentType"]), isIntegerComponent(type) {
-                return true
-            }
-        }
-        return false
+        ((json["extensionsUsed"] as? [String]) ?? []).contains(instancing)
     }
 
-    /// Float positions, expanded GPU instances — in memory. Serialization
+    /// Expanded GPU instances — in memory. Serialization
     /// happens once at the end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
         var report = PreparePipelineReport()
@@ -33,10 +20,9 @@ enum RealityPrepare {
 
     static func transformed(_ glb: GLBBox, report: inout PreparePipelineReport) throws -> GLBBox {
         var json = glb.json
-        var bin = glb.bin
-        if dequantizeAccessors(&json, bin: &bin) { report.dequantized = true }
+        let bin = glb.bin
         if expandInstances(&json, bin: bin) { report.gpuInstancesExpanded = true }
-        GLBBox.rewriteExtensionLists(&json, removing: [quantization, instancing])
+        GLBBox.rewriteExtensionLists(&json, removing: [instancing])
         GLBBox.setPrimaryBufferLength(&json, bin.count)
         return GLBBox(json: json, bin: bin)
     }
@@ -45,47 +31,6 @@ enum RealityPrepare {
     static func convert(_ glb: GLBBox) throws -> Data {
         let out = try transformed(glb)
         return try GLBBox.serialize(json: out.json, bin: out.bin)
-    }
-
-    // MARK: - Dequantize
-
-    @discardableResult
-    static func dequantizeAccessors(_ json: inout [String: Any], bin: inout Data) -> Bool {
-        let skip = skipAccessorIndices(json)
-        var accessors = json["accessors"] as? [[String: Any]] ?? []
-        var bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
-        var changed = false
-        for i in accessors.indices where !skip.contains(i) {
-            guard let componentType = GLBBox.intValue(accessors[i]["componentType"]),
-                  isIntegerComponent(componentType),
-                  let count = GLBBox.intValue(accessors[i]["count"]), count > 0
-            else { continue }
-            let dimension = componentCount(accessors[i]["type"] as? String)
-            guard dimension > 0 else { continue }
-            let normalized = accessors[i]["normalized"] as? Bool ?? false
-            guard let values = readNumeric(
-                accessor: accessors[i],
-                bufferViews: bufferViews,
-                bin: bin,
-                normalized: normalized
-            ) else { continue }
-            var payload = Data(count: values.count * MemoryLayout<Float>.size)
-            payload.withUnsafeMutableBytes { raw in
-                let dest = raw.bindMemory(to: UInt32.self)
-                for (index, value) in values.enumerated() {
-                    dest[index] = Float(value).bitPattern.littleEndian
-                }
-            }
-            let view = GLBBox.appendBytes(payload, bin: &bin, bufferViews: &bufferViews)
-            accessors[i]["bufferView"] = view
-            accessors[i]["byteOffset"] = 0
-            accessors[i]["componentType"] = floatType
-            accessors[i].removeValue(forKey: "normalized")
-            changed = true
-        }
-        json["accessors"] = accessors
-        json["bufferViews"] = bufferViews
-        return changed
     }
 
     // MARK: - Instancing
@@ -187,33 +132,6 @@ enum RealityPrepare {
         return false
     }
 
-    static func skipAccessorIndices(_ json: [String: Any]) -> Set<Int> {
-        var skip = Set<Int>()
-        let meshes = json["meshes"] as? [[String: Any]] ?? []
-        for mesh in meshes {
-            let primitives = mesh["primitives"] as? [[String: Any]] ?? []
-            for primitive in primitives {
-                if let index = GLBBox.intValue(primitive["indices"]) {
-                    skip.insert(index)
-                }
-                let attributes = primitive["attributes"] as? [String: Any] ?? [:]
-                for (name, value) in attributes where name.hasPrefix("JOINTS") {
-                    if let index = GLBBox.intValue(value) {
-                        skip.insert(index)
-                    }
-                }
-            }
-        }
-        let meshoptViews = meshoptViewIndices(json)
-        let accessors = json["accessors"] as? [[String: Any]] ?? []
-        for (index, accessor) in accessors.enumerated() {
-            if let view = GLBBox.intValue(accessor["bufferView"]), meshoptViews.contains(view) {
-                skip.insert(index)
-            }
-        }
-        return skip
-    }
-
     private static func removeExtension(_ name: String, from node: inout [String: Any]) {
         guard var extensions = node["extensions"] as? [String: Any] else { return }
         extensions.removeValue(forKey: name)
@@ -228,10 +146,6 @@ enum RealityPrepare {
         let start = index * count
         guard start + count <= src.count else { return fallback }
         return Array(src[start..<(start + count)])
-    }
-
-    private static func isIntegerComponent(_ type: Int) -> Bool {
-        type == 5120 || type == 5121 || type == 5122 || type == 5123 || type == 5125
     }
 
     private static func componentCount(_ type: String?) -> Int {

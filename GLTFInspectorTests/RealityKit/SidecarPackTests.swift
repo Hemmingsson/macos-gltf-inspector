@@ -45,10 +45,6 @@ struct SidecarPackTests {
         let packedBuffers = packedBox.json["buffers"] as? [[String: Any]] ?? []
         #expect(packedBuffers.count == 1)
         #expect(packedBuffers.first?["uri"] == nil)
-        let converted = try RealityPrepare.convert(packedBox)
-        let prepared = try GLBBox.parse(converted)
-        let accessors = prepared.json["accessors"] as? [[String: Any]] ?? []
-        #expect(GLBBox.intValue(accessors.first?["componentType"]) == 5126)
     }
 
     @Test func packsDataURIBuffer() throws {
@@ -130,7 +126,7 @@ struct SidecarPackTests {
     }
 
     @MainActor
-    @Test func packsSidecarGLTFWhenRealityPrepareNeeded() async throws {
+    @Test func quantizedSidecarGLTFLoads() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("gltf-pack-load-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -145,7 +141,6 @@ struct SidecarPackTests {
         let gltfURL = dir.appendingPathComponent("tri.gltf")
         try JSONSerialization.data(withJSONObject: json).write(to: gltfURL)
 
-        #expect(RealityPrepare.needsPrepare(json))
         let model = try await EntityLoader.load(from: gltfURL, includeAnimations: false)
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)
     }

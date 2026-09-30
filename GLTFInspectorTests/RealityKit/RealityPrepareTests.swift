@@ -8,11 +8,13 @@ import simd
 import Testing
 
 struct RealityPrepareTests {
-    @Test func needsPrepareQuantization() {
+    /// Quantized accessors are converted at convert time (`QuantizedMeshTests`), not rewritten.
+    @Test func quantizationNeedsNoPrepare() {
         let json: [String: Any] = [
             "extensionsUsed": ["KHR_mesh_quantization"],
+            "accessors": [["componentType": 5122, "count": 3, "type": "VEC3"]],
         ]
-        #expect(RealityPrepare.needsPrepare(json))
+        #expect(!RealityPrepare.needsPrepare(json))
     }
 
     @Test func needsPrepareInstancing() {
@@ -38,41 +40,6 @@ struct RealityPrepareTests {
             ],
         ]
         #expect(!RealityPrepare.needsPrepare(json))
-    }
-
-    @Test func dequantizesShortPositionsToRawValues() throws {
-        let glb = try GLBBox.parse(try shortTriangleGLB())
-        let converted = try RealityPrepare.convert(glb)
-        let prepared = try GLBBox.parse(converted)
-        let accessors = prepared.json["accessors"] as? [[String: Any]] ?? []
-        let bufferViews = prepared.json["bufferViews"] as? [[String: Any]] ?? []
-        let position = try #require(accessors.first { ($0["type"] as? String) == "VEC3" })
-        #expect(GLBBox.intValue(position["componentType"]) == 5126)
-        let viewIndex = try #require(GLBBox.intValue(position["bufferView"]))
-        let offset = GLBBox.intValue(bufferViews[viewIndex]["byteOffset"]) ?? 0
-        let count = GLBBox.intValue(position["count"]) ?? 0
-        let floats = (0..<(count * 3)).map { i in
-            Float(bitPattern: GLBBox.readUInt32(prepared.bin, offset + i * 4))
-        }
-        // The node carries no transform, so non-normalized quantized positions
-        // must dequantize to their raw integer values, not a min/max remap.
-        #expect(floats == [0, 0, 0, 100, 0, 0, 0, 100, 0])
-    }
-
-    @Test func skipAccessorIndicesIncludesMeshoptViews() {
-        let json: [String: Any] = [
-            "bufferViews": [
-                ["byteLength": 12],
-                ["byteLength": 12, "extensions": ["EXT_meshopt_compression": ["count": 3]]],
-            ],
-            "accessors": [
-                ["bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3"],
-                ["bufferView": 1, "componentType": 5122, "count": 3, "type": "VEC3"],
-            ],
-        ]
-        let skip = RealityPrepare.skipAccessorIndices(json)
-        #expect(!skip.contains(0))
-        #expect(skip.contains(1))
     }
 
     @Test func expandsTwoGPUInstances() throws {

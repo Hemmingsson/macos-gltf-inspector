@@ -165,3 +165,84 @@ private func unnamedJointSkinGLB() throws -> Data {
     ]
     return try GLBBox.serialize(json: json, bin: bin)
 }
+
+/// `KHR_mesh_quantization` no longer goes through a dequantize rewrite: the LowLevelMesh path
+/// takes a packed float copy. A quantized quad (SHORT positions, normalized BYTE normals,
+/// normalized USHORT UVs) must render exactly like its float twin.
+@MainActor
+struct QuantizedMeshTests {
+    @Test func quantizedQuadRendersLikeFloatQuad() async throws {
+        let quantized = try await loadModel(try quadGLB(quantized: true))
+        let float = try await loadModel(try quadGLB(quantized: false))
+        let eye: SIMD3<Float> = [0.5, 0.5, 2]
+        let a = try await PrepareFreeInputsTests.render(quantized.entity, eye: eye)
+        let b = try await PrepareFreeInputsTests.render(float.entity, eye: eye)
+        #expect(try PrepareFreeInputsTests.meanDifference(a, b) < 0.05)
+        // Not just two empty frames: the red quad covers the centre.
+        let center = try PrepareFreeInputsTests.centerPixel(of: a)
+        #expect(center.r > center.g + 40, "center = \(center)")
+    }
+
+    @Test func quantizedPositionsKeepTheirRawUnits() async throws {
+        let model = try await loadModel(try shortTriangleGLB())
+        let bounds = model.entity.visualBounds(relativeTo: nil)
+        #expect(abs(bounds.max.x - 100) < 0.01 && abs(bounds.max.y - 100) < 0.01)
+    }
+}
+
+/// Unit quad facing +Z, red unlit-free PBR base colour. Quantized: positions SHORT scaled by the
+/// node (1/100), normals normalized BYTE, UVs normalized USHORT.
+private func quadGLB(quantized: Bool) throws -> Data {
+    var bin = Data()
+    func append<T: FixedWidthInteger>(_ values: [T]) {
+        for value in values {
+            var bits = value.littleEndian
+            Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+        }
+        while bin.count % 4 != 0 { bin.append(0) }
+    }
+    var views: [[String: Any]] = []
+    func view(_ start: Int) { views.append(["buffer": 0, "byteOffset": start, "byteLength": bin.count - start]) }
+    var start = bin.count
+    if quantized { append([Int16(0), 0, 0, 100, 0, 0, 100, 100, 0, 0, 100, 0]) } else {
+        appendFloats([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0], to: &bin)
+    }
+    view(start); start = bin.count
+    if quantized { append([Int8](repeating: 0, count: 0) + (0..<4).flatMap { _ in [Int8(0), 0, 127, 0] }) } else {
+        appendFloats((0..<4).flatMap { _ in [Float(0), 0, 1] }, to: &bin)
+    }
+    view(start); start = bin.count
+    if quantized { append([UInt16(0), 65535, 65535, 65535, 65535, 0, 0, 0]) } else {
+        appendFloats([0, 1, 1, 1, 1, 0, 0, 0], to: &bin)
+    }
+    view(start); start = bin.count
+    append([UInt16(0), 1, 2, 0, 2, 3])
+    view(start)
+    // Quantized normals are VEC3 in a 4-byte stride (spec: vertex attributes align to 4 bytes).
+    if quantized { views[1]["byteStride"] = 4 }
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "extensionsUsed": quantized ? ["KHR_mesh_quantization"] : [],
+        "extensionsRequired": quantized ? ["KHR_mesh_quantization"] : [],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": views,
+        "accessors": [
+            quantized
+                ? ["bufferView": 0, "componentType": 5122, "count": 4, "type": "VEC3", "min": [0, 0, 0], "max": [100, 100, 0]]
+                : ["bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0]],
+            quantized
+                ? ["bufferView": 1, "componentType": 5120, "normalized": true, "count": 4, "type": "VEC3"]
+                : ["bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC3"],
+            quantized
+                ? ["bufferView": 2, "componentType": 5123, "normalized": true, "count": 4, "type": "VEC2"]
+                : ["bufferView": 2, "componentType": 5126, "count": 4, "type": "VEC2"],
+            ["bufferView": 3, "componentType": 5123, "count": 6, "type": "SCALAR"],
+        ],
+        "materials": [["pbrMetallicRoughness": ["baseColorFactor": [0.8, 0.1, 0.1, 1], "metallicFactor": 0]]],
+        "meshes": [["primitives": [["attributes": ["POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2], "indices": 3, "material": 0]]]],
+        "nodes": [quantized ? ["mesh": 0, "scale": [0.01, 0.01, 0.01]] : ["mesh": 0]],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try GLBBox.serialize(json: json, bin: bin)
+}

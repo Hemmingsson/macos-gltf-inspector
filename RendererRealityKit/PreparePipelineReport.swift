@@ -4,7 +4,6 @@ import Foundation
 /// Flags are set while transforms run — not re-inferred from post-prepare JSON
 /// (those extensions are stripped).
 public struct PreparePipelineReport: Equatable, Sendable {
-    var dequantized = false
     var gpuInstancesExpanded = false
     var specGlossToMetalRough = false
     var bakedSpecGlossTextures = false
@@ -17,7 +16,7 @@ public struct PreparePipelineReport: Equatable, Sendable {
     public init() {}
 
     var isEmpty: Bool {
-        !(dequantized || gpuInstancesExpanded || specGlossToMetalRough
+        !(gpuInstancesExpanded || specGlossToMetalRough
             || bakedSpecGlossTextures || droppedBakedEmissive || dimmedStudioIBL
             || decompressedDraco)
     }
@@ -35,7 +34,6 @@ public struct PreparePipelineReport: Equatable, Sendable {
                     : "Converted from KHR spec-gloss"
             )
         }
-        if dequantized { lines.append("Dequantized mesh (KHR_mesh_quant.)") }
         if gpuInstancesExpanded { lines.append("Expanded GPU instances") }
         if decompressedDraco { lines.append("Decompressed Draco meshes") }
         if droppedBakedEmissive { lines.append("Dropped baked / boost emissive") }
