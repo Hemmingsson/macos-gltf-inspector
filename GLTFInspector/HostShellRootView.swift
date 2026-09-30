@@ -330,18 +330,11 @@ struct HostShellRootView: View {
     }
 
     private func screenshotCurrentCameraPose() {
-        guard let camera = interaction.camera,
-              let pivot = interaction.orbitFocus
-        else {
-            AppLog.error(AppLog.host, "PNG export skipped — no live camera pose")
-            return
-        }
         let suggested = (loadingURL ?? documentURL)?
             .deletingPathExtension()
             .lastPathComponent ?? "export"
         ScreenshotCameraPose.capture(
-            camera: camera,
-            pivot: pivot,
+            interaction: interaction,
             dimStudioForFileLights: previewSession.dimStudioForFileLights,
             exposureEV: previewSession.exposureEV,
             backdropIndex: previewSession.backdropIndex,

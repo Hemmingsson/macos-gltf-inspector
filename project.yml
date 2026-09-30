@@ -301,6 +301,7 @@ targets:
           - PreviewView.swift
           - PreviewScene.swift
           - PreviewChrome.swift
+          - LiveStillRequest.swift
           - PreviewQuickLookChrome.swift
           - PreviewOverlayFacts.swift
           - PreviewFloor.swift

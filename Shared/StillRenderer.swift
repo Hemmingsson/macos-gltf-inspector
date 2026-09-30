@@ -1,4 +1,3 @@
-import AppKit
 import CoreGraphics
 import GLTFCore
 import ImageIO
@@ -225,40 +224,16 @@ final class StillRenderer {
         }
     }
 
-    /// Save-panel + offscreen re-render at `cameraPose`. Returns the written URL, or `nil` if cancelled.
-    ///
-    /// Prefer a sheet on the key window so AX / Peekaboo can target it; fall back to `runModal`
-    /// only when no window is available.
-    static func exportPNGViaSavePanel(
+    /// Offscreen re-render at `cameraPose`, sized from `pixelHeight` × `aspect`.
+    static func renderImage(
         root: Entity,
         cameraPose: StillCameraPose,
         background: CGColor,
         intensityExponent: Float,
         environmentYaw: Float,
-        suggestedName: String,
         pixelHeight: Int = 1080,
         aspect: Float = 16 / 9
-    ) async throws -> URL? {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        panel.canCreateDirectories = true
-        panel.isExtensionHidden = false
-        panel.nameFieldStringValue = suggestedName.hasSuffix(".png") ? suggestedName : "\(suggestedName).png"
-        panel.title = "Export PNG"
-        panel.message = "Offscreen PNG re-render at the current camera pose."
-
-        let url: URL? = await withCheckedContinuation { cont in
-            if let window = NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible) {
-                panel.beginSheetModal(for: window) { response in
-                    cont.resume(returning: response == .OK ? panel.url : nil)
-                }
-            } else {
-                let response = panel.runModal()
-                cont.resume(returning: response == .OK ? panel.url : nil)
-            }
-        }
-        guard let url else { return nil }
-
+    ) async throws -> CGImage {
         let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : (16 / 9)
         let height = max(64, pixelHeight)
         let width = max(64, Int((Float(height) * safeAspect).rounded()))
@@ -271,9 +246,7 @@ final class StillRenderer {
             intensityExponent: intensityExponent,
             environmentYaw: environmentYaw
         )
-        let image = try await still.capture()
-        try PNGWriter.write(image, to: url)
-        return url
+        return try await still.capture()
     }
 }
 
