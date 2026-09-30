@@ -29,8 +29,8 @@ depends on:
   `recordedFeaturesMatchTheFiles`), and one complete `camera` pose.
 
 `look` values are in the WebKit page's terms. `environmentRotationDegrees: 90` is the Khronos
-Sample Viewer default view, which the web goldens have always been rendered at; a future
-`RenderLook` yaw of 0 maps to it. How RealityKit maps each look field (IBL-only exposure,
+Sample Viewer default view, which the web goldens have always been rendered at; `RenderLook`
+yaw 0 maps to it (`PixelDiffWebKit` sends yaw = rotation − 90 through the page's `apply`). How RealityKit maps each look field (IBL-only exposure,
 system tone map, native IBL yaw 0, opaque background) is the table on `PixelDiffRealityKit` in
 `GLTFInspectorTests/RealityKit/PixelDiffRealityKitTests.swift`.
 
