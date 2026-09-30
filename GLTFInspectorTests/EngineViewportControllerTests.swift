@@ -137,13 +137,16 @@ struct EngineViewportControllerTests {
         #expect(viewport.activeCameraPreset == nil)
     }
 
+    /// Any renderer's capture failure (e.g. RealityKit's `noLiveCameraPose`).
+    private struct NoCameraPose: Error {}
+
     @Test func failedScreenshotSavesNothing() async {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         var saved = 0
         let viewport = EngineViewportController(sidebar: sidebar, saveScreenshot: { _ in saved += 1 })
         viewport.commands = FocusedPreviewCommands(
             fit: {}, reset: {}, applyCameraPreset: { _ in },
-            screenshot: { throw ScreenshotCameraPose.Failure.noLiveCameraPose }
+            screenshot: { throw NoCameraPose() }
         )
         await viewport.exportScreenshot()
         #expect(saved == 0)
