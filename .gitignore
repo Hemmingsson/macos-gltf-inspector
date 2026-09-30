@@ -43,6 +43,7 @@ GLTFInspector/Info.plist
 # Entitlements (xcodegen recreates these)
 PreviewExtension/PreviewExtension.entitlements
 ThumbnailExtension/ThumbnailExtension.entitlements
+GLTFInspector/GLTFInspector.entitlements
 
 # macOS
 .DS_Store

@@ -97,6 +97,13 @@ targets:
       - path: Vendor/web-renderer
         type: file
         buildPhase: resources
+    # Not sandboxed. The only entitlement is the App Group, so Settings (group suite + look.json
+    # in the group container) is visible to both extensions.
+    entitlements:
+      path: GLTFInspector/GLTFInspector.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - 94A9N4B67S.lol.mattias.gltf-inspector
     info:
       path: GLTFInspector/Info.plist
       properties:
@@ -218,6 +225,9 @@ targets:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
+        # Settings live in the App Group shared with the host (Shared/AppGroupSettings.swift).
+        com.apple.security.application-groups:
+          - 94A9N4B67S.lol.mattias.gltf-inspector
         com.apple.security.files.user-selected.read-only: true
         com.apple.security.files.downloads.read-only: true
         # glTF assets reference sibling files (.bin buffers, textures) that can sit anywhere the
@@ -293,6 +303,9 @@ targets:
       path: ThumbnailExtension/ThumbnailExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
+        # Settings live in the App Group shared with the host (Shared/AppGroupSettings.swift).
+        com.apple.security.application-groups:
+          - 94A9N4B67S.lol.mattias.gltf-inspector
         com.apple.security.files.user-selected.read-only: true
         com.apple.security.files.downloads.read-only: true
         # glTF assets reference sibling files (.bin buffers, textures) that can sit anywhere the
