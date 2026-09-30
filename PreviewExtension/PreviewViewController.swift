@@ -86,7 +86,8 @@ class PreviewViewController: NSViewController, QLPreviewingController {
                     toneMapping: defaults.toneMapping
                 ),
                 placeholder: placeholder,
-                host: host
+                host: host,
+                canvas: WebCanvasController()
             ),
             isDark: dark
         )

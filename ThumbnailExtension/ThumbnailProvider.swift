@@ -64,8 +64,19 @@ class ThumbnailProvider: QLThumbnailProvider {
         let started = CFAbsoluteTimeGetCurrent()
         let look = AppGroupSettings.rendererLook()
         let host = try await reusedHost(environment: look.environment, toneMapping: look.toneMapping, pixel: pixel)
-        let info = try await host.load(model: url)
-        let image = try await host.renderStill()
+        let info: WebRendererHost.LoadInfo
+        let image: CGImage
+        do {
+            info = try await host.load(model: url)
+            image = try await host.renderStill()
+        } catch {
+            // A timed-out or crashed page stays wedged: drop it so the next file in this process
+            // starts a fresh page instead of waiting out another timeout. A file the page merely
+            // rejected keeps the warm host. Either way the error goes back to Quick Look, which
+            // falls back to the generic icon.
+            if host.isBroken { shared = nil }
+            throw error
+        }
 
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
@@ -84,7 +95,8 @@ class ThumbnailProvider: QLThumbnailProvider {
 
     @MainActor
     private static func reusedHost(environment: String, toneMapping: String, pixel: Int) async throws -> WebRendererHost {
-        if let shared, shared.environment == environment, shared.toneMapping == toneMapping {
+        if let shared, !shared.host.isBroken,
+           shared.environment == environment, shared.toneMapping == toneMapping {
             try await shared.host.start(size: pixel)
             return shared.host
         }
