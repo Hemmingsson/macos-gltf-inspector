@@ -1,99 +1,48 @@
 import Cocoa
 import GLTFCore
 import QuickLookUI
-import RendererRealityKit
-import RendererWebKit
-import SwiftUI
 
+/// Quick Look principal class and the extension's one renderer router. It reads the renderer
+/// switch when Quick Look builds the preview and embeds that renderer's controller
+/// (`QuickLookRealityKit.swift` / `QuickLookWebKit.swift`). Each case is guarded by `canImport`,
+/// so removing a renderer from this target needs no edit here.
 class PreviewViewController: NSViewController, QLPreviewingController {
-    private let interaction = PreviewInteraction()
-    private var hostingView: PreviewHostingView<QuickLookPreviewView>!
-    private var loadTask: Task<Void, Never>?
-    /// Live host kicked in `loadView` so the module compiles while QL builds chrome.
-    /// `present` injects this same instance — no second `WKWebView`.
-    private var prestartedHost: WebRendererHost?
+    /// The renderer's controller and its `preparePreviewOfFile` (held as a closure: calling the
+    /// optional async protocol method through an existential crashes the Swift 6.4 compiler).
+    private var renderer: (controller: NSViewController, prepare: (URL) async throws -> Void)!
 
     override func loadView() {
-        prestartRenderer()
-        let dark = Self.systemIsDark()
-
-        hostingView = PreviewHostingView(
-            rootView: QuickLookPreviewView(state: .loading, isDark: dark)
-        )
-        hostingView.interaction = interaction
-        hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        hostingView.autoresizingMask = [.width, .height]
-
-        let root = PreviewEventView(frame: .zero)
-        root.interaction = interaction
-        root.wantsLayer = true
-        root.layer?.isOpaque = false
-        root.layer?.backgroundColor = NSColor.clear.cgColor
-        root.addSubview(hostingView)
+        renderer = Self.makeRenderer(RendererKind.stored())
+        addChild(renderer.controller)
+        let root = renderer.controller.view
+        root.autoresizingMask = [.width, .height]
         view = root
     }
 
-    override func viewDidLayout() {
-        super.viewDidLayout()
-        hostingView.frame = view.bounds
-    }
-
-    override func viewWillDisappear() {
-        super.viewWillDisappear()
-        loadTask?.cancel()
-    }
-
     func preparePreviewOfFile(at url: URL) async throws {
-        let dark = Self.systemIsDark()
-        loadTask?.cancel()
-        await present(url: url, dark: dark)
+        try await renderer.prepare(url)
     }
 
-    private func prestartRenderer() {
-        do {
-            let host = try WebRendererHost(mode: .live)
-            prestartedHost = host
-            Task { @MainActor in
-                do {
-                    try await host.start()
-                } catch {
-                    AppLog.error(AppLog.webRenderer, "ql prestart failed: \(error.localizedDescription)")
-                }
-            }
-        } catch {
-            AppLog.error(AppLog.webRenderer, "ql prestart failed: \(error.localizedDescription)")
+    private static func makeRenderer(
+        _ kind: RendererKind
+    ) -> (controller: NSViewController, prepare: (URL) async throws -> Void) {
+        AppLog.info(AppLog.preview, "ql renderer \(kind.rawValue)")
+        #if canImport(RendererWebKit)
+        if kind == .webKit {
+            let web = WebQuickLookController()
+            return (web, web.preparePreviewOfFile(at:))
         }
+        #endif
+        #if canImport(RendererRealityKit)
+        let reality = RealityQuickLookController()
+        return (reality, reality.preparePreviewOfFile(at:))
+        #else
+        let web = WebQuickLookController()
+        return (web, web.preparePreviewOfFile(at:))
+        #endif
     }
 
-    @MainActor
-    private func present(url: URL, dark: Bool) {
-        hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        guard let host = prestartedHost else {
-            hostingView.rootView = QuickLookPreviewView(
-                state: .failed("Couldn't start the web renderer"),
-                isDark: dark
-            )
-            return
-        }
-        let defaults = AppGroupSettings.rendererLook()
-        // Cache-only Icon Services read — does not start ThumbnailExtension.
-        let placeholder = CachedQuickLookThumbnail.existingIcon(for: url)
-        hostingView.rootView = QuickLookPreviewView(
-            state: .web(
-                url: url,
-                look: WebPreviewCanvas.Look(
-                    environment: defaults.environment,
-                    toneMapping: defaults.toneMapping
-                ),
-                placeholder: placeholder,
-                host: host,
-                canvas: WebCanvasController()
-            ),
-            isDark: dark
-        )
-    }
-
-    private static func systemIsDark() -> Bool {
+    static func systemIsDark() -> Bool {
         if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
             return true
         }

@@ -370,6 +370,8 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: false
+      - target: RendererRealityKit
+        embed: false
       - target: RendererWebKit
         embed: false
 
