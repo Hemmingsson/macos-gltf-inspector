@@ -11,6 +11,7 @@ public struct ConvertProblem: Equatable, Sendable {
         case ignoredExtension
         case approximatedTransmission
         case forcedOpaqueBlend
+        case blendAsCutout
     }
 
     public enum Severity: String, Equatable, Sendable {
