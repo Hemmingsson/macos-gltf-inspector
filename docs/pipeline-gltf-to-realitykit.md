@@ -5,8 +5,9 @@ morphs, animations, convert reports, and the unused `PreviewScene` fallback.
 
 **This is not what draws the model** on `webkit-renderer`. Pixels go through WebKit:
 [`pipeline-web-renderer.md`](pipeline-web-renderer.md). Entry point here:
-`EntityLoader.load(from:)` in `Shared/EntityLoader.swift`. Convert core: `RealityKitConvert`
-in `Shared/Convert/`.
+`EntityLoader.load(from:)` in `RendererRealityKit/EntityLoader.swift`. Convert core: `RealityKitConvert`
+in `RendererRealityKit/Convert/`. Everything here lives in the `RendererRealityKit` framework, the
+only target that links GLTFKit2 and DracoSwift.
 
 ---
 
@@ -268,7 +269,7 @@ step failure logs and continues with bytes from the previous step.
   to **packed unprepared temp GLB** (not the original `.gltf` path).
 - **`.glb` top-level prepare failure:** fall back to original URL.
 - **`seedPipelineReport`** — snapshots `extensionsUsed` and `decompressedDraco` before transforms.
-- Flags accumulate in **`PreparePipelineReport`** (`Shared/PreparePipelineReport.swift`).
+- Flags accumulate in **`PreparePipelineReport`** (`RendererRealityKit/PreparePipelineReport.swift`).
 
 **Second fallback (convert, not prepare):** if a prepared temp URL converts to zero visible mesh,
 `convertPreparedOrOriginal` retries on the **original file URL**.
@@ -305,7 +306,7 @@ directory; unprepared sidecar uses parent folder).
 ### Material variants (optional)
 
 `MaterialVariants.names(from:)` + optional `MaterialVariants.apply(variantIndex:to:)` on every mesh
-primitive **before** convert (`Shared/MaterialVariants.swift`). Variant names are stored on
+primitive **before** convert (`RendererRealityKit/MaterialVariants.swift`). Variant names are stored on
 `LoadedModel.materialVariantNames`. Host passes `materialVariantIndex` into `load` /
 `convertScene`.
 
@@ -541,19 +542,19 @@ the enum but is not logged when nil materials get the gray default.)
 
 | Area | Files |
 | --- | --- |
-| Orchestration | `Shared/EntityLoader.swift` |
-| Pack / peek JSON | `GLTFCore/GLBBox.swift` (read), `Shared/GLBBox+Write.swift` (pack / serialize) |
-| Prepare | `Shared/MetalRoughPrepare.swift`, `Shared/RealityPrepare.swift` |
-| Variants | `Shared/MaterialVariants.swift` |
-| Animation sampling | `Shared/Convert/AnimationHelpers.swift` (`AnimationSampling`) |
+| Orchestration | `RendererRealityKit/EntityLoader.swift` |
+| Pack / peek JSON | `GLTFCore/GLBBox.swift` (read), `RendererRealityKit/GLBBox+Write.swift` (pack / serialize) |
+| Prepare | `RendererRealityKit/MetalRoughPrepare.swift`, `RendererRealityKit/RealityPrepare.swift` |
+| Variants | `RendererRealityKit/MaterialVariants.swift` |
+| Animation sampling | `RendererRealityKit/Convert/AnimationHelpers.swift` (`AnimationSampling`) |
 | Parse | GLTFKit2 `GLTFAsset` |
-| Convert | `Shared/Convert/RealityKitConvert*.swift`, `Shared/Convert/RealityKitResourceContext.swift` |
-| Session document | `GLTFCore/GLTFSessionDocument.swift`, `GLTFCore/GLTFDocumentJSON.swift`, `Shared/Convert/RealityKitConvert+Document.swift` |
-| Reports | `Shared/PreparePipelineReport.swift`, `Shared/ConvertProblemReport.swift` |
+| Convert | `RendererRealityKit/Convert/RealityKitConvert*.swift`, `RendererRealityKit/Convert/RealityKitResourceContext.swift` |
+| Session document | `GLTFCore/GLTFSessionDocument.swift`, `GLTFCore/GLTFDocumentJSON.swift`, `RendererRealityKit/Convert/RealityKitConvert+Document.swift` |
+| Reports | `RendererRealityKit/PreparePipelineReport.swift`, `RendererRealityKit/ConvertProblemReport.swift` |
 | Validation | `GLTFCore/GLTFValidator.swift` |
-| Mount / view | `Shared/PreviewScene.swift`, `Shared/PreviewView.swift`, `Shared/PreviewLighting.swift`, `Shared/PreviewCamera.swift` |
-| Thumbnail | `ThumbnailExtension/ThumbnailProvider.swift`, `Shared/StillRenderer.swift` |
-| Host wiring | `GLTFInspector/HostShellRootView.swift` |
+| Mount / view | `RendererRealityKit/PreviewScene.swift`, `Shared/PreviewView.swift` (picks web canvas or `RealityPreviewCanvas`), `RendererRealityKit/PreviewLighting.swift`, `RendererRealityKit/PreviewCamera.swift` |
+| Stills | `RendererRealityKit/StillRenderer.swift`, `RendererRealityKit/LiveStillRequest.swift` (host PNG export; the save panel is `GLTFInspector/Engine/ScreenshotCameraPose.swift`) |
+| Host wiring | `GLTFInspector/HostShellRootView.swift`, `RendererRealityKit/LoadedModel+Host.swift` |
 
 ---
 
