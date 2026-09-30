@@ -4,13 +4,6 @@ import Foundation
 import Testing
 
 struct PipelineReportTests {
-    @Test func instancedGLBMarksExpansion() throws {
-        let glb = try GLBBox.parse(instancedGLB(count: 2))
-        var report = PreparePipelineReport()
-        _ = try RealityPrepare.transformed(glb, report: &report)
-        #expect(report.gpuInstancesExpanded)
-    }
-
     @Test func cubePipelineIsStudioOnly() async throws {
         let url = TestFixtures.cube
         let model = try await EntityLoader.load(from: url)

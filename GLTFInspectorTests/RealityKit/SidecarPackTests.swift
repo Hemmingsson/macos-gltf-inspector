@@ -116,7 +116,6 @@ struct SidecarPackTests {
         try JSONSerialization.data(withJSONObject: json).write(to: gltfURL)
 
         #expect(!MetalRoughPrepare.needsConversion(json))
-        #expect(!RealityPrepare.needsPrepare(json))
 
         let model = try await EntityLoader.load(from: gltfURL, includeAnimations: false)
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)

@@ -50,7 +50,6 @@ struct StillRenderProofTests {
         // Confirm the committed file really lands on the no-pack path.
         let json = try GLBBox.parseJSON(Data(contentsOf: url))
         #expect(!MetalRoughPrepare.needsConversion(json))
-        #expect(!RealityPrepare.needsPrepare(json))
 
         let model = try await EntityLoader.loadThumbnail(from: url)
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)

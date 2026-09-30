@@ -136,8 +136,22 @@ final class RealityKitConvert {
 
         if let gltfMesh = gltfNode.mesh,
            let meshComponent = try convert(mesh: gltfMesh, skeleton: skeleton, context: context) {
-            nodeEntity.components.set(meshComponent)
-            attachMorphWeights(to: nodeEntity, mesh: gltfMesh, node: gltfNode)
+            if let instances = instanceTransforms(gltfNode) {
+                // EXT_mesh_gpu_instancing: one child per instance sharing the mesh and materials.
+                // Instances are not document nodes (no GLTFNodeIDComponent), so they follow the
+                // node's hide/solo and selection.
+                for (index, transform) in instances.enumerated() {
+                    let instance = ModelEntity()
+                    instance.name = "\(nodeEntity.name)#instance\(index)"
+                    instance.transform = transform
+                    instance.components.set(meshComponent)
+                    attachMorphWeights(to: instance, mesh: gltfMesh, node: gltfNode)
+                    nodeEntity.addChild(instance)
+                }
+            } else {
+                nodeEntity.components.set(meshComponent)
+                attachMorphWeights(to: nodeEntity, mesh: gltfMesh, node: gltfNode)
+            }
         }
 
         if let gltfLight = gltfNode.light {
@@ -177,6 +191,25 @@ final class RealityKitConvert {
             weights.weightSet[0] = data
         }
         entity.components.set(weights)
+    }
+
+    /// Per-instance TRS from `EXT_mesh_gpu_instancing` (missing attributes default to identity);
+    /// `nil` when the node is not instanced or the data is unusable.
+    private func instanceTransforms(_ node: GLTFNode) -> [Transform]? {
+        guard let attributes = node.meshInstances?.attributes, !attributes.isEmpty else { return nil }
+        func accessor(_ name: String) -> GLTFAccessor? { attributes.first { $0.name == name }?.accessor }
+        let translations = accessor("TRANSLATION").flatMap(Packed.float3Array(for:)) ?? []
+        let rotations = accessor("ROTATION").flatMap(Packed.quatfArray(for:)) ?? []
+        let scales = accessor("SCALE").flatMap(Packed.float3Array(for:)) ?? []
+        let count = max(translations.count, rotations.count, scales.count)
+        guard count > 0 else { return nil }
+        return (0..<count).map { index in
+            Transform(
+                scale: index < scales.count ? scales[index] : [1, 1, 1],
+                rotation: index < rotations.count ? rotations[index] : simd_quatf(ix: 0, iy: 0, iz: 0, r: 1),
+                translation: index < translations.count ? translations[index] : .zero
+            )
+        }
     }
 
     func nodeIndex(of gltfNode: GLTFNode) -> Int {

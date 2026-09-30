@@ -38,6 +38,11 @@ struct PrepareFreeInputsTests {
         #expect(try Self.meanDifference(before, after) > 0.3, "skinned triangle did not move")
     }
 
+    @Test func unnamedJointsResolveBySkinIndex() {
+        #expect(Skin.resolvedName(nil, index: 4) == "joint-4")
+        #expect(Skin.resolvedName("Root", index: 4) == "Root")
+    }
+
     static func render(_ root: Entity, eye: SIMD3<Float>) async throws -> CGImage {
         let still = try await StillRenderer(
             root: root,

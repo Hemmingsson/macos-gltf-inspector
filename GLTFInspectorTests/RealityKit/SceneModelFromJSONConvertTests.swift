@@ -39,7 +39,7 @@ struct SceneModelFromJSONConvertTests {
 
     @MainActor
     @Test func gpuInstancingKeepsTheAuthoredNodeCount() async throws {
-        // `RealityPrepare.expandInstances` appends four clone nodes for the renderer.
+        // Convert adds one child entity per instance; the document lists the authored node.
         let loaded = try await loadModel(try instancedGLB(count: 4))
         #expect(loaded.document.nodes.count == 1)
         #expect(EntityLoader.modelComponentCount(in: loaded.entity) >= 4)

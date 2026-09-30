@@ -279,7 +279,7 @@ public enum EntityLoader {
     /// gets a chance on the untouched bytes.
     private static func prepareGLB(_ url: URL, json: [String: Any]) -> (url: URL, json: [String: Any], report: PreparePipelineReport) {
         var report = seedPipelineReport(from: json)
-        guard MetalRoughPrepare.needsConversion(json) || RealityPrepare.needsPrepare(json) else {
+        guard MetalRoughPrepare.needsConversion(json) else {
             return (url, json, report)
         }
         do {
@@ -301,13 +301,6 @@ public enum EntityLoader {
                 AppLog.error(AppLog.prepare, "metal-rough failed, using original: \(error)")
             }
         }
-        if RealityPrepare.needsPrepare(out.json) {
-            do {
-                out = try RealityPrepare.transformed(out, report: &report)
-            } catch {
-                AppLog.error(AppLog.prepare, "reality prepare failed, using previous: \(error)")
-            }
-        }
         return out
     }
 
@@ -327,7 +320,7 @@ public enum EntityLoader {
         json: [String: Any]
     ) throws -> (url: URL, json: [String: Any], assetDirectory: URL, report: PreparePipelineReport) {
         var report = seedPipelineReport(from: json)
-        guard MetalRoughPrepare.needsConversion(json) || RealityPrepare.needsPrepare(json) else {
+        guard MetalRoughPrepare.needsConversion(json) else {
             return (url, json, directoryURL, report)
         }
         let packed = try GLBBox.packSidecar(json) { uri in
