@@ -2,7 +2,7 @@ import RendererRealityKit
 import RendererWebKit
 import SwiftUI
 
-/// Host RealityKit canvas for `HostShellRootView` (`ShellRootView` canvas).
+/// Host canvas for `HostShellRootView` (`ShellRootView` canvas): hosts the `PreviewView` router.
 struct HostPreviewContainer: NSViewRepresentable {
     var state: PreviewView.State
     var interaction: PreviewInteraction
@@ -14,27 +14,12 @@ struct HostPreviewContainer: NSViewRepresentable {
     /// When set, the model is drawn by the shared web renderer instead of RealityKit.
     var webCanvasURL: URL?
     var webCanvasLook: WebPreviewCanvas.Look
+    var webCanvas: WebCanvasController?
+    var realityCommands: FocusedPreviewCommands?
+    var registerCommands: (FocusedPreviewCommands?) -> Void
 
-    func makeNSView(context: Context) -> PreviewHostingView<PreviewView> {
-        let view = PreviewHostingView(
-            rootView: PreviewView(
-                state: state,
-                interaction: interaction,
-                isDark: isDark,
-                sidebar: sidebar,
-                overlayRevision: overlayRevision,
-                session: session,
-                webCanvasURL: webCanvasURL,
-                webCanvasLook: webCanvasLook
-            )
-        )
-        view.interaction = interaction
-        return view
-    }
-
-    func updateNSView(_ nsView: PreviewHostingView<PreviewView>, context: Context) {
-        nsView.interaction = interaction
-        nsView.rootView = PreviewView(
+    private var rootView: PreviewView {
+        PreviewView(
             state: state,
             interaction: interaction,
             isDark: isDark,
@@ -42,8 +27,22 @@ struct HostPreviewContainer: NSViewRepresentable {
             overlayRevision: overlayRevision,
             session: session,
             webCanvasURL: webCanvasURL,
-            webCanvasLook: webCanvasLook
+            webCanvasLook: webCanvasLook,
+            webCanvas: webCanvas,
+            realityCommands: realityCommands,
+            registerCommands: registerCommands
         )
+    }
+
+    func makeNSView(context: Context) -> PreviewHostingView<PreviewView> {
+        let view = PreviewHostingView(rootView: rootView)
+        view.interaction = interaction
+        return view
+    }
+
+    func updateNSView(_ nsView: PreviewHostingView<PreviewView>, context: Context) {
+        nsView.interaction = interaction
+        nsView.rootView = rootView
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: PreviewHostingView<PreviewView>, context: Context) -> CGSize? {

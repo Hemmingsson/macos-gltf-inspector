@@ -1,4 +1,5 @@
 import GLTFCore
+import PreviewUI
 import RendererRealityKit
 import RendererWebKit
 import SwiftUI
@@ -45,12 +46,27 @@ struct PreviewView: View {
     var webCanvasURL: URL? = nil
     /// Look applied to the web canvas.
     var webCanvasLook = WebPreviewCanvas.Look()
+    /// Host-held web canvas: its load phase, its camera commands, and a page that survives the
+    /// shell remount. Nil gives the canvas a private controller (no failure routing).
+    var webCanvas: WebCanvasController? = nil
+    /// RealityKit camera commands, registered while the RealityKit canvas is mounted.
+    var realityCommands: FocusedPreviewCommands? = nil
+    /// Called by whichever branch is on screen with that canvas's commands (nil when no canvas
+    /// can take them). Runs in `onAppear`, never during a view update.
+    var registerCommands: (FocusedPreviewCommands?) -> Void = { _ in }
 
     var body: some View {
         Group {
-            // The web canvas shows its own spinner + file facts while WKWebView stays hidden.
-            if let webCanvasURL, !state.isFailed {
-                WebPreviewCanvas(url: webCanvasURL, look: webCanvasLook)
+            if let webCanvasURL {
+                // The web canvas loads the file itself. A convert failure (`state`) only affects
+                // RealityKit-backed chrome; only the canvas's own failure replaces it.
+                if case .failed(let message) = webCanvas?.phase {
+                    failedView(message)
+                        .onAppear { registerCommands(nil) }
+                } else {
+                    WebPreviewCanvas(url: webCanvasURL, look: webCanvasLook, controller: webCanvas)
+                        .onAppear { registerCommands(webCanvas.map(FocusedPreviewCommands.web)) }
+                }
             } else {
                 switch state {
                 case .loading:
@@ -60,6 +76,7 @@ struct PreviewView: View {
                             .controlSize(.regular)
                             .progressViewStyle(.circular)
                     }
+                    .onAppear { registerCommands(nil) }
                 case .ready(let model):
                     RealityPreviewCanvas(
                         model: model,
@@ -69,25 +86,50 @@ struct PreviewView: View {
                         overlayRevision: overlayRevision,
                         session: session
                     )
+                    .onAppear { registerCommands(realityCommands) }
                 case .failed(let message):
-                    ZStack {
-                        PreviewBackground.window.color.ignoresSafeArea()
-                        VStack(spacing: 8) {
-                            Text("Failed to load model")
-                                .font(.system(size: 13, weight: .semibold))
-                            Text(message)
-                                .font(.system(size: 12))
-                                .multilineTextAlignment(.center)
-                                .opacity(0.7)
-                        }
-                        .foregroundStyle(
-                            PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
-                        )
-                        .padding()
-                    }
+                    failedView(message)
+                        .onAppear { registerCommands(nil) }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func failedView(_ message: String) -> some View {
+        ZStack {
+            PreviewBackground.window.color.ignoresSafeArea()
+            VStack(spacing: 8) {
+                Text("Failed to load model")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(message)
+                    .font(.system(size: 12))
+                    .multilineTextAlignment(.center)
+                    .opacity(0.7)
+            }
+            .foregroundStyle(
+                PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
+            )
+            .padding()
+        }
+    }
+
+    /// What the canvas region shows for this window. With the web canvas mounted, only the
+    /// canvas's own failure fails it — convert may still be running, or may have failed, while
+    /// the page draws. The RealityKit fallback follows convert.
+    static func canvasState(
+        webCanvasURL: URL?,
+        webPhase: WebCanvasController.Phase?,
+        convert: State
+    ) -> ShellDocumentState {
+        if webCanvasURL != nil {
+            if case .failed(let message) = webPhase { return .failed(message) }
+            return .ready
+        }
+        switch convert {
+        case .loading: return .loading
+        case .ready: return .ready
+        case .failed(let message): return .failed(message)
+        }
     }
 }

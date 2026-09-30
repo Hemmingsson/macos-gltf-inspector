@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import GLTFCore
 import Observation
@@ -8,7 +9,8 @@ import SwiftUI
 /// Session + camera + still-path adapter for `ViewportController`.
 ///
 /// Owns per-window view state (DESIGN.md this-window job). Fit / reset / presets / PNG export
-/// forward to injected `FocusedPreviewCommands` (or a test `screenshotHandler`). Lighting maps
+/// forward to the `FocusedPreviewCommands` the mounted canvas registered; the PNG goes to the
+/// host's `saveScreenshot` (save panel + write). Lighting maps
 /// degrees↔radians and `usesFileLights`↔`dimStudioForFileLights`. `usesStudioEnvironment` mirrors
 /// `AppLook.useEnvironmentMap` and is never written here — Settings owns that key.
 ///
@@ -27,11 +29,12 @@ final class EngineViewportController: ViewportController {
     /// Host-owned canvas session. Nil only in isolated unit tests.
     var previewSession: PreviewSession?
 
-    /// Host menu / pill command bag. Nil in unit tests that only exercise setters.
+    /// Commands of the mounted canvas (`PreviewView` registers them). Nil while no canvas can
+    /// take them, and in unit tests that only exercise setters.
     var commands: FocusedPreviewCommands?
 
-    /// Optional override so tests can assert the export path wires without presenting a panel.
-    var screenshotHandler: (() -> Void)?
+    /// Host save panel + PNG write for `screenshot()`. Tests inject a recorder.
+    var saveScreenshot: ((CGImage) async -> Void)?
 
     private(set) var activeCameraPreset: PreviewUI.CameraPreset?
 
@@ -46,14 +49,14 @@ final class EngineViewportController: ViewportController {
         previewSession: PreviewSession? = nil,
         settings: EngineSettingsStore? = nil,
         commands: FocusedPreviewCommands? = nil,
-        screenshotHandler: (() -> Void)? = nil
+        saveScreenshot: ((CGImage) async -> Void)? = nil
     ) {
         self.sidebar = sidebar
         self.lookStore = lookStore ?? .shared
         self.previewSession = previewSession ?? PreviewSession()
         self.settings = settings
         self.commands = commands
-        self.screenshotHandler = screenshotHandler
+        self.saveScreenshot = saveScreenshot
     }
 
     /// Bind the lazy overlay and push effective session values without pinning untouched keys.
@@ -225,15 +228,22 @@ final class EngineViewportController: ViewportController {
     func applyCameraPreset(_ preset: PreviewUI.CameraPreset) {
         sidebar.selectedCameraIndex = nil
         activeCameraPreset = preset
-        commands?.applyCameraPreset(Self.previewCameraPreset(from: preset))
+        commands?.applyCameraPreset(GLTFCore.CameraPreset(preset))
     }
 
     func screenshot() {
-        if let screenshotHandler {
-            screenshotHandler()
-            return
+        Task { await exportScreenshot() }
+    }
+
+    /// Pixels from the mounted canvas, then the host's save panel. Split out so tests can await it.
+    func exportScreenshot() async {
+        guard let render = commands?.screenshot else { return }
+        do {
+            let image = try await render()
+            await saveScreenshot?(image)
+        } catch {
+            AppLog.error(AppLog.host, "PNG export failed: \(error.localizedDescription)")
         }
-        commands?.screenshot()
     }
 
     func setScene(_ id: NodeID) {
@@ -301,7 +311,7 @@ final class EngineViewportController: ViewportController {
         mode.renderViewMode == .channel(RenderViewMode.Channel(channel))
     }
 
-    /// Maps the PreviewUI seam preset to `PreviewCamera.CameraPreset`.
+    /// Maps the PreviewUI seam preset to `PreviewCamera.CameraPreset` (menu symbols).
     /// Shared with `HostViewMenuCommands`.
     static func previewCameraPreset(from preset: PreviewUI.CameraPreset) -> PreviewCamera.CameraPreset {
         PreviewCamera.CameraPreset(rawValue: preset.rawValue)!

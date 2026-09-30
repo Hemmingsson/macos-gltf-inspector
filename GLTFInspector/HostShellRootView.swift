@@ -29,6 +29,9 @@ struct HostShellRootView: View {
     @State private var settings = EngineSettingsStore()
     @State private var previewSession = PreviewSession()
     @State private var engineViewport: EngineViewportController
+    /// Outlives the `.id(shellMountID)` remount so the page started while convert runs keeps
+    /// drawing when convert lands. Replaced only after it failed, for the next document.
+    @State private var webCanvas = WebCanvasController()
 
     @State private var validation: GLTFValidationState?
     @State private var validationGeneration = 0
@@ -54,8 +57,12 @@ struct HostShellRootView: View {
 
     var body: some View {
         shellRoot
-            .focusedSceneValue(\.previewCommands, focusedPreviewCommands)
-            .focusedSceneValue(\.engineViewport, loadedModel == nil ? nil : engineViewport)
+            .focusedSceneValue(\.previewCommands, engineViewport.commands)
+            // The web canvas takes View-menu commands before (or without) a converted model.
+            .focusedSceneValue(
+                \.engineViewport,
+                loadedModel == nil && engineViewport.commands == nil ? nil : engineViewport
+            )
             .focusedSceneValue(\.shellPanelChrome, panels)
             .onAppear {
                 dismissWindow(id: WelcomeWindow.id)
@@ -102,6 +109,11 @@ struct HostShellRootView: View {
             model: model,
             availability: availability,
             documentState: shellDocumentState,
+            canvasState: PreviewView.canvasState(
+                webCanvasURL: webCanvasURL,
+                webPhase: webCanvas.phase,
+                convert: previewState
+            ),
             selection: EngineSelectionModel(sidebar: activeSidebar),
             viewport: engineViewport,
             settings: settings,
@@ -119,12 +131,15 @@ struct HostShellRootView: View {
                 sidebar: sidebar,
                 overlayRevision: sidebar?.overlayRevision ?? 0,
                 session: previewSession.bindings,
-                webCanvasURL: loadingURL ?? documentURL,
+                webCanvasURL: webCanvasURL,
                 webCanvasLook: WebPreviewCanvas.Look(
                     engineViewport,
                     sceneIndex: sidebar?.activeSceneIndex ?? 0,
                     selectedNodeIndex: sidebar?.selectedNodeIndex
-                )
+                ),
+                webCanvas: webCanvas,
+                realityCommands: realityCommands,
+                registerCommands: { engineViewport.commands = $0 }
             )
         }
         // Remount adapters that capture sidebar/entity once; keep settings + viewport identity.
@@ -184,13 +199,21 @@ struct HostShellRootView: View {
         return nil
     }
 
-    private var focusedPreviewCommands: FocusedPreviewCommands? {
+    /// The document drawn by the web canvas; nil for a rejected file or a missing URL, whose
+    /// failure then comes from the open path.
+    private var webCanvasURL: URL? {
+        guard let url = loadingURL ?? documentURL, DocumentOpening.isGLTFFile(url) else { return nil }
+        return url
+    }
+
+    /// RealityKit canvas commands; `PreviewView` registers them while that canvas is mounted.
+    private var realityCommands: FocusedPreviewCommands? {
         guard loadedModel != nil else { return nil }
         return FocusedPreviewCommands(
             fit: { reframingCamera() },
             reset: resetPreviewView,
-            applyCameraPreset: { reframingCamera(preset: $0) },
-            screenshot: screenshotCurrentCameraPose
+            applyCameraPreset: { reframingCamera(preset: PreviewCamera.CameraPreset(rawValue: $0.rawValue)) },
+            screenshot: renderRealityStill
         )
     }
 
@@ -277,8 +300,9 @@ struct HostShellRootView: View {
     private func wireViewportHostSession() {
         engineViewport.previewSession = previewSession
         engineViewport.settings = settings
-        engineViewport.commands = focusedPreviewCommands
-        engineViewport.screenshotHandler = screenshotCurrentCameraPose
+        engineViewport.saveScreenshot = { image in
+            await ScreenshotCameraPose.save(image, suggestedName: exportName)
+        }
         previewSession.debugModes = loadedDebugModes.isEmpty ? [.none] : loadedDebugModes
     }
 
@@ -306,17 +330,17 @@ struct HostShellRootView: View {
         }
     }
 
-    private func screenshotCurrentCameraPose() {
-        let suggested = (loadingURL ?? documentURL)?
-            .deletingPathExtension()
-            .lastPathComponent ?? "export"
-        ScreenshotCameraPose.capture(
+    private var exportName: String {
+        (loadingURL ?? documentURL)?.deletingPathExtension().lastPathComponent ?? "export"
+    }
+
+    private func renderRealityStill() async throws -> CGImage {
+        try await ScreenshotCameraPose.renderReality(
             interaction: interaction,
             dimStudioForFileLights: previewSession.dimStudioForFileLights,
             exposureEV: previewSession.exposureEV,
             backdropIndex: previewSession.backdropIndex,
-            environmentYaw: previewSession.environmentYaw,
-            suggestedName: suggested
+            environmentYaw: previewSession.environmentYaw
         )
     }
 
@@ -334,6 +358,9 @@ struct HostShellRootView: View {
         if loadingURL == url, case .loading = previewState { return }
         if case .ready = previewState, loadingURL == url, sidebar != nil { return }
 
+        if case .failed = webCanvas.phase {
+            webCanvas = WebCanvasController()
+        }
         previewState = .loading
         sidebar = nil
         morphTargets = []

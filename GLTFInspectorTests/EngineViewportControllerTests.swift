@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 @testable import GLTFCore
 @testable import GLTFInspector
@@ -104,15 +105,60 @@ struct EngineViewportControllerTests {
         #expect(sidebar.selectedCameraIndex == nil)
     }
 
-    @Test func screenshotHandlerWiresWithoutPanel() {
+    /// Fit / reset / presets / export land on whatever canvas registered its commands.
+    @Test func commandsForwardToTheRegisteredCanvas() async throws {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
-        var shotCount = 0
+        var calls: [String] = []
+        let image = try #require(
+            CGContext(
+                data: nil, width: 4, height: 2, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )?.makeImage()
+        )
+        var saved: [CGImage] = []
         let viewport = EngineViewportController(
             sidebar: sidebar,
-            screenshotHandler: { shotCount += 1 }
+            saveScreenshot: { saved.append($0) }
         )
-        viewport.screenshot()
-        #expect(shotCount == 1)
+
+        // Nothing mounted yet: every command is a harmless no-op.
+        viewport.fit()
+        viewport.reset()
+        viewport.applyCameraPreset(.top)
+        await viewport.exportScreenshot()
+        #expect(saved.isEmpty)
+
+        viewport.commands = FocusedPreviewCommands(
+            fit: { calls.append("fit") },
+            reset: { calls.append("reset") },
+            applyCameraPreset: { calls.append("preset \($0.rawValue)") },
+            screenshot: {
+                calls.append("screenshot")
+                return image
+            }
+        )
+        viewport.fit()
+        viewport.applyCameraPreset(.left)
+        viewport.reset()
+        await viewport.exportScreenshot()
+
+        #expect(calls == ["fit", "preset left", "reset", "screenshot"])
+        #expect(saved.count == 1)
+        #expect(saved.first?.width == 4)
+        #expect(viewport.activeCameraPreset == nil)
+    }
+
+    @Test func failedScreenshotSavesNothing() async {
+        let sidebar = HostSidebarModel(document: GLTFSessionDocument())
+        var saved = 0
+        let viewport = EngineViewportController(sidebar: sidebar, saveScreenshot: { _ in saved += 1 })
+        viewport.commands = FocusedPreviewCommands(
+            fit: {}, reset: {}, applyCameraPreset: { _ in },
+            screenshot: { throw ScreenshotCameraPose.Failure.noLiveCameraPose }
+        )
+        await viewport.exportScreenshot()
+        #expect(saved == 0)
     }
 
     @Test func settingsOverlayTracksDefaultsInGetters() throws {

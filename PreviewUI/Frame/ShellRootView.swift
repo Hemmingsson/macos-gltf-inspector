@@ -24,6 +24,10 @@ public struct ShellRootView<
     public var availability: Capabilities
     /// Empty / loading / failed — host open path.
     public var documentState: ShellDocumentState = .ready
+    /// Canvas region state when the canvas loads on its own and can be ahead of the panels (a
+    /// canvas that draws while the panels' document is still opening, or failed). Nil follows
+    /// `documentState`.
+    public var canvasState: ShellDocumentState? = nil
     /// The window's selection, owned here.
     ///
     /// `@State` because ownership is per *window*: two windows onto two files must not share a
@@ -60,6 +64,7 @@ public struct ShellRootView<
         model: Model,
         availability: Capabilities,
         documentState: ShellDocumentState = .ready,
+        canvasState: ShellDocumentState? = nil,
         selection: @autoclosure () -> Selection,
         viewport: @autoclosure () -> Viewport,
         settings: @autoclosure () -> Settings,
@@ -74,6 +79,7 @@ public struct ShellRootView<
         self.model = model
         self.availability = availability
         self.documentState = documentState
+        self.canvasState = canvasState
         _selection = State(wrappedValue: selection())
         _viewport = State(wrappedValue: viewport())
         _settings = State(wrappedValue: settings())
@@ -162,7 +168,7 @@ public struct ShellRootView<
             availability: availability,
             viewport: viewport,
             playback: playback,
-            documentState: documentState,
+            documentState: canvasState ?? documentState,
             isSidebarVisible: panels.isSidebarVisible,
             isInspectorVisible: showsInspector,
             content: canvas
