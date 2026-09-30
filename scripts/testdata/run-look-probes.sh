@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the opt-in look probes (GLTFInspectorTests/LookProbeTests.swift) on both renderers.
+# Runs the opt-in look probes (GLTFInspectorTests/CrossRenderer/LookProbeTests.swift) on both renderers.
 # Gated on a sentinel file, like regenerate-pixel-references.sh: `xcodebuild test` does not
 # forward the shell environment. Output: `lookprobe …` lines + /tmp/GLTFInspector-look-probes/.
 set -euo pipefail

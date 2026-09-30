@@ -1,3 +1,5 @@
+// Cross-renderer: compiles only while both renderers exist, so removing one needs no edit here.
+#if canImport(RendererRealityKit) && canImport(RendererWebKit)
 import AppKit
 import CoreGraphics
 import Foundation
@@ -248,7 +250,7 @@ struct LookProbeTests {
 
     /// Same camera convention as the pixel-diff harness.
     static func stillPose(_ pose: CameraPose) -> StillCameraPose {
-        PixelDiffRealityKit.stillPose(pose)
+        PixelDiffRealityKit.stillPose(PixelDiffManifest.Camera(pose))
     }
 
     @MainActor
@@ -517,3 +519,5 @@ final class ProbeRealityRenderer {
         return ProbePixels(width: size, height: size, values: values, isFloat: isFloat)
     }
 }
+
+#endif

@@ -2,7 +2,7 @@
 """Generate the look-probe fixtures under `TestModels/Fixture Models/probes/`.
 
 Synthetic scenes that isolate one look quantity each, rendered on both renderers by
-`GLTFInspectorTests/LookProbeTests.swift` (opt-in; see that file). Results live in
+`GLTFInspectorTests/CrossRenderer/LookProbeTests.swift` (opt-in; see that file). Results live in
 `.agents/research/2026-09-30-look-probes.md`.
 
 - `env-wheel.hdr`       equirect whose colour encodes longitude only:

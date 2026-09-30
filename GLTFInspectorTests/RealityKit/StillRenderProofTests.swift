@@ -79,7 +79,7 @@ struct StillRenderProofTests {
 
     /// Share of the frame that differs visibly from the background corner pixel — a real
     /// image assertion rather than a PNG byte count, which a blank frame also passes. Per-sample
-    /// pixel goldens for this path live in `PixelDiffHarness` (realitykit).
+    /// pixel goldens for this path live in `PixelDiffRealityKitTests`.
     static func modelCoverage(_ image: CGImage) throws -> Double {
         let raster = try PixelDiff.raster(from: image)
         let corner = Array(raster.bytes[0..<3])

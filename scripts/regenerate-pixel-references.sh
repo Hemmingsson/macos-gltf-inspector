@@ -18,22 +18,45 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REFS="$ROOT/TestModels/References"
 
+# One xcodebuild run per renderer, WebKit first: it re-records the camera poses every renderer
+# replays, so RealityKit must render after it. A renderer whose test folder is gone is skipped.
+suite() {
+  case "$1" in
+    webkit) echo "PixelDiffWebKitRegeneration" ;;
+    realitykit) echo "PixelDiffRealityKitRegeneration" ;;
+    *) echo "unknown renderer: $1 (webkit|realitykit)" >&2; exit 2 ;;
+  esac
+}
+folder() {
+  case "$1" in
+    webkit) echo "$ROOT/GLTFInspectorTests/WebKit" ;;
+    realitykit) echo "$ROOT/GLTFInspectorTests/RealityKit" ;;
+  esac
+}
+
 if [[ "${1:-}" == "--measure-noise" ]]; then
   SENTINEL="$REFS/MEASURE_NOISE"
-  TEST="GLTFInspectorTests/PixelDiffNoiseFloor"
-  : >"$SENTINEL"
+  RENDERERS=(webkit realitykit)
 else
   SENTINEL="$REFS/REGENERATE"
-  TEST="GLTFInspectorTests/PixelDiffReferenceRegeneration"
-  echo "$*" >"$SENTINEL"
+  if [[ $# -gt 0 ]]; then RENDERERS=("$@"); else RENDERERS=(webkit realitykit); fi
 fi
 trap 'rm -f "$SENTINEL"' EXIT
 
-LOG="$(mktemp -t pixel-references)"
 status=0
-"$ROOT/scripts/dev.sh" test "-only-testing:$TEST" >"$LOG" 2>&1 || status=$?
-grep -E "^(noise|regenerated)|error:|TEST (SUCCEEDED|FAILED)" "$LOG" || true
-echo "full log: $LOG"
+for renderer in "${RENDERERS[@]}"; do
+  test_suite="$(suite "$renderer")"
+  if [[ ! -d "$(folder "$renderer")" ]]; then
+    echo "skip $renderer: renderer removed"
+    continue
+  fi
+  echo "$renderer" >"$SENTINEL"
+  LOG="$(mktemp -t pixel-references)"
+  "$ROOT/scripts/dev.sh" test "-only-testing:GLTFInspectorTests/$test_suite" >"$LOG" 2>&1 || status=$?
+  grep -E "^(noise|regenerated)|error:|TEST (SUCCEEDED|FAILED)" "$LOG" || true
+  echo "full log ($renderer): $LOG"
+  [[ "$status" -eq 0 ]] || break
+done
 
 echo
 echo "Review before committing:"

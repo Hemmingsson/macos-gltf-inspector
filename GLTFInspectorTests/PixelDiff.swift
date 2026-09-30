@@ -2,7 +2,6 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
-@testable import GLTFInspector
 
 /// Image comparison for the reference-render harness.
 ///

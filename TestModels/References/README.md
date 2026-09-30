@@ -8,9 +8,10 @@ The proof baseline every renderer refactor is diffed against. One PNG per pinned
 | `webkit/` | `WebRendererHost` in still mode (the Khronos glTF Sample Renderer page) |
 | `realitykit/` | `EntityLoader.loadThumbnail` → `StillRenderer` (the RealityKit still path) |
 
-**These files are the assertions.** `GLTFInspectorTests/PixelDiffTests.swift`
-(`PixelDiffHarness`) re-renders every sample through both renderers on each run and compares
-each against its own folder with one comparator (`PixelDiff`). The two renderers are never
+**These files are the assertions.** `PixelDiffWebKitTests` (`GLTFInspectorTests/WebKit/`) and
+`PixelDiffRealityKitTests` (`GLTFInspectorTests/RealityKit/`) re-render every sample on each run
+and compare each against its own folder with one renderer-neutral comparator (`PixelDiff`, with
+the manifest and loops in `GLTFInspectorTests/PixelDiff*.swift` at the test root). The two renderers are never
 compared with each other: they have different tone mappers and light units, so a cross-renderer
 gate would only measure that. Goldens catch *regressions*; they do not prove correctness.
 
@@ -31,7 +32,7 @@ depends on:
 Sample Viewer default view, which the web goldens have always been rendered at; a future
 `RenderLook` yaw of 0 maps to it. How RealityKit maps each look field (IBL-only exposure,
 system tone map, native IBL yaw 0, opaque background) is the table on `PixelDiffRealityKit` in
-`GLTFInspectorTests/PixelDiffReferences.swift`.
+`GLTFInspectorTests/RealityKit/PixelDiffRealityKitTests.swift`.
 
 Both renderers replay the same recorded pose: the camera is never re-fitted at verification
 time, so a change to either renderer's framing heuristic cannot re-aim the camera and
