@@ -29,9 +29,9 @@ depends on:
   `recordedFeaturesMatchTheFiles`), and one complete `camera` pose.
 
 `look` values are in the WebKit page's terms. `environmentRotationDegrees: 90` is the Khronos
-Sample Viewer default view, which the web goldens have always been rendered at; a future
-`RenderLook` yaw of 0 maps to it. How RealityKit maps each look field (IBL-only exposure,
-system tone map, native IBL yaw 0, opaque background) is the table on `PixelDiffRealityKit` in
+Sample Viewer default view, which the web goldens have always been rendered at; `RenderLook`
+yaw 0 maps to it. How RealityKit maps each look field (IBL-only exposure, system tone map, IBL
+yaw π − Y via `RealityLook`, opaque background) is the table on `PixelDiffRealityKit` in
 `GLTFInspectorTests/RealityKit/PixelDiffRealityKitTests.swift`.
 
 Both renderers replay the same recorded pose: the camera is never re-fitted at verification
@@ -94,7 +94,9 @@ The RealityKit goldens pin today's behaviour, including visible errors that late
 
 - `TextureEncodingTest` — the four columns must match; on RealityKit the textured emissive
   spheres are grey and the "custom gamma" / "ICC profile" base colours are black and red.
-- `PointLightIntensityTest` — the point lights barely register on the panels.
+- ~~`PointLightIntensityTest` lights barely register~~ fixed in seam 11 step 0b (lights × 591,
+  spot × π, 2× cone).
+- ~~`TextureSettingsTest` clamp rows fail~~ fixed in seam 11 step 8 (no single-tile UV shift).
 - `BoomBox` — the emissive display is missing.
 - ~~Background dark grey~~ fixed in seam 11 step 0a: `StillRenderer` renders into
   `.bgra8Unorm_srgb` and tags the image sRGB, so the sRGB 128 backdrop comes out 128 and the
