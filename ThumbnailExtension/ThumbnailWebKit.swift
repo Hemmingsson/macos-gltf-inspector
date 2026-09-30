@@ -17,8 +17,7 @@ enum WebThumbnail {
 
     private struct SharedHost {
         let host: WebRendererHost
-        let environment: String
-        let toneMapping: String
+        let look: WebPreviewCanvas.Look
     }
 
     @MainActor
@@ -35,8 +34,7 @@ enum WebThumbnail {
     @MainActor
     private static func renderNow(url: URL, pixel: Int) async throws -> URL {
         let started = CFAbsoluteTimeGetCurrent()
-        let look = AppGroupSettings.rendererLook()
-        let host = try await reusedHost(environment: look.environment, toneMapping: look.toneMapping, pixel: pixel)
+        let host = try await reusedHost(look: .stored(), pixel: pixel)
         let info: WebRendererHost.LoadInfo
         let image: CGImage
         do {
@@ -66,18 +64,16 @@ enum WebThumbnail {
     }
 
     @MainActor
-    private static func reusedHost(environment: String, toneMapping: String, pixel: Int) async throws -> WebRendererHost {
-        if let shared, !shared.host.isBroken,
-           shared.environment == environment, shared.toneMapping == toneMapping {
+    private static func reusedHost(look: WebPreviewCanvas.Look, pixel: Int) async throws -> WebRendererHost {
+        if let shared, !shared.host.isBroken, shared.look == look {
             try await shared.host.start(size: pixel)
             return shared.host
         }
         let host = try WebRendererHost(mode: .still)
         try await host.start(size: pixel)
-        // Cheap first call: load proceeds without waiting on HDR. `renderStill` joins IBL.
-        try await host.setEnvironment(named: environment)
-        try await host.setToneMapping(named: toneMapping)
-        shared = SharedHost(host: host, environment: environment, toneMapping: toneMapping)
+        // Cheap before the first model: the page loads the HDR after `load`, `renderStill` waits.
+        try await host.apply(look)
+        shared = SharedHost(host: host, look: look)
         return host
     }
 }

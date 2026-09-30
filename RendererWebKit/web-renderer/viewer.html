@@ -128,6 +128,7 @@ function fitCamera() {
     scene.applyTransformHierarchy(state.gltf);
     state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
     if (!centerModel) includeOriginInFraming();
+    applyProjection();
 }
 
 /**
@@ -439,6 +440,55 @@ function installPointerControls() {
     }, { passive: false });
 }
 
+/** Last look `apply` received (`PageLook` in Swift). */
+let look = {};
+
+/**
+ * `[r, g, b, a]` in 0-1, painted as the page background — not `clearColor`, which stays
+ * transparent so the host window shows around the model when alpha is 0.
+ */
+function setBackdrop([r, g, b, a] = [0, 0, 0, 0]) {
+    document.body.style.background =
+        `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+}
+
+/**
+ * Perspective / orthographic. The ortho magnification is derived from the camera distance, so it
+ * is restated after every fit or camera move — otherwise switching would rescale the model.
+ */
+function applyProjection() {
+    const camera = state.userCamera;
+    if (look.orthographic) {
+        camera.type = "orthographic";
+        const mag = camera.distance * Math.tan(camera.perspective.yfov / 2);
+        camera.orthographic = { xmag: mag, ymag: mag, znear: camera.perspective.znear, zfar: camera.perspective.zfar };
+    } else {
+        camera.type = "perspective";
+    }
+}
+
+let environmentURL = null;
+let environmentLoad = null;
+
+/** Loads the look's HDR once per change; concurrent callers share the one load. */
+function loadEnvironment() {
+    const url = look.environment;
+    if (!url || (url === environmentURL && environmentLoad)) return environmentLoad ?? Promise.resolve();
+    environmentURL = url;
+    environmentLoad = (async () => {
+        const hdr = await (await fetch(url)).arrayBuffer();
+        state.environment = await resources.loadEnvironment(hdr, {
+            lut_ggx_file: "assets/lut_ggx.png",
+            lut_charlie_file: "assets/lut_charlie.png",
+            lut_sheen_E_file: "assets/lut_sheen_E.png",
+        });
+        state.renderingParameters.useIBL = true;
+    })();
+    // A failed load is retried by the next caller rather than cached.
+    environmentLoad.catch(() => { environmentURL = null; environmentLoad = null; });
+    return environmentLoad;
+}
+
 const commands = {
     /** Fixed pixel size for still mode; live mode follows the view instead. */
     configure({ mode, size }) {
@@ -454,14 +504,39 @@ const commands = {
         return { mode };
     },
 
-    async setEnvironment({ url }) {
-        const hdr = await (await fetch(url)).arrayBuffer();
-        state.environment = await resources.loadEnvironment(hdr, {
-            lut_ggx_file: "assets/lut_ggx.png",
-            lut_charlie_file: "assets/lut_charlie.png",
-            lut_sheen_E_file: "assets/lut_sheen_E.png",
-        });
-        state.renderingParameters.useIBL = true;
+    /**
+     * The whole look, every time (`PageLook` in Swift). Cheap values are simply assigned; only a
+     * changed environment (IBL prefilter), centring, scene or projection does real work.
+     */
+    async apply({ look: next }) {
+        const params = state.renderingParameters;
+        params.toneMap = next.toneMap;
+        params.exposure = Math.pow(2, next.exposure);   // EV in, linear factor out
+        params.environmentRotation = next.environmentRotation;
+        params.iblIntensity = next.iblIntensity;
+        params.debugOutput = next.debugOutput;
+        setBackdrop(next.background);
+        autoRotate = next.autoRotate;
+        showFloor = next.floor;
+        showWireframe = next.wireframe;
+        selectedNodeIndex = Number.isInteger(next.selectedNode) ? next.selectedNode : null;
+        state.cameraNodeIndex = next.cameraNodeIndex ?? undefined;
+        state.variant = next.variant ?? undefined;
+        if (look.yfov !== next.yfov) state.userCamera.perspective.yfov = next.yfov * Math.PI / 180;
+
+        const sceneChanged = look.sceneIndex !== next.sceneIndex;
+        const refit = look.centered !== next.centered || sceneChanged;
+        const projectionChanged = look.orthographic !== next.orthographic;
+        centerModel = next.centered !== false;
+        look = next;
+        if (refit && state.gltf) {
+            if (sceneChanged) state.sceneIndex = next.sceneIndex;
+            fitCamera();
+        } else if (projectionChanged) {
+            applyProjection();
+        }
+        // Before the first model this only records the HDR: first paint does not wait on IBL.
+        if (state.gltf) await loadEnvironment();
         return {};
     },
 
@@ -473,7 +548,8 @@ const commands = {
         send({ event: "progress", stage: "load" });
         state.gltf = await resources.loadGltf(url);
         const parseMs = Math.round(performance.now() - t0);
-        state.sceneIndex = state.gltf.scene ?? 0;
+        // A look scene of 0 keeps the file's default scene.
+        state.sceneIndex = look.sceneIndex || (state.gltf.scene ?? 0);
         const tFit = performance.now();
         fitCamera();
         const fitMs = Math.round(performance.now() - tFit);
@@ -493,6 +569,8 @@ const commands = {
             drawOverlays();
             firstFrameMs = Math.round(performance.now() - tFrame);
         }
+        // IBL after the model: the first frame is key+fill; the probe lands a frame or two later.
+        loadEnvironment().catch((error) => console.error("environment", error));
         return {
             width: canvas.width,
             height: canvas.height,
@@ -504,12 +582,6 @@ const commands = {
             fitMs,
             firstFrameMs,
         };
-    },
-
-    setScene({ index }) {
-        state.sceneIndex = index;
-        fitCamera();
-        return {};
     },
 
     /**
@@ -533,6 +605,7 @@ const commands = {
         camera.rotAroundX = elevation * Math.PI / 180;
         camera.setRotation(camera.rotAroundY, camera.rotAroundX);
         camera.setDistanceFromTarget(radius, target);
+        applyProjection();
         return {};
     },
 
@@ -558,6 +631,7 @@ const commands = {
         // Pan and zoom scale off baseDistance; leaving it stale would make a later live
         // interaction behave differently depending on how the camera was set.
         camera.baseDistance = distance;
+        applyProjection();
         return {};
     },
 
@@ -601,111 +675,10 @@ const commands = {
         return {};
     },
 
-    /** Stops in, linear factor out — the renderer multiplies radiance by this. */
-    setExposure({ value }) {
-        state.renderingParameters.exposure = Math.pow(2, value);
-        return {};
-    },
-
-    setEnvironmentRotation({ value }) {
-        state.renderingParameters.environmentRotation = value;
-        return {};
-    },
-
-    setToneMapping({ name }) {
-        state.renderingParameters.toneMap = name;
-        return {};
-    },
-
-    /** Pass "None" to leave debug mode. */
-    setDebugChannel({ name }) {
-        state.renderingParameters.debugOutput = name;
-        return {};
-    },
-
-    /**
-     * `[r, g, b, a]` in 0-1. Alpha 0 lets the host window show through.
-     *
-     * Painted as the page background, not `renderingParameters.clearColor`. `clearFrame`
-     * does write `clearColor` to the canvas; we keep that transparent so CSS (and the
-     * host window) stay visible around the model.
-     */
-    setBackdrop({ color }) {
-        const [r, g, b, a] = color;
-        document.body.style.background =
-            `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
-        return {};
-    },
-
-    setAutoRotate({ enabled }) {
-        autoRotate = enabled;
-        return {};
-    },
-
-    /**
-     * Perspective / orthographic. `UserCamera` keeps its distance either way, so the ortho
-     * magnification is derived from it — otherwise switching projection would silently rescale
-     * the model.
-     */
-    setProjection({ name }) {
-        const camera = state.userCamera;
-        if (name === "orthographic") {
-            camera.type = "orthographic";
-            const mag = camera.distance * Math.tan(camera.perspective.yfov / 2);
-            camera.orthographic = { xmag: mag, ymag: mag, znear: camera.perspective.znear, zfar: camera.perspective.zfar };
-        } else {
-            camera.type = "perspective";
-        }
-        return {};
-    },
-
-    /** Vertical field of view in degrees. */
-    setFieldOfView({ value }) {
-        state.userCamera.perspective.yfov = value * Math.PI / 180;
-        return {};
-    },
-
-    /** `undefined` returns to the user camera. */
-    setFileCamera({ index }) {
-        state.cameraNodeIndex = index ?? undefined;
-        return {};
-    },
-
-    /** `KHR_materials_variants`; `undefined` restores the file default. */
-    setMaterialVariant({ index }) {
-        state.variant = index ?? undefined;
-        return {};
-    },
-
-    /** Visual only — does not refit or change orbit limits. */
-    setFloor({ enabled }) {
-        showFloor = !!enabled;
-        return {};
-    },
-
-    /**
-     * False reveals the authored origin (gizmo + framing that includes 0,0,0).
-     * True restores scene-only fit.
-     */
-    setCenter({ enabled }) {
-        centerModel = enabled !== false;
-        if (state.gltf) fitCamera();
-        return {};
-    },
-
-    setWireframe({ enabled }) {
-        showWireframe = !!enabled;
-        return {};
-    },
-
-    /** glTF node index, or omit to clear. */
-    setSelectedNode({ index }) {
-        selectedNodeIndex = Number.isInteger(index) ? index : null;
-        return {};
-    },
-
     /** Still mode: render one frame and hand back PNG bytes. */
-    renderStill() {
+    async renderStill() {
+        // A thumbnail taken straight after `load` must still be lit.
+        await loadEnvironment();
         view.renderFrame(state, canvas.width, canvas.height);
         drawOverlays();
         return { png: canvas.toDataURL("image/png") };

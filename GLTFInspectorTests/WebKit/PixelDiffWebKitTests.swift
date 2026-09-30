@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import GLTFCore
 import Testing
 @testable import RendererWebKit
 
@@ -22,21 +23,31 @@ enum PixelDiffWebKit {
         return { entry in try await render(entry, on: host) }
     }
 
-    /// Applies the whole pinned look. Exposure and environment rotation are sent even though
-    /// they equal the page defaults, so a change of default cannot move the goldens. The
-    /// background needs no command: the page's `clearColor` is fixed transparent and the
-    /// comparison flattens onto ``PixelDiff/backdrop``.
+    /// Applies the whole pinned look as one `RenderLook`, so a change of page default cannot move
+    /// the goldens. The manifest's rotation is the page value; yaw is that minus the Khronos
+    /// default (90). The background paints the page, not the canvas: the drawing buffer stays
+    /// transparent and the comparison flattens onto ``PixelDiff/backdrop``.
     static func makeHost(manifest: PixelDiffManifest) async throws -> WebRendererHost {
-        let look = manifest.look
         let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
-        try await host.start(size: look.canvasSize)
-        try await host.setEnvironment(named: look.environment)
-        try await host.send { .setToneMapping(id: $0, name: look.toneMapping) }
-        try await host.send { .setExposure(id: $0, stops: look.exposureEV) }
-        try await host.send {
-            .setEnvironmentRotation(id: $0, degrees: look.environmentRotationDegrees)
-        }
+        try await host.start(size: manifest.look.canvasSize)
+        try await host.apply(WebPreviewCanvas.Look(render: try renderLook(manifest.look)))
         return host
+    }
+
+    static func renderLook(_ look: PixelDiffManifest.Look) throws -> RenderLook {
+        let background = look.background
+        return RenderLook(
+            exposureEV: look.exposureEV,
+            environmentIntensity: 1,
+            environmentYawDegrees: look.environmentRotationDegrees - PageLook.khronosDefaultRotation,
+            usesEnvironment: true,
+            environment: try #require(KhronosEnvironments(rawValue: look.environment)),
+            toneMapping: try #require(RenderLook.ToneMapping(rawValue: look.toneMapping)),
+            background: RenderLook.Color(
+                red: background[0], green: background[1], blue: background[2], alpha: background[3]
+            ),
+            usesFileLights: true
+        )
     }
 
     /// Loads a model and renders it from an already-recorded pose.

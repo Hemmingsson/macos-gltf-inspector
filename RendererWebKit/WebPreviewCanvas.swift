@@ -43,79 +43,6 @@ private struct WebCanvasLoadingChrome: View {
 /// thing that draws the model. Sidebar, inspector and overlays still read the RealityKit
 /// document — decoupling those is `SceneModel from glTF JSON`, a separate task.
 public struct WebPreviewCanvas: NSViewRepresentable {
-    /// Look settings as plain values.
-    ///
-    /// Deliberately not `LightingSettings`: that type lives in `PreviewUI`, which the Quick Look
-    /// and thumbnail extensions do not link. Keeping this primitive is what lets one canvas serve
-    /// all three surfaces.
-    public struct Look: Equatable {
-        /// Bundled `.hdr` stem — `neutral`, `field`, `Colorful_Studio`.
-        var environment: String
-        /// Khronos `GltfState.ToneMaps` value.
-        var toneMapping: String
-        /// Exposure compensation in stops.
-        var exposure: Double
-        /// Environment yaw in degrees.
-        var environmentRotation: Double
-        /// Backdrop as `[r, g, b, a]` in 0-1. Alpha 0 shows the host window through.
-        var backdrop: [Double]
-        var autoRotates: Bool
-        /// `perspective` or `orthographic`.
-        var projection: String
-        /// Vertical field of view in degrees.
-        var fieldOfView: Double
-        /// Khronos `GltfState.DebugOutput` value; `None` for normal shading.
-        var debugChannel: String
-        /// Camera authored in the file, or nil for the user camera.
-        var fileCameraIndex: Int?
-        /// `KHR_materials_variants` index, or nil for the file default.
-        var materialVariantIndex: Int?
-        /// Scene index.
-        var sceneIndex: Int
-        var showsFloor: Bool
-        /// False shows the authored-origin gizmo and frames so the origin is visible.
-        var isCentered: Bool
-        var wireframe: Bool
-        /// glTF node index highlighted on the canvas.
-        var selectedNodeIndex: Int?
-
-        public init(
-            environment: String = AppGroupSettings.defaultEnvironment,
-            toneMapping: String = AppGroupSettings.defaultToneMapping,
-            exposure: Double = 0,
-            environmentRotation: Double = 0,
-            backdrop: [Double] = [0, 0, 0, 0],
-            autoRotates: Bool = false,
-            projection: String = "perspective",
-            fieldOfView: Double = 45,
-            debugChannel: String = "None",
-            fileCameraIndex: Int? = nil,
-            materialVariantIndex: Int? = nil,
-            sceneIndex: Int = 0,
-            showsFloor: Bool = true,
-            isCentered: Bool = true,
-            wireframe: Bool = false,
-            selectedNodeIndex: Int? = nil
-        ) {
-            self.environment = environment
-            self.toneMapping = toneMapping
-            self.exposure = exposure
-            self.environmentRotation = environmentRotation
-            self.backdrop = backdrop
-            self.autoRotates = autoRotates
-            self.projection = projection
-            self.fieldOfView = fieldOfView
-            self.debugChannel = debugChannel
-            self.fileCameraIndex = fileCameraIndex
-            self.materialVariantIndex = materialVariantIndex
-            self.sceneIndex = sceneIndex
-            self.showsFloor = showsFloor
-            self.isCentered = isCentered
-            self.wireframe = wireframe
-            self.selectedNodeIndex = selectedNodeIndex
-        }
-    }
-
     let url: URL
     var look = Look()
     /// Icon Services thumbnail already on disk. Nil on the host window and on a cache miss.
@@ -216,7 +143,6 @@ public final class WebCanvasController {
         // `fit` resets the camera transform but not the orbit angles; re-state them so the next
         // drag continues from the front view instead of snapping back.
         try await host.send { .setCamera(id: $0, azimuth: 0, elevation: 0, distance: nil) }
-        try await reapplyProjection(on: host)
     }
 
     /// The opening view. The owner restores Center and the other session values first.
@@ -233,7 +159,6 @@ public final class WebCanvasController {
         try await host.send {
             .setCamera(id: $0, azimuth: angles.azimuth, elevation: angles.elevation, distance: distance)
         }
-        try await reapplyProjection(on: host)
     }
 
     /// One frame at the live camera and canvas size. The owner writes the file.
@@ -244,13 +169,6 @@ public final class WebCanvasController {
     private func readyHost() throws -> WebRendererHost {
         guard phase == .ready, let host else { throw WebRendererError.notReady }
         return host
-    }
-
-    /// The page derives the orthographic size from the camera distance when projection is set,
-    /// so a camera move has to restate it.
-    private func reapplyProjection(on host: WebRendererHost) async throws {
-        guard let projection = appliedLook?.projection, projection == "orthographic" else { return }
-        try await host.send { .setProjection(id: $0, name: projection) }
     }
 
     // MARK: - Mounting
@@ -328,15 +246,13 @@ public final class WebCanvasController {
         didRevealLive = false
     }
 
-    /// `updateNSView` runs on every SwiftUI pass, so both the model and the look are
-    /// diffed before touching the renderer — re-parsing a 13 MB GLB on each pass, or
-    /// re-sampling an IBL on every slider tick, would be ruinous.
+    /// `updateNSView` runs on every SwiftUI pass, so an unchanged model and look touch nothing.
+    /// A changed look goes to the page whole; the page redoes only what changed.
     func reload(url: URL, look: WebPreviewCanvas.Look) {
         guard let host else { return }
 
         let modelChanged = loaded != url
-        let previous = appliedLook
-        guard modelChanged || previous != look else { return }
+        guard modelChanged || appliedLook != look else { return }
         loaded = url
         appliedLook = look
 
@@ -377,57 +293,9 @@ public final class WebCanvasController {
                     try await host.start()
                 }
 
-                // First call only records the stem — HDR is applied after `load` so
-                // unhide is not gated on IBL. Later look changes apply immediately.
-                if previous?.environment != look.environment {
-                    try await host.setEnvironment(named: look.environment)
-                }
-                if previous?.toneMapping != look.toneMapping {
-                    try await host.send { .setToneMapping(id: $0, name: look.toneMapping) }
-                }
-                if previous?.exposure != look.exposure {
-                    try await host.send { .setExposure(id: $0, stops: look.exposure) }
-                }
-                if previous?.environmentRotation != look.environmentRotation {
-                    try await host.send {
-                        .setEnvironmentRotation(id: $0, degrees: look.environmentRotation)
-                    }
-                }
-                if previous?.backdrop != look.backdrop {
-                    try await host.send { .setBackdrop(id: $0, color: look.backdrop) }
-                }
-                if previous?.autoRotates != look.autoRotates {
-                    try await host.send { .setAutoRotate(id: $0, enabled: look.autoRotates) }
-                }
-                if previous?.projection != look.projection {
-                    try await host.send { .setProjection(id: $0, name: look.projection) }
-                }
-                if previous?.fieldOfView != look.fieldOfView {
-                    try await host.send { .setFieldOfView(id: $0, degrees: look.fieldOfView) }
-                }
-                if previous?.debugChannel != look.debugChannel {
-                    try await host.send { .setDebugChannel(id: $0, name: look.debugChannel) }
-                }
-                if previous?.fileCameraIndex != look.fileCameraIndex {
-                    try await host.send { .setFileCamera(id: $0, index: look.fileCameraIndex) }
-                }
-                if previous?.materialVariantIndex != look.materialVariantIndex {
-                    try await host.send {
-                        .setMaterialVariant(id: $0, index: look.materialVariantIndex)
-                    }
-                }
-                if previous?.showsFloor != look.showsFloor {
-                    try await host.send { .setFloor(id: $0, enabled: look.showsFloor) }
-                }
-                if previous?.isCentered != look.isCentered {
-                    try await host.send { .setCenter(id: $0, enabled: look.isCentered) }
-                }
-                if previous?.wireframe != look.wireframe {
-                    try await host.send { .setWireframe(id: $0, enabled: look.wireframe) }
-                }
-                if previous?.selectedNodeIndex != look.selectedNodeIndex {
-                    try await host.send { .setSelectedNode(id: $0, index: look.selectedNodeIndex) }
-                }
+                // Whole look, before the load on a new model: the page records the HDR and
+                // starts it after the model, so first paint does not wait on IBL.
+                try await host.apply(look)
 
                 if modelChanged {
                     showLoading(
@@ -441,12 +309,6 @@ public final class WebCanvasController {
                         AppLog.webRenderer,
                         "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height) firstFrameMs=\(info.firstFrameMs) uptimeMs=\(WebRendererHost.uptimeMs())"
                     )
-                }
-
-                // After the load: `load` resets the scene to the file default, so applying
-                // it earlier would be silently undone.
-                if modelChanged || previous?.sceneIndex != look.sceneIndex, look.sceneIndex != 0 {
-                    try await host.send { .setScene(id: $0, index: look.sceneIndex) }
                 }
             } catch is CancellationError {
                 // Superseded by a newer look or model; nothing to report.

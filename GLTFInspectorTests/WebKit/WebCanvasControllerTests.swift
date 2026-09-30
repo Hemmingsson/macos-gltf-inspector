@@ -143,7 +143,7 @@ struct WebCanvasControllerTests {
             try await host.send { .fit(id: $0) }
         }
         host.timeout = .seconds(30)
-        try await host.send { .setExposure(id: $0, stops: 0) }
+        try await host.send { .getCamera(id: $0) }
         #expect(!host.isBroken)
     }
 }

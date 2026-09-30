@@ -49,16 +49,13 @@ final class WebQuickLookController: NSViewController, QLPreviewingController {
             )
             return
         }
-        let defaults = AppGroupSettings.rendererLook()
         // Cache-only Icon Services read — does not start ThumbnailExtension.
         let placeholder = CachedQuickLookThumbnail.existingIcon(for: url)
         hostingView.rootView = QuickLookWebView(
             state: .web(
                 url: url,
-                look: WebPreviewCanvas.Look(
-                    environment: defaults.environment,
-                    toneMapping: defaults.toneMapping
-                ),
+                // The thumbnail's stored look, plus the floor the preview has always shown.
+                look: .stored(showsFloor: true),
                 placeholder: placeholder,
                 host: host,
                 canvas: WebCanvasController()

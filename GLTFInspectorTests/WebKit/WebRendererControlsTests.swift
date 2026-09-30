@@ -17,7 +17,7 @@ struct WebRendererControlsTests {
     private func makeHost() async throws -> WebRendererHost {
         let host = try WebRendererHost(mode: .still)
         try await host.start(size: 192)
-        try await host.setEnvironment(named: "neutral")
+        try await host.apply(WebPreviewCanvas.Look())
         _ = try await host.load(
             model: TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
         )
@@ -43,11 +43,13 @@ struct WebRendererControlsTests {
     /// Renders before and after, and requires both a real change and a model still on screen.
     private func expectVisibleChange(
         _ host: WebRendererHost,
-        applying command: @escaping (Int) -> WebRendererCommand,
+        applying change: (inout WebPreviewCanvas.Look) -> Void,
         _ label: String
     ) async throws {
         let before = try await host.renderStill()
-        try await host.send(command)
+        var look = WebPreviewCanvas.Look()
+        change(&look)
+        try await host.apply(look)
         let after = try await host.renderStill()
 
         #expect(opaqueSamples(in: before) > 50, "\(label): baseline frame is empty")
@@ -62,7 +64,9 @@ struct WebRendererControlsTests {
     @Test(.enabled(if: TestModels.hasKhronosSamples))
     func backdropPaintsThePageBackground() async throws {
         let host = try await makeHost()
-        try await host.send { .setBackdrop(id: $0, color: [1, 1, 1, 1]) }
+        var look = WebPreviewCanvas.Look()
+        look.render.background = RenderLook.Color(red: 1, green: 1, blue: 1, alpha: 1)
+        try await host.apply(look)
 
         // The browser normalises a fully opaque rgba() to rgb(), so match on the components.
         let background = try await host.evaluate(
@@ -70,7 +74,7 @@ struct WebRendererControlsTests {
         )
         #expect(background.contains("255, 255, 255"), "backdrop did not paint the page: \(background)")
 
-        try await host.send { .setBackdrop(id: $0, color: [0, 0, 0, 0]) }
+        try await host.apply(WebPreviewCanvas.Look())
         let cleared = try await host.evaluate("getComputedStyle(document.body).backgroundColor")
         #expect(
             cleared.contains("0, 0, 0, 0") || cleared == "transparent",
@@ -104,7 +108,7 @@ struct WebRendererControlsTests {
     func projectionChangesTheRender() async throws {
         let host = try await makeHost()
         try await expectVisibleChange(
-            host, applying: { .setProjection(id: $0, name: "orthographic") }, "projection"
+            host, applying: { $0.isOrthographic = true }, "projection"
         )
     }
 
@@ -112,7 +116,7 @@ struct WebRendererControlsTests {
     func fieldOfViewChangesTheRender() async throws {
         let host = try await makeHost()
         try await expectVisibleChange(
-            host, applying: { .setFieldOfView(id: $0, degrees: 20) }, "field of view"
+            host, applying: { $0.fieldOfView = 20 }, "field of view"
         )
     }
 
@@ -121,7 +125,7 @@ struct WebRendererControlsTests {
         let host = try await makeHost()
         try await expectVisibleChange(
             host,
-            applying: { .setToneMapping(id: $0, name: "ACES Filmic Tone Mapping (Hill)") },
+            applying: { $0.render.toneMapping = .acesHill },
             "tone mapping"
         )
     }
@@ -130,7 +134,7 @@ struct WebRendererControlsTests {
     func exposureChangesTheRender() async throws {
         let host = try await makeHost()
         try await expectVisibleChange(
-            host, applying: { .setExposure(id: $0, stops: 2) }, "exposure"
+            host, applying: { $0.render.exposureEV = 2 }, "exposure"
         )
     }
 
@@ -138,7 +142,7 @@ struct WebRendererControlsTests {
     func environmentRotationChangesTheRender() async throws {
         let host = try await makeHost()
         try await expectVisibleChange(
-            host, applying: { .setEnvironmentRotation(id: $0, degrees: 180) }, "environment rotation"
+            host, applying: { $0.render.environmentYawDegrees = 90 }, "environment rotation"
         )
     }
 
@@ -149,15 +153,15 @@ struct WebRendererControlsTests {
         let host = try await makeHost()
         let shaded = try await host.renderStill()
 
-        for channel in ["Base Color", "Metallic", "Roughness", "Normal Texture", "Emissive",
-                        "Occlusion", "Alpha", "Texture Coordinates 0", "Geometry Tangent"] {
-            try await host.send { .setDebugChannel(id: $0, name: channel) }
+        for channel: RenderViewMode.Channel in [.baseColor, .metallic, .roughness, .normals, .emissive,
+                                                .ambientOcclusion, .alpha, .textureCoordinates, .tangents] {
+            try await host.apply(WebPreviewCanvas.Look(viewMode: .channel(channel)))
             let debug = try await host.renderStill()
             #expect(opaqueSamples(in: debug) > 50, "\(channel): frame is empty")
             #expect(png(shaded) != png(debug), "debug channel '\(channel)' did not change the render")
         }
 
-        try await host.send { .setDebugChannel(id: $0, name: "None") }
+        try await host.apply(WebPreviewCanvas.Look())
         let restored = try await host.renderStill()
         #expect(png(restored) == png(shaded), "leaving debug mode did not restore shaded output")
     }
@@ -169,7 +173,9 @@ struct WebRendererControlsTests {
         let host = try await makeHost()
         let neutral = try await host.renderStill()
 
-        try await host.setEnvironment(named: "Colorful_Studio")
+        var look = WebPreviewCanvas.Look()
+        look.render.environment = .colorfulStudio
+        try await host.apply(look)
         let studio = try await host.renderStill()
 
         #expect(opaqueSamples(in: studio) > 50, "studio frame is empty")
@@ -181,7 +187,7 @@ struct WebRendererControlsTests {
         let host = try await makeHost()
         let before = try await host.cameraState()
         try await expectVisibleChange(
-            host, applying: { .setFloor(id: $0, enabled: true) }, "floor"
+            host, applying: { $0.showsFloor = true }, "floor"
         )
         let after = try await host.cameraState()
         #expect(before.pose.distance == after.pose.distance, "floor moved the camera distance")
@@ -194,7 +200,7 @@ struct WebRendererControlsTests {
     func authoredOriginGizmoChangesTheRender() async throws {
         let host = try await makeHost()
         try await expectVisibleChange(
-            host, applying: { .setCenter(id: $0, enabled: false) }, "authored origin"
+            host, applying: { $0.isCentered = false }, "authored origin"
         )
     }
 
@@ -202,7 +208,7 @@ struct WebRendererControlsTests {
     func wireframeChangesTheRender() async throws {
         let host = try await makeHost()
         try await expectVisibleChange(
-            host, applying: { .setWireframe(id: $0, enabled: true) }, "wireframe"
+            host, applying: { $0.viewMode = .wireframe }, "wireframe"
         )
     }
 
@@ -210,7 +216,7 @@ struct WebRendererControlsTests {
     func selectingANodeHighlightsTheCanvas() async throws {
         let host = try await makeHost()
         try await expectVisibleChange(
-            host, applying: { .setSelectedNode(id: $0, index: 0) }, "selection"
+            host, applying: { $0.selectedNodeIndex = 0 }, "selection"
         )
     }
 }
@@ -290,11 +296,9 @@ struct RendererLookDefaultsTests {
         defer { store.tearDown() }
 
         func render() async throws -> Data? {
-            let look = store.look()
             let host = try WebRendererHost(mode: .still)
             try await host.start(size: 160)
-            try await host.setEnvironment(named: look.environment)
-            try await host.send { .setToneMapping(id: $0, name: look.toneMapping) }
+            try await host.apply(.stored(defaults: store.defaults, directory: store.directory))
             _ = try await host.load(model: model)
             let image = try await host.renderStill()
             return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
@@ -317,7 +321,7 @@ struct WebRendererThumbnailPathTests {
     func sidecarGLTFProducesAStill() async throws {
         let host = try WebRendererHost(mode: .still)
         try await host.start(size: 128)
-        try await host.setEnvironment(named: "neutral")
+        try await host.apply(WebPreviewCanvas.Look())
         _ = try await host.load(model: TestFixtures.cube)
         let image = try await host.renderStill()
         #expect(image.width > 8)
@@ -339,7 +343,7 @@ struct WebRendererThumbnailPathTests {
         let started = CFAbsoluteTimeGetCurrent()
         let host = try WebRendererHost(mode: .still)
         try await host.start(size: 256)
-        try await host.setEnvironment(named: "neutral")
+        try await host.apply(WebPreviewCanvas.Look())
         _ = try await host.load(model: TestModels.boomBox)
         let image = try await host.renderStill()
         let ms = (CFAbsoluteTimeGetCurrent() - started) * 1000
@@ -354,7 +358,7 @@ struct WebRendererThumbnailPathTests {
         let files = [TestFixtures.tiny] + TestModels.khronosGLBs.prefix(11)
         let warmHost = try WebRendererHost(mode: .still)
         try await warmHost.start(size: 64)
-        try await warmHost.setEnvironment(named: "neutral")
+        try await warmHost.apply(WebPreviewCanvas.Look())
         let warmStart = CFAbsoluteTimeGetCurrent()
         for i in 0..<100 {
             _ = try await warmHost.load(model: files[i % files.count])
@@ -368,7 +372,7 @@ struct WebRendererThumbnailPathTests {
         for i in 0..<coldCount {
             let host = try WebRendererHost(mode: .still)
             try await host.start(size: 64)
-            try await host.setEnvironment(named: "neutral")
+            try await host.apply(WebPreviewCanvas.Look())
             _ = try await host.load(model: files[i % files.count])
             _ = try await host.renderStill()
         }

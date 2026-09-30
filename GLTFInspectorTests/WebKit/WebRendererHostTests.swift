@@ -103,7 +103,7 @@ struct WebRendererHostTests {
     private func makeStillHost(size: Int = 512) async throws -> WebRendererHost {
         let host = try WebRendererHost(mode: .still)
         try await host.start(size: size)
-        try await host.setEnvironment(named: "neutral")
+        try await host.apply(WebPreviewCanvas.Look())
         return host
     }
 
@@ -184,11 +184,12 @@ struct WebRendererHostTests {
         let host = try WebRendererHost(mode: .still, timeout: .seconds(8))
         try await host.start(size: 64)
 
-        // The scheme handler 404s, so the fetch inside the handler rejects.
-        await #expect(throws: (any Error).self) {
-            try await host.send {
-                .setEnvironment(id: $0, url: "gltf-inspector:///environments/no-such-file.hdr")
-            }
+        _ = try await host.load(model: TestFixtures.tiny)
+        var look = PageLook(WebPreviewCanvas.Look())
+        look.environment = PageLook.environmentURL("no-such-file")
+        // The scheme handler 404s, so the environment fetch inside `apply` rejects.
+        await #expect(throws: WebRendererError.self) {
+            try await host.apply(look)
         }
     }
 

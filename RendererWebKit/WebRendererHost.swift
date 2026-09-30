@@ -49,11 +49,6 @@ public final class WebRendererHost: NSObject {
     private var readyContinuation: CheckedContinuation<Void, Error>?
     private var isReady = false
     private var startTask: Task<Void, Error>?
-    /// Desired HDR stem. Applied after the first `load` so first paint does not wait on IBL.
-    private var pendingEnvironmentName: String?
-    private var appliedEnvironmentName: String?
-    private var hasLoadedModel = false
-    private var environmentTask: Task<Void, Error>?
 
     /// True once the page failed to start, crashed, lost its WebGL context or failed outside a
     /// call. Calls then fail fast with that error; the next `start()` loads a fresh page (a new
@@ -125,9 +120,6 @@ public final class WebRendererHost: NSObject {
             )
             self.brokenBy = nil
             self.isReady = false
-            self.hasLoadedModel = false
-            self.appliedEnvironmentName = nil
-            self.environmentTask = nil
             do {
                 try await self.loadPage()
                 _ = try await self.send { .configure(id: $0, mode: self.mode, size: size) }
@@ -194,8 +186,8 @@ public final class WebRendererHost: NSObject {
     /// Points the renderer at a file and loads it. The page always fetches `/model`; which
     /// bytes that resolves to is decided here, in Swift.
     ///
-    /// Does not wait for HDR IBL. A prior `setEnvironment` is optional; the page draws
-    /// key+fill until the probe lands. IBL is kicked off after `loadGltf` returns.
+    /// Does not wait for HDR IBL: the page draws key+fill and starts the look's environment
+    /// after the model; `renderStill` waits for it.
     @discardableResult
     public func load(model url: URL) async throws -> LoadInfo {
         resources.setModel(url)
@@ -203,8 +195,6 @@ public final class WebRendererHost: NSObject {
         let event = try await send {
             .load(id: $0, url: "\(WebRendererResourceHandler.scheme):///model/\(name)")
         }
-        hasLoadedModel = true
-        startEnvironmentIfNeeded()
         return LoadInfo(
             triangles: event.triangles ?? 0,
             meshes: event.meshes ?? 0,
@@ -218,20 +208,14 @@ public final class WebRendererHost: NSObject {
         )
     }
 
-    /// Records the bundled `.hdr` stem. Before the first model load this is a cheap
-    /// bookkeeping call — the HDR fetch runs after `load` so first paint is not gated on IBL.
-    /// After a model is on screen, a new name applies immediately (look changes).
-    public func setEnvironment(named name: String) async throws {
-        pendingEnvironmentName = name
-        guard hasLoadedModel else { return }
-        try await finishEnvironment()
-        if appliedEnvironmentName == name { return }
-        try await applyEnvironment(named: name)
+    /// The whole look, applied in one call. Before the first model it only records the
+    /// environment; after, a changed environment is prefiltered before this returns.
+    public func apply(_ look: WebPreviewCanvas.Look) async throws {
+        try await apply(PageLook(look))
     }
 
-    /// Khronos `GltfState.ToneMaps` value, by name.
-    public func setToneMapping(named name: String) async throws {
-        try await send { .setToneMapping(id: $0, name: name) }
+    func apply(_ look: PageLook) async throws {
+        try await send { .apply(id: $0, look: look) }
     }
 
     /// Evaluates an expression in the page and returns it as a string.
@@ -266,53 +250,15 @@ public final class WebRendererHost: NSObject {
         return camera
     }
 
-    /// Renders one frame and decodes it. `.still` mode only in practice, though nothing stops
-    /// a live host from grabbing a frame.
-    ///
-    /// Joins deferred IBL first so a thumbnail taken after `load` is still a lit model.
+    /// Renders one frame and decodes it. `.still` mode in practice, though a live host can grab
+    /// a frame too. The page waits for a pending IBL first, so a thumbnail is a lit model.
     public func renderStill() async throws -> CGImage {
-        try await finishEnvironment()
         let event = try await send { .renderStill(id: $0) }
         guard
             let uri = event.png,
             let image = Self.decodePNGDataURI(uri)
         else { throw WebRendererError.undecodableImage }
         return image
-    }
-
-    // MARK: - Deferred IBL
-
-    /// Kicks HDR apply after first `load` without blocking the load result.
-    private func startEnvironmentIfNeeded() {
-        guard let name = pendingEnvironmentName, name != appliedEnvironmentName else { return }
-        guard environmentTask == nil else { return }
-        environmentTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await self.applyEnvironment(named: name)
-            } catch {
-                AppLog.error(AppLog.webRenderer, "environment apply failed: \(error.localizedDescription)")
-                self.environmentTask = nil
-                throw error
-            }
-        }
-    }
-
-    private func finishEnvironment() async throws {
-        if let environmentTask {
-            defer { self.environmentTask = nil }
-            try await environmentTask.value
-        }
-        if let name = pendingEnvironmentName, name != appliedEnvironmentName {
-            try await applyEnvironment(named: name)
-        }
-    }
-
-    private func applyEnvironment(named name: String) async throws {
-        try await send {
-            .setEnvironment(id: $0, url: "\(WebRendererResourceHandler.scheme):///environments/\(name).hdr")
-        }
-        appliedEnvironmentName = name
     }
 
     // MARK: - Completion

@@ -9,28 +9,13 @@ import GLTFCore
 struct WebRendererCommand: Equatable {
     enum Kind: String {
         case configure
-        case setEnvironment
+        case apply
         case load
-        case setScene
         case setCamera
         case setCameraPose
         case getCamera
         case fit
-        case setToneMapping
-        case setExposure
-        case setEnvironmentRotation
-        case setDebugChannel
         case renderStill
-        case setBackdrop
-        case setAutoRotate
-        case setProjection
-        case setFieldOfView
-        case setFileCamera
-        case setMaterialVariant
-        case setFloor
-        case setCenter
-        case setWireframe
-        case setSelectedNode
     }
 
     var id: Int
@@ -38,15 +23,11 @@ struct WebRendererCommand: Equatable {
     var mode: String?
     var size: Int?
     var url: String?
-    var index: Int?
     var azimuth: Double?
     var elevation: Double?
     var distance: Double?
-    var name: String?
-    var value: Double?
-    var enabled: Bool?
-    var color: [Double]?
     var pose: CameraPose?
+    var look: PageLook?
 
     private init(id: Int, kind: Kind) {
         self.id = id
@@ -60,21 +41,16 @@ struct WebRendererCommand: Equatable {
         return command
     }
 
-    static func setEnvironment(id: Int, url: String) -> Self {
-        var command = Self(id: id, kind: .setEnvironment)
-        command.url = url
+    /// The whole look; the page decides what actually changed.
+    static func apply(id: Int, look: PageLook) -> Self {
+        var command = Self(id: id, kind: .apply)
+        command.look = look
         return command
     }
 
     static func load(id: Int, url: String) -> Self {
         var command = Self(id: id, kind: .load)
         command.url = url
-        return command
-    }
-
-    static func setScene(id: Int, index: Int) -> Self {
-        var command = Self(id: id, kind: .setScene)
-        command.index = index
         return command
     }
 
@@ -105,98 +81,8 @@ struct WebRendererCommand: Equatable {
         Self(id: id, kind: .fit)
     }
 
-    static func setToneMapping(id: Int, name: String) -> Self {
-        var command = Self(id: id, kind: .setToneMapping)
-        command.name = name
-        return command
-    }
-
-    /// Exposure compensation in stops; the page converts to a linear factor.
-    static func setExposure(id: Int, stops: Double) -> Self {
-        var command = Self(id: id, kind: .setExposure)
-        command.value = stops
-        return command
-    }
-
-    static func setEnvironmentRotation(id: Int, degrees: Double) -> Self {
-        var command = Self(id: id, kind: .setEnvironmentRotation)
-        command.value = degrees
-        return command
-    }
-
-    static func setDebugChannel(id: Int, name: String) -> Self {
-        var command = Self(id: id, kind: .setDebugChannel)
-        command.name = name
-        return command
-    }
-
     static func renderStill(id: Int) -> Self {
         Self(id: id, kind: .renderStill)
-    }
-
-    /// Components in 0-1. Alpha 0 lets the host window show through.
-    static func setBackdrop(id: Int, color: [Double]) -> Self {
-        var command = Self(id: id, kind: .setBackdrop)
-        command.color = color
-        return command
-    }
-
-    static func setAutoRotate(id: Int, enabled: Bool) -> Self {
-        var command = Self(id: id, kind: .setAutoRotate)
-        command.enabled = enabled
-        return command
-    }
-
-    static func setProjection(id: Int, name: String) -> Self {
-        var command = Self(id: id, kind: .setProjection)
-        command.name = name
-        return command
-    }
-
-    /// Vertical field of view in degrees.
-    static func setFieldOfView(id: Int, degrees: Double) -> Self {
-        var command = Self(id: id, kind: .setFieldOfView)
-        command.value = degrees
-        return command
-    }
-
-    /// `nil` returns to the user camera.
-    static func setFileCamera(id: Int, index: Int?) -> Self {
-        var command = Self(id: id, kind: .setFileCamera)
-        command.index = index
-        return command
-    }
-
-    /// `nil` restores the file's default variant.
-    static func setMaterialVariant(id: Int, index: Int?) -> Self {
-        var command = Self(id: id, kind: .setMaterialVariant)
-        command.index = index
-        return command
-    }
-
-    static func setFloor(id: Int, enabled: Bool) -> Self {
-        var command = Self(id: id, kind: .setFloor)
-        command.enabled = enabled
-        return command
-    }
-
-    static func setCenter(id: Int, enabled: Bool) -> Self {
-        var command = Self(id: id, kind: .setCenter)
-        command.enabled = enabled
-        return command
-    }
-
-    static func setWireframe(id: Int, enabled: Bool) -> Self {
-        var command = Self(id: id, kind: .setWireframe)
-        command.enabled = enabled
-        return command
-    }
-
-    /// `nil` clears the highlight.
-    static func setSelectedNode(id: Int, index: Int?) -> Self {
-        var command = Self(id: id, kind: .setSelectedNode)
-        command.index = index
-        return command
     }
 
     /// JSON object literal for `__viewer.exec(...)`. Nil fields are omitted so the page can use
@@ -206,14 +92,14 @@ struct WebRendererCommand: Equatable {
         if let mode { object["mode"] = mode }
         if let size { object["size"] = size }
         if let url { object["url"] = url }
-        if let index { object["index"] = index }
         if let azimuth { object["azimuth"] = azimuth }
         if let elevation { object["elevation"] = elevation }
         if let distance { object["distance"] = distance }
-        if let name { object["name"] = name }
-        if let value { object["value"] = value }
-        if let enabled { object["enabled"] = enabled }
-        if let color { object["color"] = color }
+        if let look,
+           let data = try? JSONEncoder().encode(look),
+           let json = try? JSONSerialization.jsonObject(with: data) {
+            object["look"] = json
+        }
         if let pose {
             object["target"] = pose.target
             object["distance"] = pose.distance

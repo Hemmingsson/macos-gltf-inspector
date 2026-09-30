@@ -37,7 +37,14 @@ enum LookProbeGate {
 struct LookProbeTests {
     static let size = 256
     static let outputDirectory = URL(fileURLWithPath: "/tmp/GLTFInspector-look-probes")
-    static let webLinearToneMap = "None (Linear mapping, clamped at 1.0)"
+    /// Web page look for the probes: tone map "None", 0 EV, and no IBL at all.
+    static var webLinearLook: PageLook {
+        var render = RenderLook.standard
+        render.toneMapping = .none
+        var look = PageLook(WebPreviewCanvas.Look(render: render))
+        look.environment = nil
+        return look
+    }
 
     static func probe(_ name: String) -> URL { TestFixtures.fixture("probes/\(name)") }
 
@@ -53,13 +60,14 @@ struct LookProbeTests {
         // Web: the Khronos page at its default (90) and at 180 to get the rotation's sign.
         let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
         try await host.start(size: Self.size)
-        try await host.send { .setToneMapping(id: $0, name: Self.webLinearToneMap) }
-        try await host.send { .setExposure(id: $0, stops: 0) }
+        try await host.apply(Self.webLinearLook)
         _ = try await host.load(model: Self.probe("mirror-sphere.gltf"))
-        // Served next to the model by the scheme handler (`/model/<sibling>`).
-        try await host.send { .setEnvironment(id: $0, url: "gltf-inspector:///model/env-wheel.hdr") }
         for rotation in [0.0, 90, 180] {
-            try await host.send { .setEnvironmentRotation(id: $0, degrees: rotation) }
+            var look = Self.webLinearLook
+            // Served next to the model by the scheme handler (`/model/<sibling>`).
+            look.environment = "gltf-inspector:///model/env-wheel.hdr"
+            look.environmentRotation = rotation
+            try await host.apply(look)
             var row: [String] = []
             for a in azimuths {
                 try await host.setCameraPose(Self.sphereCamera(azimuth: a))
@@ -108,8 +116,7 @@ struct LookProbeTests {
 
         let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
         try await host.start(size: Self.size)
-        try await host.send { .setToneMapping(id: $0, name: Self.webLinearToneMap) }
-        try await host.send { .setExposure(id: $0, stops: 0) }
+        try await host.apply(Self.webLinearLook)
         for file in files {
             _ = try await host.load(model: Self.probe(file))
             try await host.setCameraPose(Self.planeCamera)
@@ -192,8 +199,7 @@ struct LookProbeTests {
 
         let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
         try await host.start(size: Self.size)
-        try await host.send { .setToneMapping(id: $0, name: Self.webLinearToneMap) }
-        try await host.send { .setExposure(id: $0, stops: 0) }
+        try await host.apply(Self.webLinearLook)
         _ = try await host.load(model: Self.probe("emissive-ramp.gltf"))
         try await host.setCameraPose(Self.rampCamera)
         let image = try await host.renderStill()

@@ -64,7 +64,7 @@ struct RendererTimingBenchTests {
         let tPage = CFAbsoluteTimeGetCurrent()
         try await host.start(size: Self.stillSize)
         let tIbl = CFAbsoluteTimeGetCurrent()
-        try await host.setEnvironment(named: "neutral")
+        try await host.apply(WebPreviewCanvas.Look())
         print(String(
             format: "wk-fp warmup-host pageMs=%.0f iblMs=%.0f",
             (tIbl - tPage) * 1000,
@@ -136,7 +136,7 @@ struct RendererTimingBenchTests {
         let host = try WebRendererHost(mode: .still, timeout: .seconds(180))
         try await host.start(size: Self.stillSize)
         let tPage = CFAbsoluteTimeGetCurrent()
-        try await host.setEnvironment(named: "neutral")
+        try await host.apply(WebPreviewCanvas.Look())
         let tIbl = CFAbsoluteTimeGetCurrent()
         let info = try await host.load(model: url)
         let tLoad = CFAbsoluteTimeGetCurrent()
