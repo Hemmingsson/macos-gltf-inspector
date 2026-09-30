@@ -1,5 +1,6 @@
 import GLTFCore
 import Observation
+import RendererRealityKit
 import SwiftUI
 
 /// Host-owned preview session state — single source of truth for the RealityKit canvas.

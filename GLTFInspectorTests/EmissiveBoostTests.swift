@@ -1,7 +1,8 @@
 import Foundation
-import Testing
-import simd
 @testable import GLTFInspector
+@testable import RendererRealityKit
+import simd
+import Testing
 
 struct EmissiveBoostTests {
     @Test func majorityAchromaticLooksBaked() {

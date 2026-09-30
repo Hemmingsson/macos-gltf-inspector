@@ -1,5 +1,6 @@
 import AppKit
 import GLTFCore
+import RendererRealityKit
 import UniformTypeIdentifiers
 
 /// Offscreen PNG export at the live camera pose (not a RealityView framebuffer grab).

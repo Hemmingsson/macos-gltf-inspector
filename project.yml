@@ -33,7 +33,6 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "1.1"
     CURRENT_PROJECT_VERSION: "4"
-    SWIFT_OBJC_BRIDGING_HEADER: Shared/GLTFInspector-Bridging-Header.h
 
 packages:
   Sparkle:
@@ -98,6 +97,45 @@ targets:
           ARCHS: arm64 x86_64
           ONLY_ACTIVE_ARCH: NO
 
+  # RealityKit renderer: glTF → GLTFKit2 → prepare → convert → RealityKit entities, the
+  # RealityView canvas, look / camera / floor, and offscreen stills. Extension-safe (no NSApp;
+  # the host owns the PNG save panel). The only target that links GLTFKit2 and DracoSwift.
+  # GLBTry.h is public because framework targets cannot use a bridging header.
+  RendererRealityKit:
+    type: framework
+    platform: macOS
+    sources:
+      - path: RendererRealityKit
+        excludes:
+          - GLBDracoDecompressor.h
+          - GLBTry.h
+          - RendererRealityKit.h
+      - path: RendererRealityKit/RendererRealityKit.h
+        headerVisibility: public
+      - path: RendererRealityKit/GLBTry.h
+        headerVisibility: public
+      - path: RendererRealityKit/GLBDracoDecompressor.h
+        headerVisibility: project
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.RendererRealityKit
+        PRODUCT_MODULE_NAME: RendererRealityKit
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        APPLICATION_EXTENSION_API_ONLY: YES
+      configs:
+        Debug:
+          ENABLE_TESTABILITY: YES
+        Release:
+          ARCHS: arm64 x86_64
+          ONLY_ACTIVE_ARCH: NO
+    dependencies:
+      - target: GLTFCore
+        embed: false
+      - package: GLTFKit2
+      - package: DracoSwift
+
   GLTFInspector:
     type: application
     platform: macOS
@@ -106,17 +144,7 @@ targets:
       - path: assets/ICON.icon
         type: file
         buildPhase: resources
-      - path: Shared
-        includes:
-          - "*.swift"
-          - GLBDracoDecompressor.mm
-          - GLBTry.mm
-      - path: Shared/Convert
-        includes:
-          - "*.swift"
-      - path: Shared/WebRenderer
-        includes:
-          - "*.swift"
+      - Shared
       - path: Vendor/web-renderer
         type: file
         buildPhase: resources
@@ -205,6 +233,8 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: true
+      - target: RendererRealityKit
+        embed: true
       - target: PreviewUI
         embed: true
       - target: PreviewExtension
@@ -213,8 +243,10 @@ targets:
         embed: true
       - package: Sparkle
         product: Sparkle
+      # RendererRealityKit is the only code that uses GLTFKit2 (a dynamic framework). A framework
+      # target does not embed package products, so the host carries it once for the framework and
+      # both extensions to resolve through @rpath.
       - package: GLTFKit2
-      - package: DracoSwift
 
   PreviewExtension:
     type: app-extension
@@ -228,21 +260,9 @@ targets:
         buildPhase: resources
       - path: Shared
         includes:
-          - "*.swift"
-          - GLBDracoDecompressor.mm
-          - GLBTry.mm
-        excludes:
-          - PreviewFocus.swift
-          - PreviewMorph.swift
-          - SelectionDetail.swift
-          - ModelDimensions.swift
-          - LoadedModel+Host.swift
-      - path: Shared/Convert
-        includes:
-          - "*.swift"
-      - path: Shared/WebRenderer
-        includes:
-          - "*.swift"
+          - PreviewView.swift
+          - PreviewHosting.swift
+      - Shared/WebRenderer
     entitlements:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:
@@ -282,8 +302,8 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: false
-      - package: GLTFKit2
-      - package: DracoSwift
+      - target: RendererRealityKit
+        embed: false
 
   ThumbnailExtension:
     type: app-extension
@@ -293,35 +313,7 @@ targets:
       - path: Vendor/web-renderer
         type: file
         buildPhase: resources
-      - path: Shared
-        includes:
-          - "*.swift"
-          - GLBDracoDecompressor.mm
-          - GLBTry.mm
-        excludes:
-          - PreviewView.swift
-          - PreviewScene.swift
-          - PreviewChrome.swift
-          - LiveStillRequest.swift
-          - PreviewQuickLookChrome.swift
-          - PreviewOverlayFacts.swift
-          - PreviewFloor.swift
-          - AppSettings.swift
-          - PreviewFocus.swift
-          - PreviewMorph.swift
-          - SelectionDetail.swift
-          - PreviewSessionBindings.swift
-          - PreviewSession.swift
-          - PreviewSkeletonOverlay.swift
-          - ModelDimensions.swift
-          - LoadedModel+Host.swift
-          - PreviewSelectionVisuals.swift
-      - path: Shared/Convert
-        includes:
-          - "*.swift"
-      - path: Shared/WebRenderer
-        includes:
-          - "*.swift"
+      - Shared/WebRenderer
     entitlements:
       path: ThumbnailExtension/ThumbnailExtension.entitlements
       properties:
@@ -360,8 +352,6 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: false
-      - package: GLTFKit2
-      - package: DracoSwift
 
   GLTFInspectorTests:
     type: bundle.unit-test
@@ -379,6 +369,6 @@ targets:
       - target: GLTFInspector
       - target: GLTFCore
         embed: false
+      - target: RendererRealityKit
+        embed: false
       - target: PreviewUI
-      - package: GLTFKit2
-      - package: DracoSwift

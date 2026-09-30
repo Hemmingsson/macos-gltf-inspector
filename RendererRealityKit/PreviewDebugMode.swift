@@ -4,7 +4,7 @@ import GLTFCore
 import RealityKit
 
 /// glTF-relevant preview debug modes. The cycle list is filtered per asset.
-enum PreviewDebugMode: Equatable, Hashable {
+public enum PreviewDebugMode: Equatable, Hashable {
     case none
     case wire
     /// Custom: white unlit so mesh `COLOR_*` dominates (no SDK viz mode).
@@ -31,7 +31,7 @@ enum PreviewDebugMode: Equatable, Hashable {
     }
 
     /// Renderer-neutral reading. Vertex colours and SDK modes with no glTF channel read as shaded.
-    var renderViewMode: RenderViewMode {
+    public var renderViewMode: RenderViewMode {
         switch self {
         case .none, .vertexColors: .shaded
         case .wire: .wireframe

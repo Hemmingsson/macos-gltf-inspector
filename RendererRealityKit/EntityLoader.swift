@@ -3,21 +3,23 @@ import GLTFCore
 import GLTFKit2
 import RealityKit
 
-enum EntityLoader {
+public enum EntityLoader {
     /// A converted model plus the cheap glTF-header stats shown in the preview overlay.
-    struct LoadedModel {
+    /// Its entity stays inside the renderer; the host reads the neutral fields and calls the
+    /// `LoadedModel` helpers.
+    public struct LoadedModel {
         let entity: Entity
-        let stats: PreviewStats
-        let document: GLTFSessionDocument
-        let debugModes: [PreviewDebugMode]
+        public let stats: PreviewStats
+        public let document: GLTFSessionDocument
+        public let debugModes: [PreviewDebugMode]
         /// Computed once at load; avoid re-walking the entity tree on every host view refresh.
-        let studioIBLExponent: Float
+        public let studioIBLExponent: Float
         /// What prepare/convert did. Empty for plain metal-rough assets.
-        let pipelineReport: PreparePipelineReport
+        public let pipelineReport: PreparePipelineReport
         /// Convert losses (missing textures, dropped primitives, ignored extensions).
-        let convertProblems: ConvertProblemReport
+        public let convertProblems: ConvertProblemReport
         /// `KHR_materials_variants` names from GLTFKit2 (`materialVariants`). Empty when absent.
-        let materialVariantNames: [String]
+        public let materialVariantNames: [String]
     }
 
     /// Finder thumbnails only need a mesh + IBL exponent — no session document / overlay stats.
@@ -57,7 +59,7 @@ enum EntityLoader {
     /// that slip past the duration filter.
     /// File IO and `GLTFAsset` stay off the main actor so Spacebar can show the loading
     /// view while the file is parsed; RealityKit convert hops to the main actor.
-    static func load(
+    public static func load(
         from url: URL,
         includeAnimations: Bool = true,
         materialVariantIndex: Int? = nil,

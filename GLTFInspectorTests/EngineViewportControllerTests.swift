@@ -1,9 +1,10 @@
 import Foundation
 @testable import GLTFCore
+@testable import GLTFInspector
 import PreviewUI
+@testable import RendererRealityKit
 import SwiftUI
 import Testing
-@testable import GLTFInspector
 
 @MainActor
 struct EngineViewportControllerTests {

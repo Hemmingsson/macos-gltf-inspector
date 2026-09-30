@@ -1,9 +1,10 @@
 import CoreGraphics
 import Foundation
 @testable import GLTFCore
-import RealityKit
-import simd
 @testable import GLTFInspector
+import RealityKit
+@testable import RendererRealityKit
+import simd
 
 /// The renderers that keep their own goldens. Never compared against each other — each has its
 /// own tone mapper and light units, so a cross-renderer pixel gate would only measure that.

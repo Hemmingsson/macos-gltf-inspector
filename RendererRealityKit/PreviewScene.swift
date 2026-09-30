@@ -661,3 +661,46 @@ private final class DebugAppliedIndex {
     var index: Int?
     var doubleSided: Bool?
 }
+
+/// The RealityKit canvas for one loaded model. Remounts when the model's entity changes or the
+/// host toggles Center.
+public struct RealityPreviewCanvas: View {
+    let model: EntityLoader.LoadedModel
+    let interaction: PreviewInteraction
+    let isDark: Bool
+    let sidebar: (any PreviewOverlay)?
+    let overlayRevision: Int
+    let session: PreviewSessionBindings?
+
+    public init(
+        model: EntityLoader.LoadedModel,
+        interaction: PreviewInteraction,
+        isDark: Bool,
+        sidebar: (any PreviewOverlay)? = nil,
+        overlayRevision: Int = 0,
+        session: PreviewSessionBindings? = nil
+    ) {
+        self.model = model
+        self.interaction = interaction
+        self.isDark = isDark
+        self.sidebar = sidebar
+        self.overlayRevision = overlayRevision
+        self.session = session
+    }
+
+    public var body: some View {
+        PreviewScene(
+            entity: model.entity,
+            document: model.document,
+            stats: model.stats,
+            debugModes: model.debugModes,
+            studioIBLExponent: model.studioIBLExponent,
+            interaction: interaction,
+            isDark: isDark,
+            sidebar: sidebar,
+            overlayRevision: overlayRevision,
+            session: session
+        )
+        .id("\(ObjectIdentifier(model.entity))-\(session?.centerModel.wrappedValue ?? true)")
+    }
+}

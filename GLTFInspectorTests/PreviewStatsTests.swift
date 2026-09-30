@@ -1,7 +1,8 @@
 import Foundation
 @testable import GLTFCore
-import Testing
 @testable import GLTFInspector
+@testable import RendererRealityKit
+import Testing
 
 struct PreviewStatsTests {
     @Test func countsMaterialsAndTexturesFromJSON() {

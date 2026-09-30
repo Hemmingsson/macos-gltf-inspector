@@ -1,6 +1,7 @@
 import Foundation
 import GLTFCore
 import PreviewUI
+import RendererRealityKit
 import simd
 
 /// Thin `SceneModel` snapshot over convert/load outputs. Rebuild when async validation resolves.

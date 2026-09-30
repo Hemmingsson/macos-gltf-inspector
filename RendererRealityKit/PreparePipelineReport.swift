@@ -3,7 +3,7 @@ import Foundation
 /// What our prepare/convert pipeline did to this file (inspector honesty).
 /// Flags are set while transforms run — not re-inferred from post-prepare JSON
 /// (those extensions are stripped).
-struct PreparePipelineReport: Equatable, Sendable {
+public struct PreparePipelineReport: Equatable, Sendable {
     var dequantized = false
     var webpToPng = false
     var gpuInstancesExpanded = false
@@ -15,6 +15,8 @@ struct PreparePipelineReport: Equatable, Sendable {
     /// Source `extensionsUsed` captured before prepare rewrites strip them.
     var extensionsUsed: [String] = []
 
+    public init() {}
+
     var isEmpty: Bool {
         !(dequantized || webpToPng || gpuInstancesExpanded || specGlossToMetalRough
             || bakedSpecGlossTextures || droppedBakedEmissive || dimmedStudioIBL
@@ -25,7 +27,7 @@ struct PreparePipelineReport: Equatable, Sendable {
     var showsInSidebar: Bool { !entries.isEmpty || !extensionEntries.isEmpty }
 
     /// Sidebar / Inspect-mock style lines.
-    var entries: [String] {
+    public var entries: [String] {
         var lines: [String] = []
         if specGlossToMetalRough {
             lines.append(
@@ -48,7 +50,7 @@ struct PreparePipelineReport: Equatable, Sendable {
     }
 
     /// Throwaway "what's in this file" list. Same source as prepare gates.
-    var extensionEntries: [String] { extensionsUsed }
+    public var extensionEntries: [String] { extensionsUsed }
 
     static func captureExtensions(from json: [String: Any]) -> [String] {
         Array(Set(stringArray(json, key: "extensionsUsed"))).sorted()

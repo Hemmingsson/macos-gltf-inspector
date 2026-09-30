@@ -4,7 +4,7 @@ import ImageIO
 import RealityKit
 import SwiftUI
 
-enum PreviewLighting {
+public enum PreviewLighting {
     private static var studioHDRName: String {
         KhronosEnvironments.defaultLook.rawValue
     }
@@ -157,7 +157,7 @@ enum PreviewLighting {
         }
     }
 
-    static func canDecodeHDR(at url: URL) -> Bool {
+    public static func canDecodeHDR(at url: URL) -> Bool {
         loadEquirectangular(from: url) != nil
     }
 

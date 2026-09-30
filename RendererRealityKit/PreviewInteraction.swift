@@ -9,7 +9,7 @@ import SwiftUI
 /// The host supplies plain values (selection, hide/solo, revision); the canvas applies them to its
 /// entities through `applyIfNeeded(to:)`.
 @MainActor
-protocol PreviewOverlay: AnyObject {
+public protocol PreviewOverlay: AnyObject {
     var overlayRevision: Int { get }
     var selectedCameraIndex: Int? { get }
     var selectedNodeIndex: Int? { get }
@@ -21,12 +21,17 @@ protocol PreviewOverlay: AnyObject {
 }
 
 /// Hide + solo as node-index sets.
-struct PreviewNodeVisibility: Equatable, Sendable {
-    var hidden: Set<Int> = []
+public struct PreviewNodeVisibility: Equatable, Sendable {
+    public var hidden: Set<Int> = []
     /// Nodes that stay enabled while solo is active; `nil` when not soloing.
-    var soloVisible: Set<Int>?
+    public var soloVisible: Set<Int>?
 
-    func isEnabled(_ nodeIndex: Int) -> Bool {
+    public init(hidden: Set<Int> = [], soloVisible: Set<Int>? = nil) {
+        self.hidden = hidden
+        self.soloVisible = soloVisible
+    }
+
+    public func isEnabled(_ nodeIndex: Int) -> Bool {
         let hiddenBySolo = soloVisible.map { !$0.contains(nodeIndex) } ?? false
         return !hidden.contains(nodeIndex) && !hiddenBySolo
     }
@@ -56,7 +61,7 @@ extension PreviewOverlay {
 /// - Scroll / pinch → infinite dolly along the camera look axis
 /// - Shift-drag → pan (camera + pivot move together in the view plane)
 @Observable
-final class PreviewInteraction {
+public final class PreviewInteraction {
     private(set) var didFit = false
     weak var camera: Entity?
     /// Orbit / pan target — the turntable pivot (`content.cameraTarget`).
@@ -72,6 +77,8 @@ final class PreviewInteraction {
     private let dollyKeepAhead: Float = 0.08
 
     var suppressesAutoRotate: Bool { isCameraGesturing }
+
+    public init() {}
 
     func refreshPointerTimeout() {
         guard isCameraGesturing, let began = gestureBeganAt,
@@ -91,7 +98,7 @@ final class PreviewInteraction {
     /// never from RealityView `update`.
     private(set) var openingFitResetID = 0
 
-    func requestOpeningFitReset() {
+    public func requestOpeningFitReset() {
         openingFitResetID += 1
     }
 
@@ -147,13 +154,13 @@ final class PreviewInteraction {
         updateClip(eye: eye + delta, target: target + delta)
     }
 
-    func applyScroll(_ event: NSEvent) {
+    public func applyScroll(_ event: NSEvent) {
         let dy = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 8
         guard dy != 0, didFit else { return }
         applyDolly(factor: exp(Float(dy) * -0.004))
     }
 
-    func applyMagnify(_ event: NSEvent) {
+    public func applyMagnify(_ event: NSEvent) {
         guard event.magnification != 0, didFit else { return }
         applyDolly(factor: exp(Float(event.magnification) * -0.8))
     }
@@ -201,7 +208,7 @@ extension PreviewInteraction {
     /// Fit the orbit camera to `model` (front-¾, or `preset`). Returns false when there is no
     /// live camera or nothing to frame; the interaction is marked fitted either way.
     @MainActor
-    func reframe(
+    public func reframe(
         on model: EntityLoader.LoadedModel?,
         orthographic: Bool,
         preset: PreviewCamera.CameraPreset? = nil,
@@ -240,9 +247,9 @@ extension PreviewInteraction {
 }
 
 /// Orbit-drag pause + Shift-pan (events swallowed so RealityKit does not orbit while panning).
-enum PreviewOrbitDragMonitor {
+public enum PreviewOrbitDragMonitor {
     @MainActor
-    static func install(
+    public static func install(
         on view: NSView,
         interaction: @escaping () -> PreviewInteraction?,
         hitTestBounds: Bool,
@@ -292,59 +299,10 @@ enum PreviewOrbitDragMonitor {
         }
     }
 
-    static func remove(_ storage: inout Any?) {
+    public static func remove(_ storage: inout Any?) {
         if let storage {
             NSEvent.removeMonitor(storage)
         }
         storage = nil
     }
-}
-
-/// Forwards trackpad scroll/magnify into `PreviewInteraction` (SwiftUI misses these on macOS).
-final class PreviewHostingView: NSHostingView<PreviewView> {
-    var interaction: PreviewInteraction?
-    private var mouseMonitor: Any?
-
-    required init(rootView: PreviewView) {
-        super.init(rootView: rootView)
-        sizingOptions = []
-    }
-
-    @MainActor required dynamic init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    deinit { PreviewOrbitDragMonitor.remove(&mouseMonitor) }
-
-    override var isOpaque: Bool { false }
-    override var mouseDownCanMoveWindow: Bool { false }
-    override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
-    override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
-    override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
-    override var acceptsFirstResponder: Bool { true }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        wantsLayer = true
-        layer?.isOpaque = false
-        layer?.backgroundColor = NSColor.clear.cgColor
-        PreviewOrbitDragMonitor.install(
-            on: self,
-            interaction: { [weak self] in self?.interaction },
-            hitTestBounds: true,
-            storage: &mouseMonitor
-        )
-    }
-}
-
-/// Non-hosting root used by Quick Look so scroll events still hit before the hosting view.
-/// Orbit/pan monitors stay on the nested `PreviewHostingView` only (one monitor per window).
-final class PreviewEventView: NSView {
-    var interaction: PreviewInteraction?
-
-    override var isOpaque: Bool { false }
-    override func scrollWheel(with event: NSEvent) { interaction?.applyScroll(event) }
-    override func magnify(with event: NSEvent) { interaction?.applyMagnify(event) }
-    override func wantsForwardedScrollEvents(for axis: NSEvent.GestureAxis) -> Bool { true }
-    override var acceptsFirstResponder: Bool { true }
 }

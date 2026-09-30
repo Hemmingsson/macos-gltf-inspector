@@ -1,6 +1,7 @@
 import Cocoa
 import GLTFCore
 import QuickLookUI
+import RendererRealityKit
 import SwiftUI
 
 class PreviewViewController: NSViewController, QLPreviewingController {

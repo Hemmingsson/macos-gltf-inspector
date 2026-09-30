@@ -2,14 +2,14 @@ import RealityKit
 import simd
 
 /// Runtime morph-target weights via `BlendShapeWeightsComponent`.
-enum PreviewMorph {
+public enum PreviewMorph {
     /// One adjustable target on a morph mesh entity.
-    struct Target: Equatable, Identifiable, Sendable {
-        var id: String { "\(nodeIndex)-\(targetIndex)" }
-        var nodeIndex: Int
-        var targetIndex: Int
-        var name: String
-        var weight: Float
+    public struct Target: Equatable, Identifiable, Sendable {
+        public var id: String { "\(nodeIndex)-\(targetIndex)" }
+        public var nodeIndex: Int
+        public var targetIndex: Int
+        public var name: String
+        public var weight: Float
     }
 
     /// Enumerate morph entities under `root` with current weights (0…1).

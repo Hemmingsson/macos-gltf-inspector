@@ -3,8 +3,8 @@ import GLTFCore
 import RealityKit
 import simd
 
-enum PreviewCamera {
-    static let defaultFieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
+public enum PreviewCamera {
+    public static let defaultFieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
     /// Session FOV slider range (degrees). Fit distance uses the live value.
     static let fieldOfViewRange: ClosedRange<Float> = 15...90
     /// Default front-three-quarter yaw (degrees). Iso preset uses the same value.
@@ -28,15 +28,15 @@ enum PreviewCamera {
 
     /// View-menu / Camera-pill presets. Angles are degrees for `cameraPosition`.
     /// Thin-axis override is off when applying a preset so faces stay square-on.
-    enum CameraPreset: String, CaseIterable, Identifiable, Sendable {
+    public enum CameraPreset: String, CaseIterable, Identifiable, Sendable {
         case front, back, left, right, top, bottom, isometric
 
-        var id: String { rawValue }
+        public var id: String { rawValue }
 
-        var title: String { rawValue.capitalized }
+        public var title: String { rawValue.capitalized }
 
         /// SF Symbols for the throwaway View menu (Camera pill uses `cube` for the group).
-        var menuSymbol: String {
+        public var menuSymbol: String {
             switch self {
             case .front: "arrow.up.to.line"
             case .back: "arrow.down.to.line"
@@ -224,7 +224,7 @@ enum PreviewCamera {
         camera.components.set(perspective)
     }
 
-    static func clampedFieldOfView(_ degrees: Float) -> Float {
+    public static func clampedFieldOfView(_ degrees: Float) -> Float {
         min(max(degrees, fieldOfViewRange.lowerBound), fieldOfViewRange.upperBound)
     }
 

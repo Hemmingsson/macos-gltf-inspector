@@ -1,8 +1,9 @@
 import Foundation
 @testable import GLTFCore
-import Testing
-import simd
 @testable import GLTFInspector
+@testable import RendererRealityKit
+import simd
+import Testing
 
 struct SelectionDetailTests {
     @Test func meshShowsGeometryAndMaterialChipsNotCameraOrLight() throws {

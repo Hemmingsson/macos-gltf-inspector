@@ -1,10 +1,11 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import RealityKit
-import Testing
-import simd
 @testable import GLTFInspector
+import RealityKit
+@testable import RendererRealityKit
+import simd
+import Testing
 
 struct TextureAlphaUsageTests {
     @Test func constantZeroIsUnused() {

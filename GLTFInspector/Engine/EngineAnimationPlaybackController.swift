@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import PreviewUI
+import RendererRealityKit
 
 /// Live clip transport over `RealityClipPlayer`.
 ///

@@ -1,9 +1,10 @@
 import Foundation
 @testable import GLTFCore
-import RealityKit
-import Testing
-import simd
 @testable import GLTFInspector
+import RealityKit
+@testable import RendererRealityKit
+import simd
+import Testing
 
 @MainActor
 struct HostSidebarModelTests {

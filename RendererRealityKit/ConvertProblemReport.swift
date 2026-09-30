@@ -2,8 +2,8 @@ import Foundation
 import GLTFCore
 
 /// Convert/render losses — “did we drop or fake something?”, not Khronos spec validity.
-struct ConvertProblem: Equatable, Sendable {
-    enum Code: String, Equatable, Sendable {
+public struct ConvertProblem: Equatable, Sendable {
+    public enum Code: String, Equatable, Sendable {
         case missingTexture
         case defaultMaterial
         case droppedPrimitive
@@ -13,19 +13,21 @@ struct ConvertProblem: Equatable, Sendable {
         case forcedOpaqueBlend
     }
 
-    enum Severity: String, Equatable, Sendable {
+    public enum Severity: String, Equatable, Sendable {
         case error
         case warning
     }
 
-    var severity: Severity
-    var code: Code
-    var message: String
-    var materialName: String?
+    public var severity: Severity
+    public var code: Code
+    public var message: String
+    public var materialName: String?
 }
 
-struct ConvertProblemReport: Equatable, Sendable {
-    var items: [ConvertProblem] = []
+public struct ConvertProblemReport: Equatable, Sendable {
+    public var items: [ConvertProblem] = []
+
+    public init() {}
 
     var isEmpty: Bool { items.isEmpty }
     var errorCount: Int { items.filter { $0.severity == .error }.count }
@@ -75,7 +77,7 @@ struct ConvertProblemReport: Equatable, Sendable {
         return copy
     }
 
-    var hostSummary: String {
+    public var hostSummary: String {
         if isEmpty { return "open convert-problems none" }
         return "open convert-problems errors=\(errorCount) warnings=\(warningCount)"
     }

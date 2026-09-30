@@ -1,3 +1,4 @@
+import RendererRealityKit
 import SwiftUI
 
 /// Host View-menu Fit / Reset / camera presets; File-menu PNG export for the focused document

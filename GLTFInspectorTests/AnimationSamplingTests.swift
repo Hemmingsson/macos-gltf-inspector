@@ -1,8 +1,9 @@
 import Foundation
 @testable import GLTFCore
-import RealityKit
-import Testing
 @testable import GLTFInspector
+import RealityKit
+@testable import RendererRealityKit
+import Testing
 
 struct AnimationSamplingTests {
     @Test func clampsZeroAndNonFiniteIntervals() {

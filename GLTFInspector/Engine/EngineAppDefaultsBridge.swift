@@ -2,6 +2,7 @@ import Foundation
 import GLTFCore
 import Observation
 import PreviewUI
+import RendererRealityKit
 
 /// App-defaults façade for `PreviewSettingsRoot`: canvas keys → `AppDefaultsStore`,
 /// IBL keys → `AppLookStore` (no UserDefaults leak for environment).

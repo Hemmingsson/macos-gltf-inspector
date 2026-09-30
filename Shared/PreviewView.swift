@@ -1,6 +1,6 @@
 import AppKit
 import GLTFCore
-import RealityKit
+import RendererRealityKit
 import SwiftUI
 
 struct PreviewView: View {
@@ -70,19 +70,14 @@ struct PreviewView: View {
                             .progressViewStyle(.circular)
                     }
                 case .ready(let model):
-                    PreviewScene(
-                        entity: model.entity,
-                        document: model.document,
-                        stats: model.stats,
-                        debugModes: model.debugModes,
-                        studioIBLExponent: model.studioIBLExponent,
+                    RealityPreviewCanvas(
+                        model: model,
                         interaction: interaction,
                         isDark: isDark,
                         sidebar: sidebar,
                         overlayRevision: overlayRevision,
                         session: session
                     )
-                    .id("\(ObjectIdentifier(model.entity))-\(session?.centerModel.wrappedValue ?? true)")
                 case .failed(let message):
                     ZStack {
                         PreviewBackground.window.color.ignoresSafeArea()

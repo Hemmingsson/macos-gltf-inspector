@@ -2,10 +2,11 @@ import AppKit
 import CoreGraphics
 import Foundation
 @testable import GLTFCore
-import RealityKit
-import Testing
-import simd
 @testable import GLTFInspector
+import RealityKit
+@testable import RendererRealityKit
+import simd
+import Testing
 
 struct SidecarPackTests {
     @Test func parseJSONStripsUTF8BOM() throws {

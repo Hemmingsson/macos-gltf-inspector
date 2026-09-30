@@ -2,12 +2,12 @@ import AppKit
 import GLTFCore
 import SwiftUI
 
-enum PreviewBackground: String, CaseIterable, Identifiable {
+public enum PreviewBackground: String, CaseIterable, Identifiable {
     case window
     case white
     case dark
 
-    var id: Self { self }
+    public var id: Self { self }
 
     private static let charcoal = (r: 38.0 / 255, g: 38.0 / 255, b: 38.0 / 255)
 
@@ -19,7 +19,7 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         }
     }
 
-    var color: Color {
+    public var color: Color {
         switch self {
         case .window: .clear
         case .white: .white
@@ -59,12 +59,12 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         }
     }
 
-    static func at(_ index: Int) -> PreviewBackground {
+    public static func at(_ index: Int) -> PreviewBackground {
         allCases[index % allCases.count]
     }
 
     /// `BackdropStyle` / Settings raw value → `allCases` index (unknown → `.window`).
-    static func index(matchingRawValue rawValue: String) -> Int {
+    public static func index(matchingRawValue rawValue: String) -> Int {
         allCases.firstIndex(of: PreviewBackground(rawValue: rawValue) ?? .window) ?? 0
     }
 
@@ -73,7 +73,7 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
         return PreviewBackground(rawValue: raw) ?? .window
     }
 
-    static var storedIndex: Int {
+    public static var storedIndex: Int {
         allCases.firstIndex(of: stored) ?? 0
     }
 
@@ -94,7 +94,7 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
 
     static let inactiveIconOpacity = 0.55
 
-    static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
+    public static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
         let base: Color = useLightIcons(at: index, systemDark: systemDark)
             ? .white
             : Color(red: charcoal.r, green: charcoal.g, blue: charcoal.b)

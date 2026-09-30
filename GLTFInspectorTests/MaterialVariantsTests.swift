@@ -1,9 +1,10 @@
 import Foundation
 @testable import GLTFCore
+@testable import GLTFInspector
 import GLTFKit2
 import RealityKit
+@testable import RendererRealityKit
 import Testing
-@testable import GLTFInspector
 
 struct MaterialVariantsTests {
     @Test func gltfKit2ExposesVariantNamesAndMappings() throws {

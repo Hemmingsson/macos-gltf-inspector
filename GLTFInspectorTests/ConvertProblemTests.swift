@@ -1,9 +1,10 @@
 import Foundation
 @testable import GLTFCore
+@testable import GLTFInspector
 import PreviewUI
 import RealityKit
+@testable import RendererRealityKit
 import Testing
-@testable import GLTFInspector
 
 @MainActor
 struct ConvertProblemTests {

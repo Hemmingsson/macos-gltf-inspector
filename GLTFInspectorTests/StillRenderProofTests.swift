@@ -2,8 +2,9 @@ import AppKit
 import CoreGraphics
 import Foundation
 @testable import GLTFCore
-import Testing
 @testable import GLTFInspector
+@testable import RendererRealityKit
+import Testing
 
 /// In-process thumbnail proof. `qlmanage` can hang against a stale system plugin.
 struct StillRenderProofTests {

@@ -1,7 +1,8 @@
 import Foundation
-import RealityKit
-import Testing
 @testable import GLTFInspector
+import RealityKit
+@testable import RendererRealityKit
+import Testing
 
 @MainActor
 struct KhronosSampleTests {

@@ -2,6 +2,7 @@ import Foundation
 import GLTFCore
 import Observation
 import PreviewUI
+import RendererRealityKit
 import SwiftUI
 
 /// Session + camera + still-path adapter for `ViewportController`.
