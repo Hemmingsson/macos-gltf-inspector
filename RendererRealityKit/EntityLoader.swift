@@ -97,14 +97,16 @@ public enum EntityLoader {
     }
 
     /// Thumbnail path: Entity + studio IBL exponent only. Skips session document,
-    /// PreviewStats, and PreviewDebugMode. Animations are always stripped.
-    static func loadThumbnail(from url: URL) async throws -> ThumbnailModel {
+    /// PreviewStats, and PreviewDebugMode. Animations are always stripped. `maxTextureEdge`
+    /// caps uploaded texture size (Finder icons).
+    static func loadThumbnail(from url: URL, maxTextureEdge: Int? = nil) async throws -> ThumbnailModel {
         try await withSource(url) { source in
             let entity = try await convertAsset(
                 source,
                 includeAnimations: false,
                 sceneIndex: nil,
-                materialVariantIndex: nil
+                materialVariantIndex: nil,
+                maxTextureEdge: maxTextureEdge
             ).entity
             let exponent = await MainActor.run {
                 RealityPolicy.studioIBLExponent(
@@ -210,7 +212,8 @@ public enum EntityLoader {
         _ source: Source,
         includeAnimations: Bool,
         sceneIndex: Int?,
-        materialVariantIndex: Int?
+        materialVariantIndex: Int?,
+        maxTextureEdge: Int? = nil
     ) async throws -> Converted {
         let name = source.url.lastPathComponent
         let asset = try GLTFAsset(
@@ -243,7 +246,7 @@ public enum EntityLoader {
         }
         let build = try await MainActor.run {
             do {
-                return try RealityKitConvert.build(scene: scene, asset: asset)
+                return try RealityKitConvert.build(scene: scene, asset: asset, maxTextureEdge: maxTextureEdge)
             } catch {
                 AppLog.error(AppLog.load, error.localizedDescription)
                 throw convertFailure(from: error)

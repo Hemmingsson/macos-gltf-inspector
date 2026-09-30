@@ -49,14 +49,14 @@ final class RealityKitConvert {
         let droppedBakedEmissive: Bool
     }
 
-    @MainActor static func build(scene: GLTFScene, asset: GLTFAsset) throws -> BuildResult {
-        try RealityKitConvert().build(scene: scene, asset: asset)
+    @MainActor static func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
+        try RealityKitConvert().build(scene: scene, asset: asset, maxTextureEdge: maxTextureEdge)
     }
 
     /// Nodes and meshes first, then animations in their own exception guard: GLTFKit2 can raise
     /// ObjC exceptions, and a bad clip must not take the meshes with it (this replaces the old
     /// "no visible mesh -> convert everything again without animations" pass).
-    @MainActor func build(scene: GLTFScene, asset: GLTFAsset) throws -> BuildResult {
+    @MainActor func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
         sourceAsset = asset
         indexNodes(asset.nodes)
         ignoreBakedEmissive = RealityPolicy.fileLooksBaked(asset.materials.map(RealityPolicy.EmissiveHint.init))
@@ -64,6 +64,7 @@ final class RealityKitConvert {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
         let context = RealityKitResourceContext()
+        context.maxImageEdge = maxTextureEdge
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
 

@@ -87,6 +87,10 @@ class RealityKitResourceContext {
     private var convertedMaterialsForIdentifiers = [ObjectIdentifier: any Material]()
 
     var problems = ConvertProblemReport()
+    /// Longest texture edge to upload; larger rasters are downscaled after decode. Finder icons
+    /// only (`RealityThumbnail`): a 512 px icon cannot show 4K texels, and `TextureResource`
+    /// generation on large rasters is the measured residual load cost.
+    var maxImageEdge: Int?
 
     var defaultMaterial: any Material {
         return RealityKit.SimpleMaterial(color: .init(white: 0.5, alpha: 1.0), isMetallic: false)
@@ -216,11 +220,30 @@ class RealityKitResourceContext {
         if let existing = cgImagesForImageIdentifiers[gltfImage.identifier] {
             return existing
         }
-        let cgImage = gltfImage.newCGImage()?.takeRetainedValue()
+        let cgImage = (gltfImage.newCGImage()?.takeRetainedValue()).map(capped)
         if let cgImage {
             cgImagesForImageIdentifiers[gltfImage.identifier] = cgImage
         }
         return cgImage
+    }
+
+    private func capped(_ image: CGImage) -> CGImage {
+        guard let maxImageEdge, max(image.width, image.height) > maxImageEdge else { return image }
+        let scale = Double(maxImageEdge) / Double(max(image.width, image.height))
+        let width = max(1, Int(Double(image.width) * scale))
+        let height = max(1, Int(Double(image.height) * scale))
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return image }
+        context.interpolationQuality = .medium
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? image
     }
 
     private func storeTextureResource(
