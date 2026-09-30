@@ -37,19 +37,13 @@ struct StillRenderProofTests {
     }
 
     /// Committed multi-file sidecar (`cube.gltf` + `cube.bin` + `cube.png`) rendered
-    /// end-to-end. It uses standard metal/rough + FLOAT attributes, so it exercises the
-    /// live *skip-packing* sidecar path (no temp GLB) that only synthesized temp files
-    /// covered before. A solid cube also stays visible from any turntable angle, unlike
+    /// end-to-end through GLTFKit2's own sidecar loading. A solid cube also stays visible from any turntable angle, unlike
     /// the flat `tiny.glb` triangle. Regenerate with `scripts/testdata/cube/make_cube.py`
     /// (writes `TestModels/Fixture Models/cube/`).
     @MainActor
     @Test func cubeSidecarRendersFromCommittedFiles() async throws {
         let url = TestFixtures.cube
         try #require(FileManager.default.fileExists(atPath: url.path))
-
-        // Confirm the committed file really lands on the no-pack path.
-        let json = try GLBBox.parseJSON(Data(contentsOf: url))
-        #expect(!MetalRoughPrepare.needsConversion(json))
 
         let model = try await EntityLoader.loadThumbnail(from: url)
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)

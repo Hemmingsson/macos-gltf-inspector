@@ -112,7 +112,7 @@ private func webpQuadGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 /// Skinned triangle, all weight on joint 1; joints 1 and 2 have no names. One clip translates
@@ -168,7 +168,7 @@ private func unnamedJointSkinGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 /// `KHR_mesh_quantization` no longer goes through a dequantize rewrite: the LowLevelMesh path
@@ -249,5 +249,5 @@ private func quadGLB(quantized: Bool) throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

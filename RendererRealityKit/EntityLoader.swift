@@ -14,7 +14,7 @@ public enum EntityLoader {
         public let debugModes: [PreviewDebugMode]
         /// Computed once at load; avoid re-walking the entity tree on every host view refresh.
         public let studioIBLExponent: Float
-        /// What prepare/convert did. Empty for plain metal-rough assets.
+        /// What convert and policy did (spec-gloss, Draco, emissive drop, studio dim).
         public let pipelineReport: PreparePipelineReport
         /// Convert losses (missing textures, dropped primitives, ignored extensions).
         public let convertProblems: ConvertProblemReport
@@ -40,17 +40,19 @@ public enum EntityLoader {
         return count
     }
 
-    private struct PreparedLoad {
-        let loadURL: URL
-        let originalURL: URL
-        let assetDirectory: URL
-        let fallbackDirectory: URL
-        /// Post-prepare JSON — what RealityKit actually converted (overlay stats, debug modes).
-        let sourceJSON: [String: Any]
-        /// Untouched file JSON. The sidebar describes *this*, not the prepared rewrite.
-        let originalJSON: [String: Any]
+    /// The file as authored: its JSON (sidebar document, overlay stats, debug modes, report) and
+    /// the directory GLTFKit2 resolves sidecar buffers and images against.
+    private struct Source {
+        let url: URL
+        let directory: URL
+        let json: [String: Any]
         let fileSize: Int64?
-        var pipelineReport: PreparePipelineReport
+    }
+
+    /// One converted scene plus what convert-time rewrites did to it.
+    private struct Converted {
+        let entity: Entity
+        let specGloss: SpecGlossBake.Result
     }
 
     /// Loads a self-contained `.glb` or a sidecar `.gltf` (buffers/textures next to the JSON).
@@ -65,28 +67,29 @@ public enum EntityLoader {
         materialVariantIndex: Int? = nil,
         sceneIndex: Int? = nil
     ) async throws -> LoadedModel {
-        try await withPreparedAsset(from: url) { prepared in
+        try await withSource(url) { source in
             // Parsed from the file, not harvested from convert: the outliner must list what the
             // file contains even where the renderer drops or rewrites it.
-            let document = GLTFDocumentJSON.makeDocument(
-                json: prepared.originalJSON,
-                fileURL: prepared.originalURL
-            )
-            let variantNames = GLTFDocumentJSON.materialVariantNames(json: prepared.originalJSON)
-            let entity = try await convertPreparedOrOriginal(
-                prepared,
+            let document = GLTFDocumentJSON.makeDocument(json: source.json, fileURL: url)
+            let variantNames = GLTFDocumentJSON.materialVariantNames(json: source.json)
+            let converted = try await convertAsset(
+                source,
                 includeAnimations: includeAnimations,
-                name: url.lastPathComponent,
                 sceneIndex: sceneIndex,
                 materialVariantIndex: materialVariantIndex
             )
+            var report = PreparePipelineReport()
+            report.extensionsUsed = PreparePipelineReport.captureExtensions(from: source.json)
+            report.decompressedDraco = PreparePipelineReport.sourceHadDraco(source.json)
+            report.specGlossToMetalRough = converted.specGloss.converted
+            report.bakedSpecGlossTextures = converted.specGloss.baked
             return await loadedModel(
-                entity: entity,
+                entity: converted.entity,
                 document: document,
-                json: prepared.sourceJSON,
-                fileSizeBytes: prepared.fileSize,
-                resourceURL: prepared.loadURL,
-                pipelineReport: prepared.pipelineReport,
+                json: source.json,
+                fileSizeBytes: source.fileSize,
+                resourceURL: url,
+                pipelineReport: report,
                 materialVariantNames: variantNames
             )
         }
@@ -95,14 +98,13 @@ public enum EntityLoader {
     /// Thumbnail path: Entity + studio IBL exponent only. Skips session document,
     /// PreviewStats, and PreviewDebugMode. Animations are always stripped.
     static func loadThumbnail(from url: URL) async throws -> ThumbnailModel {
-        try await withPreparedAsset(from: url) { prepared in
-            let entity = try await convertPreparedOrOriginal(
-                prepared,
+        try await withSource(url) { source in
+            let entity = try await convertAsset(
+                source,
                 includeAnimations: false,
-                name: url.lastPathComponent,
                 sceneIndex: nil,
                 materialVariantIndex: nil
-            )
+            ).entity
             let exponent = await MainActor.run {
                 RealityPolicy.studioIBLExponent(
                     punctualLightCount: punctualLightCount(in: entity)
@@ -112,125 +114,54 @@ public enum EntityLoader {
         }
     }
 
-    /// Converts one scene from the same prepared asset path as `load`, without
-    /// rebuilding `LoadedModel`. Host scene switching uses this after listing
-    /// `document.scenes`; Quick Look keeps calling `load` only.
+    /// Converts one scene of the file without rebuilding `LoadedModel`. Host scene switching
+    /// uses this after listing `document.scenes`; Quick Look keeps calling `load` only.
     static func convertScene(
         index: Int,
         from url: URL,
         includeAnimations: Bool = true,
         materialVariantIndex: Int? = nil
     ) async throws -> Entity {
-        try await withPreparedAsset(from: url) { prepared in
-            return try await convertPreparedOrOriginal(
-                prepared,
+        try await withSource(url) { source in
+            try await convertAsset(
+                source,
                 includeAnimations: includeAnimations,
-                name: url.lastPathComponent,
                 sceneIndex: index,
                 materialVariantIndex: materialVariantIndex
-            )
+            ).entity
         }
     }
 
-    private static func convertPreparedOrOriginal(
-        _ prepared: PreparedLoad,
-        includeAnimations: Bool,
-        name: String,
-        sceneIndex: Int?,
-        materialVariantIndex: Int?
-    ) async throws -> Entity {
-        do {
-            return try await convertAsset(
-                at: prepared.loadURL,
-                assetDirectory: prepared.assetDirectory,
-                includeAnimations: includeAnimations,
-                name: name,
-                sceneIndex: sceneIndex,
-                materialVariantIndex: materialVariantIndex
-            )
-        } catch {
-            guard prepared.loadURL != prepared.originalURL else { throw error }
-            AppLog.error(AppLog.prepare, "prepared GLB produced no mesh, retrying original")
-            return try await convertAsset(
-                at: prepared.originalURL,
-                assetDirectory: prepared.fallbackDirectory,
-                includeAnimations: includeAnimations,
-                name: name,
-                sceneIndex: sceneIndex,
-                materialVariantIndex: materialVariantIndex
-            )
-        }
-    }
-
-    private static func withPreparedAsset<T>(
-        from url: URL,
-        work: (PreparedLoad) async throws -> T
+    /// Scoped access to the file and its folder (sidecar `.gltf` buffers / textures), plus the
+    /// authored JSON. Sidecar URIs must stay inside the folder.
+    private static func withSource<T>(
+        _ url: URL,
+        work: (Source) async throws -> T
     ) async throws -> T {
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
 
-        let directoryURL = URL(
-            fileURLWithPath: url.deletingLastPathComponent().path,
-            isDirectory: true
-        )
-        let accessedDirectory = directoryURL.startAccessingSecurityScopedResource()
+        let directory = URL(fileURLWithPath: url.deletingLastPathComponent().path, isDirectory: true)
+        let accessedDirectory = directory.startAccessingSecurityScopedResource()
         let accessedFile = url.startAccessingSecurityScopedResource()
         defer {
             if accessedDirectory {
-                directoryURL.stopAccessingSecurityScopedResource()
+                directory.stopAccessingSecurityScopedResource()
             }
             if accessedFile {
                 url.stopAccessingSecurityScopedResource()
             }
         }
 
-        // Parse the glTF header once for prepare gates, then keep both JSONs: the prepared
-        // one so overlay stats match what RealityKit converted, and the original so the
-        // sidebar can describe the file as authored.
-        let isGLB = url.pathExtension.lowercased() == "glb"
-        let (fileSize, loadURL, assetDirectory, originalJSON, statsJSON, pipelineReport) = try {
-            let fileSize = fileSizeBytes(of: url)
-            if isGLB {
-                let sourceJSON = (try? GLBBox.peekJSON(from: url)) ?? [:]
-                let prepared = prepareGLB(url, json: sourceJSON)
-                return (fileSize, prepared.url, directoryURL, sourceJSON, prepared.json, prepared.report)
-            } else {
-                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-                let sourceJSON = try GLBBox.parseJSON(data)
-                let prepared = try packAndPrepareGLTF(
-                    from: url,
-                    directoryURL: directoryURL,
-                    json: sourceJSON
-                )
-                return (
-                    fileSize,
-                    prepared.url,
-                    prepared.assetDirectory,
-                    sourceJSON,
-                    prepared.json,
-                    prepared.report
-                )
-            }
-        }()
-        // Prepared/packed GLBs are throwaway temp files; the retry path below only ever
-        // reopens the original `url`, so the temp is safe to delete once loading finishes.
-        defer {
-            if loadURL != url {
-                try? FileManager.default.removeItem(at: loadURL)
-            }
+        let json: [String: Any]
+        if url.pathExtension.lowercased() == "glb" {
+            json = (try? GLBBox.peekJSON(from: url)) ?? [:]
+        } else {
+            json = try GLBBox.parseJSON(Data(contentsOf: url, options: [.mappedIfSafe]))
         }
-
-        return try await work(
-            PreparedLoad(
-                loadURL: loadURL,
-                originalURL: url,
-                assetDirectory: assetDirectory,
-                fallbackDirectory: directoryURL,
-                sourceJSON: statsJSON,
-                originalJSON: originalJSON,
-                fileSize: fileSize,
-                pipelineReport: pipelineReport
-            )
-        )
+        for uri in externalURIs(in: json) where !isAllowedSidecarURI(uri, assetDirectory: directory) {
+            throw GLTFInspectorError.make(1021, "glTF sidecar URI is not a safe relative path")
+        }
+        return try await work(Source(url: url, directory: directory, json: json, fileSize: fileSizeBytes(of: url)))
     }
 
     private static func fileSizeBytes(of url: URL) -> Int64? {
@@ -273,99 +204,21 @@ public enum EntityLoader {
         )
     }
 
-    /// Spec/gloss then RealityKit-safe rewrite, fused into one parse → serialize → write.
-    /// Fully best-effort: if neither rewrite applies, or any step (parse, a rewrite, the
-    /// final serialize/write) fails, the original URL is returned so `convertAsset` still
-    /// gets a chance on the untouched bytes.
-    private static func prepareGLB(_ url: URL, json: [String: Any]) -> (url: URL, json: [String: Any], report: PreparePipelineReport) {
-        var report = seedPipelineReport(from: json)
-        guard MetalRoughPrepare.needsConversion(json) else {
-            return (url, json, report)
-        }
-        do {
-            let prepared = applyPrepares(try GLBBox.parse(Data(contentsOf: url)), report: &report)
-            let data = try GLBBox.serialize(json: prepared.json, bin: prepared.bin)
-            return (try GLBBox.writePrepared(data, prefix: "glb-prepared"), prepared.json, report)
-        } catch {
-            AppLog.error(AppLog.prepare, "prepare failed, using original: \(error)")
-            return (url, json, report)
-        }
-    }
-
-    private static func applyPrepares(_ glb: GLBBox, report: inout PreparePipelineReport) -> GLBBox {
-        var out = glb
-        if MetalRoughPrepare.needsConversion(out.json) {
-            do {
-                out = try MetalRoughPrepare.transformed(out, report: &report)
-            } catch {
-                AppLog.error(AppLog.prepare, "metal-rough failed, using original: \(error)")
-            }
-        }
-        return out
-    }
-
-    /// Source extensions + Draco flag before prepare strips lists.
-    private static func seedPipelineReport(from json: [String: Any]) -> PreparePipelineReport {
-        var report = PreparePipelineReport()
-        report.extensionsUsed = PreparePipelineReport.captureExtensions(from: json)
-        report.decompressedDraco = PreparePipelineReport.sourceHadDraco(json)
-        return report
-    }
-
-    /// Sidecar `.gltf` is JSON, not a GLB. Pack + prepare only when a rewrite will
-    /// apply; otherwise load the original URL with its parent as `assetDirectory`.
-    private static func packAndPrepareGLTF(
-        from url: URL,
-        directoryURL: URL,
-        json: [String: Any]
-    ) throws -> (url: URL, json: [String: Any], assetDirectory: URL, report: PreparePipelineReport) {
-        var report = seedPipelineReport(from: json)
-        guard MetalRoughPrepare.needsConversion(json) else {
-            return (url, json, directoryURL, report)
-        }
-        let packed = try GLBBox.packSidecar(json) { uri in
-            guard isAllowedSidecarURI(uri, assetDirectory: directoryURL) else {
-                throw GLTFInspectorError.make(1021, "glTF sidecar URI is not a safe relative path")
-            }
-            let decoded = uri.removingPercentEncoding ?? uri
-            // Derive from the previewed file URL so a security-scoped .gltf
-            // can still reach same-folder `model.bin` / `textures/`.
-            let sidecar = url.deletingLastPathComponent().appendingPathComponent(decoded)
-            do {
-                return try Data(contentsOf: sidecar)
-            } catch {
-                AppLog.error(AppLog.load, "sidecar \(decoded): \(error.localizedDescription)")
-                throw error
-            }
-        }
-        // Prepare is best-effort; fall back to the unprepared packed GLB on any failure.
-        do {
-            let prepared = applyPrepares(try GLBBox.parse(packed), report: &report)
-            let out = try GLBBox.serialize(json: prepared.json, bin: prepared.bin)
-            let temp = try GLBBox.writePrepared(out, prefix: "gltf-prepared")
-            return (temp, prepared.json, temp.deletingLastPathComponent(), report)
-        } catch {
-            AppLog.error(AppLog.prepare, "gltf prepare failed, using packed: \(error)")
-            let temp = try GLBBox.writePrepared(packed, prefix: "gltf-packed")
-            return (temp, json, temp.deletingLastPathComponent(), report)
-        }
-    }
-
     private static func convertAsset(
-        at loadURL: URL,
-        assetDirectory: URL,
+        _ source: Source,
         includeAnimations: Bool,
-        name: String,
         sceneIndex: Int?,
         materialVariantIndex: Int?
-    ) async throws -> Entity {
+    ) async throws -> Converted {
+        let name = source.url.lastPathComponent
         let asset = try GLTFAsset(
-            url: loadURL,
-            options: [GLTFAssetLoadingOption.assetDirectoryURLKey: assetDirectory]
+            url: source.url,
+            options: [GLTFAssetLoadingOption.assetDirectoryURLKey: source.directory]
         )
         if let materialVariantIndex {
             MaterialVariants.apply(variantIndex: materialVariantIndex, to: asset)
         }
+        let specGloss = SpecGlossBake.apply(to: asset)
         // Drop 1-keyframe "Default Take" clips. Convert also rejects a zero stride,
         // but empty takes are still useless to play.
         if includeAnimations {
@@ -387,13 +240,14 @@ public enum EntityLoader {
             throw GLTFInspectorError.make(1020, "The glTF asset did not specify a default scene")
         }
         let retryWithoutAnimations = includeAnimations && !asset.animations.isEmpty
-        return try await MainActor.run {
+        let entity = try await MainActor.run {
             try convertOrRetry(
                 scene: scene,
                 asset: asset,
                 retryWithoutAnimations: retryWithoutAnimations
             )
         }
+        return Converted(entity: entity, specGloss: specGloss)
     }
 
     /// Empty results (zero `ModelComponent`s) retry once without animations when
@@ -464,6 +318,12 @@ public enum EntityLoader {
             return nsError
         }
         return GLTFInspectorError.make(1022, "Failed to convert the glTF asset")
+    }
+
+    /// Buffer and image URIs other than embedded `data:` payloads.
+    private static func externalURIs(in json: [String: Any]) -> [String] {
+        let entries = (json["buffers"] as? [[String: Any]] ?? []) + (json["images"] as? [[String: Any]] ?? [])
+        return entries.compactMap { $0["uri"] as? String }.filter { !$0.lowercased().hasPrefix("data:") }
     }
 
     /// Sidecars must stay inside the asset directory: no `..`, no absolute paths,

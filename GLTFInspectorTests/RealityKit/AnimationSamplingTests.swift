@@ -187,7 +187,7 @@ private func zeroDurationSiblingChannelGLB() throws -> Data {
         "scenes": [["nodes": [0, 1]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func translationClipWithoutMinMaxGLB() throws -> Data {
@@ -269,7 +269,7 @@ private func translationClipGLB(
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 /// Three mesh nodes, one clip: an unnamed node translates 0 → +X; two nodes both named `Twin`
@@ -310,5 +310,5 @@ private func animatedSiblingsGLB() throws -> Data {
         "scenes": [["nodes": [0, 1, 2]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

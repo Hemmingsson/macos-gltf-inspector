@@ -15,4 +15,11 @@ enum RealityPolicy {
     static func studioIBLExponent(punctualLightCount: Int) -> Float {
         studioDimEV(fileHasLights: punctualLightCount > 0)
     }
+
+    /// Spec-gloss texture bake cost cap: bake only when the file has ≤ 40 images and ≤ 24
+    /// textured spec-gloss materials; above that the materials use factor-only metal/rough
+    /// (reported as "Converted from KHR spec-gloss" without "baked textures").
+    static func bakesSpecGlossTextures(imageCount: Int, texturedMaterialCount: Int) -> Bool {
+        imageCount <= 40 && texturedMaterialCount <= 24
+    }
 }

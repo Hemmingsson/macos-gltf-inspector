@@ -35,7 +35,7 @@ struct PipelineReportTests {
                 ],
             ]
         )
-        let url = try GLBBox.writePrepared(data, prefix: "ext-used")
+        let url = try TestGLB.writeTemp(data, prefix: "ext-used")
         defer { try? FileManager.default.removeItem(at: url) }
 
         let model = try await EntityLoader.load(from: url, includeAnimations: false)

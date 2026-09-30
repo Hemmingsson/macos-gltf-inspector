@@ -133,7 +133,7 @@ private func punctualLightsGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func twoPerspectiveCamerasGLB() throws -> Data {
@@ -167,7 +167,7 @@ private func twoPerspectiveCamerasGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func orthographicCameraGLB() throws -> Data {
@@ -192,7 +192,7 @@ private func orthographicCameraGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func litMetallicTriangleGLB() throws -> Data {
@@ -230,7 +230,7 @@ private func litMetallicTriangleGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func threeClipTriangleGLB() throws -> Data {
@@ -320,5 +320,5 @@ private func threeClipTriangleGLB() throws -> Data {
             ],
         ],
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

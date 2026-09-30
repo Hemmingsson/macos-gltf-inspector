@@ -192,7 +192,7 @@ private func writeTempTwoJointSkinGLB() throws -> URL {
         "scenes": [["name": "Default", "nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.writePrepared(try GLBBox.serialize(json: json, bin: bin), prefix: "two-joint-skin")
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "two-joint-skin")
 }
 
 /// Morph triangle without animation (MorphConvertTests adds a weights clip).
@@ -237,5 +237,5 @@ private func morphTriangleGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

@@ -44,5 +44,5 @@ private func separateNodesGLB(count: Int) throws -> Data {
         "scenes": [["nodes": Array(0..<count)]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

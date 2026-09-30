@@ -27,7 +27,7 @@ struct ConvertProblemTests {
     }
 
     @Test func mixedTrianglesAndLinesRecordsDroppedPrimitive() async throws {
-        let url = try GLBBox.writePrepared(try mixedTrianglesAndLinesGLB(), prefix: "mixed-prim")
+        let url = try TestGLB.writeTemp(try mixedTrianglesAndLinesGLB(), prefix: "mixed-prim")
         defer { try? FileManager.default.removeItem(at: url) }
         let loaded = try await EntityLoader.load(from: url, includeAnimations: false)
         #expect(EntityLoader.modelComponentCount(in: loaded.entity) > 0)

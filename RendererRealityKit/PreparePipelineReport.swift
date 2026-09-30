@@ -1,15 +1,15 @@
 import Foundation
 
-/// What our prepare/convert pipeline did to this file (inspector honesty).
-/// Flags are set while transforms run — not re-inferred from post-prepare JSON
-/// (those extensions are stripped).
+/// What convert and the RealityKit policy did to this file (inspector honesty): spec-gloss
+/// conversion, Draco, the baked-emissive drop and the studio dim. Read from the authored JSON
+/// plus the convert-time results; there is no rewritten file any more.
 public struct PreparePipelineReport: Equatable, Sendable {
     var specGlossToMetalRough = false
     var bakedSpecGlossTextures = false
     var droppedBakedEmissive = false
     var dimmedStudioIBL = false
     var decompressedDraco = false
-    /// Source `extensionsUsed` captured before prepare rewrites strip them.
+    /// Source `extensionsUsed`.
     var extensionsUsed: [String] = []
 
     public init() {}
@@ -43,7 +43,7 @@ public struct PreparePipelineReport: Equatable, Sendable {
         return lines
     }
 
-    /// Throwaway "what's in this file" list. Same source as prepare gates.
+    /// "What is in this file" list, from the authored `extensionsUsed`.
     public var extensionEntries: [String] { extensionsUsed }
 
     static func captureExtensions(from json: [String: Any]) -> [String] {
