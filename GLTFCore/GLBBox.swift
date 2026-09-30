@@ -14,9 +14,18 @@ public struct GLBBox {
         self.bin = bin
     }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift.Error, LocalizedError, Equatable {
         case invalidGLB
         case missingBuffer
+
+        public var errorDescription: String? {
+            switch self {
+            case .invalidGLB:
+                return "The file isn't a valid glTF binary. It may be damaged or truncated."
+            case .missingBuffer:
+                return "The file's binary buffer is missing."
+            }
+        }
     }
 
     public static func aligned(_ value: Int, to align: Int) -> Int {
