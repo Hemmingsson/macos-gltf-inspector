@@ -59,7 +59,7 @@ final class RealityKitConvert {
     @MainActor func build(scene: GLTFScene, asset: GLTFAsset) throws -> BuildResult {
         sourceAsset = asset
         indexNodes(asset.nodes)
-        ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(asset.materials.map(PreviewEmissive.hint(from:)))
+        ignoreBakedEmissive = RealityPolicy.fileLooksBaked(asset.materials.map(RealityPolicy.EmissiveHint.init))
         if ignoreBakedEmissive {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }

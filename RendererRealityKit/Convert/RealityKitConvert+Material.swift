@@ -102,8 +102,12 @@ extension RealityKitConvert {
                 )
             }
             if let emissive = gltfMaterial.emissive {
-                let hint = PreviewEmissive.hint(from: gltfMaterial)
-                if !PreviewEmissive.shouldIgnore(hint, fileLooksBaked: ignoreBakedEmissive) {
+                let hint = RealityPolicy.EmissiveHint(gltfMaterial)
+                if RealityPolicy.dropsEmissive(hint, fileLooksBaked: ignoreBakedEmissive) {
+                    if hint.hasEmissive {
+                        context.record(.droppedEmissive, severity: .warning, message: "Baked / boost emissive dropped", materialName: name)
+                    }
+                } else {
                     var emissiveTexture: PhysicallyBasedMaterial.Texture?
                     if let texture = emissive.emissiveTexture {
                         emissiveTexture = context.requiredTexture(

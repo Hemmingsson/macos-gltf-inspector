@@ -14,6 +14,7 @@ public struct ConvertProblem: Equatable, Sendable {
         case blendAsCutout
         case droppedAnimations
         case approximatedTextureTransform
+        case droppedEmissive
     }
 
     public enum Severity: String, Equatable, Sendable {
