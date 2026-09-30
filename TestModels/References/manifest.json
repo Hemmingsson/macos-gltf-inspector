@@ -1,5 +1,4 @@
 {
-  "canvasSize" : 512,
   "entries" : [
     {
       "camera" : {
@@ -15,9 +14,15 @@
         "zfar" : 37.27125732215502,
         "znear" : 6.015967317286666
       },
-      "model" : "TestModels/Khronos samples/AlphaBlendModeTest/AlphaBlendModeTest.glb",
+      "files" : [
+        "AlphaBlendModeTest.glb"
+      ],
       "name" : "AlphaBlendModeTest",
-      "reference" : "AlphaBlendModeTest.png"
+      "requires" : [
+        "core:alphaBlend",
+        "core:alphaMask"
+      ],
+      "source" : "Models/AlphaBlendModeTest/glTF-Binary"
     },
     {
       "camera" : {
@@ -33,45 +38,15 @@
         "zfar" : 14.30974413928027,
         "znear" : 2.309741051034308
       },
-      "model" : "TestModels/Khronos samples/AnimatedMorphCube/AnimatedMorphCube.glb",
+      "files" : [
+        "AnimatedMorphCube.glb"
+      ],
       "name" : "AnimatedMorphCube",
-      "reference" : "AnimatedMorphCube.png"
-    },
-    {
-      "camera" : {
-        "azimuth" : 25,
-        "distance" : 0.1938466136501684,
-        "elevation" : -18,
-        "target" : [
-          0,
-          0.03140016179531813,
-          -1.862645149230957e-09
-        ],
-        "yfov" : 0.7853981633974483,
-        "zfar" : 0.3338124390539342,
-        "znear" : 0.05388078824640255
-      },
-      "model" : "TestModels/Khronos samples/Avocado/Avocado.glb",
-      "name" : "Avocado",
-      "reference" : "Avocado.png"
-    },
-    {
-      "camera" : {
-        "azimuth" : 25,
-        "distance" : 1.7242688475581385,
-        "elevation" : -18,
-        "target" : [
-          0.0023898184299468994,
-          0.14287492632865906,
-          -0.0038172900676727295
-        ],
-        "yfov" : 0.7853981633974483,
-        "zfar" : 2.9692671888859614,
-        "znear" : 0.47927050623031553
-      },
-      "model" : "TestModels/Khronos samples/BarramundiFish/BarramundiFish.glb",
-      "name" : "BarramundiFish",
-      "reference" : "BarramundiFish.png"
+      "requires" : [
+        "core:animation",
+        "core:morph"
+      ],
+      "source" : "Models/AnimatedMorphCube/glTF-Binary"
     },
     {
       "camera" : {
@@ -87,27 +62,14 @@
         "zfar" : 0.14200684038659858,
         "znear" : 0.022921376201845957
       },
-      "model" : "TestModels/Khronos samples/BoomBox/BoomBox.glb",
+      "files" : [
+        "BoomBox.glb"
+      ],
       "name" : "BoomBox",
-      "reference" : "BoomBox.png"
-    },
-    {
-      "camera" : {
-        "azimuth" : 25,
-        "distance" : 4.154870153734305,
-        "elevation" : -18,
-        "target" : [
-          0,
-          0,
-          0
-        ],
-        "yfov" : 0.7853981633974483,
-        "zfar" : 7.15487009988961,
-        "znear" : 1.1548702075789996
-      },
-      "model" : "TestModels/Khronos samples/BoxInterleaved/BoxInterleaved.glb",
-      "name" : "BoxInterleaved",
-      "reference" : "BoxInterleaved.png"
+      "requires" : [
+
+      ],
+      "source" : "Models/BoomBox/glTF-Binary"
     },
     {
       "camera" : {
@@ -123,9 +85,14 @@
         "zfar" : 7.154870469217834,
         "znear" : 1.1548702671924032
       },
-      "model" : "TestModels/Khronos samples/BoxVertexColors/BoxVertexColors.glb",
+      "files" : [
+        "BoxVertexColors.glb"
+      ],
       "name" : "BoxVertexColors",
-      "reference" : "BoxVertexColors.png"
+      "requires" : [
+        "core:vertexColor"
+      ],
+      "source" : "Models/BoxVertexColors/glTF-Binary"
     },
     {
       "camera" : {
@@ -141,9 +108,15 @@
         "zfar" : 45.20738933660867,
         "znear" : 7.296941297100474
       },
-      "model" : "TestModels/Khronos samples/ClearCoatTest/ClearCoatTest.glb",
+      "files" : [
+        "ClearCoatTest.glb"
+      ],
       "name" : "ClearCoatTest",
-      "reference" : "ClearCoatTest.png"
+      "requires" : [
+        "KHR_materials_clearcoat",
+        "core:alphaBlend"
+      ],
+      "source" : "Models/ClearCoatTest/glTF-Binary"
     },
     {
       "camera" : {
@@ -159,9 +132,14 @@
         "zfar" : 0.32994753717614134,
         "znear" : 0.05325695301647321
       },
-      "model" : "TestModels/Khronos samples/Corset/Corset.glb",
+      "files" : [
+        "Corset.glb"
+      ],
       "name" : "Corset",
-      "reference" : "Corset.png"
+      "requires" : [
+
+      ],
+      "source" : "Models/Corset/glTF-Binary"
     },
     {
       "camera" : {
@@ -177,9 +155,40 @@
         "zfar" : 79.70754128685692,
         "znear" : 12.865623479730864
       },
-      "model" : "TestModels/Khronos samples/EmissiveStrengthTest/EmissiveStrengthTest.glb",
+      "files" : [
+        "EmissiveStrengthTest.glb"
+      ],
       "name" : "EmissiveStrengthTest",
-      "reference" : "EmissiveStrengthTest.png"
+      "requires" : [
+        "KHR_materials_emissive_strength"
+      ],
+      "source" : "Models/EmissiveStrengthTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 54.642213103778225,
+        "elevation" : -18,
+        "target" : [
+          -0.5564079284667969,
+          3.781651020050049,
+          -1.0962677001953125
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 94.09630680675659,
+        "znear" : 15.188119400799856
+      },
+      "files" : [
+        "EnvironmentTest.gltf",
+        "EnvironmentTest_binary.bin",
+        "EnvironmentTest_images/roughness_metallic_0.png",
+        "EnvironmentTest_images/roughness_metallic_1.png"
+      ],
+      "name" : "EnvironmentTest",
+      "requires" : [
+
+      ],
+      "source" : "Models/EnvironmentTest/glTF"
     },
     {
       "camera" : {
@@ -195,9 +204,39 @@
         "zfar" : 47.043923653036096,
         "znear" : 7.593376974845512
       },
-      "model" : "TestModels/Khronos samples/InterpolationTest/InterpolationTest.glb",
+      "files" : [
+        "InterpolationTest.glb"
+      ],
       "name" : "InterpolationTest",
-      "reference" : "InterpolationTest.png"
+      "requires" : [
+        "core:animation"
+      ],
+      "source" : "Models/InterpolationTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 5.235382608582361,
+        "elevation" : -18,
+        "target" : [
+          0.3461415469646454,
+          0.9438252076506615,
+          -0.000488579273223877
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 9.015560318764994,
+        "znear" : 1.4552048983997286
+      },
+      "files" : [
+        "LightsPunctualLamp.glb"
+      ],
+      "name" : "LightsPunctualLamp",
+      "requires" : [
+        "KHR_lights_punctual",
+        "KHR_materials_transmission",
+        "core:alphaBlend"
+      ],
+      "source" : "Models/LightsPunctualLamp/glTF-Binary"
     },
     {
       "camera" : {
@@ -213,17 +252,281 @@
         "zfar" : 0.027619830406193167,
         "znear" : 0.004458126958166464
       },
-      "model" : "TestModels/Khronos samples/MetalRoughSpheresNoTextures/MetalRoughSpheresNoTextures.glb",
+      "files" : [
+        "MetalRoughSpheresNoTextures.glb"
+      ],
       "name" : "MetalRoughSpheresNoTextures",
-      "reference" : "MetalRoughSpheresNoTextures.png"
+      "requires" : [
+
+      ],
+      "source" : "Models/MetalRoughSpheresNoTextures/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 32.70757232803045,
+        "elevation" : -18,
+        "target" : [
+          0,
+          0,
+          -0.125
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 56.323885616370305,
+        "znear" : 9.091259039690598
+      },
+      "files" : [
+        "NegativeScaleTest.glb"
+      ],
+      "name" : "NegativeScaleTest",
+      "requires" : [
+
+      ],
+      "source" : "Models/NegativeScaleTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 40.13428139842243,
+        "elevation" : -18,
+        "target" : [
+          7.999999985098839,
+          -0.5,
+          0.010000228881835938
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 69.11300698531804,
+        "znear" : 11.155555811526824
+      },
+      "files" : [
+        "NodeVisibilityTest.glb"
+      ],
+      "name" : "NodeVisibilityTest",
+      "requires" : [
+        "KHR_node_visibility"
+      ],
+      "source" : "Models/NodeVisibilityTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 8.6866323467131,
+        "elevation" : -18,
+        "target" : [
+          -0.005371749401092529,
+          -0.07662379741668701,
+          0.035250067710876465
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 14.958764954512693,
+        "znear" : 2.4144997389135074
+      },
+      "files" : [
+        "NormalTangentMirrorTest.glb"
+      ],
+      "name" : "NormalTangentMirrorTest",
+      "requires" : [
+
+      ],
+      "source" : "Models/NormalTangentMirrorTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 41.54871431027152,
+        "elevation" : -18,
+        "target" : [
+          0,
+          0,
+          4.76837158203125e-07
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 71.54872299444365,
+        "znear" : 11.548705626099391
+      },
+      "files" : [
+        "OrientationTest.glb"
+      ],
+      "name" : "OrientationTest",
+      "requires" : [
+
+      ],
+      "source" : "Models/OrientationTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 16.811126797547093,
+        "elevation" : -18,
+        "target" : [
+          0,
+          -2.085737466812134,
+          0
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 28.949503599075513,
+        "znear" : 4.672749996018675
+      },
+      "files" : [
+        "PointLightIntensityTest.glb"
+      ],
+      "name" : "PointLightIntensityTest",
+      "requires" : [
+        "KHR_lights_punctual",
+        "KHR_materials_unlit"
+      ],
+      "source" : "Models/PointLightIntensityTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 0.9505811309943999,
+        "elevation" : -18,
+        "target" : [
+          0,
+          0.0521700456738472,
+          0
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 1.6369427346744487,
+        "znear" : 0.26421952731435094
+      },
+      "files" : [
+        "SpecGlossVsMetalRough.glb"
+      ],
+      "name" : "SpecGlossVsMetalRough",
+      "requires" : [
+        "KHR_materials_pbrSpecularGlossiness"
+      ],
+      "source" : "Models/SpecGlossVsMetalRough/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 40.47997878708473,
+        "elevation" : -18,
+        "target" : [
+          -2.224677085876465,
+          2.249814510345459,
+          -1
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 69.7083131725708,
+        "znear" : 11.251644401598675
+      },
+      "files" : [
+        "TextureEncodingTest.glb"
+      ],
+      "name" : "TextureEncodingTest",
+      "requires" : [
+        "core:alphaMask"
+      ],
+      "source" : "Models/TextureEncodingTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 34.59796078350466,
+        "elevation" : -18,
+        "target" : [
+          0,
+          -0.5825095176696777,
+          -0.1250002384185791
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 59.57921811456944,
+        "znear" : 9.616703452439879
+      },
+      "files" : [
+        "TextureSettingsTest.glb"
+      ],
+      "name" : "TextureSettingsTest",
+      "requires" : [
+
+      ],
+      "source" : "Models/TextureSettingsTest/glTF-Binary"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 6.404404458821238,
+        "elevation" : -18,
+        "target" : [
+          0,
+          5.960464477539063e-08,
+          0
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 11.02866762968161,
+        "znear" : 1.7801412879608671
+      },
+      "files" : [
+        "TextureTransformTest.gltf",
+        "TextureTransformTest.bin",
+        "Arrow.png",
+        "Correct.png",
+        "Error.png",
+        "NotSupported.png",
+        "UV.png"
+      ],
+      "name" : "TextureTransformTest",
+      "requires" : [
+        "KHR_texture_transform"
+      ],
+      "source" : "Models/TextureTransformTest/glTF"
+    },
+    {
+      "camera" : {
+        "azimuth" : 25,
+        "distance" : 6.7858892403534545,
+        "elevation" : -18,
+        "target" : [
+          5.960464477539063e-08,
+          0,
+          0.011696696281433105
+        ],
+        "yfov" : 0.7853981633974483,
+        "zfar" : 11.685601289688911,
+        "znear" : 1.8861771910179987
+      },
+      "files" : [
+        "VertexColorTest.glb"
+      ],
+      "name" : "VertexColorTest",
+      "requires" : [
+        "core:vertexColor"
+      ],
+      "source" : "Models/VertexColorTest/glTF-Binary"
     }
   ],
-  "environment" : "neutral",
-  "tolerance" : {
-    "badPixelChannelDelta" : 24,
-    "badPixelFraction" : 0.005,
-    "meanAbsoluteError" : 2
+  "look" : {
+    "background" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "canvasSize" : 512,
+    "environment" : "neutral",
+    "environmentRotationDegrees" : 90,
+    "exposureEV" : 0,
+    "toneMapping" : "Khronos PBR Neutral"
   },
-  "toneMapping" : "Khronos PBR Neutral",
-  "version" : 1
+  "samples" : {
+    "commit" : "e3cc9d8fee3ab25e21aafdcedda6558f224afbee",
+    "repository" : "KhronosGroup/glTF-Sample-Assets"
+  },
+  "tolerances" : {
+    "realitykit" : {
+      "badPixelChannelDelta" : 16,
+      "badPixelFraction" : 0.001,
+      "meanAbsoluteError" : 1
+    },
+    "webkit" : {
+      "badPixelChannelDelta" : 16,
+      "badPixelFraction" : 0.001,
+      "meanAbsoluteError" : 1
+    }
+  },
+  "version" : 2
 }

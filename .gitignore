@@ -58,3 +58,4 @@ __pycache__/
 /window-*.png
 
 TestModels/References/REGENERATE
+TestModels/References/MEASURE_NOISE
