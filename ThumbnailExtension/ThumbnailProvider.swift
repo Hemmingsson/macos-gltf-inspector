@@ -60,7 +60,7 @@ class ThumbnailProvider: QLThumbnailProvider {
     @MainActor
     private static func renderNow(url: URL, pixel: Int) async throws -> URL {
         let started = CFAbsoluteTimeGetCurrent()
-        let look = RendererLookDefaults.current()
+        let look = AppGroupSettings.rendererLook()
         let host = try await reusedHost(environment: look.environment, toneMapping: look.toneMapping, pixel: pixel)
         let info = try await host.load(model: url)
         let image = try await host.renderStill()

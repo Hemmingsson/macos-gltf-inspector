@@ -16,7 +16,7 @@ final class EngineAppDefaultsBridge {
         defaultsStore: AppDefaultsStore? = nil,
         lookStore: AppLookStore? = nil
     ) {
-        self.defaultsStore = defaultsStore ?? .shared
+        self.defaultsStore = defaultsStore ?? .appGroup
         self.lookStore = lookStore ?? .shared
     }
 
@@ -35,7 +35,7 @@ final class EngineAppDefaultsBridge {
         defaultsStore.set(value, for: key)
     }
 
-    /// Copy + decode-check a custom HDR/EXR into Application Support; returns stored file name.
+    /// Copy + decode-check a custom HDR/EXR into the App Group `ibl/`; returns stored file name.
     func importCustomEnvironment(from source: URL) throws -> String {
         let support = lookStore.directory
         let ibl = AppLook.iblDirectory(in: support)
@@ -70,6 +70,12 @@ final class EngineAppDefaultsBridge {
 }
 
 extension EngineAppDefaultsBridge: SettingsDefaultsStore {}
+
+extension AppDefaultsStore {
+    /// The host's app-defaults store, backed by the App Group suite so the Quick Look and
+    /// thumbnail extensions read what Settings writes. Use this, not `.shared` (`.standard`).
+    static let appGroup = AppDefaultsStore(defaults: AppGroupSettings.defaults)
+}
 
 enum EngineIBLImportError: LocalizedError {
     case undecodable(String)

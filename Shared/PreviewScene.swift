@@ -111,10 +111,10 @@ struct PreviewScene: View {
         // Seed local session from defaults when the host did not pass bindings (Quick Look).
         // Only `_State(initialValue:)` here — never touch `@Observable` / other `@State` (AGENTS.md).
         _localAutoRotate = State(
-            initialValue: UserDefaults.standard.object(forKey: SettingsKeys.autoRotate) as? Bool ?? true
+            initialValue: AppGroupSettings.defaults.object(forKey: AppGroupSettings.Key.autoRotate) as? Bool ?? true
         )
         _localShowFloor = State(
-            initialValue: UserDefaults.standard.object(forKey: SettingsKeys.showFloor) as? Bool ?? true
+            initialValue: AppGroupSettings.defaults.object(forKey: AppGroupSettings.Key.showFloor) as? Bool ?? true
         )
         _localBackdropIndex = State(initialValue: PreviewBackground.storedIndex)
         _localCenterModel = State(initialValue: true)

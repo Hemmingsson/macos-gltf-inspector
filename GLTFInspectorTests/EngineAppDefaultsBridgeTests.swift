@@ -29,7 +29,7 @@ struct EngineAppDefaultsBridgeTests {
 
         bridge.set(.dark, for: .backdrop)
         bridge.set("dark", for: .appearance)
-        #expect(defaults.string(forKey: SettingsKeys.background) == BackdropStyle.dark.rawValue)
-        #expect(defaults.string(forKey: SettingsKeys.appearance) == "dark")
+        #expect(defaults.string(forKey: AppGroupSettings.Key.background) == BackdropStyle.dark.rawValue)
+        #expect(defaults.string(forKey: AppGroupSettings.Key.appearance) == "dark")
     }
 }

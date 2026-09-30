@@ -134,9 +134,9 @@ struct EngineSettingsStoreTests {
         #expect(defaultsStore.value(for: .backdrop) == .dark)
         #expect(defaultsStore.value(for: .showPills) == false)
         #expect(defaultsStore.value(for: .appearance) == "dark")
-        #expect(defaults.bool(forKey: SettingsKeys.showFloor) == false)
-        #expect(defaults.string(forKey: SettingsKeys.background) == BackdropStyle.dark.rawValue)
-        #expect(defaults.bool(forKey: SettingsKeys.showToolbar) == false)
-        #expect(defaults.string(forKey: SettingsKeys.appearance) == "dark")
+        #expect(defaults.bool(forKey: AppGroupSettings.Key.showFloor) == false)
+        #expect(defaults.string(forKey: AppGroupSettings.Key.background) == BackdropStyle.dark.rawValue)
+        #expect(defaults.bool(forKey: AppGroupSettings.Key.showToolbar) == false)
+        #expect(defaults.string(forKey: AppGroupSettings.Key.appearance) == "dark")
     }
 }

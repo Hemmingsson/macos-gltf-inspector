@@ -31,9 +31,9 @@ struct AppLook: Codable, Equatable, Sendable {
         KhronosEnvironments(rawValue: catalogRaw) ?? .studioNeutral
     }
 
+    /// App Group container — the same directory in the host and both extensions.
     static func supportDirectory() -> URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("glTF Inspector", isDirectory: true)
+        AppGroupSettings.containerURL
     }
 
     static func lookURL(in directory: URL) -> URL {
@@ -96,7 +96,7 @@ struct AppLook: Codable, Equatable, Sendable {
 final class AppLookStore {
     static let shared = AppLookStore(directory: AppLook.supportDirectory())
 
-    /// Application Support (or test) directory that holds `look.json` + `ibl/`.
+    /// App Group container (or test) directory that holds `look.json` + `ibl/`.
     let directory: URL
     var look: AppLook
 

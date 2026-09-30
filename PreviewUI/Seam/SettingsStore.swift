@@ -3,7 +3,8 @@ import Observation
 
 /// A typed settings key. `fallback` is what a fresh install uses.
 public struct SettingKey<Value: Sendable>: Sendable {
-    /// Storage name; matches the host's `UserDefaults` key so the engine adapter is a pass-through.
+    /// Storage name; matches `AppGroupSettings.Key` in the host (asserted by
+    /// `AppGroupSettingsTests`) so the engine adapter is a pass-through.
     public let name: String
     public let fallback: Value
 
@@ -42,7 +43,7 @@ public extension SettingKey where Value == String {
     /// `KhronosEnvironments.rawValue` (`neutral` / `field` / `Colorful_Studio`).
     static var environmentCatalog: SettingKey<String> { .init(name: "settings.preview.environmentCatalog", fallback: "neutral") }
     /// Stored as the Khronos tone-map name so the extensions can read it without linking this
-    /// framework — see `RendererLookDefaults`.
+    /// framework — see `AppGroupSettings.rendererLook()` in the host.
     static var toneMapping: SettingKey<String> { .init(name: "settings.preview.toneMapping", fallback: "Khronos PBR Neutral") }
     static var customEnvironmentFile: SettingKey<String> { .init(name: "settings.preview.customEnvironmentFile", fallback: "") }
 }

@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppLog.configureFileSink()
         #endif
         AppAppearance.apply(
-            UserDefaults.standard.string(forKey: SettingsKeys.appearance)
+            AppGroupSettings.defaults.string(forKey: AppGroupSettings.Key.appearance)
                 ?? AppAppearance.system.rawValue
         )
         UserDefaults.standard.set("preferred", forKey: "AppleWindowTabbingMode")
@@ -54,12 +54,9 @@ struct GLTFInspectorApp: App {
             updaterController = nil
             return
         }
-        UserDefaults.standard.register(defaults: [
-            SettingsKeys.background: PreviewBackground.window.rawValue,
-            SettingsKeys.autoRotate: true,
-            SettingsKeys.showFloor: true,
-            "NSQuitAlwaysKeepsWindows": false,
-        ])
+        AppGroupSettings.registerDefaults()
+        // AppKit reads this from the app's own domain, not the group suite.
+        UserDefaults.standard.register(defaults: ["NSQuitAlwaysKeepsWindows": false])
         updaterController = SPUStandardUpdaterController(
             startingUpdater: UpdateConfig.shouldStartUpdater,
             updaterDelegate: nil,

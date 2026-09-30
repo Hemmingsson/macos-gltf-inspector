@@ -22,7 +22,7 @@ final class EngineSettingsStore: SettingsStore {
         defaultsStore: AppDefaultsStore? = nil,
         lookStore: AppLookStore? = nil
     ) {
-        self.defaultsStore = defaultsStore ?? .shared
+        self.defaultsStore = defaultsStore ?? .appGroup
         self.lookStore = lookStore ?? .shared
     }
 

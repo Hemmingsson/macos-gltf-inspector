@@ -73,7 +73,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
             )
             return
         }
-        let defaults = RendererLookDefaults.current()
+        let defaults = AppGroupSettings.rendererLook()
         // Cache-only Icon Services read — does not start ThumbnailExtension.
         let placeholder = CachedQuickLookThumbnail.existingIcon(for: url)
         hostingView.rootView = PreviewView(

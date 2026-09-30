@@ -1,17 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// UserDefaults keys. **Writable from Settings only** for canvas defaults
-/// (`autoRotate` / `showFloor` / `background`). Open windows seed once and never write these
-/// back (DESIGN.md three-job rule). `appearance` and `showToolbar` remain app-wide.
-enum SettingsKeys {
-    static let autoRotate = "settings.preview.autoRotate"
-    static let background = "settings.preview.background"
-    static let showToolbar = "settings.preview.showToolbar"
-    static let showFloor = "settings.preview.showFloor"
-    static let appearance = "settings.general.appearance"
-}
-
 enum PreviewBackground: String, CaseIterable, Identifiable {
     case window
     case white
@@ -79,7 +68,7 @@ enum PreviewBackground: String, CaseIterable, Identifiable {
     }
 
     static var stored: PreviewBackground {
-        let raw = UserDefaults.standard.string(forKey: SettingsKeys.background) ?? window.rawValue
+        let raw = AppGroupSettings.defaults.string(forKey: AppGroupSettings.Key.background) ?? window.rawValue
         return PreviewBackground(rawValue: raw) ?? .window
     }
 

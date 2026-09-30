@@ -219,44 +219,55 @@ struct WebRendererControlsTests {
 /// disagree about environment or tone mapping, the same file still renders three ways.
 @MainActor
 struct RendererLookDefaultsTests {
-    private let environmentKey = "settings.preview.environmentCatalog"
-    private let toneMappingKey = "settings.preview.toneMapping"
+    /// A throwaway suite + look directory standing in for the App Group.
+    private struct Store {
+        let defaults: UserDefaults
+        let directory: URL
+        let suiteName: String
 
-    private func withDefaults(
-        environment: String?,
-        toneMapping: String?,
-        _ body: () throws -> Void
-    ) rethrows {
-        let suite = UserDefaults.standard
-        let previousEnvironment = suite.object(forKey: environmentKey)
-        let previousToneMapping = suite.object(forKey: toneMappingKey)
-        defer {
-            suite.set(previousEnvironment, forKey: environmentKey)
-            suite.set(previousToneMapping, forKey: toneMappingKey)
+        init() throws {
+            suiteName = "gltf.renderer-look.\(UUID().uuidString)"
+            defaults = try #require(UserDefaults(suiteName: suiteName))
+            directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(suiteName, isDirectory: true)
         }
-        suite.set(environment, forKey: environmentKey)
-        suite.set(toneMapping, forKey: toneMappingKey)
-        try body()
-    }
 
-    @Test
-    func fallsBackToTheReviewOrientedDefaults() {
-        withDefaults(environment: nil, toneMapping: nil) {
-            let look = RendererLookDefaults.current()
-            #expect(look.environment == "neutral")
-            // Khronos PBR Neutral distorts authored colour least — the right default for a tool
-            // whose job is showing what is in the file.
-            #expect(look.toneMapping == "Khronos PBR Neutral")
+        func setEnvironment(_ raw: String) {
+            var look = AppLook.default
+            look.catalogRaw = raw
+            look.save(to: directory)
+        }
+
+        func look() -> (environment: String, toneMapping: String) {
+            AppGroupSettings.rendererLook(defaults: defaults, directory: directory)
+        }
+
+        func tearDown() {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: directory)
         }
     }
 
     @Test
-    func readsWhatTheAppStored() {
-        withDefaults(environment: "field", toneMapping: "ACES Filmic Tone Mapping (Hill)") {
-            let look = RendererLookDefaults.current()
-            #expect(look.environment == "field")
-            #expect(look.toneMapping == "ACES Filmic Tone Mapping (Hill)")
-        }
+    func fallsBackToTheReviewOrientedDefaults() throws {
+        let store = try Store()
+        defer { store.tearDown() }
+        let look = store.look()
+        #expect(look.environment == "neutral")
+        // Khronos PBR Neutral distorts authored colour least — the right default for a tool
+        // whose job is showing what is in the file.
+        #expect(look.toneMapping == "Khronos PBR Neutral")
+    }
+
+    @Test
+    func readsWhatTheAppStored() throws {
+        let store = try Store()
+        defer { store.tearDown() }
+        store.setEnvironment("field")
+        store.defaults.set("ACES Filmic Tone Mapping (Hill)", forKey: AppGroupSettings.Key.toneMapping)
+        let look = store.look()
+        #expect(look.environment == "field")
+        #expect(look.toneMapping == "ACES Filmic Tone Mapping (Hill)")
     }
 
     /// The stored string is what reaches the renderer, so a mismatch between the enum and the
@@ -273,9 +284,11 @@ struct RendererLookDefaultsTests {
     @Test(.enabled(if: TestModels.hasKhronosSamples))
     func changingTheDefaultChangesWhatTheThumbnailPathRenders() async throws {
         let model = TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
+        let store = try Store()
+        defer { store.tearDown() }
 
         func render() async throws -> Data? {
-            let look = RendererLookDefaults.current()
+            let look = store.look()
             let host = try WebRendererHost(mode: .still)
             try await host.start(size: 160)
             try await host.setEnvironment(named: look.environment)
@@ -285,16 +298,10 @@ struct RendererLookDefaultsTests {
             return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
         }
 
-        var neutral: Data?
-        var studio: Data?
-        withDefaults(environment: "neutral", toneMapping: "Khronos PBR Neutral") {}
-        neutral = try await render()
-
-        let suite = UserDefaults.standard
-        let previous = suite.object(forKey: environmentKey)
-        suite.set("Colorful_Studio", forKey: environmentKey)
-        studio = try await render()
-        suite.set(previous, forKey: environmentKey)
+        store.setEnvironment("neutral")
+        let neutral = try await render()
+        store.setEnvironment("Colorful_Studio")
+        let studio = try await render()
 
         #expect(neutral != nil && studio != nil)
         #expect(neutral != studio, "changing the app default did not change the render")
