@@ -1,6 +1,7 @@
 import Foundation
 @testable import RendererRealityKit
 import simd
+@testable import GLTFCore
 import Testing
 
 struct EmissiveBoostTests {
@@ -40,17 +41,34 @@ struct EmissiveBoostTests {
     }
 
     @Test func punctualLightsDimStudioIBL() {
-        #expect(PreviewEmissive.studioIBLExponent(punctualLightCount: 0) == 0)
-        #expect(PreviewEmissive.studioIBLExponent(punctualLightCount: 1) == -2)
+        #expect(RealityPolicy.studioIBLExponent(punctualLightCount: 0) == 0)
+        #expect(RealityPolicy.studioIBLExponent(punctualLightCount: 1) == -2)
         #expect(!PreviewEmissive.fileLooksBaked(json: [
             "materials": [["pbrMetallicRoughness": ["metallicFactor": 0]]],
         ]))
     }
 
-    @Test func sessionIBLExponentAddsExposureEV() {
-        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: false, exposureEV: 0) == 0)
-        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: false, exposureEV: 1) == 1)
-        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: true, exposureEV: 0) == -2)
-        #expect(PreviewEmissive.sessionIBLExponent(dimStudioForFileLights: true, exposureEV: 0.5) == -1.5)
+    @Test func iblExponentAddsExposureIntensityAndPolicyDim() {
+        let dim = RealityPolicy.studioDimEV(fileHasLights: true)
+        #expect(RealityLook.iblExponent(exposureEV: 0) == 0)
+        #expect(RealityLook.iblExponent(exposureEV: 1) == 1)
+        #expect(RealityLook.iblExponent(exposureEV: 0, dimEV: dim) == -2)
+        #expect(RealityLook.iblExponent(exposureEV: 0.5, dimEV: dim) == -1.5)
+        #expect(RealityLook.iblExponent(exposureEV: 0, environmentIntensity: 4) == 2)
+    }
+
+    /// Look-probe constants (seam 5): yaw 0 is the Khronos default view, lights × 591, spot × π
+    /// with the full cone.
+    @Test func renderLookMapsToRealityKitUnits() {
+        var look = RenderLook.standard
+        #expect(abs(look.realityKitIBLYaw - .pi) < 1e-6)
+        look.environmentYawDegrees = 90
+        #expect(abs(look.realityKitIBLYaw - .pi / 2) < 1e-6)
+        look.exposureEV = 1
+        #expect(look.realityKitIBLExponent(fileHasLights: true) == -1)
+        #expect(RealityLook.directionalIntensity(lux: 1) == 591)
+        #expect(abs(RealityLook.pointIntensity(candela: 1) - 4 * .pi * 591) < 0.01)
+        #expect(abs(RealityLook.spotIntensity(candela: 1) - .pi * 591) < 0.01)
+        #expect(abs(RealityLook.spotConeDegrees(halfAngleRadians: .pi / 4) - 90) < 1e-4)
     }
 }

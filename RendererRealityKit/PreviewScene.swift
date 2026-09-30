@@ -205,9 +205,9 @@ struct PreviewScene: View {
         return fromSidebar.isEmpty ? document.skins : fromSidebar
     }
     private var effectiveIBLExponent: Float {
-        PreviewEmissive.sessionIBLExponent(
-            dimStudioForFileLights: dimStudioForFileLightsValue,
-            exposureEV: exposureEVValue
+        RealityLook.iblExponent(
+            exposureEV: exposureEVValue,
+            dimEV: RealityPolicy.studioDimEV(fileHasLights: dimStudioForFileLightsValue)
         )
     }
     private var autoRotateIntent: Bool { autoRotateBinding.wrappedValue }

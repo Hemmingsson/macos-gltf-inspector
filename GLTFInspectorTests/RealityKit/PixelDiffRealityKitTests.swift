@@ -14,15 +14,16 @@ import Testing
 /// | Manifest | RealityKit | Status |
 /// | --- | --- | --- |
 /// | `environment` | `AppLook` catalog of that name, IBL on | pinned, not read from the user's `look.json` |
-/// | `environmentRotationDegrees` | IBL yaw ``environmentYaw`` (native 0) | offset vs Khronos unmeasured (seam 5) |
-/// | `exposureEV` | `sessionIBLExponent` — IBL only, plus −2 EV file-light policy | IBL-only exposure (research G2) |
+/// | `environmentRotationDegrees` | `RenderLook` yaw = rotation − 90 → IBL yaw π − Y (`RealityLook`) | measured (seam 5) |
+/// | `exposureEV` | `RealityLook.iblExponent` — IBL only, plus the `RealityPolicy` file-light dim | IBL-only exposure (research G2) |
 /// | `toneMapping` | system tone map | PBR Neutral not available (decision 2 → B) |
 /// | `background` | opaque ``PixelDiff/backdrop`` grey | `StillRenderer` output carries no alpha |
 @MainActor
 enum PixelDiffRealityKit {
-    /// RealityKit's native IBL orientation, as the app ships it. The offset to the Khronos
-    /// default view is measured in seam 5; until then the goldens pin today's behaviour.
-    static let environmentYaw: Float = 0
+    /// Manifest rotation is the page's; the page's 90 is `RenderLook` yaw 0 (Khronos default).
+    static func lookYawRadians(_ look: PixelDiffManifest.Look) -> Float {
+        Float((look.environmentRotationDegrees - 90) * .pi / 180)
+    }
 
     static func make(manifest: PixelDiffManifest) -> PixelDiffRun.Render {
         { entry in try await render(entry, look: manifest.look) }
@@ -45,11 +46,11 @@ enum PixelDiffRealityKit {
                 blue: CGFloat(PixelDiff.backdrop.b) / 255,
                 alpha: 1
             ),
-            intensityExponent: PreviewEmissive.sessionIBLExponent(
-                dimStudioForFileLights: model.studioIBLExponent != 0,
-                exposureEV: Float(look.exposureEV)
+            intensityExponent: RealityLook.iblExponent(
+                exposureEV: Float(look.exposureEV),
+                dimEV: model.studioIBLExponent
             ),
-            environmentYaw: environmentYaw,
+            environmentYaw: lookYawRadians(look),
             look: AppLook(useEnvironmentMap: true, catalogRaw: look.environment, customFileName: nil)
         )
         return try await still.capture()

@@ -26,9 +26,9 @@ public struct LiveStillRequest {
         root = pivot.clone(recursive: true)
         cameraPose = pose
         background = PreviewBackground.at(backdropIndex).stillBackgroundCGColor
-        intensityExponent = PreviewEmissive.sessionIBLExponent(
-            dimStudioForFileLights: dimStudioForFileLights,
-            exposureEV: exposureEV
+        intensityExponent = RealityLook.iblExponent(
+            exposureEV: exposureEV,
+            dimEV: RealityPolicy.studioDimEV(fileHasLights: dimStudioForFileLights)
         )
         self.environmentYaw = environmentYaw
     }

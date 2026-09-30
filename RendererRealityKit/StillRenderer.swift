@@ -111,8 +111,7 @@ final class StillRenderer {
             background: background,
             intensityExponent: intensityExponent,
             environmentYaw: 0,
-            useEntityIBL: false,
-            look: nil
+            look: .current
         )
         self.renderer = built.renderer
         self.texture = built.texture
@@ -140,7 +139,6 @@ final class StillRenderer {
             background: background,
             intensityExponent: intensityExponent,
             environmentYaw: environmentYaw,
-            useEntityIBL: true,
             look: look
         )
         self.renderer = built.renderer
@@ -157,8 +155,7 @@ final class StillRenderer {
         background: CGColor,
         intensityExponent: Float,
         environmentYaw: Float,
-        useEntityIBL: Bool,
-        look: AppLook?
+        look: AppLook
     ) async throws -> (renderer: RealityRenderer, texture: MTLTexture) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw error("No Metal device", code: 1)
@@ -170,26 +167,18 @@ final class StillRenderer {
         renderer.extendedDynamicRangeOutput = false
 
         renderer.entities.append(root)
-        if useEntityIBL {
-            // Match live Look path (incl. session env yaw). Thumbnails use renderer.lighting.
-            let look = look ?? .current
-            await PreviewLighting.prefetchLook(look)
-            let lookRoot = Entity()
-            lookRoot.name = PreviewLighting.lookRootName
-            PreviewLighting.applyLook(
-                lookRoot: lookRoot,
-                pivot: root,
-                look: look,
-                intensityExponent: intensityExponent,
-                environmentYaw: environmentYaw
-            )
-            renderer.entities.append(lookRoot)
-        } else {
-            await PreviewLighting.configureThumbnailLighting(
-                on: renderer,
-                intensityExponent: intensityExponent
-            )
-        }
+        // Same look path as the live canvas (IBL entity with the session yaw, or key+fill).
+        await PreviewLighting.prefetchLook(look)
+        let lookRoot = Entity()
+        lookRoot.name = PreviewLighting.lookRootName
+        PreviewLighting.applyLook(
+            lookRoot: lookRoot,
+            pivot: root,
+            look: look,
+            intensityExponent: intensityExponent,
+            environmentYaw: environmentYaw
+        )
+        renderer.entities.append(lookRoot)
         renderer.entities.append(camera)
         renderer.activeCamera = camera
 

@@ -31,7 +31,7 @@ extension EntityLoader.LoadedModel {
             stats: stats,
             document: document,
             debugModes: debugModes,
-            studioIBLExponent: PreviewEmissive.studioIBLExponent(
+            studioIBLExponent: RealityPolicy.studioIBLExponent(
                 punctualLightCount: EntityLoader.punctualLightCount(in: scene.entity)
             ),
             pipelineReport: pipelineReport,

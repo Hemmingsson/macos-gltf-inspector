@@ -216,9 +216,9 @@ final class RealityKitConvert {
     func convert(spotLight gltfLight: GLTFLight) -> SpotLightComponent {
         SpotLightComponent(
             color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-            intensity: gltfLight.intensity * 4 * .pi,
-            innerAngleInDegrees: GLTFDegFromRad(gltfLight.innerConeAngle),
-            outerAngleInDegrees: GLTFDegFromRad(gltfLight.outerConeAngle),
+            intensity: RealityLook.spotIntensity(candela: gltfLight.intensity),
+            innerAngleInDegrees: RealityLook.spotConeDegrees(halfAngleRadians: gltfLight.innerConeAngle),
+            outerAngleInDegrees: RealityLook.spotConeDegrees(halfAngleRadians: gltfLight.outerConeAngle),
             attenuationRadius: punctualAttenuationRadius(gltfLight.range)
         )
     }
@@ -226,7 +226,7 @@ final class RealityKitConvert {
     func convert(pointLight gltfLight: GLTFLight) -> PointLightComponent {
         PointLightComponent(
             color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-            intensity: gltfLight.intensity * 4 * .pi,
+            intensity: RealityLook.pointIntensity(candela: gltfLight.intensity),
             attenuationRadius: punctualAttenuationRadius(gltfLight.range)
         )
     }
@@ -234,7 +234,7 @@ final class RealityKitConvert {
     func convert(directionalLight gltfLight: GLTFLight) -> DirectionalLightComponent {
         DirectionalLightComponent(
             color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-            intensity: gltfLight.intensity,
+            intensity: RealityLook.directionalIntensity(lux: gltfLight.intensity),
             isRealWorldProxy: false
         )
     }

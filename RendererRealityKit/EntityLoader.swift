@@ -104,7 +104,7 @@ public enum EntityLoader {
                 materialVariantIndex: nil
             )
             let exponent = await MainActor.run {
-                PreviewEmissive.studioIBLExponent(
+                RealityPolicy.studioIBLExponent(
                     punctualLightCount: punctualLightCount(in: entity)
                 )
             }
@@ -249,7 +249,7 @@ public enum EntityLoader {
         materialVariantNames: [String]
     ) -> LoadedModel {
         var report = pipelineReport
-        let exponent = PreviewEmissive.studioIBLExponent(
+        let exponent = RealityPolicy.studioIBLExponent(
             punctualLightCount: punctualLightCount(in: entity)
         )
         report.dimmedStudioIBL = exponent < 0
