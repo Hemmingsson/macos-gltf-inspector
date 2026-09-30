@@ -23,15 +23,6 @@ fileprivate class UniqueNameGenerator {
     }
 }
 
-extension GLTFNode {
-    var bindPath: BindTarget.EntityPath {
-        if let parent = self.parent {
-            return parent.bindPath.entity(self.name ?? "")
-        }
-        return BindTarget.entity(self.name ?? "")
-    }
-}
-
 final class RealityKitConvert {
 
     let colorSpace = NSColorSpace(cgColorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)!)!
@@ -45,6 +36,9 @@ final class RealityKitConvert {
     var skeletonIDsByJointName: [String: [/*MeshResource.Skeleton.ID*/String]] = [:]
     var skeletonTransformsByJointName : [String: Transform] = [:]
     var sourceAsset: GLTFAsset?
+    /// Per-node file index and unique entity name, built once per convert (was an O(n) scan per node).
+    private var nodeIndices: [ObjectIdentifier: Int] = [:]
+    private var entityNames: [ObjectIdentifier: String] = [:]
     var ignoreBakedEmissive = false
     /// Last convert’s baked-emissive drop decision (MainActor convert path only).
     @MainActor static var lastDroppedBakedEmissive = false
@@ -73,6 +67,7 @@ final class RealityKitConvert {
         buildDocument: Bool = true
     ) -> RealityKit.Entity {
         sourceAsset = asset
+        indexNodes(asset?.nodes ?? [])
         if buildDocument, let asset {
             document = Self.makeDocument(from: asset)
         }
@@ -116,8 +111,7 @@ final class RealityKitConvert {
     @MainActor func convert(node gltfNode: GLTFNode, context: RealityKitResourceContext) throws -> RealityKit.Entity {
         let nodeEntity = ModelEntity()
 
-        // TODO: This only ensures uniqueness for unnamed nodes; the asset could still contain duplicate names.
-        nodeEntity.name = gltfNode.name ?? nameGenerator.nextUniqueName(prefix: "Node")
+        nodeEntity.name = entityName(of: gltfNode)
         nodeEntity.components.set(GLTFNodeIDComponent(nodeIndex: nodeIndex(of: gltfNode)))
 
         nodeEntity.transform = Transform(matrix: gltfNode.matrix)
@@ -126,7 +120,7 @@ final class RealityKitConvert {
         if let skin = gltfNode.skin {
             if let meshSkeleton = convert(skin: skin) {
                 skeleton = meshSkeleton
-                pathsForSkeletonIDs[meshSkeleton.id] = gltfNode.bindPath
+                pathsForSkeletonIDs[meshSkeleton.id] = bindPath(of: gltfNode)
                 for joint in meshSkeleton.joints {
                     if joint.parentIndex == nil, let referenceNode = skin.skeleton {
                         skeletonTransformsByJointName[joint.name] = Transform(matrix: referenceNode.matrix)
@@ -186,8 +180,36 @@ final class RealityKitConvert {
     }
 
     func nodeIndex(of gltfNode: GLTFNode) -> Int {
-        guard let nodes = sourceAsset?.nodes else { return 0 }
-        return nodes.firstIndex(where: { $0 === gltfNode }) ?? 0
+        nodeIndices[ObjectIdentifier(gltfNode)] ?? 0
+    }
+
+    /// Entity names must be unique for animation bind paths to resolve: GLTFKit2 names unnamed
+    /// nodes `NodeN`, and a repeated name gets `#<node index>`. The file's own name stays in the
+    /// document (`GLTFNodeIDComponent` → node index).
+    private func indexNodes(_ nodes: [GLTFNode]) {
+        var used = Set<String>()
+        for (index, node) in nodes.enumerated() {
+            let id = ObjectIdentifier(node)
+            nodeIndices[id] = index
+            var name = node.name ?? ""
+            if name.isEmpty || used.contains(name) {
+                name = "\(name.isEmpty ? "Node" : name)#\(index)"
+            }
+            used.insert(name)
+            entityNames[id] = name
+        }
+    }
+
+    func entityName(of node: GLTFNode) -> String {
+        entityNames[ObjectIdentifier(node)] ?? node.name ?? ""
+    }
+
+    /// Path from the scene root to `node`'s entity, by the same names convert gave the entities.
+    func bindPath(of node: GLTFNode) -> BindTarget.EntityPath {
+        if let parent = node.parent {
+            return bindPath(of: parent).entity(entityName(of: node))
+        }
+        return BindTarget.entity(entityName(of: node))
     }
 
     func platformColor(for vector: simd_float4) -> PlatformColor {
