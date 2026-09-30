@@ -32,9 +32,7 @@ struct StillRenderProofTests {
         )
         try StillRenderer.writePNG(image, to: out)
         #expect(FileManager.default.fileExists(atPath: out.path))
-        let attrs = try FileManager.default.attributesOfItem(atPath: out.path)
-        let size = attrs[.size] as? NSNumber
-        #expect((size?.intValue ?? 0) > 800)
+        #expect(try Self.modelCoverage(image) > 0.005, "tiny.glb rendered as an empty frame")
     }
 
     /// Committed multi-file sidecar (`cube.gltf` + `cube.bin` + `cube.png`) rendered
@@ -75,8 +73,21 @@ struct StillRenderProofTests {
                 ?? "/tmp/GLTFInspector-cube-proof.png"
         )
         try StillRenderer.writePNG(image, to: out)
-        let attrs = try FileManager.default.attributesOfItem(atPath: out.path)
-        let size = attrs[.size] as? NSNumber
-        #expect((size?.intValue ?? 0) > 800)
+        #expect(try Self.modelCoverage(image) > 0.05, "cube rendered as an empty frame")
+    }
+
+    /// Share of the frame that differs visibly from the background corner pixel — a real
+    /// image assertion rather than a PNG byte count, which a blank frame also passes. Per-sample
+    /// pixel goldens for this path live in `PixelDiffHarness` (realitykit).
+    static func modelCoverage(_ image: CGImage) throws -> Double {
+        let raster = try PixelDiff.raster(from: image)
+        let corner = Array(raster.bytes[0..<3])
+        var covered = 0
+        for pixel in 0..<raster.pixelCount {
+            let base = pixel * 4
+            let delta = (0..<3).map { abs(Int(raster.bytes[base + $0]) - Int(corner[$0])) }.max() ?? 0
+            if delta > 24 { covered += 1 }
+        }
+        return Double(covered) / Double(raster.pixelCount)
     }
 }

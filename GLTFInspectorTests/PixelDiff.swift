@@ -65,12 +65,6 @@ enum PixelDiff {
         var badPixelChannelDelta: Int
         /// How many obviously-wrong pixels are still acceptable, as a fraction.
         var badPixelFraction: Double
-
-        static let `default` = Tolerance(
-            meanAbsoluteError: 2.0,
-            badPixelChannelDelta: 24,
-            badPixelFraction: 0.005
-        )
     }
 
     enum Verdict: Equatable, Sendable {

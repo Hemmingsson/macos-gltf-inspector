@@ -1,66 +1,45 @@
 #!/usr/bin/env bash
-# Download a curated native/testing set of Khronos glTF Sample Assets (GLB only).
-# Opt-in. Not called from verify.sh.
+# Download the pinned Khronos glTF Sample Assets into TestModels/Khronos samples (gitignored).
 #
 #   ./scripts/fetch-test-models.sh
+#
+# The sample list is TestModels/References/manifest.json — the same file the pixel-diff
+# harness asserts against — so there is exactly one list to keep up to date. Each entry names
+# the upstream folder (`source`) and the files to fetch from it (`files`, primary model first);
+# the commit is pinned once at the top of the manifest (`samples.commit`).
+# Opt-in. Not called from verify.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/TestModels/Khronos samples"
-# Pin: KhronosGroup/glTF-Sample-Assets main as of this script.
-SHA="${KHRONOS_SAMPLE_SHA:-e3cc9d8fee3ab25e21aafdcedda6558f224afbee}"
-BASE="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/${SHA}/Models"
-MIN_BYTES=400
+MANIFEST="$ROOT/TestModels/References/manifest.json"
 
-# name -> relative path under Models/
-MODELS=(
-  "BoxVertexColors:BoxVertexColors/glTF-Binary/BoxVertexColors.glb"
-  "BoxInterleaved:BoxInterleaved/glTF-Binary/BoxInterleaved.glb"
-  "BoomBox:BoomBox/glTF-Binary/BoomBox.glb"
-  "Avocado:Avocado/glTF-Binary/Avocado.glb"
-  "BarramundiFish:BarramundiFish/glTF-Binary/BarramundiFish.glb"
-  "Corset:Corset/glTF-Binary/Corset.glb"
-  "AlphaBlendModeTest:AlphaBlendModeTest/glTF-Binary/AlphaBlendModeTest.glb"
-  "InterpolationTest:InterpolationTest/glTF-Binary/InterpolationTest.glb"
-  "AnimatedMorphCube:AnimatedMorphCube/glTF-Binary/AnimatedMorphCube.glb"
-  "ClearCoatTest:ClearCoatTest/glTF-Binary/ClearCoatTest.glb"
-  "EmissiveStrengthTest:EmissiveStrengthTest/glTF-Binary/EmissiveStrengthTest.glb"
-  "MetalRoughSpheresNoTextures:MetalRoughSpheresNoTextures/glTF-Binary/MetalRoughSpheresNoTextures.glb"
-)
+# One "name<TAB>url<TAB>file" line per file to fetch.
+LIST="$(python3 - "$MANIFEST" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1]))
+s = m["samples"]
+base = f"https://raw.githubusercontent.com/{s['repository']}/{s['commit']}"
+for e in m["entries"]:
+    for f in e["files"]:
+        print(f"{e['name']}\t{base}/{e['source']}/{f}\t{f}")
+PY
+)"
 
-mkdir -p "$DEST"
-
-download() {
-  local name="$1"
-  local rel="$2"
-  local dir="$DEST/$name"
-  local out="$dir/${name}.glb"
-  mkdir -p "$dir"
-  if [[ -f "$out" ]]; then
-    local existing
-    existing="$(wc -c < "$out" | tr -d ' ')"
-    if [[ "$existing" -ge "$MIN_BYTES" ]]; then
-      echo "skip ${name}.glb (${existing} bytes)"
-      return 0
-    fi
+while IFS=$'\t' read -r name url file; do
+  out="$DEST/$name/$file"
+  # Git LFS pointer files are small text stubs; a real asset never starts with this line.
+  if [[ -f "$out" ]] && ! head -c 40 "$out" | grep -q "git-lfs"; then
+    continue
   fi
-  echo "Fetching ${name}.glb"
-  if ! curl -fsSL "${BASE}/${rel}" -o "$out"; then
-    echo "warn: skip ${name} (not at ${SHA})" >&2
-    rm -f "$out"
-    return 0
-  fi
-  local bytes
-  bytes="$(wc -c < "$out" | tr -d ' ')"
-  if [ "$bytes" -lt "$MIN_BYTES" ]; then
-    echo "error: ${out} is ${bytes} bytes (likely an LFS stub); need >= ${MIN_BYTES}" >&2
+  echo "Fetching $name/$file"
+  mkdir -p "$(dirname "$out")"
+  curl -fsSL "$url" -o "$out"
+  if head -c 40 "$out" | grep -q "git-lfs"; then
+    echo "error: $out is a Git LFS pointer, not the asset" >&2
     rm -f "$out"
     exit 1
   fi
-}
-
-for spec in "${MODELS[@]}"; do
-  download "${spec%%:*}" "${spec#*:}"
-done
+done <<<"$LIST"
 
 echo "Khronos samples in $DEST"
