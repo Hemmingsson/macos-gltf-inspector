@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import GLTFCore
 @preconcurrency import Metal
 import RealityKit
 import simd
@@ -367,7 +368,7 @@ struct LookProbeTests {
 
     static func save(_ image: CGImage, _ name: String) throws {
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-        try StillRenderer.writePNG(image, to: outputDirectory.appendingPathComponent("\(name).png"))
+        try PNGWriter.write(image, to: outputDirectory.appendingPathComponent("\(name).png"))
     }
 
     static func save(_ pixels: ProbePixels, _ name: String) throws {
