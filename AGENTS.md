@@ -28,7 +28,7 @@ layout spec (code wins on what ships where).
 | `Shared/EntityLoader.swift` + `Shared/Convert/` | Host inspector data, tests, RK fallback — not Finder/QL pixels. |
 | `PreviewExtension/` | Quick Look: `webCanvasURL` only, no convert. |
 | `ThumbnailExtension/` | Still render via `WebRendererHost(.still)`. |
-| `TestModels/References/` | Pixel-diff goldens for the JS renderer. |
+| `TestModels/References/` | Pinned sample manifest + per-renderer pixel-diff goldens (`webkit/`, `realitykit/`). |
 
 Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product on **`main`** is still RealityKit;
 this worktree is throwaway until merged.
@@ -46,8 +46,9 @@ this worktree is throwaway until merged.
 ./scripts/proof.sh                # StillRenderProofTests (RK convert still) + optional qlmanage
 ./scripts/release.sh              # Developer ID + notary + Sparkle + gh release
 ./scripts/vendor-khronos-environments.sh
-./scripts/fetch-test-models.sh    # Khronos GLBs → TestModels/Khronos samples (gitignored)
-./scripts/regenerate-pixel-references.sh  # rewrite TestModels/References/*.png after a renderer change
+./scripts/fetch-test-models.sh    # pinned Khronos samples (manifest.json) → TestModels/Khronos samples (gitignored)
+./scripts/regenerate-pixel-references.sh [webkit|realitykit]  # rewrite goldens after a renderer change
+./scripts/regenerate-pixel-references.sh --measure-noise      # run-to-run noise floor per renderer
 
 xcodegen generate                 # GLTFInspector.xcodeproj is gitignored
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
@@ -63,9 +64,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 `/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to
 install.
 
-**Renderer regressions:** `GLTFInspectorTests/PixelDiffTests.swift` re-renders every Khronos
-sample through `WebRendererHost` and compares against `TestModels/References/`. That is the
-safety net for this branch — `xcodebuild` cannot assert on a scene built in JavaScript.
+**Renderer regressions:** `GLTFInspectorTests/PixelDiffTests.swift` re-renders every pinned
+Khronos sample (`TestModels/References/manifest.json`) through `WebRendererHost` *and* the
+RealityKit `StillRenderer`, each against its own goldens in `TestModels/References/<renderer>/`.
+That is the proof baseline for renderer refactors — `xcodebuild` cannot assert on a scene built
+in JavaScript. The embedded validator runs over every fixture and sample (`GLTFValidatorCorpusTests`).
 Comparison is perceptual (mean error *and* a bad-pixel count). Failures write
 actual/expected/diff PNGs to `/tmp/GLTFInspector-pixel-diff/`. Missing fixtures **fail**
 rather than skip. See [`TestModels/References/README.md`](TestModels/References/README.md).
@@ -113,13 +116,14 @@ extension. Read the app plist via `RendererLookDefaults`. Thumbnail/preview need
 `QLThumbnailReply(imageFileURL:)` — the CGContext drawing reply fails under Finder
 (`QLThumbnailError 102`).
 
-**6. Pixel-diff** — missing `TestModels/Khronos samples/` must **fail** coverage, not skip the
-harness. Regen uses `TestModels/References/REGENERATE` (`./scripts/regenerate-pixel-references.sh`),
-not env vars. Look at the PNGs before committing.
+**6. Pixel-diff** — a missing pinned sample must **fail** coverage for both renderers, not skip
+the harness. Regen uses the `TestModels/References/REGENERATE` sentinel
+(`./scripts/regenerate-pixel-references.sh`), not env vars. Look at the PNGs before committing.
 
 **7. Dual path gaps** — hide/solo still toggle the RK `Entity`; only selection is forwarded to
 the page (`setSelectedNode`). Fit/export that read `PreviewInteraction` camera can disagree
-with the web camera. `proof.sh` still exercises RK `StillRenderer`, not the web goldens.
+with the web camera. `proof.sh` exercises RK `StillRenderer` on fixtures only; the per-sample
+RK goldens are in the pixel-diff harness.
 
 **8. RealityKit fallback only** (`PreviewScene` when `webCanvasURL` is nil)
 
