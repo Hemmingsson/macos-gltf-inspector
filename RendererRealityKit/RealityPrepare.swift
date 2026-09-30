@@ -1,20 +1,17 @@
-import CoreGraphics
 import Foundation
 import GLTFCore
-import ImageIO
-import UniformTypeIdentifiers
 
-/// Rewrites a GLB so RealityKit convert can see meshes: float positions,
-/// PNG textures, expanded GPU instances. Meshopt stays — GLTFKit2 decompresses it.
+/// Rewrites a GLB so RealityKit convert can see meshes: float positions, expanded GPU
+/// instances. Meshopt and WebP stay — GLTFKit2 decompresses / decodes them; unnamed skin joints
+/// are named at convert (`Skin.resolvedName`).
 enum RealityPrepare {
     private static let quantization = "KHR_mesh_quantization"
     private static let instancing = "EXT_mesh_gpu_instancing"
-    private static let webp = "EXT_texture_webp"
     private static let floatType = 5126
 
     static func needsPrepare(_ json: [String: Any]) -> Bool {
         let used = (json["extensionsUsed"] as? [String]) ?? []
-        if used.contains(quantization) || used.contains(instancing) || used.contains(webp) {
+        if used.contains(quantization) || used.contains(instancing) {
             return true
         }
         let skip = skipAccessorIndices(json)
@@ -24,14 +21,10 @@ enum RealityPrepare {
                 return true
             }
         }
-        let images = json["images"] as? [[String: Any]] ?? []
-        if images.contains(where: { ($0["mimeType"] as? String)?.lowercased() == "image/webp" }) {
-            return true
-        }
-        return hasUnnamedSkinJoints(json)
+        return false
     }
 
-    /// Float positions, PNG textures, expanded GPU instances — in memory. Serialization
+    /// Float positions, expanded GPU instances — in memory. Serialization
     /// happens once at the end of the fused prepare in `EntityLoader`.
     static func transformed(_ glb: GLBBox) throws -> GLBBox {
         var report = PreparePipelineReport()
@@ -42,10 +35,8 @@ enum RealityPrepare {
         var json = glb.json
         var bin = glb.bin
         if dequantizeAccessors(&json, bin: &bin) { report.dequantized = true }
-        if try convertWebP(&json, bin: &bin) { report.webpToPng = true }
         if expandInstances(&json, bin: bin) { report.gpuInstancesExpanded = true }
-        nameUnnamedSkinJoints(&json)
-        GLBBox.rewriteExtensionLists(&json, removing: [quantization, instancing, webp])
+        GLBBox.rewriteExtensionLists(&json, removing: [quantization, instancing])
         GLBBox.setPrimaryBufferLength(&json, bin.count)
         return GLBBox(json: json, bin: bin)
     }
@@ -93,35 +84,6 @@ enum RealityPrepare {
             changed = true
         }
         json["accessors"] = accessors
-        json["bufferViews"] = bufferViews
-        return changed
-    }
-
-    // MARK: - WebP
-
-    @discardableResult
-    static func convertWebP(_ json: inout [String: Any], bin: inout Data) throws -> Bool {
-        var images = json["images"] as? [[String: Any]] ?? []
-        var bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
-        var changed = false
-        for i in images.indices {
-            let mime = (images[i]["mimeType"] as? String)?.lowercased()
-            guard mime == "image/webp",
-                  let viewIndex = GLBBox.intValue(images[i]["bufferView"]),
-                  bufferViews.indices.contains(viewIndex)
-            else { continue }
-            let view = bufferViews[viewIndex]
-            let offset = GLBBox.intValue(view["byteOffset"]) ?? 0
-            let length = GLBBox.intValue(view["byteLength"]) ?? 0
-            guard offset >= 0, length > 0, offset + length <= bin.count else { continue }
-            let slice = bin.subdata(in: offset..<(offset + length))
-            guard let png = pngFromImageData(slice) else { continue }
-            let newView = GLBBox.appendBytes(png, bin: &bin, bufferViews: &bufferViews)
-            images[i]["bufferView"] = newView
-            images[i]["mimeType"] = "image/png"
-            changed = true
-        }
-        json["images"] = images
         json["bufferViews"] = bufferViews
         return changed
     }
@@ -184,39 +146,6 @@ enum RealityPrepare {
         }
         json["nodes"] = nodes
         return changed
-    }
-
-    static func hasUnnamedSkinJoints(_ json: [String: Any]) -> Bool {
-        var found = false
-        visitSkinJoints(json) { _, _, name in
-            if name.isEmpty { found = true }
-        }
-        return found
-    }
-
-    static func nameUnnamedSkinJoints(_ json: inout [String: Any]) {
-        guard var nodes = json["nodes"] as? [[String: Any]] else { return }
-        visitSkinJoints(json) { index, offset, name in
-            if name.isEmpty {
-                nodes[index]["name"] = Skin.synthesizedName(index: offset)
-            }
-        }
-        json["nodes"] = nodes
-    }
-
-    private static func visitSkinJoints(
-        _ json: [String: Any],
-        _ body: (_ nodeIndex: Int, _ jointOffset: Int, _ name: String) -> Void
-    ) {
-        let nodes = json["nodes"] as? [[String: Any]] ?? []
-        let skins = json["skins"] as? [[String: Any]] ?? []
-        for skin in skins {
-            let joints = skin["joints"] as? [Any] ?? []
-            for (offset, joint) in joints.enumerated() {
-                guard let index = GLBBox.intValue(joint), nodes.indices.contains(index) else { continue }
-                body(index, offset, nodes[index]["name"] as? String ?? "")
-            }
-        }
     }
 
     private static func instancePrototype(_ node: [String: Any]) -> [String: Any] {
@@ -400,16 +329,5 @@ enum RealityPrepare {
         case 5123: return value / 65535
         default: return value
         }
-    }
-
-    private static func pngFromImageData(_ data: Data) -> Data? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
-              let destData = CFDataCreateMutable(nil, 0),
-              let dest = CGImageDestinationCreateWithData(destData, UTType.png.identifier as CFString, 1, nil)
-        else { return nil }
-        CGImageDestinationAddImage(dest, image, nil)
-        guard CGImageDestinationFinalize(dest) else { return nil }
-        return destData as Data
     }
 }

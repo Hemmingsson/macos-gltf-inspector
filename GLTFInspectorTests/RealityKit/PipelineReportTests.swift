@@ -9,7 +9,6 @@ struct PipelineReportTests {
         var report = PreparePipelineReport()
         _ = try RealityPrepare.transformed(glb, report: &report)
         #expect(report.dequantized)
-        #expect(!report.webpToPng)
         #expect(!report.gpuInstancesExpanded)
     }
 

@@ -22,11 +22,12 @@ struct RealityPrepareTests {
         #expect(RealityPrepare.needsPrepare(json))
     }
 
-    @Test func needsPrepareWebP() {
+    /// GLTFKit2 decodes WebP itself (`PrepareFreeInputsTests`), so WebP alone needs no rewrite.
+    @Test func webpNeedsNoPrepare() {
         let json: [String: Any] = [
             "extensionsUsed": ["EXT_texture_webp"],
         ]
-        #expect(RealityPrepare.needsPrepare(json))
+        #expect(!RealityPrepare.needsPrepare(json))
     }
 
     @Test func skipsPlainMesh() {
@@ -84,25 +85,7 @@ struct RealityPrepareTests {
         #expect(nodes.count >= 3)
     }
 
-    @Test func namesUnnamedJointsBySkinIndex() {
-        var json: [String: Any] = [
-            "nodes": [
-                ["name": ""],
-                ["name": "hip"],
-                [:],
-            ],
-            "skins": [
-                ["joints": [0, 1]],
-                ["joints": [2]],
-            ],
-        ]
-        #expect(RealityPrepare.hasUnnamedSkinJoints(json))
-        RealityPrepare.nameUnnamedSkinJoints(&json)
-        let nodes = json["nodes"] as? [[String: Any]] ?? []
-        #expect(nodes[0]["name"] as? String == "joint-0")
-        #expect(nodes[1]["name"] as? String == "hip")
-        #expect(nodes[2]["name"] as? String == "joint-0")
-        #expect(!RealityPrepare.hasUnnamedSkinJoints(json))
+    @Test func resolvesUnnamedJointsBySkinIndex() {
         #expect(Skin.resolvedName(nil, index: 4) == "joint-4")
         #expect(Skin.resolvedName("Root", index: 4) == "Root")
     }

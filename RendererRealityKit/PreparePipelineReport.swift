@@ -5,7 +5,6 @@ import Foundation
 /// (those extensions are stripped).
 public struct PreparePipelineReport: Equatable, Sendable {
     var dequantized = false
-    var webpToPng = false
     var gpuInstancesExpanded = false
     var specGlossToMetalRough = false
     var bakedSpecGlossTextures = false
@@ -18,7 +17,7 @@ public struct PreparePipelineReport: Equatable, Sendable {
     public init() {}
 
     var isEmpty: Bool {
-        !(dequantized || webpToPng || gpuInstancesExpanded || specGlossToMetalRough
+        !(dequantized || gpuInstancesExpanded || specGlossToMetalRough
             || bakedSpecGlossTextures || droppedBakedEmissive || dimmedStudioIBL
             || decompressedDraco)
     }
@@ -37,7 +36,6 @@ public struct PreparePipelineReport: Equatable, Sendable {
             )
         }
         if dequantized { lines.append("Dequantized mesh (KHR_mesh_quant.)") }
-        if webpToPng { lines.append("Converted WebP textures → PNG") }
         if gpuInstancesExpanded { lines.append("Expanded GPU instances") }
         if decompressedDraco { lines.append("Decompressed Draco meshes") }
         if droppedBakedEmissive { lines.append("Dropped baked / boost emissive") }
