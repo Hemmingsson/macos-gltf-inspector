@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 import GLTFCore
 import RendererWebKit
@@ -36,10 +35,10 @@ enum WebThumbnail {
         let started = CFAbsoluteTimeGetCurrent()
         let host = try await reusedHost(look: .stored(), pixel: pixel)
         let info: WebRendererHost.LoadInfo
-        let image: CGImage
+        let png: Data
         do {
             info = try await host.load(model: url)
-            image = try await host.renderStill(size: pixel)
+            png = try await host.renderStillPNG(size: pixel)
         } catch {
             // A crashed page, or one still busy on a call that timed out, is dropped so the next
             // file in this process starts a fresh page. A file the page merely rejected keeps the
@@ -50,14 +49,15 @@ enum WebThumbnail {
 
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
-        try PNGWriter.write(image, to: fileURL)
+        // The page's PNG as is (sRGB-tagged by WebKit): no decode and re-encode.
+        try png.write(to: fileURL)
 
         AppLog.info(
             AppLog.webRenderer,
             String(
-                format: "thumbnail ready %@ %.0fms %dpx tris=%d",
+                format: "thumbnail ready %@ %.0fms %dpx %dB tris=%d",
                 url.lastPathComponent, (CFAbsoluteTimeGetCurrent() - started) * 1000,
-                image.width, info.triangles
+                pixel, png.count, info.triangles
             )
         )
         return fileURL

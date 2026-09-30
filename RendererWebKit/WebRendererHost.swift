@@ -188,15 +188,22 @@ public final class WebRendererHost {
         try await call("stats", Empty())
     }
 
-    /// Renders one frame and decodes it. `.still` mode in practice, though a live host can grab
-    /// a frame too. The page waits for a pending IBL first, so a thumbnail is a lit model.
-    public func renderStill(size: Int? = nil) async throws -> CGImage {
+    /// One frame as the page's PNG bytes, untouched — what the thumbnail writes to disk. `.still`
+    /// mode in practice, though a live host can grab a frame too. The page waits for a pending
+    /// IBL first, so a thumbnail is a lit model.
+    public func renderStillPNG(size: Int? = nil) async throws -> Data {
         struct Still: Decodable { var png: String }
         let still: Still = try await call("still", ["size": size])
         guard
             let comma = still.png.firstIndex(of: ","),
-            let data = Data(base64Encoded: String(still.png[still.png.index(after: comma)...])),
-            let image = NSBitmapImageRep(data: data)?.cgImage
+            let data = Data(base64Encoded: String(still.png[still.png.index(after: comma)...]))
+        else { throw WebRendererError.undecodableResult("still") }
+        return data
+    }
+
+    /// One frame decoded, for callers that need pixels (window snapshot, tests).
+    public func renderStill(size: Int? = nil) async throws -> CGImage {
+        guard let image = NSBitmapImageRep(data: try await renderStillPNG(size: size))?.cgImage
         else { throw WebRendererError.undecodableResult("still") }
         return image
     }

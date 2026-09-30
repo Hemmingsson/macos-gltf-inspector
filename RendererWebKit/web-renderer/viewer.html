@@ -50,13 +50,18 @@ console.error = (...args) => {
     send({ event: "warning", message: args.map((a) => String(a?.message ?? a)).join(" ") });
 };
 
+const query = new URLSearchParams(location.search);
+const live = query.get("mode") === "live";
+
 const canvas = document.getElementById("stage");
 // Nothing on the GPU survives this; Swift treats it as a dead page and restarts it.
 canvas.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
     send({ event: "contextlost" });
 });
-const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, alpha: true });
+// `still()` renders and reads back in one task, so only still mode keeps the drawing buffer
+// (a thumbnail host may be read again without a new frame); live mode lets WebKit discard it.
+const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: !live, alpha: true });
 if (!gl) {
     send({ event: "error", stage: "context", message: "WebGL 2 unavailable" });
     throw new Error("WebGL 2 unavailable");
@@ -75,8 +80,6 @@ state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
 state.renderingParameters.clearColor = [0, 0, 0, 0];
 state.renderingParameters.renderEnvironmentMap = false;
 
-const query = new URLSearchParams(location.search);
-const live = query.get("mode") === "live";
 let autoRotate = false;
 /** Inspector chrome drawn after the Khronos frame. Off until the host asks — still/thumbnail
  *  must not inherit the document window's floor or gizmos. */

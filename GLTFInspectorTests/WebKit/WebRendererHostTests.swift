@@ -176,6 +176,28 @@ struct WebRendererHostTests {
         }
     }
 
+    /// The thumbnail writes the page's PNG bytes as they are, so they must already say sRGB —
+    /// WebKit's encoder adds the chunk; this catches a WebKit that stops doing so.
+    @Test
+    func stillPNGIsTaggedSRGBAndSized() async throws {
+        let host = try WebRendererHost(mode: .still, size: 64)
+        try await host.start()
+        try await host.load(model: TestFixtures.tiny)
+        let png = try await host.renderStillPNG(size: 96)
+
+        var chunks: [String] = []
+        var offset = 8
+        while offset + 8 <= png.count {
+            let length = png[offset..<offset + 4].reduce(0) { $0 << 8 | Int($1) }
+            chunks.append(String(decoding: png[offset + 4..<offset + 8], as: UTF8.self))
+            offset += 12 + length
+        }
+        #expect(chunks.first == "IHDR")
+        #expect(chunks.contains("sRGB"), "chunks: \(chunks)")
+        let width = png[16..<20].reduce(0) { $0 << 8 | Int($1) }
+        #expect(width == 96, "renderStillPNG(size:) did not resize the still canvas")
+    }
+
     @Test
     func rendererBundleKeepsItsNestedLayout() throws {
         let root = try #require(
