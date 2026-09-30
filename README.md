@@ -5,7 +5,7 @@
 <h1 align="center">macOS glTF Inspector</h1>
 
 <p align="center">
-  <strong>Native App and Finder Support for <code>.glb</code> and <code>.gltf</code> Using <a href="https://developer.apple.com/documentation/realitykit">RealityKit</a></strong><br>
+  <strong>Native App and Finder Support for <code>.glb</code> and <code>.gltf</code> Using the <a href="https://github.com/KhronosGroup/glTF-Sample-Renderer">Khronos glTF Sample Renderer</a> in WebKit</strong><br>
   Inspector App, Thumbnails, Quick Look and Preview Pane
 </p>
 
@@ -32,7 +32,9 @@
   </tr>
 </table>
 
-
+This branch (`webkit-renderer`) draws the model with **one WebKit page** on every surface.
+RealityKit is not the on-screen renderer. The host app still converts the file to a RealityKit
+`Entity` so the sidebar, morphs, and a few controls have a native scene graph.
 
 ## Install
 
@@ -40,6 +42,8 @@
 2. Move `glTF Inspector.app` to `/Applications`.
 3. Control-click → **Open** (or allow under **System Settings → Privacy & Security**).
 4. Open the app once so the Quick Look preview and thumbnail extensions load.
+
+Released zips follow **`main`**, which still uses RealityKit. To run this branch, build it.
 
 ## Build
 
@@ -57,26 +61,48 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   -derivedDataPath /tmp/GLTFInspector-dd test
 ```
 
+Renderer regressions need the Khronos samples on disk (`./scripts/fetch-test-models.sh`);
+missing samples fail the pixel-diff coverage test rather than skip. See
+[`TestModels/References/README.md`](TestModels/References/README.md).
+
 ## How it works
 
-RealityKit does not load glTF by default. The file is prepared, decoded with [GLTFKit2](https://github.com/warrenm/GLTFKit2) (Draco via [DracoSwift](https://github.com/warrenm/DracoSwift)), and converted to a RealityKit `Entity`.
+The file is served into a `WKWebView` over a custom `gltf-inspector://` scheme. The page
+(`Vendor/web-renderer/viewer.html`) loads the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
+(`GltfView` / `GltfState`). Swift talks to the page through `__viewer.exec` and
+`webkit.messageHandlers.viewer` — see `Shared/WebRenderer/`.
+
+Finder thumbnail, Quick Look, and the document window use **that same page**. A second HTML
+file would let the surfaces drift. Thumbnails run the page off-screen (`.still`) and take
+`canvas.toDataURL()`; the window and Quick Look run it live.
 
 ```mermaid
 flowchart LR
-  file[".glb / .gltf"] --> prep["Prepare + GLTFKit2"]
-  prep --> rk["RealityKit Entity"]
-  rk --> host["Host app\nPreviewUI shell + RealityView"]
-  rk --> ql["Quick Look\norbit + facts + two buttons"]
-  rk --> thumb["Finder thumbnail\nRealityRenderer"]
+  file[".glb / .gltf"] --> scheme["gltf-inspector:// handler"]
+  scheme --> page["viewer.html\nKhronos Sample Renderer"]
+  page --> host["Host app\nPreviewUI + WKWebView"]
+  page --> ql["Quick Look\nlive canvas"]
+  page --> thumb["Finder thumbnail\nstill PNG"]
+  file --> json["Original glTF JSON"]
+  json --> sidebar["Host sidebar / inspector"]
+  file --> convert["GLTFKit2 + RealityKit convert"]
+  convert --> chrome["Morphs, stats, some controls"]
 ```
 
-Prepare rewrites materials and meshes RealityKit will not ingest, then the default scene is converted to a physically based entity on a turntable.
+The host window is **`PreviewUI`** chrome over `PreviewView`. When `webCanvasURL` is set,
+`PreviewView` hosts `WebPreviewCanvas` and does not wait on convert for first paint. Quick Look
+skips convert entirely. The host still runs `EntityLoader` so the outliner can describe the
+**file** (`GLTFDocumentJSON` from original JSON), not the subset that survived convert.
 
-The host app window is **`PreviewUI`** chrome (sidebar, inspector, pills, settings) over a real **`PreviewView`** canvas. Thin **`GLTFInspector/Engine/`** adapters map the existing engine (`HostSidebarModel`, `EntityLoader`, `AppLook`) onto the UI seam.
+Look defaults (environment + tone map) are shared: extensions read the app's preferences
+plist, because a sandboxed `UserDefaults` suite is invisible. Thumbnail and preview
+extensions need `com.apple.security.network.client` so WebKit's Networking XPC can start —
+the page itself does not fetch from the network.
 
-App and Quick Look show that entity in a `RealityView` with studio IBL for light and reflections — not a skybox. Quick Look is a light canvas (orbit, bottom-left facts, backdrop + auto-rotate). Finder thumbnails are a still from `RealityRenderer`.
+Why WebKit instead of RealityKit: [`docs/decision-web-renderer.md`](docs/decision-web-renderer.md).
+Pixel path: [`docs/pipeline-web-renderer.md`](docs/pipeline-web-renderer.md). Convert /
+inspector path: [`docs/pipeline-gltf-to-realitykit.md`](docs/pipeline-gltf-to-realitykit.md).
 
 ## License
 
-Released under the [MIT License](LICENSE). Bundled dependencies — [GLTFKit2](https://github.com/warrenm/GLTFKit2), [DracoSwift](https://github.com/warrenm/DracoSwift), and [Sparkle](https://github.com/sparkle-project/Sparkle) — are MIT-licensed; the vendored [Khronos glTF-Validator](Vendor/gltf-validator) and IBL environments carry their own licenses in-tree.
-
+Released under the [MIT License](LICENSE). Bundled dependencies — [GLTFKit2](https://github.com/warrenm/GLTFKit2), [DracoSwift](https://github.com/warrenm/DracoSwift), and [Sparkle](https://github.com/sparkle-project/Sparkle) — are MIT-licensed. The vendored [Khronos glTF Sample Renderer](Vendor/web-renderer) is Apache-2.0. The [Khronos glTF-Validator](Vendor/gltf-validator) and IBL environments carry their own licenses in-tree.

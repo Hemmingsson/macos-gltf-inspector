@@ -1,8 +1,17 @@
-# glTF Inspector
+# glTF Inspector (`webkit-renderer`)
 
-macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host **`GLTFInspector`** embeds `PreviewExtension` and `ThumbnailExtension`; convert/render in `Shared/` (+ `Shared/Convert/`). Goal: closest practical **1:1** glTF via native RealityKit — fidelity over product overhead; **latest macOS**, **Apple Silicon**.
+macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host **`GLTFInspector`** embeds
+`PreviewExtension` and `ThumbnailExtension`. **On-screen pixels** come from one
+`WKWebView` page running the Khronos glTF Sample Renderer (`Shared/WebRenderer/` +
+`Vendor/web-renderer/`). Goal: closest practical **1:1** with web glTF — same renderer in the
+window, Quick Look, and Finder icons.
 
-**New features, UX, or chrome:** read [`DESIGN.md`](DESIGN.md) first — product principles, not layout spec (code wins on what ships where).
+The host still runs **`EntityLoader` → GLTFKit2 → RealityKit convert** for the sidebar
+document, morphs, animations, and a few controls. That path does not draw the model when
+`webCanvasURL` is set.
+
+**New features, UX, or chrome:** read [`DESIGN.md`](DESIGN.md) first — product principles, not
+layout spec (code wins on what ships where).
 
 ## Layout
 
@@ -10,12 +19,19 @@ macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host **`GLTFInspe
 | --- | --- |
 | `PreviewUI/` | Host chrome over seam protocols. **Do not import `Shared/`.** |
 | `GLTFInspector/Engine/` | `Engine*` adapters — seam mapping only; no PreviewUI rewrites. |
-| `GLTFInspector/HostShellRootView.swift` | Document window: `ShellRootView` + adapters + `PreviewView` canvas. |
-| `GLTFInspector/HostSidebarModel.swift` | Selection, re-convert, visibility — behind `EngineSelectionModel`. |
-| `Shared/PreviewScene.swift` | RealityView host. Host-bare with sidebar (`showsInlineChrome == false`); QL uses `PreviewQuickLookChrome.swift`. |
-| `Shared/PreviewChrome.swift` | Interaction + hosting shared by host and QL. |
+| `GLTFInspector/HostShellRootView.swift` | Document window: shell + adapters + `PreviewView` (`webCanvasURL`). |
+| `GLTFInspector/HostSidebarModel.swift` | Selection, scenes, variants — JSON-backed `GLTFSessionDocument`. |
+| `Shared/WebRenderer/` | `WebRendererHost`, scheme handler, command bridge, `WebPreviewCanvas`. |
+| `Vendor/web-renderer/` | The one `viewer.html` + Khronos bundle. Do not fork a second page. |
+| `Shared/PreviewView.swift` | Web canvas when `webCanvasURL` is set; else `PreviewScene` (RK fallback). |
+| `Shared/PreviewScene.swift` | RealityView fallback. Unused when the web canvas is showing. |
+| `Shared/EntityLoader.swift` + `Shared/Convert/` | Host inspector data, tests, RK fallback — not Finder/QL pixels. |
+| `PreviewExtension/` | Quick Look: `webCanvasURL` only, no convert. |
+| `ThumbnailExtension/` | Still render via `WebRendererHost(.still)`. |
+| `TestModels/References/` | Pixel-diff goldens for the JS renderer. |
 
-Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product code on **`main`** at repo root.
+Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product on **`main`** is still RealityKit;
+this worktree is throwaway until merged.
 
 ## Commands & build
 
@@ -26,10 +42,10 @@ Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product code on **`main`
 ./scripts/build.sh                # install + open /Applications + verify (explicit ship check)
 ./scripts/build.sh --install-only # same as dev.sh install (VS Code Build task)
 ./scripts/verify.sh               # installed app + pluginkit
-./scripts/proof.sh                # StillRenderProofTests (+ optional qlmanage)
+./scripts/proof.sh                # StillRenderProofTests (RK convert still) + optional qlmanage
 ./scripts/release.sh              # Developer ID + notary + Sparkle + gh release
 ./scripts/vendor-khronos-environments.sh
-./scripts/fetch-test-models.sh    # optional Khronos GLBs → TestModels/Khronos samples (gitignored)
+./scripts/fetch-test-models.sh    # Khronos GLBs → TestModels/Khronos samples (gitignored)
 ./scripts/regenerate-pixel-references.sh  # rewrite TestModels/References/*.png after a renderer change
 
 xcodegen generate                 # GLTFInspector.xcodeproj is gitignored
@@ -38,46 +54,80 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   -derivedDataPath /tmp/GLTFInspector-dd test
 ```
 
-**Agents:** use `dev.sh install` / `dev.sh test` — never `open` or `build.sh` without `--install-only` unless the user asked to launch. Debug logs: `.build/logs/debug.log` when `GLTF_LOG_FILE` is set (dev.sh / launch.json).
+**Agents:** use `dev.sh install` / `dev.sh test` — never `open` or `build.sh` without
+`--install-only` unless the user asked to launch. Debug logs: `.build/logs/debug.log` when
+`GLTF_LOG_FILE` is set (dev.sh / launch.json).
 
-`xcodebuild` alone writes `/tmp/GLTFInspector-<branch>-dd/…` — **not** `/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to install.
+`xcodebuild` alone writes `/tmp/GLTFInspector-<branch>-dd/…` — **not**
+`/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to
+install.
 
-**Renderer regressions:** `GLTFInspectorTests/PixelDiffTests.swift` re-renders every Khronos sample through `WebRendererHost` and compares against the committed PNGs in `TestModels/References/` — the safety net for the WebKit migration, since `xcodebuild` cannot assert on a scene built in JavaScript. Comparison is perceptual (mean error *and* a bad-pixel count, because a mean absorbs local damage); failures write actual/expected/diff PNGs to `/tmp/GLTFInspector-pixel-diff/`. Missing fixtures **fail** rather than skip. See [`TestModels/References/README.md`](TestModels/References/README.md).
+**Renderer regressions:** `GLTFInspectorTests/PixelDiffTests.swift` re-renders every Khronos
+sample through `WebRendererHost` and compares against `TestModels/References/`. That is the
+safety net for this branch — `xcodebuild` cannot assert on a scene built in JavaScript.
+Comparison is perceptual (mean error *and* a bad-pixel count). Failures write
+actual/expected/diff PNGs to `/tmp/GLTFInspector-pixel-diff/`. Missing fixtures **fail**
+rather than skip. See [`TestModels/References/README.md`](TestModels/References/README.md).
 
-Signing: `project.yml` (`DEVELOPMENT_TEAM`). Primary proof: PNG via `StillRenderProofTests`. Fixtures: `TestModels/Fixture Models/` via `GLTFInspectorTests/TestFixtures.swift` (`#filePath`); regen `scripts/testdata/README.md`.
+Signing: `project.yml` (`DEVELOPMENT_TEAM`). Fixtures: `TestModels/Fixture Models/` via
+`GLTFInspectorTests/TestFixtures.swift` (`#filePath`); regen `scripts/testdata/README.md`.
 
-Champion convert (in code): cutout-as-mask BLEND, packed SIMD/`float3` meshes, material identity cache, skeletal densify ≤30 fps. No CreateOptions/mip/Metal-upload re-bench without measured asset wins; residual wall is `TextureResource.generate` on large rasters. **Pipeline detail:** [`docs/pipeline-gltf-to-realitykit.md`](docs/pipeline-gltf-to-realitykit.md).
+**Pipeline:** pixels → [`docs/pipeline-web-renderer.md`](docs/pipeline-web-renderer.md);
+convert / inspector → [`docs/pipeline-gltf-to-realitykit.md`](docs/pipeline-gltf-to-realitykit.md);
+why WebKit → [`docs/decision-web-renderer.md`](docs/decision-web-renderer.md).
 
 ## Worktrees & what ships
 
 | Source | Treat as |
 | --- | --- |
-| `main` (merged commits) | Shipped behavior |
+| `main` (merged commits) | Shipped behavior (RealityKit) |
 | `.worktrees/` (gitignored) | Throwaway until merged — delete = gone |
 | Dex / `.cursor/plans` | Intent only |
 
-Before `git worktree remove`: `git log main..<branch>`, merge/cherry-pick. **Document window** = host chrome + canvas; **Quick Look** = minimal chrome. **`DESIGN.md`**: design *principles* only — never paste shipped layout/state there (use code/tests/`AGENTS.md`). **`ShellRootView`**: fixed `Theme.sidebarWidth` / `inspectorWidth` — not drag-resizable unless a task adds it.
+Before `git worktree remove`: `git log main..<branch>`, merge/cherry-pick. **Document window**
+= host chrome + web canvas; **Quick Look** = web canvas, no convert. **`DESIGN.md`**: design
+*principles* only — never paste shipped layout/state there. **`ShellRootView`**: fixed
+`Theme.sidebarWidth` / `inspectorWidth` — not drag-resizable unless a task adds it.
 
 ## Pitfalls — do not repeat
 
-**1. SwiftUI state in `init` / RealityView `make`/`update`** — dual spinners, 0 windows, `Modifying state during view update`. Cause: touching `@Observable PreviewInteraction` from `View.init`. Rule: `init` assigns props / `_State(initialValue:)` only; sync in `onAppear`/actions; RealityView writes in `Task { @MainActor in … }`.
+**1. SwiftUI state in `init`** — dual spinners, 0 windows, `Modifying state during view update`.
+Cause: touching `@Observable PreviewInteraction` from `View.init`. Rule: `init` assigns props /
+`_State(initialValue:)` only; sync in `onAppear`/actions.
 
-**2. Failed loads** — always `.failed(message)` on reject; never a spinner because `sidebar == nil`.
+**2. Failed loads** — always `.failed(message)` on reject; never a spinner because
+`sidebar == nil`. Host convert can still fail while the web canvas is already drawing.
 
-**3. First paint** — open path is model only (`EntityLoader.load` → `.ready`/`.failed`); prefetch IBL in `PreviewScene`; temp key+fill until probe ready.
+**3. First paint** — Quick Look and the web canvas load the file in the page. Do not wait on
+`EntityLoader` for pixels. The host still converts in parallel for chrome.
 
-**4. RealityKit landmines**
+**4. One renderer, relative URLs** — do not add a second `viewer.html`. The Khronos renderer
+rejects absolute library/LUT URLs; serve from the scheme-handler root. Load `libktx.js` and
+the Draco wrapper as classic scripts *before* the module (`createKtxModule` /
+`DracoDecoderModule`).
+
+**5. Extension look + sandbox** — `UserDefaults(suiteName:)` is invisible in a sandboxed
+extension. Read the app plist via `RendererLookDefaults`. Thumbnail/preview need
+`com.apple.security.network.client` for WebKit XPC even with no network I/O. Reply with
+`QLThumbnailReply(imageFileURL:)` — the CGContext drawing reply fails under Finder
+(`QLThumbnailError 102`).
+
+**6. Pixel-diff** — missing `TestModels/Khronos samples/` must **fail** coverage, not skip the
+harness. Regen uses `TestModels/References/REGENERATE` (`./scripts/regenerate-pixel-references.sh`),
+not env vars. Look at the PNGs before committing.
+
+**7. Dual path gaps** — hide/solo still toggle the RK `Entity`; only selection is forwarded to
+the page (`setSelectedNode`). Fit/export that read `PreviewInteraction` camera can disagree
+with the web camera. `proof.sh` still exercises RK `StillRenderer`, not the web goldens.
+
+**8. RealityKit fallback only** (`PreviewScene` when `webCanvasURL` is nil)
 
 - No `RealityViewCameraContent.entities` iteration in update — own `lookRoot`.
 - `.realityViewCameraControls(.orbit)` + turntable `cameraTarget`.
-- `PreviewCamera.applyView`: one-shot fit/light only (not scroll).
-- Floor toggle: visual only; no camera limit changes.
-- Scroll/pinch: infinite dolly; Shift-drag pans camera+pivot (swallow so `.orbit` doesn't double).
-- Auto-rotate: yaw spin child; keep `cameraTarget` on pivot.
 - Clear IBL receivers before removing IBL entities.
 - Scene refs in `@State` (`PreviewFrame`), not view `let`.
 
-**5. Real-window verify** (unit tests won't catch **1**)
+**9. Real-window verify** (unit tests won't catch **1**)
 
 ```bash
 ./scripts/build.sh
@@ -86,10 +136,13 @@ log stream --style compact --info --predicate 'subsystem == "lol.mattias.gltf-in
 # one "open start", one "open ready" (or "open failed"); Modifying state ≈ 0
 ```
 
-**6. UI verification** — skill `macos-app-testing`. Non-intrusive by default: no focus steal, Spaces switch, activate, pointer drive, or save/export sheets unless required.
+**10. UI verification** — skill `macos-app-testing`. Non-intrusive by default: no focus steal,
+Spaces switch, activate, pointer drive, or save/export sheets unless required.
 
-1. Unit / `./scripts/proof.sh`
-2. Peekaboo **background** (`see`, `window list`, background `click`); no `activate`/`frontmost`/osascript loops; classic capture (`PEEKABOO_CAPTURE_ENGINE=classic`) — not ScreenCaptureKit via Claude.app
+1. Unit / pixel-diff (`xcodebuild test`) / `./scripts/proof.sh`
+2. Peekaboo **background** (`see`, `window list`, background `click`); no
+   `activate`/`frontmost`/osascript loops; classic capture (`PEEKABOO_CAPTURE_ENGINE=classic`)
 3. Glass/layout clicks → Peekaboo once per frame change; warn before focus moves
 
-No headless `--snapshot`/flatten-glass for PreviewUI. No screencapture-first. Never leave Export/Save sheets open.
+No headless `--snapshot`/flatten-glass for PreviewUI. No screencapture-first. Never leave
+Export/Save sheets open.

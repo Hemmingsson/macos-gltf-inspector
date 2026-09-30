@@ -1,7 +1,12 @@
-# glTF → RealityKit pipeline
+# glTF → RealityKit pipeline (inspector / convert)
 
-How a file becomes a drawable `Entity` today. Entry point: `EntityLoader.load(from:)` in
-`Shared/EntityLoader.swift`. Convert core: `RealityKitConvert` in `Shared/Convert/`.
+How a file becomes a RealityKit `Entity` for **host chrome** — sidebar document extras,
+morphs, animations, convert reports, and the unused `PreviewScene` fallback.
+
+**This is not what draws the model** on `webkit-renderer`. Pixels go through WebKit:
+[`pipeline-web-renderer.md`](pipeline-web-renderer.md). Entry point here:
+`EntityLoader.load(from:)` in `Shared/EntityLoader.swift`. Convert core: `RealityKitConvert`
+in `Shared/Convert/`.
 
 ---
 

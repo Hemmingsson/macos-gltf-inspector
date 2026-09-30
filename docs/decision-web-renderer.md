@@ -1,7 +1,9 @@
 # Decision: render glTF in WebKit, not RealityKit
 
-**Status:** spike complete, **GO**. Migration not yet started.
-**Date:** 2026-08-24 · **Branch:** `spike/web-thumbnail` · **Machine:** Apple Silicon, macOS 26
+**Status:** **GO**, hybrid on `webkit-renderer`. Finder, Quick Look, and the document
+window draw through one Khronos `viewer.html` in `WKWebView`. RealityKit convert remains
+for host inspector data and the unused `PreviewScene` fallback — not for on-screen pixels.
+**Spike date:** 2026-08-24 · **Branch then:** `spike/web-thumbnail` · Apple Silicon, macOS 26
 
 ---
 
@@ -192,17 +194,19 @@ on this machine was testing an arbitrary old build. The stale copies were unregi
 
 ---
 
-## What is not proven
+## What the spike did not prove (later work on this branch)
 
-- Quick Look **preview** (not thumbnail) in a `WKWebView` — not attempted here. Lower risk, but
-  there is a documented ~1 s input-latency issue in sandboxed Quick Look extensions hosting
-  `WKWebView`; the known workaround is native AppKit controls over the web view.
-- The Khronos Sample Renderer specifically. All measurements used three.js r180.
-- Behaviour under Developer ID + notarization. The spike was Debug-signed with automatic
-  signing. `com.apple.security.network.client` on a thumbnail extension that makes no network
-  requests is defensible but has not been through notarization here.
+These were open after the thumbnail spike. On `webkit-renderer` the first two are done:
+
+- Quick Look **preview** in the same `WKWebView` page (`PreviewViewController` + `webCanvasURL`).
+- Khronos Sample Renderer vendored and driven from Swift (`Vendor/web-renderer/`,
+  `Shared/WebRenderer/`). Pixel-diff goldens live in `TestModels/References/`.
+- Behaviour under Developer ID + notarization — still not the proof this spike ran. The
+  spike was Debug-signed. `com.apple.security.network.client` on a thumbnail extension that
+  makes no network requests is defensible but has not been through notarization here.
 - Thumbnail throughput on a folder of hundreds of files, where per-process WebKit start-up
-  stops amortizing.
+  stops amortizing. The extension now reuses one warm host per process; folder-scale cost
+  is still the real bill.
 
 ---
 
