@@ -211,11 +211,6 @@ class RealityKitResourceContext {
         texture.basisUSource ?? texture.webpSource ?? texture.source
     }
 
-    /// Reuse convert-time decode cache for inspector thumbs (no second `newCGImage` when warm).
-    @MainActor func cgImage(for gltfImage: GLTFImage) -> CGImage? {
-        cachedCGImage(for: gltfImage)
-    }
-
     @MainActor private func cachedCGImage(for gltfImage: GLTFImage) -> CGImage? {
         if let existing = cgImagesForImageIdentifiers[gltfImage.identifier] {
             return existing

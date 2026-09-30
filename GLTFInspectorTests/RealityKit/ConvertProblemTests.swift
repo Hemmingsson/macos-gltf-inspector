@@ -34,6 +34,17 @@ struct ConvertProblemTests {
         #expect(loaded.convertProblems.items.contains { $0.code == .droppedPrimitive })
     }
 
+    /// Problems travel with each convert (`BuildResult`), not through a static: overlapping or
+    /// back-to-back loads (window, Quick Look, thumbnail in one process) keep their own.
+    @Test func concurrentLoadsKeepTheirOwnProblems() async throws {
+        try #require(TestFixtures.exists(TestFixtures.missingTexture))
+        async let broken = EntityLoader.load(from: TestFixtures.missingTexture, includeAnimations: false)
+        async let clean = EntityLoader.load(from: TestFixtures.cube, includeAnimations: false)
+        let (b, c) = try await (broken, clean)
+        #expect(b.convertProblems.items.contains { $0.code == .missingTexture })
+        #expect(c.convertProblems.isEmpty)
+    }
+
     @Test func mapConvertProblemsCopiesCode() {
         var report = ConvertProblemReport()
         report.append(

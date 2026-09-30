@@ -51,8 +51,9 @@ public enum EntityLoader {
 
     /// One converted scene plus what convert-time rewrites did to it.
     private struct Converted {
-        let entity: Entity
+        let build: RealityKitConvert.BuildResult
         let specGloss: SpecGlossBake.Result
+        var entity: Entity { build.entity }
     }
 
     /// Loads a self-contained `.glb` or a sidecar `.gltf` (buffers/textures next to the JSON).
@@ -84,7 +85,7 @@ public enum EntityLoader {
             report.specGlossToMetalRough = converted.specGloss.converted
             report.bakedSpecGlossTextures = converted.specGloss.baked
             return await loadedModel(
-                entity: converted.entity,
+                build: converted.build,
                 document: document,
                 json: source.json,
                 fileSizeBytes: source.fileSize,
@@ -171,7 +172,7 @@ public enum EntityLoader {
 
     @MainActor
     private static func loadedModel(
-        entity: Entity,
+        build: RealityKitConvert.BuildResult,
         document: GLTFSessionDocument,
         json: [String: Any],
         fileSizeBytes: Int64?,
@@ -179,13 +180,14 @@ public enum EntityLoader {
         pipelineReport: PreparePipelineReport,
         materialVariantNames: [String]
     ) -> LoadedModel {
+        let entity = build.entity
         var report = pipelineReport
         let exponent = RealityPolicy.studioIBLExponent(
             punctualLightCount: punctualLightCount(in: entity)
         )
         report.dimmedStudioIBL = exponent < 0
-        report.droppedBakedEmissive = RealityKitConvert.lastDroppedBakedEmissive
-        let convertProblems = RealityKitConvert.lastProblems
+        report.droppedBakedEmissive = build.droppedBakedEmissive
+        let convertProblems = build.problems
             .mergingIgnoredExtensions(from: report.extensionsUsed)
         return LoadedModel(
             entity: entity,
@@ -239,59 +241,15 @@ public enum EntityLoader {
             AppLog.error(AppLog.load, "no default scene for \(name)")
             throw GLTFInspectorError.make(1020, "The glTF asset did not specify a default scene")
         }
-        let retryWithoutAnimations = includeAnimations && !asset.animations.isEmpty
-        let entity = try await MainActor.run {
-            try convertOrRetry(
-                scene: scene,
-                asset: asset,
-                retryWithoutAnimations: retryWithoutAnimations
-            )
-        }
-        return Converted(entity: entity, specGloss: specGloss)
-    }
-
-    /// Empty results (zero `ModelComponent`s) retry once without animations when
-    /// the first pass still had clips — some Draco + skin + animation assets trap
-    /// or yield a blank entity otherwise. NSException is caught by `GLBTry`.
-    @MainActor
-    private static func convertOrRetry(
-        scene: GLTFScene,
-        asset: GLTFAsset,
-        retryWithoutAnimations: Bool
-    ) throws -> Entity {
-        var lastError: Error?
-        let attempts = retryWithoutAnimations ? 2 : 1
-        for pass in 0..<attempts {
-            if pass == 1 {
-                asset.animations = []
-            }
+        let build = try await MainActor.run {
             do {
-                return try convertVisible(scene: scene, asset: asset)
+                return try RealityKitConvert.build(scene: scene, asset: asset)
             } catch {
-                lastError = error
                 AppLog.error(AppLog.load, error.localizedDescription)
+                throw convertFailure(from: error)
             }
         }
-        throw convertFailure(from: lastError ?? GLTFInspectorError.make(1022, "Failed to convert the glTF asset"))
-    }
-
-    @MainActor
-    private static func convertVisible(scene: GLTFScene, asset: GLTFAsset) throws -> Entity {
-        var converted: Entity?
-        // The sidebar document is parsed from JSON; convert only owes us an entity.
-        var unusedDocument = GLTFSessionDocument()
-        try GLBTry.run {
-            converted = RealityKitConvert.convert(
-                scene: scene,
-                asset: asset,
-                document: &unusedDocument,
-                buildDocument: false
-            )
-        }
-        guard let converted, modelComponentCount(in: converted) > 0 else {
-            throw GLTFInspectorError.make(1022, "The glTF asset has no visible mesh")
-        }
-        return converted
+        return Converted(build: build, specGloss: specGloss)
     }
 
     @MainActor

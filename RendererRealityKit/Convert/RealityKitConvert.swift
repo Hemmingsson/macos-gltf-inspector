@@ -40,72 +40,60 @@ final class RealityKitConvert {
     private var nodeIndices: [ObjectIdentifier: Int] = [:]
     private var entityNames: [ObjectIdentifier: String] = [:]
     var ignoreBakedEmissive = false
-    /// Last convert’s baked-emissive drop decision (MainActor convert path only).
-    @MainActor static var lastDroppedBakedEmissive = false
-    /// Last convert’s structured losses (MainActor convert path only).
-    @MainActor static var lastProblems = ConvertProblemReport()
 
-    @MainActor static func convert(
-        scene: GLTFScene,
-        asset: GLTFAsset?,
-        document: inout GLTFSessionDocument,
-        buildDocument: Bool = true
-    ) -> RealityKit.Entity {
-        let instance = RealityKitConvert()
-        return instance.convert(
-            scene: scene,
-            asset: asset,
-            document: &document,
-            buildDocument: buildDocument
-        )
+    /// One converted scene and what convert lost or changed on the way.
+    struct BuildResult {
+        let entity: RealityKit.Entity
+        let problems: ConvertProblemReport
+        /// The baked-emissive policy dropped emissive on this file.
+        let droppedBakedEmissive: Bool
     }
 
-    @MainActor func convert(
-        scene: GLTFScene,
-        asset: GLTFAsset? = nil,
-        document: inout GLTFSessionDocument,
-        buildDocument: Bool = true
-    ) -> RealityKit.Entity {
+    @MainActor static func build(scene: GLTFScene, asset: GLTFAsset) throws -> BuildResult {
+        try RealityKitConvert().build(scene: scene, asset: asset)
+    }
+
+    /// Nodes and meshes first, then animations in their own exception guard: GLTFKit2 can raise
+    /// ObjC exceptions, and a bad clip must not take the meshes with it (this replaces the old
+    /// "no visible mesh -> convert everything again without animations" pass).
+    @MainActor func build(scene: GLTFScene, asset: GLTFAsset) throws -> BuildResult {
         sourceAsset = asset
-        indexNodes(asset?.nodes ?? [])
-        if buildDocument, let asset {
-            document = Self.makeDocument(from: asset)
-        }
-        let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))
-        ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(emissiveHints)
-        Self.lastDroppedBakedEmissive = ignoreBakedEmissive
-        Self.lastProblems = ConvertProblemReport()
+        indexNodes(asset.nodes)
+        ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(asset.materials.map(PreviewEmissive.hint(from:)))
         if ignoreBakedEmissive {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
         let context = RealityKitResourceContext()
-
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
 
-        do {
-            let rootNodes = try scene.nodes.compactMap { try self.convert(node: $0, context: context) }
+        try GLBTry.run {
+            do {
+                for node in scene.nodes {
+                    rootEntity.addChild(try self.convert(node: node, context: context))
+                }
+            } catch {
+                AppLog.error(AppLog.load, "Error when converting scene: \(error)")
+            }
+        }
+        guard EntityLoader.modelComponentCount(in: rootEntity) > 0 else {
+            throw GLTFInspectorError.make(1022, "The glTF asset has no visible mesh")
+        }
 
-            for rootNode in rootNodes {
-                rootEntity.addChild(rootNode)
+        do {
+            try GLBTry.run {
+                for animation in asset.animations {
+                    do {
+                        try self.convert(animation: animation).store(in: rootEntity)
+                    } catch {
+                        AppLog.error(AppLog.load, "animation convert failed: \(error)")
+                    }
+                }
             }
         } catch {
-            AppLog.error(AppLog.load, "Error when converting scene: \(error)")
+            context.record(.droppedAnimations, severity: .warning, message: "Animations dropped: \(error.localizedDescription)")
         }
-
-        for animation in asset?.animations ?? [] {
-            do {
-                try convert(animation: animation).store(in: rootEntity)
-            } catch {
-                AppLog.error(AppLog.load, "animation convert failed: \(error)")
-            }
-        }
-
-        if let asset {
-            Self.stampMaterialPreviews(document: &document, asset: asset, context: context)
-        }
-        Self.lastProblems = context.problems
-        return rootEntity
+        return BuildResult(entity: rootEntity, problems: context.problems, droppedBakedEmissive: ignoreBakedEmissive)
     }
 
     @MainActor func convert(node gltfNode: GLTFNode, context: RealityKitResourceContext) throws -> RealityKit.Entity {
