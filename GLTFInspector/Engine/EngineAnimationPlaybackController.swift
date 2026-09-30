@@ -1,17 +1,14 @@
 import Foundation
 import Observation
 import PreviewUI
-import RealityKit
 
-/// Live clip transport over RealityKit playback + `PreviewClip`.
+/// Live clip transport over `RealityClipPlayer`.
 ///
 /// `advance(by:)` mirrors the RealityKit playhead (`PlaybackBar` ticks; RK owns time).
 @MainActor
 @Observable
 final class EngineAnimationPlaybackController: ClipPlaybackController {
-    private let entity: Entity
-    private var previewClips: [PreviewClip]
-    private var playback: RealityKit.AnimationPlaybackController?
+    private let player: RealityClipPlayer
 
     private(set) var clips: [AnimationInfo]
     private(set) var activeClip: AnimationInfo?
@@ -20,33 +17,36 @@ final class EngineAnimationPlaybackController: ClipPlaybackController {
 
     var duration: TimeInterval { max(activeClip?.duration ?? 0, 0) }
 
-    init(entity: Entity, clips: [PreviewClip]) {
-        self.entity = entity
-        self.previewClips = clips
-        self.clips = clips.map {
+    init(player: RealityClipPlayer) {
+        self.player = player
+        self.clips = player.clips.map {
             AnimationInfo(index: $0.id, name: $0.title, duration: $0.duration)
         }
         self.activeClip = self.clips.first
     }
 
+    /// No model loaded yet: no clips.
+    convenience init() {
+        self.init(player: RealityClipPlayer())
+    }
+
     /// Convenience from a loaded model (usable RealityKit clips + document name fallback).
     convenience init(loaded: EntityLoader.LoadedModel) {
-        let clips = PreviewClip.usable(on: loaded.entity, document: loaded.document)
-        self.init(entity: loaded.entity, clips: clips)
+        self.init(player: RealityClipPlayer(model: loaded))
     }
 
     func play() {
         guard !clips.isEmpty else { return }
-        if playback == nil {
+        if !player.isStarted {
             startActiveClip(playing: true)
         } else {
-            playback?.resume()
+            player.resume()
         }
         isPlaying = true
     }
 
     func pause() {
-        playback?.pause()
+        player.pause()
         isPlaying = false
     }
 
@@ -54,7 +54,7 @@ final class EngineAnimationPlaybackController: ClipPlaybackController {
         let span = max(duration, 0.001)
         let clamped = min(max(time, 0), span)
         self.time = duration > 0 ? clamped : 0
-        playback?.time = self.time
+        player.time = self.time
     }
 
     func select(_ clip: AnimationInfo) {
@@ -64,25 +64,13 @@ final class EngineAnimationPlaybackController: ClipPlaybackController {
     }
 
     func advance(by _: TimeInterval) {
-        guard isPlaying, let playback, duration > 0 else { return }
-        time = playback.time.truncatingRemainder(dividingBy: duration)
+        guard isPlaying, player.isStarted, duration > 0 else { return }
+        time = player.time.truncatingRemainder(dividingBy: duration)
     }
 
     private func startActiveClip(playing: Bool) {
-        guard let activeClip,
-              let preview = previewClips.first(where: { $0.id == activeClip.id.index })
-        else {
-            playback?.stop()
-            playback = nil
-            return
-        }
-        playback?.stop()
-        time = 0
-        playback = entity.playAnimation(preview.resource.repeat())
-        if playing {
-            playback?.resume()
-        } else {
-            playback?.pause()
+        if player.start(clipID: activeClip?.id.index, playing: playing) {
+            time = 0
         }
     }
 }

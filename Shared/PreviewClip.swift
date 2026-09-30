@@ -73,3 +73,54 @@ struct PreviewClipInfo: Identifiable, Equatable, Sendable {
     let title: String
     let duration: TimeInterval
 }
+
+/// RealityKit clip playback on a loaded model. The host transport (`EngineAnimationPlaybackController`)
+/// owns clip selection and the playhead it shows; this owns the RealityKit controller.
+@MainActor
+final class RealityClipPlayer {
+    private let entity: Entity
+    let clips: [PreviewClip]
+    private var playback: AnimationPlaybackController?
+
+    /// No model yet: no clips, nothing to play.
+    init() {
+        entity = Entity()
+        clips = []
+    }
+
+    /// Usable clips of `model`, named from its document.
+    init(model: EntityLoader.LoadedModel) {
+        entity = model.entity
+        clips = PreviewClip.usable(on: model.entity, document: model.document)
+    }
+
+    var isStarted: Bool { playback != nil }
+
+    /// RealityKit playhead; setting it is a no-op before `start`.
+    var time: TimeInterval {
+        get { playback?.time ?? 0 }
+        set { playback?.time = newValue }
+    }
+
+    func resume() { playback?.resume() }
+
+    func pause() { playback?.pause() }
+
+    /// Restart playback on clip `id`. Returns false (and stops) when there is no such clip.
+    @discardableResult
+    func start(clipID id: Int?, playing: Bool) -> Bool {
+        guard let id, let clip = clips.first(where: { $0.id == id }) else {
+            playback?.stop()
+            playback = nil
+            return false
+        }
+        playback?.stop()
+        playback = entity.playAnimation(clip.resource.repeat())
+        if playing {
+            playback?.resume()
+        } else {
+            playback?.pause()
+        }
+        return true
+    }
+}

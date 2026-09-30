@@ -2,7 +2,6 @@ import Foundation
 import GLTFCore
 import Observation
 import PreviewUI
-import RealityKit
 import SwiftUI
 
 /// Session + camera + still-path adapter for `ViewportController`.
@@ -294,26 +293,11 @@ final class EngineViewportController: ViewportController {
     }
 
     static func viewMode(for mode: PreviewDebugMode) -> ViewMode {
-        switch mode {
-        case .none:
-            return .shaded
-        case .wire:
-            return .wireframe
-        case .vertexColors:
-            return .shaded
-        case .visualization(let visualization):
-            if let channel = EngineSceneModel.debugChannel(from: visualization) {
-                return .channel(channel)
-            }
-            return .shaded
-        }
+        ViewMode(mode.renderViewMode)
     }
 
     private static func matches(_ mode: PreviewDebugMode, _ channel: DebugChannel) -> Bool {
-        guard case .visualization(let visualization) = mode,
-              let mapped = EngineSceneModel.debugChannel(from: visualization)
-        else { return false }
-        return mapped == channel
+        mode.renderViewMode == .channel(RenderViewMode.Channel(channel))
     }
 
     /// Maps the PreviewUI seam preset to `PreviewCamera.CameraPreset`.

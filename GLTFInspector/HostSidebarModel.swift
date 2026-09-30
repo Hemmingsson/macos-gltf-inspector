@@ -1,5 +1,4 @@
 import GLTFCore
-import RealityKit
 import SwiftUI
 
 @Observable
@@ -24,7 +23,7 @@ final class HostSidebarModel: PreviewOverlay {
     var overlayRevision = 0
     let document: GLTFSessionDocument
 
-    @ObservationIgnored private var appliedRevision = Int.min
+    @ObservationIgnored var appliedOverlayRevision = Int.min
 
     init(document: GLTFSessionDocument) {
         self.document = document
@@ -59,11 +58,8 @@ final class HostSidebarModel: PreviewOverlay {
         return !isolatedVisibleIndices(of: soloRoot).contains(id)
     }
 
-    func applyIfNeeded(to root: Entity) {
-        guard overlayRevision != appliedRevision else { return }
-        appliedRevision = overlayRevision
-        applyVisibility(to: root)
-        PreviewSelectionVisuals.apply(selectedNodeIndex: selectedNodeIndex, to: root)
+    var nodeVisibility: PreviewNodeVisibility {
+        PreviewNodeVisibility(hidden: hide, soloVisible: soloRoot.map { isolatedVisibleIndices(of: $0) })
     }
 
     /// Solo root + ancestors + descendants (the nodes that stay enabled).
@@ -101,20 +97,5 @@ final class HostSidebarModel: PreviewOverlay {
             }
         }
         return found
-    }
-
-    private func applyVisibility(to entity: Entity) {
-        let soloVisible = soloRoot.map { isolatedVisibleIndices(of: $0) }
-        applyVisibility(to: entity, soloVisible: soloVisible)
-    }
-
-    private func applyVisibility(to entity: Entity, soloVisible: Set<Int>?) {
-        if let id = entity.components[GLTFNodeIDComponent.self]?.nodeIndex {
-            let hiddenBySolo = soloVisible.map { !$0.contains(id) } ?? false
-            entity.isEnabled = !hide.contains(id) && !hiddenBySolo
-        }
-        for child in entity.children {
-            applyVisibility(to: child, soloVisible: soloVisible)
-        }
     }
 }

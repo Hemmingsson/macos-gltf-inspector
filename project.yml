@@ -236,6 +236,7 @@ targets:
           - PreviewMorph.swift
           - SelectionDetail.swift
           - ModelDimensions.swift
+          - LoadedModel+Host.swift
       - path: Shared/Convert
         includes:
           - "*.swift"
@@ -313,6 +314,8 @@ targets:
           - PreviewSession.swift
           - PreviewSkeletonOverlay.swift
           - ModelDimensions.swift
+          - LoadedModel+Host.swift
+          - PreviewSelectionVisuals.swift
       - path: Shared/Convert
         includes:
           - "*.swift"

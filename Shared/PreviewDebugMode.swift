@@ -30,6 +30,36 @@ enum PreviewDebugMode: Equatable, Hashable {
         }
     }
 
+    /// Renderer-neutral reading. Vertex colours and SDK modes with no glTF channel read as shaded.
+    var renderViewMode: RenderViewMode {
+        switch self {
+        case .none, .vertexColors: .shaded
+        case .wire: .wireframe
+        case .visualization(let mode): Self.channel(for: mode).map { .channel($0) } ?? .shaded
+        }
+    }
+
+    static func channel(
+        for visualization: ModelDebugOptionsComponent.VisualizationMode
+    ) -> RenderViewMode.Channel? {
+        switch visualization {
+        case .baseColor: .baseColor
+        case .metallic: .metallic
+        case .roughness: .roughness
+        case .normal: .normals
+        case .tangent: .tangents
+        case .textureCoordinates: .textureCoordinates
+        case .ambientOcclusion: .ambientOcclusion
+        case .emissive: .emissive
+        case .finalAlpha: .alpha
+        case .specular: .specular
+        case .clearcoat: .clearcoat
+        case .clearcoatRoughness: .clearcoatRoughness
+        case .clearcoatNormal: .clearcoatNormal
+        default: nil
+        }
+    }
+
     /// Modes present and used in `json`, in cycle order.
     /// `lightingDiffuse` / `lightingSpecular` are SDK cases confirmed on this macOS SDK.
     static func available(from json: [String: Any]) -> [PreviewDebugMode] {

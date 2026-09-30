@@ -1,7 +1,6 @@
 import Foundation
 import GLTFCore
 import PreviewUI
-import RealityKit
 import simd
 
 /// Thin `SceneModel` snapshot over convert/load outputs. Rebuild when async validation resolves.
@@ -32,10 +31,10 @@ struct EngineSceneModel: SceneModel {
         validation: GLTFValidationState? = nil
     ) {
         self.init(
-            fileName: fileName ?? loaded.entity.name,
+            fileName: fileName ?? loaded.name,
             document: loaded.document,
             stats: loaded.stats,
-            dimensions: Self.mapDimensions(entity: loaded.entity),
+            dimensions: Self.mapDimensions(loaded),
             validation: validation,
             pipelineReport: loaded.pipelineReport,
             convertProblems: loaded.convertProblems,
@@ -153,7 +152,10 @@ extension EngineSceneModel {
     }
 
     static func mapDebugChannels(_ modes: [PreviewDebugMode]) -> [DebugChannel] {
-        modes.compactMap(debugChannel(from:))
+        modes.compactMap { mode in
+            guard case .channel(let channel) = mode.renderViewMode else { return nil }
+            return DebugChannel(channel)
+        }
     }
 
     private static func mapSeverity(_ severity: Int) -> ValidationResult.Issue.Severity {
@@ -384,10 +386,8 @@ extension EngineSceneModel {
     }
 
     @MainActor
-    static func mapDimensions(entity: Entity) -> Dimensions {
-        let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: entity)
-        let dims = ModelDimensions(bounds: bounds)
-        let center = bounds.center
+    static func mapDimensions(_ loaded: EntityLoader.LoadedModel) -> Dimensions {
+        let (dims, center) = loaded.extent
         // Authored glTF origin (entity local 0) relative to the visual AABB centre.
         let authored = Vector3(
             x: Double(-center.x),
@@ -452,34 +452,6 @@ extension EngineSceneModel {
         if presence.clearcoatRoughness { maps.insert(.clearcoatRoughness) }
         if presence.clearcoatNormal { maps.insert(.clearcoatNormal) }
         return maps
-    }
-
-    private static func debugChannel(from mode: PreviewDebugMode) -> DebugChannel? {
-        guard case .visualization(let visualization) = mode else { return nil }
-        return debugChannel(from: visualization)
-    }
-
-    /// Maps a RealityKit visualization mode to the seam's `DebugChannel`.
-    /// Shared with `EngineViewportController`.
-    static func debugChannel(
-        from visualization: ModelDebugOptionsComponent.VisualizationMode
-    ) -> DebugChannel? {
-        switch visualization {
-        case .baseColor: .baseColor
-        case .metallic: .metallic
-        case .roughness: .roughness
-        case .normal: .normals
-        case .tangent: .tangents
-        case .textureCoordinates: .textureCoordinates
-        case .ambientOcclusion: .ambientOcclusion
-        case .emissive: .emissive
-        case .finalAlpha: .alpha
-        case .specular: .specular
-        case .clearcoat: .clearcoat
-        case .clearcoatRoughness: .clearcoatRoughness
-        case .clearcoatNormal: .clearcoatNormal
-        default: nil
-        }
     }
 
     private static func displayName(_ name: String, fallback: String) -> String {

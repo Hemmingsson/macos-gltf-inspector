@@ -1,4 +1,3 @@
-import RealityKit
 import SwiftUI
 
 /// Host RealityKit canvas for `HostShellRootView` (`ShellRootView` canvas).

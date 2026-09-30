@@ -5,12 +5,50 @@ import simd
 import SwiftUI
 
 /// Host-only overlay applied during RealityView updates. Quick Look and thumbnails pass `nil`.
+///
+/// The host supplies plain values (selection, hide/solo, revision); the canvas applies them to its
+/// entities through `applyIfNeeded(to:)`.
 @MainActor
 protocol PreviewOverlay: AnyObject {
     var overlayRevision: Int { get }
     var selectedCameraIndex: Int? { get }
+    var selectedNodeIndex: Int? { get }
     var document: GLTFSessionDocument { get }
-    func applyIfNeeded(to root: Entity)
+    /// Which glTF nodes stay enabled.
+    var nodeVisibility: PreviewNodeVisibility { get }
+    /// Last `overlayRevision` applied to the canvas. Written by `applyIfNeeded(to:)` only.
+    var appliedOverlayRevision: Int { get set }
+}
+
+/// Hide + solo as node-index sets.
+struct PreviewNodeVisibility: Equatable, Sendable {
+    var hidden: Set<Int> = []
+    /// Nodes that stay enabled while solo is active; `nil` when not soloing.
+    var soloVisible: Set<Int>?
+
+    func isEnabled(_ nodeIndex: Int) -> Bool {
+        let hiddenBySolo = soloVisible.map { !$0.contains(nodeIndex) } ?? false
+        return !hidden.contains(nodeIndex) && !hiddenBySolo
+    }
+}
+
+extension PreviewOverlay {
+    /// Visibility + selection chrome, once per `overlayRevision`.
+    func applyIfNeeded(to root: Entity) {
+        guard overlayRevision != appliedOverlayRevision else { return }
+        appliedOverlayRevision = overlayRevision
+        applyVisibility(nodeVisibility, to: root)
+        PreviewSelectionVisuals.apply(selectedNodeIndex: selectedNodeIndex, to: root)
+    }
+
+    private func applyVisibility(_ visibility: PreviewNodeVisibility, to entity: Entity) {
+        if let id = entity.components[GLTFNodeIDComponent.self]?.nodeIndex {
+            entity.isEnabled = visibility.isEnabled(id)
+        }
+        for child in entity.children {
+            applyVisibility(visibility, to: child)
+        }
+    }
 }
 
 /// Interaction model (Sketchfab / Three.js OrbitControls-style):
@@ -156,6 +194,48 @@ final class PreviewInteraction {
         guard let camera, var perspective = camera.components[PerspectiveCameraComponent.self] else { return }
         PreviewCamera.applyFitClip(to: &perspective, eye: eye, target: target)
         camera.components.set(perspective)
+    }
+}
+
+extension PreviewInteraction {
+    /// Fit the orbit camera to `model` (front-¾, or `preset`). Returns false when there is no
+    /// live camera or nothing to frame; the interaction is marked fitted either way.
+    @MainActor
+    func reframe(
+        on model: EntityLoader.LoadedModel?,
+        orthographic: Bool,
+        preset: PreviewCamera.CameraPreset? = nil,
+        fieldOfViewDegrees: Float
+    ) -> Bool {
+        guard let camera, let entity = model?.entity else {
+            markFitted()
+            return false
+        }
+        let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: nil)
+        guard !bounds.isEmpty else {
+            markFitted()
+            return false
+        }
+        if let preset {
+            PreviewCamera.applyFit(
+                to: camera,
+                bounds: bounds,
+                orbitFocus: orbitFocus,
+                orthographic: orthographic,
+                preset: preset,
+                fieldOfViewInDegrees: fieldOfViewDegrees
+            )
+        } else {
+            PreviewCamera.applyFit(
+                to: camera,
+                bounds: bounds,
+                orbitFocus: orbitFocus,
+                orthographic: orthographic,
+                fieldOfViewInDegrees: fieldOfViewDegrees
+            )
+        }
+        markFitted()
+        return true
     }
 }
 

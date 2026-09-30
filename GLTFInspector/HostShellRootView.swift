@@ -1,7 +1,6 @@
 import AppKit
 import GLTFCore
 import PreviewUI
-import RealityKit
 import SwiftUI
 
 /// Document window root: PreviewUI `ShellRootView` + engine adapters + real `PreviewView` canvas.
@@ -95,7 +94,7 @@ struct HostShellRootView: View {
             model: model,
             channels: EngineSceneModel.mapDebugChannels(loadedDebugModes)
         )
-        let playback = playbackController ?? EngineAnimationPlaybackController(entity: Entity(), clips: [])
+        let playback = playbackController ?? EngineAnimationPlaybackController()
 
         ShellRootView(
             model: model,
@@ -283,36 +282,12 @@ struct HostShellRootView: View {
 
     private func reframingCamera(preset: PreviewCamera.CameraPreset? = nil) {
         sidebar?.selectedCameraIndex = nil
-        guard let camera = interaction.camera,
-              let entity = loadedModel?.entity
-        else {
-            interaction.markFitted()
-            return
-        }
-        let bounds = PreviewCamera.modelBounds(of: entity, relativeTo: nil)
-        guard !bounds.isEmpty else {
-            interaction.markFitted()
-            return
-        }
-        if let preset {
-            PreviewCamera.applyFit(
-                to: camera,
-                bounds: bounds,
-                orbitFocus: interaction.orbitFocus,
-                orthographic: previewSession.orthographic,
-                preset: preset,
-                fieldOfViewInDegrees: previewSession.fieldOfViewDegrees
-            )
-        } else {
-            PreviewCamera.applyFit(
-                to: camera,
-                bounds: bounds,
-                orbitFocus: interaction.orbitFocus,
-                orthographic: previewSession.orthographic,
-                fieldOfViewInDegrees: previewSession.fieldOfViewDegrees
-            )
-        }
-        interaction.markFitted()
+        guard interaction.reframe(
+            on: loadedModel,
+            orthographic: previewSession.orthographic,
+            preset: preset,
+            fieldOfViewDegrees: previewSession.fieldOfViewDegrees
+        ) else { return }
         sidebar?.overlayRevision += 1
     }
 
@@ -376,8 +351,9 @@ struct HostShellRootView: View {
             let state = await PreviewView.State.loaded(from: url)
             guard generation == loadGeneration else { return }
             if case .ready(let model) = state {
-                let dims = PreviewCamera.dimensions(of: model.entity, relativeTo: model.entity)
-                let clips = PreviewClip.usable(on: model.entity, document: model.document)
+                let dims = model.extent.dimensions
+                let player = RealityClipPlayer(model: model)
+                let clips = player.clips
                 let clipSummary = clips.isEmpty
                     ? "none"
                     : clips.map { "\($0.title)(\(String(format: "%.3fs", $0.duration)))" }
@@ -396,13 +372,13 @@ struct HostShellRootView: View {
                     resetExposureAndYaw: true
                 )
                 engineViewport.setViewMode(.shaded)
-                refreshMorphTargets(from: model.entity)
+                refreshMorphTargets(from: model)
                 loadedSceneModel = EngineSceneModel(
                     loaded: model,
                     fileName: url.lastPathComponent,
                     validation: validation
                 )
-                playbackController = EngineAnimationPlaybackController(entity: model.entity, clips: clips)
+                playbackController = EngineAnimationPlaybackController(player: player)
                 AppLog.info(
                     AppLog.host,
                     "pipeline \(url.lastPathComponent) \(model.pipelineReport.entries.joined(separator: " | "))"
@@ -419,8 +395,8 @@ struct HostShellRootView: View {
         }
     }
 
-    private func refreshMorphTargets(from entity: Entity) {
-        morphTargets = PreviewMorph.targets(in: entity).map { target in
+    private func refreshMorphTargets(from model: EntityLoader.LoadedModel) {
+        morphTargets = model.morphTargets().map { target in
             MorphTargetControl(
                 id: target.id,
                 name: target.name,
@@ -430,15 +406,10 @@ struct HostShellRootView: View {
     }
 
     private func applyMorphWeight(id: String, value: Double) {
-        guard let entity = loadedModel?.entity,
-              let target = PreviewMorph.targets(in: entity).first(where: { $0.id == id })
+        guard let model = loadedModel,
+              let target = model.morphTargets().first(where: { $0.id == id })
         else { return }
-        PreviewMorph.setWeight(
-            nodeIndex: target.nodeIndex,
-            targetIndex: target.targetIndex,
-            value: Float(value),
-            in: entity
-        )
+        model.setMorphWeight(nodeIndex: target.nodeIndex, targetIndex: target.targetIndex, value: Float(value))
         if let index = morphTargets.firstIndex(where: { $0.id == id }) {
             morphTargets[index].weight = value
         }
@@ -492,7 +463,7 @@ struct HostShellRootView: View {
             dimStudioForFileLights: reloaded.studioIBLExponent < 0,
             resetExposureAndYaw: false
         )
-        refreshMorphTargets(from: reloaded.entity)
+        refreshMorphTargets(from: reloaded)
         sidebar.overlayRevision += 1
     }
 
@@ -503,7 +474,7 @@ struct HostShellRootView: View {
         let variantIndex = sidebar.selectedMaterialVariantIndex
         Task {
             do {
-                let entity = try await EntityLoader.convertScene(
+                let scene = try await EntityLoader.loadScene(
                     index: index,
                     from: url,
                     materialVariantIndex: variantIndex
@@ -512,18 +483,7 @@ struct HostShellRootView: View {
                 guard case .ready(let model) = previewState else { return }
                 sidebar.showAll()
                 interaction = PreviewInteraction()
-                let reloaded = EntityLoader.LoadedModel(
-                    entity: entity,
-                    stats: model.stats,
-                    document: model.document,
-                    debugModes: model.debugModes,
-                    studioIBLExponent: PreviewEmissive.studioIBLExponent(
-                        punctualLightCount: EntityLoader.punctualLightCount(in: entity)
-                    ),
-                    pipelineReport: model.pipelineReport,
-                    convertProblems: model.convertProblems,
-                    materialVariantNames: model.materialVariantNames
-                )
+                let reloaded = model.replacingScene(scene)
                 applyReloaded(reloaded, fileName: url.lastPathComponent, sidebar: sidebar)
             } catch {
                 guard generation == loadGeneration else { return }
