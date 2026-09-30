@@ -11,6 +11,10 @@ public struct ConvertProblem: Equatable, Sendable {
         case ignoredExtension
         case approximatedTransmission
         case forcedOpaqueBlend
+        case blendAsCutout
+        case droppedAnimations
+        case approximatedTextureTransform
+        case droppedEmissive
     }
 
     public enum Severity: String, Equatable, Sendable {

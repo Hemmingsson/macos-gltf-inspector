@@ -39,7 +39,7 @@ struct SceneModelFromJSONConvertTests {
 
     @MainActor
     @Test func gpuInstancingKeepsTheAuthoredNodeCount() async throws {
-        // `RealityPrepare.expandInstances` appends four clone nodes for the renderer.
+        // Convert adds one child entity per instance; the document lists the authored node.
         let loaded = try await loadModel(try instancedGLB(count: 4))
         #expect(loaded.document.nodes.count == 1)
         #expect(EntityLoader.modelComponentCount(in: loaded.entity) >= 4)
@@ -101,7 +101,7 @@ private func ignoredExtensionGLB() throws -> Data {
         "scenes": [["name": "Default", "nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func specGlossGLB() throws -> Data {
@@ -130,5 +130,5 @@ private func specGlossGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

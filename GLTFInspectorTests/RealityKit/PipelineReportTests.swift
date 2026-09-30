@@ -4,26 +4,9 @@ import Foundation
 import Testing
 
 struct PipelineReportTests {
-    @Test func shortTriangleMarksDequantized() throws {
-        let glb = try GLBBox.parse(shortTriangleGLB())
-        var report = PreparePipelineReport()
-        _ = try RealityPrepare.transformed(glb, report: &report)
-        #expect(report.dequantized)
-        #expect(!report.webpToPng)
-        #expect(!report.gpuInstancesExpanded)
-    }
-
-    @Test func instancedGLBMarksExpansion() throws {
-        let glb = try GLBBox.parse(instancedGLB(count: 2))
-        var report = PreparePipelineReport()
-        _ = try RealityPrepare.transformed(glb, report: &report)
-        #expect(report.gpuInstancesExpanded)
-    }
-
     @Test func cubePipelineIsStudioOnly() async throws {
         let url = TestFixtures.cube
         let model = try await EntityLoader.load(from: url)
-        #expect(!model.pipelineReport.dequantized)
         #expect(!model.pipelineReport.specGlossToMetalRough)
         #expect(!model.pipelineReport.dimmedStudioIBL)
         #expect(model.pipelineReport.entries.contains { $0.contains("Studio IBL: on") })
@@ -52,7 +35,7 @@ struct PipelineReportTests {
                 ],
             ]
         )
-        let url = try GLBBox.writePrepared(data, prefix: "ext-used")
+        let url = try TestGLB.writeTemp(data, prefix: "ext-used")
         defer { try? FileManager.default.removeItem(at: url) }
 
         let model = try await EntityLoader.load(from: url, includeAnimations: false)

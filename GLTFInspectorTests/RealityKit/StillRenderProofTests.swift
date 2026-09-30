@@ -37,20 +37,13 @@ struct StillRenderProofTests {
     }
 
     /// Committed multi-file sidecar (`cube.gltf` + `cube.bin` + `cube.png`) rendered
-    /// end-to-end. It uses standard metal/rough + FLOAT attributes, so it exercises the
-    /// live *skip-packing* sidecar path (no temp GLB) that only synthesized temp files
-    /// covered before. A solid cube also stays visible from any turntable angle, unlike
+    /// end-to-end through GLTFKit2's own sidecar loading. A solid cube also stays visible from any turntable angle, unlike
     /// the flat `tiny.glb` triangle. Regenerate with `scripts/testdata/cube/make_cube.py`
     /// (writes `TestModels/Fixture Models/cube/`).
     @MainActor
     @Test func cubeSidecarRendersFromCommittedFiles() async throws {
         let url = TestFixtures.cube
         try #require(FileManager.default.fileExists(atPath: url.path))
-
-        // Confirm the committed file really lands on the no-pack path.
-        let json = try GLBBox.parseJSON(Data(contentsOf: url))
-        #expect(!MetalRoughPrepare.needsConversion(json))
-        #expect(!RealityPrepare.needsPrepare(json))
 
         let model = try await EntityLoader.loadThumbnail(from: url)
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)
@@ -75,6 +68,27 @@ struct StillRenderProofTests {
         )
         try PNGWriter.write(image, to: out)
         #expect(try Self.modelCoverage(image) > 0.05, "cube rendered as an empty frame")
+    }
+
+    /// The still target stores sRGB-encoded bytes and is tagged sRGB, so an sRGB backdrop comes
+    /// back unchanged. The old `.bgra8Unorm` + DeviceRGB path wrote scene-linear bytes and turned
+    /// 128 into 55 (look probes, seam 5).
+    @MainActor
+    @Test func srgbBackdropRoundTrips() async throws {
+        let model = try await EntityLoader.loadThumbnail(from: TestFixtures.tiny)
+        let assembled = PreviewCamera.makeTurntable(for: model.entity)
+        let still = try await StillRenderer(
+            root: assembled.pivot,
+            bounds: assembled.bounds,
+            width: 64,
+            height: 64,
+            background: CGColor(srgbRed: 128 / 255, green: 128 / 255, blue: 128 / 255, alpha: 1),
+            padding: PreviewCamera.thumbnailFitPadding
+        )
+        let raster = try PixelDiff.raster(from: try await still.capture())
+        for channel in 0..<3 {
+            #expect(abs(Int(raster.bytes[channel]) - 128) <= 1, "corner channel \(channel) = \(raster.bytes[channel])")
+        }
     }
 
     /// Share of the frame that differs visibly from the background corner pixel — a real

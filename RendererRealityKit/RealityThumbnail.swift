@@ -4,8 +4,12 @@ import Foundation
 /// Finder icon through RealityKit: convert without clips, front-¾ turntable framing, one offscreen
 /// `StillRenderer` frame on the light-grey thumbnail backdrop.
 public enum RealityThumbnail {
+    /// Texture cap for icons: measured −8 % icon wall time on the load corpus, all of it on
+    /// files with 2K–4K textures (seam 11 step 10).
+    static let maxTextureEdge = 1024
+
     public static func render(url: URL, pixel: Int) async throws -> CGImage {
-        let model = try await EntityLoader.loadThumbnail(from: url)
+        let model = try await EntityLoader.loadThumbnail(from: url, maxTextureEdge: maxTextureEdge)
         let assembled = await PreviewCamera.makeTurntable(for: model.entity)
         let still = try await StillRenderer(
             root: assembled.pivot,

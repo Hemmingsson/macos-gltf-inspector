@@ -98,5 +98,5 @@ private func writeTempMaterialsVariantsGLB() throws -> URL {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.writePrepared(try GLBBox.serialize(json: json, bin: bin), prefix: "variants")
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "variants")
 }

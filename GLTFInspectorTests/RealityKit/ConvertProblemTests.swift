@@ -27,11 +27,22 @@ struct ConvertProblemTests {
     }
 
     @Test func mixedTrianglesAndLinesRecordsDroppedPrimitive() async throws {
-        let url = try GLBBox.writePrepared(try mixedTrianglesAndLinesGLB(), prefix: "mixed-prim")
+        let url = try TestGLB.writeTemp(try mixedTrianglesAndLinesGLB(), prefix: "mixed-prim")
         defer { try? FileManager.default.removeItem(at: url) }
         let loaded = try await EntityLoader.load(from: url, includeAnimations: false)
         #expect(EntityLoader.modelComponentCount(in: loaded.entity) > 0)
         #expect(loaded.convertProblems.items.contains { $0.code == .droppedPrimitive })
+    }
+
+    /// Problems travel with each convert (`BuildResult`), not through a static: overlapping or
+    /// back-to-back loads (window, Quick Look, thumbnail in one process) keep their own.
+    @Test func concurrentLoadsKeepTheirOwnProblems() async throws {
+        try #require(TestFixtures.exists(TestFixtures.missingTexture))
+        async let broken = EntityLoader.load(from: TestFixtures.missingTexture, includeAnimations: false)
+        async let clean = EntityLoader.load(from: TestFixtures.cube, includeAnimations: false)
+        let (b, c) = try await (broken, clean)
+        #expect(b.convertProblems.items.contains { $0.code == .missingTexture })
+        #expect(c.convertProblems.isEmpty)
     }
 
     @Test func mapConvertProblemsCopiesCode() {

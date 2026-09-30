@@ -4,10 +4,8 @@ import simd
 /// Builds `GLTFSessionDocument` from the glTF JSON itself — no renderer in the call path.
 ///
 /// The sidebar is an inspector: it must describe **the file**, not the subset that
-/// survived a conversion. Feed this the *original* JSON, before `MetalRoughPrepare` /
-/// `RealityPrepare` rewrite it — prepare turns spec-gloss into metal-rough, expands
-/// `EXT_mesh_gpu_instancing` into extra nodes, and strips extension lists, all of which
-/// would otherwise be reported as file truth.
+/// survived a conversion. RealityKit convert bakes spec-gloss into metal-rough and expands
+/// `EXT_mesh_gpu_instancing` into extra entities; neither may be reported as file truth.
 public enum GLTFDocumentJSON {
     /// `fileURL` is only needed for binary payloads (texture thumbs, keyframe times when an
     /// animation input accessor omits `min`/`max`). Structure parses without it.

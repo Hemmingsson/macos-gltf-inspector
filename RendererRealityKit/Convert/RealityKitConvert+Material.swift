@@ -2,15 +2,15 @@ import RealityKit
 import GLTFKit2
 import simd
 
+/// How one material blends, after the spec mapping and the reported policy override.
 private enum MaterialBlendDecision {
     case none
+    /// glTF MASK, or the policy's detected cutout.
     case mask(Float)
-    case factorTransparent(Float)
-    case cutout
+    /// glTF BLEND: opacity = baseColorFactor.a × baseColorTexture.a.
+    case transparent(Float)
     case opaque
 }
-
-private let detectedCutoutOpacityThreshold: Float = 0.4
 
 extension RealityKitConvert {
     @MainActor func convert(material gltfMaterial: GLTFMaterial?,
@@ -39,6 +39,16 @@ extension RealityKitConvert {
                 }
             }
             applyBlendMode(toUnlit: &material, gltfMaterial: gltfMaterial, context: context)
+            let transforms = TextureTransforms.transforms(for: gltfMaterial, context: context)
+            if let primary = transforms[0] { material.textureCoordinateTransform = primary }
+            if let secondary = transforms[1], secondary.offset != .zero || secondary.scale != [1, 1] || secondary.rotation != 0 {
+                context.record(
+                    .approximatedTextureTransform,
+                    severity: .warning,
+                    message: "Unlit materials have no UV1 transform",
+                    materialName: gltfMaterial.name
+                )
+            }
             converted = material
         } else {
             var material = PhysicallyBasedMaterial()
@@ -92,8 +102,12 @@ extension RealityKitConvert {
                 )
             }
             if let emissive = gltfMaterial.emissive {
-                let hint = PreviewEmissive.hint(from: gltfMaterial)
-                if !PreviewEmissive.shouldIgnore(hint, fileLooksBaked: ignoreBakedEmissive) {
+                let hint = RealityPolicy.EmissiveHint(gltfMaterial)
+                if RealityPolicy.dropsEmissive(hint, fileLooksBaked: ignoreBakedEmissive) {
+                    if hint.hasEmissive {
+                        context.record(.droppedEmissive, severity: .warning, message: "Baked / boost emissive dropped", materialName: name)
+                    }
+                } else {
                     var emissiveTexture: PhysicallyBasedMaterial.Texture?
                     if let texture = emissive.emissiveTexture {
                         emissiveTexture = context.requiredTexture(
@@ -176,6 +190,9 @@ extension RealityKitConvert {
                     materialName: name
                 )
             }
+            let transforms = TextureTransforms.transforms(for: gltfMaterial, context: context)
+            if let primary = transforms[0] { material.textureCoordinateTransform = primary }
+            if let secondary = transforms[1] { material.secondaryTextureCoordinateTransform = secondary }
             converted = material
         }
         context.storeConvertedMaterial(converted, for: gltfMaterial)
@@ -193,24 +210,14 @@ extension RealityKitConvert {
             return
         case .mask(let cutoff):
             material.opacityThreshold = cutoff
-        case .factorTransparent(let alpha):
+        case .transparent(let alpha):
             var opacity = PhysicallyBasedMaterial.Opacity(scale: alpha)
             if let texture = gltfMaterial.metallicRoughness?.baseColorTexture {
                 opacity.texture = context.texture(for: texture, channels: .alpha, semantic: .scalar)
             }
             material.blending = .transparent(opacity: opacity)
-        case .cutout:
-            material.opacityThreshold = detectedCutoutOpacityThreshold
         case .opaque:
             material.blending = .opaque
-            if gltfMaterial.alphaMode == .blend {
-                context.record(
-                    .forcedOpaqueBlend,
-                    severity: .warning,
-                    message: "BLEND forced opaque",
-                    materialName: gltfMaterial.name
-                )
-            }
         }
     }
 
@@ -225,44 +232,39 @@ extension RealityKitConvert {
             return
         case .mask(let cutoff):
             material.opacityThreshold = cutoff
-        case .factorTransparent:
+        case .transparent:
             material.blending = .transparent(opacity: 1.0)
-        case .cutout:
-            material.opacityThreshold = detectedCutoutOpacityThreshold
         case .opaque:
             material.blending = .opaque
-            if gltfMaterial.alphaMode == .blend {
-                context.record(
-                    .forcedOpaqueBlend,
-                    severity: .warning,
-                    message: "BLEND forced opaque",
-                    materialName: gltfMaterial.name
-                )
-            }
         }
     }
 
-    /// Factor 1 + BLEND + empty/zero texture alpha is Sketchfab car paint (invisible
-    /// if blended). Factor 1 + BLEND + a real alpha span is foliage / decals.
-    /// Detected cutout: treat like native MASK (threshold only, no opacity texture).
+    /// Spec mapping (MASK → threshold, BLEND → transparent with factor × texture alpha), then the
+    /// reported `RealityPolicy.blendOverride` for factor-1 BLEND.
     @MainActor
     private func blendDecision(
         for gltfMaterial: GLTFMaterial,
         context: RealityKitResourceContext
     ) -> MaterialBlendDecision {
-        if gltfMaterial.alphaMode == .mask {
+        switch gltfMaterial.alphaMode {
+        case .mask:
             return .mask(gltfMaterial.alphaCutoff)
+        case .blend:
+            break
+        default:
+            return .none
         }
-        guard gltfMaterial.alphaMode == .blend else { return .none }
         let alpha = gltfMaterial.metallicRoughness?.baseColorFactor.w ?? 1
-        if alpha < 0.999 {
-            return .factorTransparent(alpha)
+        let textureAlpha = gltfMaterial.metallicRoughness?.baseColorTexture.map(context.alphaUsage(for:))
+        switch RealityPolicy.blendOverride(factorAlpha: alpha, textureAlpha: textureAlpha) {
+        case nil:
+            return .transparent(alpha)
+        case .opaque:
+            context.record(.forcedOpaqueBlend, severity: .warning, message: "BLEND forced opaque", materialName: gltfMaterial.name)
+            return .opaque
+        case .cutout(let threshold):
+            context.record(.blendAsCutout, severity: .warning, message: "BLEND drawn as cutout", materialName: gltfMaterial.name)
+            return .mask(threshold)
         }
-        if let texture = gltfMaterial.metallicRoughness?.baseColorTexture,
-           context.alphaUsage(for: texture) == .cutout
-        {
-            return .cutout
-        }
-        return .opaque
     }
 }

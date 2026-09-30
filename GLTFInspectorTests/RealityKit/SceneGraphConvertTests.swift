@@ -12,12 +12,12 @@ struct SceneGraphConvertTests {
         #expect(EntityLoader.punctualLightCount(in: model.entity) == 2)
 
         let point = try #require(firstComponent(PointLightComponent.self, in: model.entity))
-        #expect(abs(point.intensity - 10 * 4 * .pi) < 0.01)
+        #expect(abs(point.intensity - 10 * 4 * .pi * RealityLook.punctualScale) < 1)
         #expect(point.attenuationRadius > 0)
         #expect(abs(point.attenuationRadius - 1_000_000) < 1)
 
         let directional = try #require(firstComponent(DirectionalLightComponent.self, in: model.entity))
-        #expect(abs(directional.intensity - 2.5) < 0.01)
+        #expect(abs(directional.intensity - 2.5 * RealityLook.punctualScale) < 0.1)
     }
 
     @MainActor
@@ -50,10 +50,11 @@ struct SceneGraphConvertTests {
         #expect(abs(material.roughness.scale - 0.2) < 0.001)
         #expect(EntityLoader.punctualLightCount(in: model.entity) == 1)
 
-        await PreviewLighting.prefetchLook(.current)
-        let renderer = try RealityRenderer()
-        await PreviewLighting.configureThumbnailLighting(on: renderer)
-        #expect(renderer.lighting.resource != nil)
+        let look = AppLook(useEnvironmentMap: true, catalogRaw: KhronosEnvironments.defaultLook.rawValue, customFileName: nil)
+        await PreviewLighting.prefetchLook(look)
+        let lookRoot = Entity()
+        PreviewLighting.applyLook(lookRoot: lookRoot, pivot: model.entity, look: look, intensityExponent: 0)
+        #expect(lookRoot.children.contains { $0.components[ImageBasedLightComponent.self] != nil })
     }
 
     @MainActor
@@ -132,7 +133,7 @@ private func punctualLightsGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func twoPerspectiveCamerasGLB() throws -> Data {
@@ -166,7 +167,7 @@ private func twoPerspectiveCamerasGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func orthographicCameraGLB() throws -> Data {
@@ -191,7 +192,7 @@ private func orthographicCameraGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func litMetallicTriangleGLB() throws -> Data {
@@ -229,7 +230,7 @@ private func litMetallicTriangleGLB() throws -> Data {
         "max": [1, 1, 0],
         "min": [0, 0, 0],
     ]]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 private func threeClipTriangleGLB() throws -> Data {
@@ -319,5 +320,5 @@ private func threeClipTriangleGLB() throws -> Data {
             ],
         ],
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

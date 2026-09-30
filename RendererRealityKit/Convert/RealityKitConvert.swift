@@ -23,15 +23,6 @@ fileprivate class UniqueNameGenerator {
     }
 }
 
-extension GLTFNode {
-    var bindPath: BindTarget.EntityPath {
-        if let parent = self.parent {
-            return parent.bindPath.entity(self.name ?? "")
-        }
-        return BindTarget.entity(self.name ?? "")
-    }
-}
-
 final class RealityKitConvert {
 
     let colorSpace = NSColorSpace(cgColorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)!)!
@@ -45,79 +36,71 @@ final class RealityKitConvert {
     var skeletonIDsByJointName: [String: [/*MeshResource.Skeleton.ID*/String]] = [:]
     var skeletonTransformsByJointName : [String: Transform] = [:]
     var sourceAsset: GLTFAsset?
+    /// Per-node file index and unique entity name, built once per convert (was an O(n) scan per node).
+    private var nodeIndices: [ObjectIdentifier: Int] = [:]
+    private var entityNames: [ObjectIdentifier: String] = [:]
     var ignoreBakedEmissive = false
-    /// Last convert’s baked-emissive drop decision (MainActor convert path only).
-    @MainActor static var lastDroppedBakedEmissive = false
-    /// Last convert’s structured losses (MainActor convert path only).
-    @MainActor static var lastProblems = ConvertProblemReport()
 
-    @MainActor static func convert(
-        scene: GLTFScene,
-        asset: GLTFAsset?,
-        document: inout GLTFSessionDocument,
-        buildDocument: Bool = true
-    ) -> RealityKit.Entity {
-        let instance = RealityKitConvert()
-        return instance.convert(
-            scene: scene,
-            asset: asset,
-            document: &document,
-            buildDocument: buildDocument
-        )
+    /// One converted scene and what convert lost or changed on the way.
+    struct BuildResult {
+        let entity: RealityKit.Entity
+        let problems: ConvertProblemReport
+        /// The baked-emissive policy dropped emissive on this file.
+        let droppedBakedEmissive: Bool
     }
 
-    @MainActor func convert(
-        scene: GLTFScene,
-        asset: GLTFAsset? = nil,
-        document: inout GLTFSessionDocument,
-        buildDocument: Bool = true
-    ) -> RealityKit.Entity {
+    @MainActor static func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
+        try RealityKitConvert().build(scene: scene, asset: asset, maxTextureEdge: maxTextureEdge)
+    }
+
+    /// Nodes and meshes first, then animations in their own exception guard: GLTFKit2 can raise
+    /// ObjC exceptions, and a bad clip must not take the meshes with it (this replaces the old
+    /// "no visible mesh -> convert everything again without animations" pass).
+    @MainActor func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
         sourceAsset = asset
-        if buildDocument, let asset {
-            document = Self.makeDocument(from: asset)
-        }
-        let emissiveHints = (asset?.materials ?? []).map(PreviewEmissive.hint(from:))
-        ignoreBakedEmissive = PreviewEmissive.fileLooksBaked(emissiveHints)
-        Self.lastDroppedBakedEmissive = ignoreBakedEmissive
-        Self.lastProblems = ConvertProblemReport()
+        indexNodes(asset.nodes)
+        ignoreBakedEmissive = RealityPolicy.fileLooksBaked(asset.materials.map(RealityPolicy.EmissiveHint.init))
         if ignoreBakedEmissive {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
         let context = RealityKitResourceContext()
-
+        context.maxImageEdge = maxTextureEdge
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
 
-        do {
-            let rootNodes = try scene.nodes.compactMap { try self.convert(node: $0, context: context) }
+        try GLBTry.run {
+            do {
+                for node in scene.nodes {
+                    rootEntity.addChild(try self.convert(node: node, context: context))
+                }
+            } catch {
+                AppLog.error(AppLog.load, "Error when converting scene: \(error)")
+            }
+        }
+        guard EntityLoader.modelComponentCount(in: rootEntity) > 0 else {
+            throw GLTFInspectorError.make(1022, "The glTF asset has no visible mesh")
+        }
 
-            for rootNode in rootNodes {
-                rootEntity.addChild(rootNode)
+        do {
+            try GLBTry.run {
+                for animation in asset.animations {
+                    do {
+                        try self.convert(animation: animation).store(in: rootEntity)
+                    } catch {
+                        AppLog.error(AppLog.load, "animation convert failed: \(error)")
+                    }
+                }
             }
         } catch {
-            AppLog.error(AppLog.load, "Error when converting scene: \(error)")
+            context.record(.droppedAnimations, severity: .warning, message: "Animations dropped: \(error.localizedDescription)")
         }
-
-        for animation in asset?.animations ?? [] {
-            do {
-                try convert(animation: animation).store(in: rootEntity)
-            } catch {
-                AppLog.error(AppLog.load, "animation convert failed: \(error)")
-            }
-        }
-
-        if let asset {
-            Self.stampMaterialPreviews(document: &document, asset: asset, context: context)
-        }
-        Self.lastProblems = context.problems
-        return rootEntity
+        return BuildResult(entity: rootEntity, problems: context.problems, droppedBakedEmissive: ignoreBakedEmissive)
     }
 
     @MainActor func convert(node gltfNode: GLTFNode, context: RealityKitResourceContext) throws -> RealityKit.Entity {
         let nodeEntity = ModelEntity()
 
-        // TODO: This only ensures uniqueness for unnamed nodes; the asset could still contain duplicate names.
-        nodeEntity.name = gltfNode.name ?? nameGenerator.nextUniqueName(prefix: "Node")
+        nodeEntity.name = entityName(of: gltfNode)
         nodeEntity.components.set(GLTFNodeIDComponent(nodeIndex: nodeIndex(of: gltfNode)))
 
         nodeEntity.transform = Transform(matrix: gltfNode.matrix)
@@ -126,7 +109,7 @@ final class RealityKitConvert {
         if let skin = gltfNode.skin {
             if let meshSkeleton = convert(skin: skin) {
                 skeleton = meshSkeleton
-                pathsForSkeletonIDs[meshSkeleton.id] = gltfNode.bindPath
+                pathsForSkeletonIDs[meshSkeleton.id] = bindPath(of: gltfNode)
                 for joint in meshSkeleton.joints {
                     if joint.parentIndex == nil, let referenceNode = skin.skeleton {
                         skeletonTransformsByJointName[joint.name] = Transform(matrix: referenceNode.matrix)
@@ -142,8 +125,22 @@ final class RealityKitConvert {
 
         if let gltfMesh = gltfNode.mesh,
            let meshComponent = try convert(mesh: gltfMesh, skeleton: skeleton, context: context) {
-            nodeEntity.components.set(meshComponent)
-            attachMorphWeights(to: nodeEntity, mesh: gltfMesh, node: gltfNode)
+            if let instances = instanceTransforms(gltfNode) {
+                // EXT_mesh_gpu_instancing: one child per instance sharing the mesh and materials.
+                // Instances are not document nodes (no GLTFNodeIDComponent), so they follow the
+                // node's hide/solo and selection.
+                for (index, transform) in instances.enumerated() {
+                    let instance = ModelEntity()
+                    instance.name = "\(nodeEntity.name)#instance\(index)"
+                    instance.transform = transform
+                    instance.components.set(meshComponent)
+                    attachMorphWeights(to: instance, mesh: gltfMesh, node: gltfNode)
+                    nodeEntity.addChild(instance)
+                }
+            } else {
+                nodeEntity.components.set(meshComponent)
+                attachMorphWeights(to: nodeEntity, mesh: gltfMesh, node: gltfNode)
+            }
         }
 
         if let gltfLight = gltfNode.light {
@@ -185,9 +182,56 @@ final class RealityKitConvert {
         entity.components.set(weights)
     }
 
+    /// Per-instance TRS from `EXT_mesh_gpu_instancing` (missing attributes default to identity);
+    /// `nil` when the node is not instanced or the data is unusable.
+    private func instanceTransforms(_ node: GLTFNode) -> [Transform]? {
+        guard let attributes = node.meshInstances?.attributes, !attributes.isEmpty else { return nil }
+        func accessor(_ name: String) -> GLTFAccessor? { attributes.first { $0.name == name }?.accessor }
+        let translations = accessor("TRANSLATION").flatMap(Packed.float3Array(for:)) ?? []
+        let rotations = accessor("ROTATION").flatMap(Packed.quatfArray(for:)) ?? []
+        let scales = accessor("SCALE").flatMap(Packed.float3Array(for:)) ?? []
+        let count = max(translations.count, rotations.count, scales.count)
+        guard count > 0 else { return nil }
+        return (0..<count).map { index in
+            Transform(
+                scale: index < scales.count ? scales[index] : [1, 1, 1],
+                rotation: index < rotations.count ? rotations[index] : simd_quatf(ix: 0, iy: 0, iz: 0, r: 1),
+                translation: index < translations.count ? translations[index] : .zero
+            )
+        }
+    }
+
     func nodeIndex(of gltfNode: GLTFNode) -> Int {
-        guard let nodes = sourceAsset?.nodes else { return 0 }
-        return nodes.firstIndex(where: { $0 === gltfNode }) ?? 0
+        nodeIndices[ObjectIdentifier(gltfNode)] ?? 0
+    }
+
+    /// Entity names must be unique for animation bind paths to resolve: GLTFKit2 names unnamed
+    /// nodes `NodeN`, and a repeated name gets `#<node index>`. The file's own name stays in the
+    /// document (`GLTFNodeIDComponent` → node index).
+    private func indexNodes(_ nodes: [GLTFNode]) {
+        var used = Set<String>()
+        for (index, node) in nodes.enumerated() {
+            let id = ObjectIdentifier(node)
+            nodeIndices[id] = index
+            var name = node.name ?? ""
+            if name.isEmpty || used.contains(name) {
+                name = "\(name.isEmpty ? "Node" : name)#\(index)"
+            }
+            used.insert(name)
+            entityNames[id] = name
+        }
+    }
+
+    func entityName(of node: GLTFNode) -> String {
+        entityNames[ObjectIdentifier(node)] ?? node.name ?? ""
+    }
+
+    /// Path from the scene root to `node`'s entity, by the same names convert gave the entities.
+    func bindPath(of node: GLTFNode) -> BindTarget.EntityPath {
+        if let parent = node.parent {
+            return bindPath(of: parent).entity(entityName(of: node))
+        }
+        return BindTarget.entity(entityName(of: node))
     }
 
     func platformColor(for vector: simd_float4) -> PlatformColor {
@@ -216,9 +260,9 @@ final class RealityKitConvert {
     func convert(spotLight gltfLight: GLTFLight) -> SpotLightComponent {
         SpotLightComponent(
             color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-            intensity: gltfLight.intensity * 4 * .pi,
-            innerAngleInDegrees: GLTFDegFromRad(gltfLight.innerConeAngle),
-            outerAngleInDegrees: GLTFDegFromRad(gltfLight.outerConeAngle),
+            intensity: RealityLook.spotIntensity(candela: gltfLight.intensity),
+            innerAngleInDegrees: RealityLook.spotConeDegrees(halfAngleRadians: gltfLight.innerConeAngle),
+            outerAngleInDegrees: RealityLook.spotConeDegrees(halfAngleRadians: gltfLight.outerConeAngle),
             attenuationRadius: punctualAttenuationRadius(gltfLight.range)
         )
     }
@@ -226,7 +270,7 @@ final class RealityKitConvert {
     func convert(pointLight gltfLight: GLTFLight) -> PointLightComponent {
         PointLightComponent(
             color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-            intensity: gltfLight.intensity * 4 * .pi,
+            intensity: RealityLook.pointIntensity(candela: gltfLight.intensity),
             attenuationRadius: punctualAttenuationRadius(gltfLight.range)
         )
     }
@@ -234,7 +278,7 @@ final class RealityKitConvert {
     func convert(directionalLight gltfLight: GLTFLight) -> DirectionalLightComponent {
         DirectionalLightComponent(
             color: platformColor(for: simd_make_float4(gltfLight.color, 1.0)),
-            intensity: gltfLight.intensity,
+            intensity: RealityLook.directionalIntensity(lux: gltfLight.intensity),
             isRealWorldProxy: false
         )
     }

@@ -1,10 +1,9 @@
 /// The whole look a renderer applies to a model, in renderer-neutral units.
 ///
-/// Each renderer maps this in one place and applies it whole. Nothing reads it yet: this is the
-/// contract the renderer mappings move onto.
+/// Each renderer maps this in one place and applies it whole: `RendererRealityKit/RealityLook.swift`
+/// and `RendererWebKit/WebRendererLook.swift`.
 ///
 /// Per-renderer mapping constants, from the look probes (`.agents/research/2026-09-30-look-probes.md`).
-/// Documented here only; no renderer applies them yet.
 ///
 /// | Field | RealityKit | WebKit (Khronos page) |
 /// | --- | --- | --- |

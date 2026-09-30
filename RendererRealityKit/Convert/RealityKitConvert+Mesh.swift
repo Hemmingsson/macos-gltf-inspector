@@ -103,8 +103,9 @@ extension RealityKitConvert {
         return modelComponent
     }
 
-    /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts and
-    /// memcpy tight glTF bufferViews (no `[SIMD3<Float>]` expansion).
+    /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts. Tight float
+    /// bufferViews are memcpy'd (EXP-017); strided, sparse, meshopt and quantized
+    /// (`KHR_mesh_quantization`, normalized ints) accessors go through one packed float copy.
     @MainActor private func convertTightFloatMesh(
         _ gltfMesh: GLTFMesh,
         context: RealityKitResourceContext
@@ -115,7 +116,7 @@ extension RealityKitConvert {
         var totalIndices = 0
         var anyNormals = false
         var anyTangents = false
-        var anyUVs = false
+        var anyUVs = [false, false]
         var anyColors = false
 
         for primitive in gltfMesh.primitives {
@@ -130,7 +131,7 @@ extension RealityKitConvert {
             totalIndices += gathered.plan.indexCount
             anyNormals = anyNormals || gathered.hasNormals
             anyTangents = anyTangents || gathered.hasTangents
-            anyUVs = anyUVs || gathered.hasUVs
+            for set in anyUVs.indices where gathered.plan.uvs[set] != nil { anyUVs[set] = true }
             anyColors = anyColors || gathered.hasColors
         }
 
@@ -157,7 +158,7 @@ extension RealityKitConvert {
             plans: plans,
             bytesPerVertex: 12,
             write: { plan, dest in
-                Packed.copyTight(plan.positions, elementFloats: 3, to: dest)
+                plan.positions.copy(elementFloats: 3, count: plan.vertexCount, to: dest)
             }
         )
 
@@ -170,7 +171,7 @@ extension RealityKitConvert {
                 write: { plan, dest in
                     let nbytes = plan.vertexCount * 12
                     if let normals = plan.normals {
-                        Packed.copyTight(normals, elementFloats: 3, to: dest)
+                        normals.copy(elementFloats: 3, count: plan.vertexCount, to: dest)
                     } else {
                         memset(dest, 0, nbytes)
                     }
@@ -187,7 +188,7 @@ extension RealityKitConvert {
                 write: { plan, dest in
                     let nbytes = plan.vertexCount * 16
                     if let tangents = plan.tangents {
-                        Packed.copyTight(tangents, elementFloats: 4, to: dest)
+                        tangents.copy(elementFloats: 4, count: plan.vertexCount, to: dest)
                     } else {
                         memset(dest, 0, nbytes)
                     }
@@ -195,7 +196,8 @@ extension RealityKitConvert {
             )
         }
 
-        if let uvBufferIndex = meshLayout.uvBufferIndex {
+        for (set, uvBufferIndex) in meshLayout.uvBufferIndices.enumerated() {
+            guard let uvBufferIndex else { continue }
             fillLowLevelVertexBuffer(
                 lowLevelMesh,
                 bufferIndex: uvBufferIndex,
@@ -203,7 +205,7 @@ extension RealityKitConvert {
                 bytesPerVertex: 8,
                 write: { plan, dest in
                     let nbytes = plan.vertexCount * 8
-                    if let uvs = plan.bakedUVs {
+                    if let uvs = plan.uvs[set] {
                         uvs.withUnsafeBytes { src in
                             guard let base = src.baseAddress else { return }
                             memcpy(dest, base, min(nbytes, src.count))
@@ -264,6 +266,20 @@ extension RealityKitConvert {
             try convert(material: plan.primitive.material, context: context)
         }
         return ModelComponent(mesh: meshResource, materials: materials)
+    }
+
+    /// Declared `min`/`max` for float positions; computed from the copied floats otherwise
+    /// (quantized bounds are in integer units, and `min`/`max` may be missing).
+    private func positionBounds(_ accessor: GLTFAccessor, _ positions: VertexFloats) -> BoundingBox? {
+        if accessor.componentType == .float, let declared = boundingBox(for: accessor) {
+            return declared
+        }
+        guard let points = Packed.float3Array(for: accessor), let first = points.first else { return nil }
+        var bounds = BoundingBox(min: first, max: first)
+        for point in points {
+            bounds.formUnion(point)
+        }
+        return bounds
     }
 
     private func boundingBox(for positionAccessor: GLTFAccessor) -> BoundingBox? {
@@ -347,8 +363,21 @@ extension RealityKitConvert {
             part[MeshBuffers.tangents] = MeshBuffers.Tangents(tangentArray)
         }
 
-        if let texCoordsArray = bakedTextureCoordinates(for: gltfPrimitive, context: context) {
-            part[MeshBuffers.textureCoordinates] = MeshBuffers.TextureCoordinates(texCoordsArray)
+        let uvs = textureCoordinates(for: gltfPrimitive, context: context)
+        if let uv0 = uvs[0] {
+            part[MeshBuffers.textureCoordinates] = MeshBuffers.TextureCoordinates(uv0)
+        }
+        if let uv1 = uvs[1] {
+            if #available(macOS 27.0, *) {
+                part[MeshBuffers.textureCoordinates1] = MeshBuffers.TextureCoordinates(uv1)
+            } else {
+                context.record(
+                    .missingTexCoord,
+                    severity: .warning,
+                    message: "TEXCOORD_1 on a skinned / morphed mesh needs macOS 27",
+                    materialName: gltfPrimitive.material?.name
+                )
+            }
         }
 
         if let joints0Attribute = gltfPrimitive.attribute(forName: "JOINTS_0"),
@@ -412,56 +441,75 @@ extension RealityKitConvert {
         }
     }
 
-    /// Bake `KHR_texture_transform` in glTF space (`T * R * S`), wrap a single
-    /// UDIM tile into 0–1, then flip V for RealityKit.
-    private func bakedTextureCoordinates(
+    /// TEXCOORD_0 and TEXCOORD_1 as authored, V flipped for RealityKit. `KHR_texture_transform`
+    /// and each texture's UV set are material parameters (`textureCoordinateTransform`,
+    /// `Texture.uvIndex`), not baked into the vertices.
+    private func textureCoordinates(
         for primitive: GLTFPrimitive,
         context: RealityKitResourceContext
-    ) -> [SIMD2<Float>]? {
-        let params = primitive.material?.metallicRoughness?.baseColorTexture
-            ?? primitive.material?.normalTexture
-        let texCoord: Int
-        if let transform = params?.transform, transform.hasTexCoord {
-            texCoord = Int(transform.texCoord)
-        } else {
-            texCoord = params?.texCoord ?? 0
+    ) -> [[SIMD2<Float>]?] {
+        let uvs = (0..<2).map { set in
+            primitive.attribute(forName: "TEXCOORD_\(set)")
+                .flatMap { Packed.float2Array(for: $0.accessor, flipVertically: true) }
         }
-        let named = primitive.attribute(forName: "TEXCOORD_\(texCoord)")
-        let attribute = named ?? primitive.attribute(forName: "TEXCOORD_0")
-        if params != nil, named == nil, primitive.attribute(forName: "TEXCOORD_0") == nil {
-            context.record(
-                .missingTexCoord,
-                severity: .error,
-                message: "Textured material has no TEXCOORD",
-                materialName: primitive.material?.name
-            )
-        }
-        guard let attribute,
-              var uvs = Packed.float2Array(for: attribute.accessor, flipVertically: false)
-        else { return nil }
-        if let transform = params?.transform {
-            let matrix = transform.matrix
-            uvs = uvs.map { uv in
-                let p = matrix * SIMD4(uv.x, uv.y, 0, 1)
-                return SIMD2(p.x, p.y)
+        if let material = primitive.material {
+            let needed = Set(TextureTransforms.slots(of: material).map(\.uvSet))
+            if needed.contains(where: { uvs[$0] == nil }) {
+                context.record(
+                    .missingTexCoord,
+                    severity: .error,
+                    message: "Textured material has no TEXCOORD",
+                    materialName: material.name
+                )
             }
         }
-        uvs = TextureUV.wrapSingleTile(uvs)
-        return uvs.map { SIMD2($0.x, 1 - $0.y) }
+        return uvs
+    }
+
+    /// One vertex attribute as float components: a tight float bufferView to memcpy, or a
+    /// packed float copy (`Packed.floatData`) of anything else.
+    private enum VertexFloats {
+        case tight(GLTFAccessor)
+        case packed(Data)
+
+        init?(_ accessor: GLTFAccessor, dimension: GLTFValueDimension, elementFloats: Int, count: Int) {
+            guard accessor.count == count, accessor.dimension == dimension else { return nil }
+            if Packed.isTightFloat(accessor, dimension: dimension) {
+                self = .tight(accessor)
+                return
+            }
+            guard let data = Packed.floatData(for: accessor),
+                  data.count >= count * elementFloats * MemoryLayout<Float>.size
+            else { return nil }
+            self = .packed(data)
+        }
+
+        func copy(elementFloats: Int, count: Int, to dest: UnsafeMutableRawPointer) {
+            switch self {
+            case .tight(let accessor):
+                Packed.copyTight(accessor, elementFloats: elementFloats, to: dest)
+            case .packed(let data):
+                data.withUnsafeBytes { raw in
+                    guard let base = raw.baseAddress else { return }
+                    memcpy(dest, base, count * elementFloats * MemoryLayout<Float>.size)
+                }
+            }
+        }
     }
 
     private struct TightMeshPrimitivePlan {
         let primitive: GLTFPrimitive
         let materialIndex: Int
-        let positions: GLTFAccessor
-        let normals: GLTFAccessor?
-        let tangents: GLTFAccessor?
-        let bakedUVs: [SIMD2<Float>]?
+        let positions: VertexFloats
+        let normals: VertexFloats?
+        let tangents: VertexFloats?
+        let vertexCount: Int
+        /// TEXCOORD_0, TEXCOORD_1 (V flipped).
+        let uvs: [[SIMD2<Float>]?]
         /// Packed RGBA; RealityKit has no MeshBuffers.colors — only LowLevelMesh `.color`.
         let colors: [SIMD4<Float>]?
         let indices: [UInt32]
         let bounds: BoundingBox
-        var vertexCount: Int { positions.count }
         var indexCount: Int { indices.count }
     }
 
@@ -469,7 +517,6 @@ extension RealityKitConvert {
         let plan: TightMeshPrimitivePlan
         let hasNormals: Bool
         let hasTangents: Bool
-        let hasUVs: Bool
         let hasColors: Bool
     }
 
@@ -478,13 +525,13 @@ extension RealityKitConvert {
         let layouts: [LowLevelMesh.Layout]
         let normalBufferIndex: Int?
         let tangentBufferIndex: Int?
-        let uvBufferIndex: Int?
+        let uvBufferIndices: [Int?]
         let colorBufferIndex: Int?
 
         static func make(
             anyNormals: Bool,
             anyTangents: Bool,
-            anyUVs: Bool,
+            anyUVs: [Bool],
             anyColors: Bool
         ) -> TightLowLevelLayout {
             var attributes: [LowLevelMesh.Attribute] = [
@@ -495,7 +542,7 @@ extension RealityKitConvert {
             ]
             var normalBufferIndex: Int?
             var tangentBufferIndex: Int?
-            var uvBufferIndex: Int?
+            var uvBufferIndices: [Int?] = [nil, nil]
             var colorBufferIndex: Int?
             if anyNormals {
                 let idx = layouts.count
@@ -509,10 +556,10 @@ extension RealityKitConvert {
                 attributes.append(.init(semantic: .tangent, format: .float4, layoutIndex: idx, offset: 0))
                 layouts.append(.init(bufferIndex: idx, bufferStride: 16))
             }
-            if anyUVs {
+            for (set, semantic) in [LowLevelMesh.VertexSemantic.uv0, .uv1].enumerated() where anyUVs[set] {
                 let idx = layouts.count
-                uvBufferIndex = idx
-                attributes.append(.init(semantic: .uv0, format: .float2, layoutIndex: idx, offset: 0))
+                uvBufferIndices[set] = idx
+                attributes.append(.init(semantic: semantic, format: .float2, layoutIndex: idx, offset: 0))
                 layouts.append(.init(bufferIndex: idx, bufferStride: 8))
             }
             if anyColors {
@@ -526,7 +573,7 @@ extension RealityKitConvert {
                 layouts: layouts,
                 normalBufferIndex: normalBufferIndex,
                 tangentBufferIndex: tangentBufferIndex,
-                uvBufferIndex: uvBufferIndex,
+                uvBufferIndices: uvBufferIndices,
                 colorBufferIndex: colorBufferIndex
             )
         }
@@ -540,17 +587,18 @@ extension RealityKitConvert {
         return [UInt32](UInt32(0)..<UInt32(vertexCount))
     }
 
-    private func tightFloatAccessor(
-        primitive: GLTFPrimitive,
-        attribute name: String,
+    /// `nil` = attribute present but unusable (whole mesh falls back); `.some(nil)` = absent.
+    private func optionalVertexFloats(
+        _ primitive: GLTFPrimitive,
+        _ name: String,
         dimension: GLTFValueDimension,
-        vertexCount: Int
-    ) -> GLTFAccessor? {
-        guard let attr = primitive.attribute(forName: name) else { return nil }
-        guard Packed.isTightFloat(attr.accessor, dimension: dimension),
-              attr.accessor.count == vertexCount
+        elementFloats: Int,
+        count: Int
+    ) -> VertexFloats?? {
+        guard let attribute = primitive.attribute(forName: name) else { return .some(nil) }
+        guard let floats = VertexFloats(attribute.accessor, dimension: dimension, elementFloats: elementFloats, count: count)
         else { return nil }
-        return attr.accessor
+        return .some(floats)
     }
 
     @MainActor private func makeTightMeshPrimitivePlan(
@@ -561,54 +609,19 @@ extension RealityKitConvert {
         guard primitive.primitiveType == .triangles,
               primitive.targets.isEmpty,
               primitive.attribute(forName: "JOINTS_0") == nil,
-              let positionAttr = primitive.attribute(forName: "POSITION"),
-              Packed.isTightFloat(positionAttr.accessor, dimension: .vector3),
-              let bounds = boundingBox(for: positionAttr.accessor)
+              let positionAttr = primitive.attribute(forName: "POSITION")
+        else { return nil }
+        let vertexCount = positionAttr.accessor.count
+        guard vertexCount > 0,
+              let positions = VertexFloats(positionAttr.accessor, dimension: .vector3, elementFloats: 3, count: vertexCount),
+              let bounds = positionBounds(positionAttr.accessor, positions),
+              // glTF tangents are VEC4 (xyz + handedness); kept as float4.
+              let normals = optionalVertexFloats(primitive, "NORMAL", dimension: .vector3, elementFloats: 3, count: vertexCount),
+              let tangents = optionalVertexFloats(primitive, "TANGENT", dimension: .vector4, elementFloats: 4, count: vertexCount)
         else { return nil }
 
-        let vertexCount = positionAttr.accessor.count
-
-        let normalsAccessor: GLTFAccessor?
-        let hasNormals: Bool
-        if primitive.attribute(forName: "NORMAL") != nil {
-            guard let accessor = tightFloatAccessor(
-                primitive: primitive,
-                attribute: "NORMAL",
-                dimension: .vector3,
-                vertexCount: vertexCount
-            ) else { return nil }
-            normalsAccessor = accessor
-            hasNormals = true
-        } else {
-            normalsAccessor = nil
-            hasNormals = false
-        }
-
-        let tangentsAccessor: GLTFAccessor?
-        let hasTangents: Bool
-        if primitive.attribute(forName: "TANGENT") != nil {
-            // glTF tangents are VEC4 (xyz + handedness); keep packed float4 as-is.
-            guard let accessor = tightFloatAccessor(
-                primitive: primitive,
-                attribute: "TANGENT",
-                dimension: .vector4,
-                vertexCount: vertexCount
-            ) else { return nil }
-            tangentsAccessor = accessor
-            hasTangents = true
-        } else {
-            tangentsAccessor = nil
-            hasTangents = false
-        }
-
-        let bakedUVs = bakedTextureCoordinates(for: primitive, context: context)
-        let hasUVs: Bool
-        if let bakedUVs {
-            guard bakedUVs.count == vertexCount else { return nil }
-            hasUVs = true
-        } else {
-            hasUVs = false
-        }
+        let uvs = textureCoordinates(for: primitive, context: context)
+        guard uvs.allSatisfy({ $0 == nil || $0?.count == vertexCount }) else { return nil }
 
         let colors: [SIMD4<Float>]?
         let hasColors: Bool
@@ -628,19 +641,19 @@ extension RealityKitConvert {
         let plan = TightMeshPrimitivePlan(
             primitive: primitive,
             materialIndex: materialIndex,
-            positions: positionAttr.accessor,
-            normals: normalsAccessor,
-            tangents: tangentsAccessor,
-            bakedUVs: bakedUVs,
+            positions: positions,
+            normals: normals,
+            tangents: tangents,
+            vertexCount: vertexCount,
+            uvs: uvs,
             colors: colors,
             indices: indices,
             bounds: bounds
         )
         return TightMeshGatherResult(
             plan: plan,
-            hasNormals: hasNormals,
-            hasTangents: hasTangents,
-            hasUVs: hasUVs,
+            hasNormals: normals != nil,
+            hasTangents: tangents != nil,
             hasColors: hasColors
         )
     }

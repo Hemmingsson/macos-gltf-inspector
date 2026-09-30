@@ -9,24 +9,6 @@ public enum PreviewLighting {
         KhronosEnvironments.defaultLook.rawValue
     }
 
-    /// Finder icons: key plus IBL when Settings uses an environment map.
-    /// `intensityExponent` is power-of-two (0 ≈ 1×).
-    @MainActor
-    static func configureThumbnailLighting(
-        on renderer: RealityRenderer,
-        intensityExponent: Float = 0
-    ) async {
-        let look = AppLook.current
-        guard look.useEnvironmentMap else { return }
-        await prefetchLook(look)
-        if let resource = cachedResource(for: look) ?? cachedProbe {
-            renderer.lighting.resource = resource
-            renderer.lighting.intensityExponent = intensityExponent
-        } else {
-            AppLog.error(AppLog.lighting, "thumbnail IBL probe missing")
-        }
-    }
-
     @MainActor
     static func prefetchLook(_ look: AppLook) async {
         if look.useEnvironmentMap, let url = look.resolvedHDRURL() {
@@ -123,9 +105,10 @@ public enum PreviewLighting {
         let ibl = Entity()
         ibl.name = "lookIBL"
         var light = ImageBasedLightComponent(source: .single(resource), intensityExponent: intensityExponent)
-        // Session env yaw rotates the probe; re-applied whenever `applyLook` rebuilds.
+        // Session env yaw (0 = Khronos default view) rotates the probe; re-applied whenever
+        // `applyLook` rebuilds.
         light.inheritsRotation = true
-        ibl.orientation = simd_quatf(angle: environmentYaw, axis: [0, 1, 0])
+        ibl.orientation = simd_quatf(angle: RealityLook.iblYaw(lookYawRadians: environmentYaw), axis: [0, 1, 0])
         ibl.components.set(light)
         applyReceivers(from: ibl, to: receiver)
         return ibl

@@ -71,7 +71,7 @@ extension RealityKitConvert {
                                                             averageKeyDuration: transformSampler.recommendedSampleInterval,
                                                             maximum: AnimationSampling.defaultInterval
                                                         ),
-                                                        bindTarget: targetNode.bindPath.transform,
+                                                        bindTarget: bindPath(of: targetNode).transform,
                                                         delay: TimeInterval(transformSampler.startTime))
                 animations.append(sampledAnimation)
             }
@@ -158,7 +158,7 @@ extension RealityKitConvert {
             frames: frames,
             tweenMode: sampler.interpolation == .step ? .hold : .linear,
             frameInterval: interval,
-            bindTarget: target.bindPath.blendShapeWeights(),
+            bindTarget: bindPath(of: target).blendShapeWeights(),
             delay: TimeInterval(sampler.minimumTime)
         )
     }

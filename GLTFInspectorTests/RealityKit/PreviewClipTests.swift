@@ -120,8 +120,8 @@ private func writePreviewClipTwoClipGLB() throws -> URL {
         "scenes": [["name": "Default", "nodes": [0]]],
         "scene": 0,
     ]
-    let data = try GLBBox.serialize(json: json, bin: bin)
-    return try GLBBox.writePrepared(data, prefix: "preview-clip")
+    let data = try TestGLB.serialize(json: json, bin: bin)
+    return try TestGLB.writeTemp(data, prefix: "preview-clip")
 }
 
 private func appendPreviewClipFloats(_ values: [Float], to data: inout Data) {
