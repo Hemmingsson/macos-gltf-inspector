@@ -39,7 +39,7 @@ enum WebThumbnail {
         let image: CGImage
         do {
             info = try await host.load(model: url)
-            image = try await host.renderStill()
+            image = try await host.renderStill(size: pixel)
         } catch {
             // A crashed page, or one still busy on a call that timed out, is dropped so the next
             // file in this process starts a fresh page. A file the page merely rejected keeps the
@@ -66,11 +66,10 @@ enum WebThumbnail {
     @MainActor
     private static func reusedHost(look: WebPreviewCanvas.Look, pixel: Int) async throws -> WebRendererHost {
         if let shared, !shared.host.isBroken, shared.look == look {
-            try await shared.host.start(size: pixel)
             return shared.host
         }
-        let host = try WebRendererHost(mode: .still)
-        try await host.start(size: pixel)
+        let host = try WebRendererHost(mode: .still, size: pixel)
+        try await host.start()
         // Cheap before the first model: the page loads the HDR after `load`, `renderStill` waits.
         try await host.apply(look)
         shared = SharedHost(host: host, look: look)

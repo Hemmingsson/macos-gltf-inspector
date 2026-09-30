@@ -138,11 +138,7 @@ public final class WebCanvasController {
 
     /// Frames the model from the page's opening view (front).
     public func fit() async throws {
-        let host = try readyHost()
-        try await host.send { .fit(id: $0) }
-        // `fit` resets the camera transform but not the orbit angles; re-state them so the next
-        // drag continues from the front view instead of snapping back.
-        try await host.send { .setCamera(id: $0, azimuth: 0, elevation: 0, distance: nil) }
+        try await readyHost().camera(.fit)
     }
 
     /// The opening view. The owner restores Center and the other session values first.
@@ -153,12 +149,10 @@ public final class WebCanvasController {
     /// Canned orbit angle, framed from the page's measured scene box.
     public func apply(preset: CameraPreset) async throws {
         let host = try readyHost()
-        try await host.send { .fit(id: $0) }
+        let fitted = try await host.camera(.fit)
         let angles = preset.webOrbitAngles
-        let distance = try? await host.cameraState().distance(framing: preset)
-        try await host.send {
-            .setCamera(id: $0, azimuth: angles.azimuth, elevation: angles.elevation, distance: distance)
-        }
+        let distance = fitted.isMeasurable ? fitted.distance(framing: preset) : nil
+        try await host.camera(.orbit(azimuth: angles.azimuth, elevation: angles.elevation, distance: distance))
     }
 
     /// One frame at the live camera and canvas size. The owner writes the file.

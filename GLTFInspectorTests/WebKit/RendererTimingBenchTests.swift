@@ -60,9 +60,9 @@ struct RendererTimingBenchTests {
             }
         }
 
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(180))
+        let host = try WebRendererHost(mode: .still, size: Self.stillSize, timeout: .seconds(180))
         let tPage = CFAbsoluteTimeGetCurrent()
-        try await host.start(size: Self.stillSize)
+        try await host.start()
         let tIbl = CFAbsoluteTimeGetCurrent()
         try await host.apply(WebPreviewCanvas.Look())
         print(String(
@@ -133,8 +133,8 @@ struct RendererTimingBenchTests {
     private func renderCold(_ url: URL, name: String, mode: String) async throws -> Void {
         let bytes = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let t0 = CFAbsoluteTimeGetCurrent()
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(180))
-        try await host.start(size: Self.stillSize)
+        let host = try WebRendererHost(mode: .still, size: Self.stillSize, timeout: .seconds(180))
+        try await host.start()
         let tPage = CFAbsoluteTimeGetCurrent()
         try await host.apply(WebPreviewCanvas.Look())
         let tIbl = CFAbsoluteTimeGetCurrent()

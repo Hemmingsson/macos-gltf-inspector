@@ -4,63 +4,35 @@ import Testing
 @testable import GLTFInspector
 @testable import RendererWebKit
 
-/// Codec tests for the command channel. Pure value work — no web view involved.
+/// What goes over the bridge. Pure value work — no web view involved.
 struct WebRendererBridgeTests {
-    @Test
-    func commandEncodesKindAsTypeAndOmitsUnusedFields() throws {
-        let object = WebRendererCommand.load(id: 7, url: "gltf-inspector:///model").jsonObject()
+    private func json(_ value: some Encodable) throws -> [String: Any] {
+        try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(value)) as? [String: Any])
+    }
 
-        #expect(object["id"] as? Int == 7)
-        #expect(object["type"] as? String == "load")
-        #expect(object["url"] as? String == "gltf-inspector:///model")
-        // Absent rather than null, so the page can use plain `undefined` checks.
-        #expect(object["azimuth"] == nil)
-        #expect(object["size"] == nil)
+    /// Absent rather than null, so the page can use plain `??` / `undefined` checks.
+    @Test
+    func cameraCommandOmitsWhatItDoesNotSet() throws {
+        let fit = try json(CameraCommand.fit)
+        #expect(fit["op"] as? String == "fit")
+        #expect(fit["distance"] == nil && fit["pose"] == nil)
+
+        let orbit = try json(CameraCommand.orbit(azimuth: 45, elevation: -20))
+        #expect(orbit["azimuth"] as? Double == 45)
+        #expect(orbit["distance"] == nil)
+        #expect(try json(CameraCommand.orbit(azimuth: 0, elevation: 0, distance: 3.5))["distance"] as? Double == 3.5)
     }
 
     @Test
-    func cameraCommandKeepsAnOmittedDistanceOmitted() throws {
-        let withDistance = WebRendererCommand
-            .setCamera(id: 1, azimuth: 45, elevation: -20, distance: 3.5).jsonObject()
-        let without = WebRendererCommand
-            .setCamera(id: 2, azimuth: 45, elevation: -20, distance: nil).jsonObject()
-
-        #expect(withDistance["distance"] as? Double == 3.5)
-        #expect(without["distance"] == nil)
-        #expect(without["azimuth"] as? Double == 45)
-    }
-
-    @Test
-    func javaScriptWrapsThePayloadInAnExecCall() throws {
-        let script = try WebRendererCommand.fit(id: 3).javaScript()
-        #expect(script == #"void window.__viewer.exec({"id":3,"type":"fit"})"#)
-    }
-
-    @Test
-    func eventParsesResultAndCarriesItsID() throws {
-        let event = try #require(WebRendererEvent(body: [
-            "event": "result", "id": 4, "triangles": 6036, "meshes": 1,
-        ] as [String: Any]))
-
-        #expect(event.name == .result)
-        #expect(event.id == 4)
-        #expect(event.triangles == 6036)
-        #expect(event.firstFrameMs == nil)
-    }
-
-    @Test
-    func eventParsesLiveFirstFrameMs() throws {
-        let event = try #require(WebRendererEvent(body: [
-            "event": "result", "id": 1, "firstFrameMs": 240,
-        ] as [String: Any]))
-        #expect(event.firstFrameMs == 240)
-    }
-
-    @Test
-    func eventRejectsBodiesItCannotUnderstand() {
-        #expect(WebRendererEvent(body: ["event": "nonsense"] as [String: Any]) == nil)
-        #expect(WebRendererEvent(body: ["id": 1] as [String: Any]) == nil)
-        #expect(WebRendererEvent(body: "not an object") == nil)
+    func cameraStateDecodesThePageShape() throws {
+        let data = Data(#"""
+        {"camera":{"azimuth":25,"elevation":-18,"distance":4,"target":[0,1,0],"yfov":0.78,"znear":0.01,"zfar":10},
+         "sceneMin":[-1,0,-1],"sceneMax":[1,2,1]}
+        """#.utf8)
+        let state = try JSONDecoder().decode(RendererCameraState.self, from: data)
+        #expect(state.pose.azimuth == 25)
+        #expect(state.sceneCenter == [0, 1, 0])
+        #expect(state.isMeasurable && state.pose.isFinite)
     }
 }
 
@@ -101,8 +73,8 @@ struct WebRendererHostTests {
     }
 
     private func makeStillHost(size: Int = 512) async throws -> WebRendererHost {
-        let host = try WebRendererHost(mode: .still)
-        try await host.start(size: size)
+        let host = try WebRendererHost(mode: .still, size: size)
+        try await host.start()
         try await host.apply(WebPreviewCanvas.Look())
         return host
     }
@@ -134,10 +106,10 @@ struct WebRendererHostTests {
         let host = try await makeStillHost(size: 256)
         try await host.load(model: model)
 
-        try await host.send { .setCamera(id: $0, azimuth: 0, elevation: 0, distance: nil) }
+        try await host.camera(.orbit(azimuth: 0, elevation: 0))
         let front = try await host.renderStill()
 
-        try await host.send { .setCamera(id: $0, azimuth: 120, elevation: 0, distance: nil) }
+        try await host.camera(.orbit(azimuth: 120, elevation: 0))
         let turned = try await host.renderStill()
 
         // "The images differ" is not enough on its own: an orbit bug that aims the camera away
@@ -173,23 +145,26 @@ struct WebRendererHostTests {
     func commandBeforeReadyFailsRatherThanHanging() async throws {
         let host = try WebRendererHost(mode: .still)
         await #expect(throws: WebRendererError.notReady) {
-            try await host.send { .fit(id: $0) }
+            try await host.camera(.fit)
         }
     }
 
-    /// A command that reaches the page and throws inside its handler must come back as
-    /// `commandFailed` carrying the page's own message — not as a timeout.
+    /// A call that reaches the page and throws must come back as `callFailed` carrying the page's
+    /// own message — not as a timeout.
     @Test
     func commandThatThrowsInThePageReportsTheReason() async throws {
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(8))
-        try await host.start(size: 64)
+        let host = try WebRendererHost(mode: .still, size: 64, timeout: .seconds(8))
+        try await host.start()
 
         _ = try await host.load(model: TestFixtures.tiny)
         var look = PageLook(WebPreviewCanvas.Look())
         look.environment = PageLook.environmentURL("no-such-file")
         // The scheme handler 404s, so the environment fetch inside `apply` rejects.
-        await #expect(throws: WebRendererError.self) {
+        do {
             try await host.apply(look)
+            Issue.record("a missing environment did not fail")
+        } catch WebRendererError.callFailed(let message) {
+            #expect(message.hasPrefix("apply: "), "\(message)")
         }
     }
 

@@ -4,9 +4,10 @@
   document window. Two modes, one renderer — a second page would let the surfaces drift, which
   is the exact failure the one-renderer rule exists to prevent.
 
-  Swift drives it by evaluating `__viewer.exec(<json>)`; the page answers on
-  `webkit.messageHandlers.viewer`. Every command carries an `id` so replies can be correlated.
-  See RendererWebKit/WebRendererBridge.swift for the typed Swift side.
+  Swift calls five async functions on `window.__viewer` through `callAsyncJavaScript`:
+  open, apply, camera, still, stats — one JSON argument, one JSON result, a throw is an error
+  (WebRendererHost.call). Mode and still size come from the URL (`?mode=still&size=512`). The page
+  only pushes events on `webkit.messageHandlers.viewer`: ready, warning, contextlost, error.
 
   Nothing here is fetched from the network. All bytes arrive through the Swift scheme handler,
   and paths stay relative — the Khronos renderer rejects absolute URLs for its library and LUT
@@ -74,7 +75,8 @@ state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
 state.renderingParameters.clearColor = [0, 0, 0, 0];
 state.renderingParameters.renderEnvironmentMap = false;
 
-let live = false;
+const query = new URLSearchParams(location.search);
+const live = query.get("mode") === "live";
 let autoRotate = false;
 /** Inspector chrome drawn after the Khronos frame. Off until the host asks — still/thumbnail
  *  must not inherit the document window's floor or gizmos. */
@@ -489,26 +491,93 @@ function loadEnvironment() {
     return environmentLoad;
 }
 
-const commands = {
-    /** Fixed pixel size for still mode; live mode follows the view instead. */
-    configure({ mode, size }) {
-        live = mode === "live";
-        if (!live && size) {
-            canvas.style.width = canvas.style.height = "auto";
-            canvas.width = canvas.height = size;
-        }
+/** Camera orbit angles and bounds, as Swift's `RendererCameraState`. Non-finite values are 0. */
+function cameraState() {
+    const camera = state.userCamera;
+    const finite = (x) => (Number.isFinite(x) ? x : 0);
+    const position = camera.getPosition();
+    const look = camera.getLookDirection();
+    const distance = camera.distance;
+    return {
+        camera: {
+            azimuth: camera.rotAroundY * 180 / Math.PI,
+            elevation: camera.rotAroundX * 180 / Math.PI,
+            distance,
+            // Recomputed rather than `UserCamera.getTarget()`, which skips the distance multiply
+            // when `distance` is exactly 1 and hands back a point one unit from the camera.
+            target: [0, 1, 2].map((i) => position[i] + look[i] * distance),
+            yfov: camera.perspective.yfov,
+            znear: camera.perspective.znear,
+            // A camera that has never been fitted carries the class default of Infinity.
+            zfar: finite(camera.perspective.zfar),
+        },
+        sceneMin: Array.from(camera.sceneExtents.min, finite),
+        sceneMax: Array.from(camera.sceneExtents.max, finite),
+    };
+}
+
+/**
+ * Absolute orbit angles in degrees (`UserCamera` works in radians despite its docstring).
+ *
+ * `setRotation` only re-aims the camera; it does not move it. The target is captured *before*
+ * rotating and the camera pushed back out to distance afterwards, as `fitCameraTargetToExtents`
+ * does internally. `rotAroundY` / `rotAroundX` are updated so a later fit or drag continues
+ * from here rather than snapping back.
+ */
+function orbitTo(azimuth, elevation, distance, target) {
+    const camera = state.userCamera;
+    camera.rotAroundY = azimuth * Math.PI / 180;
+    camera.rotAroundX = elevation * Math.PI / 180;
+    camera.setRotation(camera.rotAroundY, camera.rotAroundX);
+    camera.setDistanceFromTarget(distance, target);
+}
+
+window.__viewer = {
+    /**
+     * Loads `url` and frames it. A string URL, not bytes: `.gltf` sidecars resolve relative to
+     * it (`gltf-inspector:///model/<name>` → `/model/<bin>`), which Swift serves from the
+     * security-scoped folder. Live mode draws the first frame before returning.
+     */
+    async open({ url }) {
+        const t0 = performance.now();
+        state.gltf = await resources.loadGltf(url);
+        const parseMs = Math.round(performance.now() - t0);
+        // A look scene of 0 keeps the file's default scene.
+        state.sceneIndex = look.sceneIndex || (state.gltf.scene ?? 0);
+        const tFit = performance.now();
+        fitCamera();
+        const fitMs = Math.round(performance.now() - tFit);
+        const stats = view.gatherStatistics(state) ?? {};
+        let firstFrameMs = 0;
         if (live) {
-            installPointerControls();
-            requestAnimationFrame(tick);
+            resize();
+            // `loadGltf` is CPU. The long blank after it is this first GPU frame (program link +
+            // texture upload); doing it here keeps Swift's spinner up until it is done.
+            const tFrame = performance.now();
+            view.renderFrame(state, canvas.width, canvas.height);
+            drawOverlays();
+            firstFrameMs = Math.round(performance.now() - tFrame);
         }
-        return { mode };
+        // IBL after the model: the first frame is key+fill; the probe lands a frame or two later.
+        loadEnvironment().catch((error) => console.error("environment", error));
+        return {
+            width: canvas.width,
+            height: canvas.height,
+            sceneCount: state.gltf.scenes?.length ?? 0,
+            animationCount: state.gltf.animations?.length ?? 0,
+            triangles: stats.faceCount ?? 0,
+            meshes: stats.meshCount ?? 0,
+            parseMs,
+            fitMs,
+            firstFrameMs,
+        };
     },
 
     /**
      * The whole look, every time (`PageLook` in Swift). Cheap values are simply assigned; only a
      * changed environment (IBL prefilter), centring, scene or projection does real work.
      */
-    async apply({ look: next }) {
+    async apply(next) {
         const params = state.renderingParameters;
         params.toneMap = next.toneMap;
         params.exposure = Math.pow(2, next.exposure);   // EV in, linear factor out
@@ -537,169 +606,72 @@ const commands = {
         }
         // Before the first model this only records the HDR: first paint does not wait on IBL.
         if (state.gltf) await loadEnvironment();
-        return {};
     },
 
-    async load({ url }) {
-        // String URL, not bytes: `.gltf` sidecars resolve relative to this path
-        // (`gltf-inspector:///model/<name>` → `/model/<bin>`), which Swift serves
-        // from the security-scoped folder. `loadGltf(ArrayBuffer)` is GLB-only.
-        const t0 = performance.now();
-        send({ event: "progress", stage: "load" });
-        state.gltf = await resources.loadGltf(url);
-        const parseMs = Math.round(performance.now() - t0);
-        // A look scene of 0 keeps the file's default scene.
-        state.sceneIndex = look.sceneIndex || (state.gltf.scene ?? 0);
-        const tFit = performance.now();
-        fitCamera();
-        const fitMs = Math.round(performance.now() - tFit);
-        const stats = view.gatherStatistics(state) ?? {};
-        // Still mode keeps the exact size `configure` was given; only live mode follows the
-        // view. Resizing here would silently multiply a requested 512 by the device pixel
-        // ratio and hand back a 1024 thumbnail.
-        let firstFrameMs = 0;
-        if (live) {
-            resize();
-            // `loadGltf` is CPU. The long blank after it is this first GPU frame
-            // (program link + texture upload). Do it before the command returns so
-            // Swift can keep the spinner up. `tick` would do it later, after reveal.
-            send({ event: "progress", stage: "frame" });
-            const tFrame = performance.now();
-            view.renderFrame(state, canvas.width, canvas.height);
-            drawOverlays();
-            firstFrameMs = Math.round(performance.now() - tFrame);
+    /**
+     * `fit` (front view), `orbit` (absolute angles, optional distance), `pose` (the whole camera,
+     * nothing inherited from the fit heuristic — how goldens replay) or `get`. Always answers
+     * with the resulting camera state.
+     */
+    camera({ op, azimuth, elevation, distance, pose }) {
+        const camera = state.userCamera;
+        if (op === "fit") {
+            fitCamera();
+            // `fit` resets the transform but not the orbit angles; restate the front view so the
+            // next drag continues from it.
+            orbitTo(0, 0, camera.distance, camera.getTarget());
+        } else if (op === "orbit") {
+            orbitTo(azimuth, elevation, distance ?? camera.distance, camera.getTarget());
+        } else if (op === "pose") {
+            camera.perspective.yfov = pose.yfov;
+            camera.perspective.znear = pose.znear;
+            camera.perspective.zfar = pose.zfar;
+            orbitTo(pose.azimuth, pose.elevation, pose.distance, pose.target);
+            // Pan and zoom scale off baseDistance; a stale one would make later interaction
+            // depend on how the camera was set.
+            camera.baseDistance = pose.distance;
+        } else if (op !== "get") {
+            throw new Error(`unknown camera op '${op}'`);
         }
-        // IBL after the model: the first frame is key+fill; the probe lands a frame or two later.
-        loadEnvironment().catch((error) => console.error("environment", error));
-        return {
-            width: canvas.width,
-            height: canvas.height,
-            sceneCount: state.gltf.scenes?.length ?? 0,
-            animationCount: state.gltf.animations?.length ?? 0,
-            triangles: stats.faceCount ?? 0,
-            meshes: stats.meshCount ?? 0,
-            parseMs,
-            fitMs,
-            firstFrameMs,
-        };
+        if (op !== "get") applyProjection();
+        return cameraState();
     },
 
     /**
-     * Orbit to absolute angles. Degrees in, radians out — `UserCamera` works in radians
-     * despite its docstring claiming degrees.
-     *
-     * `setRotation` only re-aims the camera; it does not move it. Calling it alone points the
-     * camera away from the model and renders an empty frame. The target must be captured
-     * *before* rotating — it is derived from position and look direction — and the camera
-     * pushed back out to distance afterwards. This mirrors what `fitCameraTargetToExtents`
-     * does internally.
-     *
-     * `rotAroundY` / `rotAroundX` are updated too, so a later `fit()` or user orbit continues
-     * from here rather than snapping back.
+     * One frame as a PNG data URL. Still mode keeps its exact pixel size (never multiplied by
+     * `devicePixelRatio`); `size` changes it. Waits for a pending IBL so a thumbnail is lit.
      */
-    setCamera({ azimuth, elevation, distance }) {
-        const camera = state.userCamera;
-        const target = camera.getTarget();
-        const radius = distance ?? camera.distance;
-        camera.rotAroundY = azimuth * Math.PI / 180;
-        camera.rotAroundX = elevation * Math.PI / 180;
-        camera.setRotation(camera.rotAroundY, camera.rotAroundX);
-        camera.setDistanceFromTarget(radius, target);
-        applyProjection();
-        return {};
-    },
-
-    /**
-     * The whole camera, stated outright: target, distance, orbit angles and the projection
-     * planes. Nothing is inherited from `fitViewToScene`.
-     *
-     * `setCamera` above is the interactive command — it keeps whatever distance and target the
-     * fit heuristic produced. That is right for a user turning a model and wrong for a
-     * reference render, where a future change to `fitDistanceToExtents` would silently rewrite
-     * every committed PNG. The pixel-diff harness records a pose once and replays it through
-     * here, so the fit code is no longer in the picture at compare time.
-     */
-    setCameraPose({ target, distance, azimuth, elevation, yfov, znear, zfar }) {
-        const camera = state.userCamera;
-        camera.perspective.yfov = yfov;
-        camera.perspective.znear = znear;
-        camera.perspective.zfar = zfar;
-        camera.rotAroundY = azimuth * Math.PI / 180;
-        camera.rotAroundX = elevation * Math.PI / 180;
-        camera.setRotation(camera.rotAroundY, camera.rotAroundX);
-        camera.setDistanceFromTarget(distance, target);
-        // Pan and zoom scale off baseDistance; leaving it stale would make a later live
-        // interaction behave differently depending on how the camera was set.
-        camera.baseDistance = distance;
-        applyProjection();
-        return {};
-    },
-
-    /**
-     * Reads the pose back, along with the scene extents the last fit measured, for recording a
-     * pose. Callers that want to frame the model themselves need the bounds — `distance` alone
-     * only says where this renderer version chose to put the camera.
-     *
-     * The target is recomputed here rather than taken from `UserCamera.getTarget()`, which
-     * skips the distance multiply when `distance` happens to be exactly 1 and would hand back
-     * a point one unit from the camera.
-     */
-    getCamera() {
-        const camera = state.userCamera;
-        const position = camera.getPosition();
-        const look = camera.getLookDirection();
-        const distance = camera.distance;
-        return {
-            camera: {
-                azimuth: camera.rotAroundY * 180 / Math.PI,
-                elevation: camera.rotAroundX * 180 / Math.PI,
-                distance,
-                target: [
-                    position[0] + look[0] * distance,
-                    position[1] + look[1] * distance,
-                    position[2] + look[2] * distance,
-                ],
-                yfov: camera.perspective.yfov,
-                znear: camera.perspective.znear,
-                // A camera that has never been fitted still carries the class default of
-                // Infinity, which is not representable in the recorded JSON.
-                zfar: Number.isFinite(camera.perspective.zfar) ? camera.perspective.zfar : 0,
-            },
-            sceneMin: Array.from(camera.sceneExtents.min),
-            sceneMax: Array.from(camera.sceneExtents.max),
-        };
-    },
-
-    fit() {
-        fitCamera();
-        return {};
-    },
-
-    /** Still mode: render one frame and hand back PNG bytes. */
-    async renderStill() {
-        // A thumbnail taken straight after `load` must still be lit.
+    async still({ size } = {}) {
+        if (!live && size && (canvas.width !== size || canvas.height !== size)) {
+            canvas.width = canvas.height = size;
+        }
         await loadEnvironment();
         view.renderFrame(state, canvas.width, canvas.height);
         drawOverlays();
         return { png: canvas.toDataURL("image/png") };
     },
-};
 
-window.__viewer = {
-    async exec(command) {
-        const { id, type } = command ?? {};
-        try {
-            const handler = commands[type];
-            if (!handler) throw new Error(`unknown command '${type}'`);
-            const result = (await handler(command)) ?? {};
-            send({ event: "result", id, ...result });
-        } catch (error) {
-            send({ event: "failed", id, message: String(error?.message ?? error) });
-        }
+    stats() {
+        const stats = state.gltf ? view.gatherStatistics(state) ?? {} : {};
+        return {
+            width: canvas.width,
+            height: canvas.height,
+            triangles: stats.faceCount ?? 0,
+            meshes: stats.meshCount ?? 0,
+            background: getComputedStyle(document.body).backgroundColor,
+        };
     },
 };
 
-// Anything that escapes a handler still has to produce a message, or Swift only sees a timeout.
+if (live) {
+    installPointerControls();
+    requestAnimationFrame(tick);
+} else {
+    canvas.style.width = canvas.style.height = "auto";
+    canvas.width = canvas.height = Number(query.get("size")) || 512;
+}
+
+// Anything that escapes a call still has to produce a message, or Swift only sees a timeout.
 window.addEventListener("error", (e) =>
     send({ event: "error", stage: "runtime", message: String(e.error?.message ?? e.message) }));
 window.addEventListener("unhandledrejection", (e) =>

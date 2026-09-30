@@ -58,8 +58,8 @@ struct LookProbeTests {
         var results: [String: Any] = [:]
 
         // Web: the Khronos page at its default (90) and at 180 to get the rotation's sign.
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
-        try await host.start(size: Self.size)
+        let host = try WebRendererHost(mode: .still, size: Self.size, timeout: .seconds(60))
+        try await host.start()
         try await host.apply(Self.webLinearLook)
         _ = try await host.load(model: Self.probe("mirror-sphere.gltf"))
         for rotation in [0.0, 90, 180] {
@@ -70,7 +70,7 @@ struct LookProbeTests {
             try await host.apply(look)
             var row: [String] = []
             for a in azimuths {
-                try await host.setCameraPose(Self.sphereCamera(azimuth: a))
+                try await host.camera(.pose(Self.sphereCamera(azimuth: a)))
                 let image = try await host.renderStill()
                 if a == 0 { try Self.save(image, "web-mirror-rot\(Int(rotation))-az0") }
                 let linear = Self.webToLinear(Self.centre(of: image))
@@ -114,12 +114,12 @@ struct LookProbeTests {
         var results: [String: Any] = [:]
         let files = ["plane-directional.gltf", "plane-point.gltf", "plane-spot.gltf"]
 
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
-        try await host.start(size: Self.size)
+        let host = try WebRendererHost(mode: .still, size: Self.size, timeout: .seconds(60))
+        try await host.start()
         try await host.apply(Self.webLinearLook)
         for file in files {
             _ = try await host.load(model: Self.probe(file))
-            try await host.setCameraPose(Self.planeCamera)
+            try await host.camera(.pose(Self.planeCamera))
             let image = try await host.renderStill()
             try Self.save(image, "web-\(file)")
             let raster = Self.bytes(of: image)
@@ -197,11 +197,11 @@ struct LookProbeTests {
         let factors: [Float] = [0.0125, 0.025, 0.05, 0.1, 0.2, 0.4]
         let strength: Float = 2
 
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
-        try await host.start(size: Self.size)
+        let host = try WebRendererHost(mode: .still, size: Self.size, timeout: .seconds(60))
+        try await host.start()
         try await host.apply(Self.webLinearLook)
         _ = try await host.load(model: Self.probe("emissive-ramp.gltf"))
-        try await host.setCameraPose(Self.rampCamera)
+        try await host.camera(.pose(Self.rampCamera))
         let image = try await host.renderStill()
         try Self.save(image, "web-emissive-ramp")
         let raster = Self.bytes(of: image)

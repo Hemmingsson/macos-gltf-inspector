@@ -28,8 +28,8 @@ enum PixelDiffWebKit {
     /// default (90). The background paints the page, not the canvas: the drawing buffer stays
     /// transparent and the comparison flattens onto ``PixelDiff/backdrop``.
     static func makeHost(manifest: PixelDiffManifest) async throws -> WebRendererHost {
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(60))
-        try await host.start(size: manifest.look.canvasSize)
+        let host = try WebRendererHost(mode: .still, size: manifest.look.canvasSize, timeout: .seconds(60))
+        try await host.start()
         try await host.apply(WebPreviewCanvas.Look(render: try renderLook(manifest.look)))
         return host
     }
@@ -57,7 +57,7 @@ enum PixelDiffWebKit {
     ) async throws -> CGImage {
         let camera = try PixelDiffRun.camera(of: entry)
         _ = try await host.load(model: entry.modelURL)
-        try await host.setCameraPose(CameraPose(camera))
+        try await host.camera(.pose(CameraPose(camera)))
         return try await host.renderStill()
     }
 

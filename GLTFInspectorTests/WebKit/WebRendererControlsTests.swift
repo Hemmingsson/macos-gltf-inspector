@@ -15,8 +15,8 @@ import Testing
 @MainActor
 struct WebRendererControlsTests {
     private func makeHost() async throws -> WebRendererHost {
-        let host = try WebRendererHost(mode: .still)
-        try await host.start(size: 192)
+        let host = try WebRendererHost(mode: .still, size: 192)
+        try await host.start()
         try await host.apply(WebPreviewCanvas.Look())
         _ = try await host.load(
             model: TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
@@ -69,13 +69,11 @@ struct WebRendererControlsTests {
         try await host.apply(look)
 
         // The browser normalises a fully opaque rgba() to rgb(), so match on the components.
-        let background = try await host.evaluate(
-            "getComputedStyle(document.body).backgroundColor"
-        )
+        let background = try await host.stats().background
         #expect(background.contains("255, 255, 255"), "backdrop did not paint the page: \(background)")
 
         try await host.apply(WebPreviewCanvas.Look())
-        let cleared = try await host.evaluate("getComputedStyle(document.body).backgroundColor")
+        let cleared = try await host.stats().background
         #expect(
             cleared.contains("0, 0, 0, 0") || cleared == "transparent",
             "transparent backdrop did not clear the page: \(cleared)"
@@ -296,8 +294,8 @@ struct RendererLookDefaultsTests {
         defer { store.tearDown() }
 
         func render() async throws -> Data? {
-            let host = try WebRendererHost(mode: .still)
-            try await host.start(size: 160)
+            let host = try WebRendererHost(mode: .still, size: 160)
+            try await host.start()
             try await host.apply(.stored(defaults: store.defaults, directory: store.directory))
             _ = try await host.load(model: model)
             let image = try await host.renderStill()
@@ -319,8 +317,8 @@ struct RendererLookDefaultsTests {
 struct WebRendererThumbnailPathTests {
     @Test
     func sidecarGLTFProducesAStill() async throws {
-        let host = try WebRendererHost(mode: .still)
-        try await host.start(size: 128)
+        let host = try WebRendererHost(mode: .still, size: 128)
+        try await host.start()
         try await host.apply(WebPreviewCanvas.Look())
         _ = try await host.load(model: TestFixtures.cube)
         let image = try await host.renderStill()
@@ -330,8 +328,8 @@ struct WebRendererThumbnailPathTests {
 
     @Test
     func corruptFileFailsInsteadOfHanging() async throws {
-        let host = try WebRendererHost(mode: .still)
-        try await host.start(size: 64)
+        let host = try WebRendererHost(mode: .still, size: 64)
+        try await host.start()
         await #expect(throws: Error.self) {
             _ = try await host.load(model: TestFixtures.corrupt)
         }
@@ -341,8 +339,8 @@ struct WebRendererThumbnailPathTests {
     @Test(.enabled(if: TestModels.hasKhronosSamples))
     func recordsSingleFileStillTiming() async throws {
         let started = CFAbsoluteTimeGetCurrent()
-        let host = try WebRendererHost(mode: .still)
-        try await host.start(size: 256)
+        let host = try WebRendererHost(mode: .still, size: 256)
+        try await host.start()
         try await host.apply(WebPreviewCanvas.Look())
         _ = try await host.load(model: TestModels.boomBox)
         let image = try await host.renderStill()
@@ -356,8 +354,8 @@ struct WebRendererThumbnailPathTests {
     @Test
     func recordsFolderScaleStillTiming() async throws {
         let files = [TestFixtures.tiny] + TestModels.khronosGLBs.prefix(11)
-        let warmHost = try WebRendererHost(mode: .still)
-        try await warmHost.start(size: 64)
+        let warmHost = try WebRendererHost(mode: .still, size: 64)
+        try await warmHost.start()
         try await warmHost.apply(WebPreviewCanvas.Look())
         let warmStart = CFAbsoluteTimeGetCurrent()
         for i in 0..<100 {
@@ -370,8 +368,8 @@ struct WebRendererThumbnailPathTests {
         let coldCount = min(12, max(1, files.count))
         let coldStart = CFAbsoluteTimeGetCurrent()
         for i in 0..<coldCount {
-            let host = try WebRendererHost(mode: .still)
-            try await host.start(size: 64)
+            let host = try WebRendererHost(mode: .still, size: 64)
+            try await host.start()
             try await host.apply(WebPreviewCanvas.Look())
             _ = try await host.load(model: files[i % files.count])
             _ = try await host.renderStill()

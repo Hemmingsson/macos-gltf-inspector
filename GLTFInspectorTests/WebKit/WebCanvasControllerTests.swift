@@ -115,17 +115,17 @@ struct WebCanvasControllerTests {
 
     @Test
     func timedOutHostFailsFastAfterwards() async throws {
-        let host = try WebRendererHost(mode: .still, timeout: .milliseconds(1))
+        let host = try WebRendererHost(mode: .still, size: 64, timeout: .milliseconds(1))
         await #expect(throws: WebRendererError.timedOut) {
-            try await host.start(size: 64)
+            try await host.start()
         }
         #expect(host.isBroken)
         await #expect(throws: WebRendererError.timedOut) {
-            try await host.send { .fit(id: $0) }
+            try await host.camera(.fit)
         }
         // A later start loads a fresh page instead of rethrowing the old failure.
         host.timeout = .seconds(30)
-        try await host.start(size: 64)
+        try await host.start()
         #expect(!host.isBroken)
     }
 
@@ -133,17 +133,17 @@ struct WebCanvasControllerTests {
     /// serving the next call.
     @Test
     func aHungCallTimesOutWithoutFailingTheNext() async throws {
-        let host = try WebRendererHost(mode: .still, timeout: .seconds(30))
-        try await host.start(size: 64)
+        let host = try WebRendererHost(mode: .still, size: 64, timeout: .seconds(30))
+        try await host.start()
         try await host.evaluate(
-            "(() => { const exec = window.__viewer.exec; window.__viewer.exec = (c) => c.type === 'fit' ? new Promise(() => {}) : exec(c); return 1 })()"
+            "(() => { const camera = window.__viewer.camera; window.__viewer.camera = (c) => c.op === 'fit' ? (window.__hung = new Promise(() => {})) : camera(c); return 1 })()"
         )
         host.timeout = .milliseconds(300)
         await #expect(throws: WebRendererError.timedOut) {
-            try await host.send { .fit(id: $0) }
+            try await host.camera(.fit)
         }
         host.timeout = .seconds(30)
-        try await host.send { .getCamera(id: $0) }
+        try await host.camera(.get)
         #expect(!host.isBroken)
     }
 }
@@ -151,14 +151,14 @@ struct WebCanvasControllerTests {
 /// Pure preset math — no web view.
 struct WebCameraPresetTests {
     private func state(min: [Double], max: [Double], distance: Double = 10) -> RendererCameraState {
-        RendererCameraState(json: [
-            "camera": [
-                "azimuth": 0.0, "elevation": 0.0, "distance": distance,
-                "target": [0.0, 0.0, 0.0], "yfov": 0.8, "znear": 0.1, "zfar": 100.0,
-            ] as [String: Any],
-            "sceneMin": min,
-            "sceneMax": max,
-        ])!
+        RendererCameraState(
+            camera: CameraPose(
+                azimuth: 0, elevation: 0, distance: distance,
+                target: [0, 0, 0], yfov: 0.8, znear: 0.1, zfar: 100
+            ),
+            sceneMin: min,
+            sceneMax: max
+        )
     }
 
     @Test

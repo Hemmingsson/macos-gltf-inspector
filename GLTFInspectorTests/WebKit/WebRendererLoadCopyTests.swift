@@ -61,14 +61,3 @@ struct WebRendererLoadCopyTests {
         #expect(try GLBBox.peekDocumentJSON(from: TestFixtures.cube)["asset"] != nil)
     }
 }
-
-struct WebRendererProgressEventTests {
-    @Test func progressEventDoesNotCountAsMalformed() throws {
-        let event = try #require(WebRendererEvent(body: [
-            "event": "progress",
-            "stage": "load",
-        ] as [String: Any]))
-        #expect(event.name == .progress)
-        #expect(event.stage == "load")
-    }
-}
