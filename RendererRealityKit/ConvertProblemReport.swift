@@ -13,6 +13,7 @@ public struct ConvertProblem: Equatable, Sendable {
         case forcedOpaqueBlend
         case blendAsCutout
         case droppedAnimations
+        case approximatedTextureTransform
     }
 
     public enum Severity: String, Equatable, Sendable {

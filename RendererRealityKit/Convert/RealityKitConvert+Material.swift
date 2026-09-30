@@ -39,6 +39,16 @@ extension RealityKitConvert {
                 }
             }
             applyBlendMode(toUnlit: &material, gltfMaterial: gltfMaterial, context: context)
+            let transforms = TextureTransforms.transforms(for: gltfMaterial, context: context)
+            if let primary = transforms[0] { material.textureCoordinateTransform = primary }
+            if let secondary = transforms[1], secondary.offset != .zero || secondary.scale != [1, 1] || secondary.rotation != 0 {
+                context.record(
+                    .approximatedTextureTransform,
+                    severity: .warning,
+                    message: "Unlit materials have no UV1 transform",
+                    materialName: gltfMaterial.name
+                )
+            }
             converted = material
         } else {
             var material = PhysicallyBasedMaterial()
@@ -176,6 +186,9 @@ extension RealityKitConvert {
                     materialName: name
                 )
             }
+            let transforms = TextureTransforms.transforms(for: gltfMaterial, context: context)
+            if let primary = transforms[0] { material.textureCoordinateTransform = primary }
+            if let secondary = transforms[1] { material.secondaryTextureCoordinateTransform = secondary }
             converted = material
         }
         context.storeConvertedMaterial(converted, for: gltfMaterial)

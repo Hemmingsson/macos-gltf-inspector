@@ -76,7 +76,7 @@ struct LoaderHelpersTests {
     }
 
     @MainActor
-    @Test func bakesKHRTextureTransformIntoUVs() async throws {
+    @Test func mapsKHRTextureTransformToTheMaterial() async throws {
         let glb = try texturedPBRTriangleGLB(
             extensionsUsed: ["KHR_texture_transform"],
             material: [
@@ -99,28 +99,26 @@ struct LoaderHelpersTests {
         let loaded = try await loadModel(glb)
         let pbr = pbrMaterials(in: loaded.entity)
         try #require(!pbr.isEmpty)
+        // The transform is a material parameter (glTF offset / scale carry over), not baked.
         let materialUV = pbr[0].textureCoordinateTransform
-        #expect(abs(materialUV.scale.x - 1) < 0.001)
-        #expect(abs(materialUV.scale.y - 1) < 0.001)
-        #expect(abs(materialUV.offset.x) < 0.001)
-        #expect(abs(materialUV.offset.y) < 0.001)
+        #expect(abs(materialUV.scale.x - 2) < 0.001)
+        #expect(abs(materialUV.scale.y - 3) < 0.001)
+        #expect(abs(materialUV.offset.x - 0.1) < 0.001)
+        #expect(abs(materialUV.offset.y - 0.2) < 0.001)
 
         let uvs = try #require(firstMeshUVs(in: loaded.entity))
         try #require(uvs.count >= 3)
-        // glTF: uv' = scale * uv + offset, then RealityKit v = 1 - v'
-        #expect(abs(uvs[0].x - 0.1) < 0.001)
-        #expect(abs(uvs[0].y - 0.8) < 0.001)
-        #expect(abs(uvs[1].x - 2.1) < 0.001)
-        #expect(abs(uvs[1].y - 0.8) < 0.001)
-        #expect(abs(uvs[2].x - 0.1) < 0.001)
-        #expect(abs(uvs[2].y - (-2.2)) < 0.001)
+        // Authored UVs, only V flipped for RealityKit.
+        #expect(uvs[0] == SIMD2(0, 1))
+        #expect(uvs[1] == SIMD2(1, 1))
+        #expect(uvs[2] == SIMD2(0, 0))
     }
 
-    /// Character Creator / Sketchfab split each UDIM tile into its own 0–1
-    /// texture but leave mesh UVs in tile space (U 2–3, V 3–4, …). RealityKit
-    /// clamps those, so the albedo never hits the map.
+    /// UVs outside 0–1 stay where the file put them: the sampler (REPEAT by default, or the
+    /// file's CLAMP) decides, as the spec says. The old single-UDIM-tile shift broke CLAMP
+    /// (TextureSettingsTest's clamp rows failed).
     @MainActor
-    @Test func wrapsSingleUDIMTileIntoUnitSquare() async throws {
+    @Test func keepsUVsOutsideTheUnitSquare() async throws {
         let glb = try texturedPBRTriangleGLB(
             material: [
                 "pbrMetallicRoughness": [
@@ -133,12 +131,8 @@ struct LoaderHelpersTests {
         )
         let uvs = try #require(firstMeshUVs(in: try await loadModel(glb).entity))
         try #require(uvs.count >= 3)
-        #expect(abs(uvs[0].x - 0.1) < 0.001)
-        #expect(abs(uvs[0].y - 0.8) < 0.001)
-        #expect(abs(uvs[1].x - 0.8) < 0.001)
-        #expect(abs(uvs[1].y - 0.8) < 0.001)
-        #expect(abs(uvs[2].x - 0.1) < 0.001)
-        #expect(abs(uvs[2].y - 0.1) < 0.001)
+        #expect(abs(uvs[0].x - 2.1) < 0.001)
+        #expect(abs(uvs[0].y - (1 - 3.2)) < 0.001)
     }
 
     @MainActor

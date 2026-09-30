@@ -160,6 +160,7 @@ class RealityKitResourceContext {
         if channels != .all {
             texture.swizzle = channels.textureSwizzle
         }
+        texture.uvIndex = TextureTransforms.uvSet(of: gltfTextureParams)
         return texture
     }
 
