@@ -59,7 +59,8 @@ enum EntityLoader {
     static func load(
         from url: URL,
         includeAnimations: Bool = true,
-        materialVariantIndex: Int? = nil
+        materialVariantIndex: Int? = nil,
+        sceneIndex: Int? = nil
     ) async throws -> LoadedModel {
         try await withPreparedAsset(from: url) { prepared in
             // Parsed from the file, not harvested from convert: the outliner must list what the
@@ -73,7 +74,7 @@ enum EntityLoader {
                 prepared,
                 includeAnimations: includeAnimations,
                 name: url.lastPathComponent,
-                sceneIndex: nil,
+                sceneIndex: sceneIndex,
                 materialVariantIndex: materialVariantIndex
             )
             return await loadedModel(

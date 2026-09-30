@@ -25,7 +25,7 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug + fixture",
+      "name": "RealityKit + fixture",
       "program": "${workspaceFolder}/.build/glTF Inspector.app/Contents/MacOS/glTF Inspector",
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "dev: install",
@@ -38,9 +38,29 @@
     },
     {
       "type": "lldb",
+      "request": "launch",
+      "name": "WebKit + fixture",
+      "program": "${workspaceFolder}/.worktrees/webkit-renderer/.build/glTF Inspector.app/Contents/MacOS/glTF Inspector",
+      "cwd": "${workspaceFolder}/.worktrees/webkit-renderer",
+      "preLaunchTask": "dev: install webkit",
+      "env": {
+        "GLTF_REPO_ROOT": "${workspaceFolder}/.worktrees/webkit-renderer",
+        "GLTF_FIXTURE": "${input:fixtureId}",
+        "GLTF_LOG_FILE": "${workspaceFolder}/.worktrees/webkit-renderer/.build/logs/debug.log",
+        "GLTF_VERBOSE": "1"
+      }
+    },
+    {
+      "type": "lldb",
       "request": "attach",
-      "name": "Attach",
+      "name": "Attach RealityKit",
       "program": "${workspaceFolder}/.build/glTF Inspector.app/Contents/MacOS/glTF Inspector"
+    },
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Attach WebKit",
+      "program": "${workspaceFolder}/.worktrees/webkit-renderer/.build/glTF Inspector.app/Contents/MacOS/glTF Inspector"
     }
   ]
 }

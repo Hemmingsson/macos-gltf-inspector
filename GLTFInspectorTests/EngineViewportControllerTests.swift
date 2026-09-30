@@ -142,39 +142,15 @@ struct EngineViewportControllerTests {
         #expect(viewport.backdrop == .window)
 
         settings.clearSession()
+        viewport.syncFromSettings()
         #expect(viewport.backdrop == .dark)
     }
 
     @Test func hostSessionWriteThroughUpdatesBindings() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
-        var backdropIndex = 0
-        var showFloor = true
-        var autoRotate = true
-        var centerModel = true
-        var orthographic = false
-        var exposureEV: Float = 0
-        var dimStudio = false
-        var environmentYaw: Float = 0
-        var debugModeIndex = 0
-        var doubleSided = false
-        var showSkeleton = false
-        var fieldOfView: Float = PreviewCamera.defaultFieldOfViewDegrees
-        let host = PreviewSessionBindings(
-            autoRotate: Binding(get: { autoRotate }, set: { autoRotate = $0 }),
-            showFloor: Binding(get: { showFloor }, set: { showFloor = $0 }),
-            backdropIndex: Binding(get: { backdropIndex }, set: { backdropIndex = $0 }),
-            centerModel: Binding(get: { centerModel }, set: { centerModel = $0 }),
-            orthographic: Binding(get: { orthographic }, set: { orthographic = $0 }),
-            exposureEV: Binding(get: { exposureEV }, set: { exposureEV = $0 }),
-            dimStudioForFileLights: Binding(get: { dimStudio }, set: { dimStudio = $0 }),
-            environmentYaw: Binding(get: { environmentYaw }, set: { environmentYaw = $0 }),
-            doubleSided: Binding(get: { doubleSided }, set: { doubleSided = $0 }),
-            showSkeleton: Binding(get: { showSkeleton }, set: { showSkeleton = $0 }),
-            fieldOfViewDegrees: Binding(get: { fieldOfView }, set: { fieldOfView = $0 }),
-            debugModeIndex: Binding(get: { debugModeIndex }, set: { debugModeIndex = $0 }),
-            debugModes: [.none, .wire]
-        )
-        let viewport = EngineViewportController(sidebar: sidebar, hostSession: host)
+        let session = PreviewSession()
+        session.debugModes = [.none, .wire]
+        let viewport = EngineViewportController(sidebar: sidebar, previewSession: session)
 
         viewport.setBackdrop(.dark)
         viewport.setFloor(false)
@@ -191,86 +167,60 @@ struct EngineViewportControllerTests {
             )
         )
 
-        #expect(backdropIndex == PreviewBackground.index(matchingRawValue: BackdropStyle.dark.rawValue))
-        #expect(showFloor == false)
-        #expect(autoRotate == false)
-        #expect(centerModel == false)
-        #expect(orthographic == true)
-        #expect(debugModeIndex == 1)
-        #expect(exposureEV == 0.5)
-        #expect(dimStudio == true)
-        #expect(abs(environmentYaw - Float.pi / 4) < 0.0001)
+        #expect(session.backdropIndex == PreviewBackground.index(matchingRawValue: BackdropStyle.dark.rawValue))
+        #expect(session.showFloor == false)
+        #expect(session.autoRotate == false)
+        #expect(session.centerModel == false)
+        #expect(session.orthographic == true)
+        #expect(session.debugModeIndex == 1)
+        #expect(session.exposureEV == 0.5)
+        #expect(session.dimStudioForFileLights == true)
+        #expect(abs(session.environmentYaw - Float.pi / 4) < 0.0001)
         #expect(viewport.showsFloor == false)
         #expect(viewport.viewMode == .wireframe)
 
         viewport.setDoubleSided(true)
         viewport.setShowSkeleton(true)
         viewport.setFieldOfViewDegrees(90)
-        #expect(doubleSided == true)
-        #expect(showSkeleton == true)
-        #expect(fieldOfView == 90)
+        #expect(session.doubleSided == true)
+        #expect(session.showSkeleton == true)
+        #expect(session.fieldOfViewDegrees == 90)
         #expect(viewport.doubleSided == true)
         #expect(viewport.showSkeleton == true)
         #expect(viewport.fieldOfViewDegrees == 90)
 
         viewport.setFieldOfViewDegrees(5)
-        #expect(fieldOfView == PreviewCamera.clampedFieldOfView(5))
+        #expect(session.fieldOfViewDegrees == PreviewCamera.clampedFieldOfView(5))
         viewport.reset()
-        #expect(doubleSided == false)
-        #expect(showSkeleton == false)
-        #expect(fieldOfView == PreviewCamera.defaultFieldOfViewDegrees)
-        #expect(exposureEV == 0)
+        #expect(session.doubleSided == false)
+        #expect(session.showSkeleton == false)
+        #expect(session.fieldOfViewDegrees == PreviewCamera.defaultFieldOfViewDegrees)
+        #expect(session.exposureEV == 0)
     }
 
     @Test func applySessionRemountDoesNotClobberFileLightDim() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
-        var backdropIndex = 0
-        var showFloor = true
-        var autoRotate = true
-        var centerModel = true
-        var orthographic = false
-        var exposureEV: Float = 0
-        var dimStudio = false
-        var environmentYaw: Float = 0
-        var debugModeIndex = 0
-        var doubleSided = false
-        var showSkeleton = false
-        var fieldOfView: Float = PreviewCamera.defaultFieldOfViewDegrees
-        let host = PreviewSessionBindings(
-            autoRotate: Binding(get: { autoRotate }, set: { autoRotate = $0 }),
-            showFloor: Binding(get: { showFloor }, set: { showFloor = $0 }),
-            backdropIndex: Binding(get: { backdropIndex }, set: { backdropIndex = $0 }),
-            centerModel: Binding(get: { centerModel }, set: { centerModel = $0 }),
-            orthographic: Binding(get: { orthographic }, set: { orthographic = $0 }),
-            exposureEV: Binding(get: { exposureEV }, set: { exposureEV = $0 }),
-            dimStudioForFileLights: Binding(get: { dimStudio }, set: { dimStudio = $0 }),
-            environmentYaw: Binding(get: { environmentYaw }, set: { environmentYaw = $0 }),
-            doubleSided: Binding(get: { doubleSided }, set: { doubleSided = $0 }),
-            showSkeleton: Binding(get: { showSkeleton }, set: { showSkeleton = $0 }),
-            fieldOfViewDegrees: Binding(get: { fieldOfView }, set: { fieldOfView = $0 }),
-            debugModeIndex: Binding(get: { debugModeIndex }, set: { debugModeIndex = $0 }),
-            debugModes: [.none]
-        )
+        let session = PreviewSession()
         let settings = EngineSettingsStore()
         let viewport = EngineViewportController(
             sidebar: sidebar,
-            settings: settings,
-            hostSession: host
+            previewSession: session,
+            settings: settings
         )
 
         // Convert-owned dim, as HostShellRootView does on punctual-light open.
         viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: true)
-        #expect(dimStudio == true)
+        #expect(session.dimStudioForFileLights == true)
         #expect(viewport.lighting.usesFileLights == true)
 
-        // ShellRootView remount: applySession → syncHostCanvasFromStored.
+        // ShellRootView remount: applySession → syncFromSettings.
         viewport.applySession(from: settings)
-        #expect(dimStudio == true)
+        #expect(session.dimStudioForFileLights == true)
         #expect(viewport.lighting.usesFileLights == true)
-        #expect(exposureEV == 0)
+        #expect(session.exposureEV == 0)
 
         viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: false)
-        #expect(dimStudio == true)
+        #expect(session.dimStudioForFileLights == true)
     }
 }
 

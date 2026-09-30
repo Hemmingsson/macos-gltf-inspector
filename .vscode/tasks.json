@@ -20,6 +20,20 @@
       }
     },
     {
+      "label": "dev: install webkit",
+      "type": "shell",
+      "command": "./scripts/dev.sh install",
+      "options": {
+        "cwd": "${workspaceFolder}/.worktrees/webkit-renderer"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
       "label": "dev: run cube",
       "type": "shell",
       "command": "./scripts/dev.sh run cube",

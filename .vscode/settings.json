@@ -24,7 +24,7 @@
       "id": "glb.debug",
       "label": "$(debug-alt) Debug",
       "command": "workbench.action.debug.start",
-      "tooltip": "Debug + fixture picker. Logs → .build/logs/debug.log",
+      "tooltip": "Debug dropdown: RealityKit + fixture, or WebKit + fixture",
       "color": "#3fb950",
       "useVsCodeApi": true
     },

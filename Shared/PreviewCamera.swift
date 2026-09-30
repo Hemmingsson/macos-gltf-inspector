@@ -28,7 +28,7 @@ enum PreviewCamera {
     /// View-menu / Camera-pill presets. Angles are degrees for `cameraPosition`.
     /// Thin-axis override is off when applying a preset so faces stay square-on.
     enum CameraPreset: String, CaseIterable, Identifiable, Sendable {
-        case front, back, left, right, top, bottom, iso
+        case front, back, left, right, top, bottom, isometric
 
         var id: String { rawValue }
 
@@ -43,7 +43,7 @@ enum PreviewCamera {
             case .right: "arrow.right.to.line"
             case .top: "arrow.up.to.line.compact"
             case .bottom: "arrow.down.to.line.compact"
-            case .iso: "cube"
+            case .isometric: "cube"
             }
         }
 
@@ -54,7 +54,7 @@ enum PreviewCamera {
             case .back: return 180
             case .right: return 90
             case .left: return -90
-            case .iso: return PreviewCamera.yawDegrees
+            case .isometric: return PreviewCamera.yawDegrees
             }
         }
 
@@ -64,7 +64,7 @@ enum PreviewCamera {
             case .front, .back, .left, .right: return 0
             case .top: return 90
             case .bottom: return -90
-            case .iso: return PreviewCamera.pitchDegrees
+            case .isometric: return PreviewCamera.pitchDegrees
             }
         }
     }

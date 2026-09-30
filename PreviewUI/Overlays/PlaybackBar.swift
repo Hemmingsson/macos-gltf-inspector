@@ -47,13 +47,12 @@ public struct PlaybackBar<Playback: ClipPlaybackController>: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Playback")
-        .task(id: playback.isPlaying) {
-            guard playback.isPlaying else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(50))
-                guard !isSeeking else { continue }
-                playback.advance(by: 0.05)
-            }
+        .background {
+            PlaybackTickDriver(
+                isPlaying: playback.isPlaying,
+                isSeeking: isSeeking,
+                onAdvance: { playback.advance(by: $0) }
+            )
         }
     }
 
@@ -119,6 +118,43 @@ public struct PlaybackBar<Playback: ClipPlaybackController>: View {
     private func formatTime(_ time: TimeInterval) -> String {
         let total = max(0, Int(time.rounded(.down)))
         return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Frame-synced transport ticks — elapsed wall time between display frames.
+private struct PlaybackTickDriver: View {
+    let isPlaying: Bool
+    let isSeeking: Bool
+    let onAdvance: (TimeInterval) -> Void
+
+    @State private var lastDate: Date?
+
+    var body: some View {
+        TimelineView(.animation(paused: !isPlaying)) { timeline in
+            Color.clear
+                .onChange(of: isPlaying) { _, _ in
+                    lastDate = nil
+                }
+                .onChange(of: isSeeking) { _, seeking in
+                    if seeking { lastDate = nil }
+                }
+                .onChange(of: timeline.date) { _, date in
+                    guard !isSeeking else {
+                        lastDate = date
+                        return
+                    }
+                    if let lastDate {
+                        let delta = date.timeIntervalSince(lastDate)
+                        if delta > 0 {
+                            onAdvance(delta)
+                        }
+                    }
+                    lastDate = date
+                }
+        }
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 }
 

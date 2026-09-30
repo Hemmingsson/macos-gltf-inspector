@@ -79,7 +79,10 @@ private struct HostViewMenuBody: View {
         Divider()
 
         ForEach(CameraPreset.allCases) { preset in
-            Button(preset.title, systemImage: hostPresetSymbol(preset)) {
+            Button(
+                preset.title,
+                systemImage: EngineViewportController.previewCameraPreset(from: preset).menuSymbol
+            ) {
                 viewport.applyCameraPreset(preset)
             }
             .keyboardShortcutIfAvailable(cameraPresetShortcut(for: preset))
@@ -135,18 +138,6 @@ private struct HostViewMenuBody: View {
             get: { viewport.showSkeleton },
             set: { viewport.setShowSkeleton($0) }
         )
-    }
-
-    private func hostPresetSymbol(_ preset: CameraPreset) -> String {
-        switch preset {
-        case .front: PreviewCamera.CameraPreset.front.menuSymbol
-        case .back: PreviewCamera.CameraPreset.back.menuSymbol
-        case .left: PreviewCamera.CameraPreset.left.menuSymbol
-        case .right: PreviewCamera.CameraPreset.right.menuSymbol
-        case .top: PreviewCamera.CameraPreset.top.menuSymbol
-        case .bottom: PreviewCamera.CameraPreset.bottom.menuSymbol
-        case .isometric: PreviewCamera.CameraPreset.iso.menuSymbol
-        }
     }
 
     private func cameraPresetShortcut(for preset: CameraPreset) -> KeyboardShortcut? {

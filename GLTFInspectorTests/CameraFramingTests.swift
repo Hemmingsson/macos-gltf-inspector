@@ -76,8 +76,8 @@ struct CameraPresetTests {
         #expect(PreviewCamera.CameraPreset.right.yawDegrees == 90)
         #expect(PreviewCamera.CameraPreset.top.pitchDegrees == 90)
         #expect(PreviewCamera.CameraPreset.bottom.pitchDegrees == -90)
-        #expect(PreviewCamera.CameraPreset.iso.yawDegrees == PreviewCamera.yawDegrees)
-        #expect(PreviewCamera.CameraPreset.iso.pitchDegrees == PreviewCamera.pitchDegrees)
+        #expect(PreviewCamera.CameraPreset.isometric.yawDegrees == PreviewCamera.yawDegrees)
+        #expect(PreviewCamera.CameraPreset.isometric.pitchDegrees == PreviewCamera.pitchDegrees)
         #expect(PreviewCamera.CameraPreset.allCases.count == 7)
     }
 
