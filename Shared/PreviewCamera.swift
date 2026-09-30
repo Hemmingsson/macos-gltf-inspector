@@ -4,7 +4,7 @@ import RealityKit
 import simd
 
 enum PreviewCamera {
-    static let defaultFieldOfViewDegrees: Float = 35
+    static let defaultFieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
     /// Session FOV slider range (degrees). Fit distance uses the live value.
     static let fieldOfViewRange: ClosedRange<Float> = 15...90
     /// Default front-three-quarter yaw (degrees). Iso preset uses the same value.

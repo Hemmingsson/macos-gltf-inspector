@@ -26,7 +26,7 @@ public enum AppGroupSettings {
     }
 
     public static let defaultEnvironment = KhronosEnvironments.studioNeutral.rawValue
-    public static let defaultToneMapping = "Khronos PBR Neutral"
+    public static let defaultToneMapping = RenderLook.ToneMapping.pbrNeutral.rawValue
 
     /// Fresh-install values. `register(defaults:)` is per process, so the host and each extension
     /// call `registerDefaults()` before reading.

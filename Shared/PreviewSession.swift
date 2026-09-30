@@ -1,3 +1,4 @@
+import GLTFCore
 import Observation
 import SwiftUI
 
@@ -17,7 +18,7 @@ final class PreviewSession {
     var environmentYaw: Float = 0
     var doubleSided = false
     var showSkeleton = false
-    var fieldOfViewDegrees = PreviewCamera.defaultFieldOfViewDegrees
+    var fieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
     var debugModeIndex = 0
     var debugModes: [PreviewDebugMode] = [.none]
 

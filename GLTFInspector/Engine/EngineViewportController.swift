@@ -33,7 +33,7 @@ final class EngineViewportController: ViewportController {
     /// Optional override so tests can assert the export path wires without presenting a panel.
     var screenshotHandler: (() -> Void)?
 
-    private(set) var activeCameraPreset: CameraPreset?
+    private(set) var activeCameraPreset: PreviewUI.CameraPreset?
 
     /// Per-window environment and tone mapping (not on `PreviewSession`, which cannot see PreviewUI
     /// types). Seeded from app defaults on `applySession`, then per-window.
@@ -222,7 +222,7 @@ final class EngineViewportController: ViewportController {
         commands?.reset()
     }
 
-    func applyCameraPreset(_ preset: CameraPreset) {
+    func applyCameraPreset(_ preset: PreviewUI.CameraPreset) {
         sidebar.selectedCameraIndex = nil
         activeCameraPreset = preset
         commands?.applyCameraPreset(Self.previewCameraPreset(from: preset))
@@ -318,7 +318,7 @@ final class EngineViewportController: ViewportController {
 
     /// Maps the PreviewUI seam preset to `PreviewCamera.CameraPreset`.
     /// Shared with `HostViewMenuCommands`.
-    static func previewCameraPreset(from preset: CameraPreset) -> PreviewCamera.CameraPreset {
+    static func previewCameraPreset(from preset: PreviewUI.CameraPreset) -> PreviewCamera.CameraPreset {
         PreviewCamera.CameraPreset(rawValue: preset.rawValue)!
     }
 }

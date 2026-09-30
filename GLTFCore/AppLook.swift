@@ -1,6 +1,6 @@
 import Foundation
 
-public enum KhronosEnvironments: String, CaseIterable, Sendable {
+public enum KhronosEnvironments: String, CaseIterable, Sendable, Codable {
     case field = "field"
     case studioNeutral = "neutral"
     case colorfulStudio = "Colorful_Studio"
