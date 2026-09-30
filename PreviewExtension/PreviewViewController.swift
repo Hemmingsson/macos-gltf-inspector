@@ -6,8 +6,12 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     private let interaction = PreviewInteraction()
     private var hostingView: PreviewHostingView!
     private var loadTask: Task<Void, Never>?
+    /// Live host kicked in `loadView` so the module compiles while QL builds chrome.
+    /// `present` injects this same instance — no second `WKWebView`.
+    private var prestartedHost: WebRendererHost?
 
     override func loadView() {
+        prestartRenderer()
         let dark = Self.systemIsDark()
 
         hostingView = PreviewHostingView(
@@ -38,18 +42,40 @@ class PreviewViewController: NSViewController, QLPreviewingController {
 
     func preparePreviewOfFile(at url: URL) async throws {
         let dark = Self.systemIsDark()
-        // No RealityKit convert on this path: the web canvas loads the file itself. That
-        // matters more here than anywhere — the extension process is cold on every spacebar
-        // press, so the convert was pure latency before the first frame.
         loadTask?.cancel()
         await present(url: url, dark: dark)
+    }
+
+    private func prestartRenderer() {
+        do {
+            let host = try WebRendererHost(mode: .live)
+            prestartedHost = host
+            Task { @MainActor in
+                do {
+                    try await host.start()
+                } catch {
+                    AppLog.error(AppLog.webRenderer, "ql prestart failed: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            AppLog.error(AppLog.webRenderer, "ql prestart failed: \(error.localizedDescription)")
+        }
     }
 
     @MainActor
     private func present(url: URL, dark: Bool) {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        // Same app default the thumbnail uses, so preview and Finder icon agree.
+        guard let host = prestartedHost else {
+            hostingView.rootView = PreviewView(
+                state: .failed("Couldn't start the web renderer"),
+                interaction: interaction,
+                isDark: dark
+            )
+            return
+        }
         let defaults = RendererLookDefaults.current()
+        // Cache-only Icon Services read — does not start ThumbnailExtension.
+        let placeholder = CachedQuickLookThumbnail.existingIcon(for: url)
         hostingView.rootView = PreviewView(
             state: .loading,
             interaction: interaction,
@@ -58,7 +84,9 @@ class PreviewViewController: NSViewController, QLPreviewingController {
             webCanvasLook: WebPreviewCanvas.Look(
                 environment: defaults.environment,
                 toneMapping: defaults.toneMapping
-            )
+            ),
+            placeholderImage: placeholder,
+            webCanvasHost: host
         )
     }
 

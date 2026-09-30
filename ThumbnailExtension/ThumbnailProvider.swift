@@ -1,6 +1,6 @@
 import QuickLookThumbnailing
-import RealityKit
 import CoreGraphics
+import Foundation
 
 class ThumbnailProvider: QLThumbnailProvider {
 
@@ -13,102 +13,55 @@ class ThumbnailProvider: QLThumbnailProvider {
         // extension gets no completion callback — so clear PNGs left by earlier requests.
         Self.sweepStaleThumbnails()
 
-        // SPIKE: route to the WebGL renderer when the marker file is present. Extensions do
-        // not inherit the shell environment, and a sandboxed extension cannot see a shared
-        // UserDefaults suite either, so a home-directory marker file is the switch:
-        //     touch ~/.gltf-inspector-web-thumbnail
-        // Absent by default, so the shipping RealityKit path is untouched.
-        if Self.usesWebRenderer {
-            Task.detached {
-                do {
-                    let fileURL = try await Self.renderWithWebGL(url: url, pixel: pixel)
-                    handler(QLThumbnailReply(imageFileURL: fileURL), nil)
-                } catch {
-                    AppLog.error(
-                        AppLog.webRenderer,
-                        "web thumbnail failed \(url.lastPathComponent) \(error)"
-                    )
-                    handler(nil, error)
-                }
-            }
-            return
-        }
-
-        // Detached like Quick Look: prepare/parse off the main actor; RealityKit
-        // convert and StillRenderer hop to MainActor inside EntityLoader / capture.
         Task.detached {
             do {
-                let model = try await EntityLoader.loadThumbnail(from: url)
-                let assembled = await PreviewCamera.makeTurntable(for: model.entity)
-                let still = try await StillRenderer(
-                    root: assembled.pivot,
-                    bounds: assembled.bounds,
-                    width: pixel,
-                    height: pixel,
-                    background: CGColor(gray: 0.94, alpha: 1),
-                    padding: PreviewCamera.thumbnailFitPadding,
-                    intensityExponent: model.studioIBLExponent
-                )
-                let image = try await still.capture()
-                let fileURL = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
-                try await MainActor.run {
-                    try StillRenderer.writePNG(image, to: fileURL)
-                }
-                // Finder / QLThumbnailGenerator reliably consumes imageFileURL.
-                // The CGContext drawing reply works in `qlmanage -x` but fails with
-                // QLThumbnailError 102 for the generator path Finder uses.
+                let fileURL = try await Self.render(url: url, pixel: pixel)
+                // Finder's generator reliably consumes `imageFileURL`. The CGContext drawing
+                // reply works under `qlmanage -x` but fails there with QLThumbnailError 102 —
+                // do not "simplify" this to the drawing reply.
                 handler(QLThumbnailReply(imageFileURL: fileURL), nil)
             } catch {
-                AppLog.error(AppLog.thumbnail, "thumbnail failed \(url.lastPathComponent) \(error)")
+                AppLog.error(
+                    AppLog.webRenderer,
+                    "thumbnail failed \(url.lastPathComponent) \(error.localizedDescription)"
+                )
                 handler(nil, error)
             }
         }
     }
 
-    // MARK: - WebGL spike
+    /// Renders through the same page the document window and Quick Look use, so a file's Finder
+    /// icon matches how it opens.
+    ///
+    /// One warm host per extension process, serialized. Folder-scale cold start is ~850 ms/file;
+    /// reuse is ~70 ms/file on the same path.
+    @MainActor
+    private static var shared: SharedHost?
+    @MainActor
+    private static var renderChain: Task<URL, Error>?
 
-    /// Feature flag for the WebGL thumbnail spike. Remove with the spike.
-    ///
-    /// A marker file, not a `UserDefaults` suite: the extension is sandboxed, so it reads
-    /// preferences from its own container and never sees `defaults write` on a shared suite.
-    /// That failed silently — the flag read `false` and the RealityKit path ran while looking
-    /// like a successful web render. The existing home-relative read-only exception in
-    /// `ThumbnailExtension.entitlements` makes a file in the home directory readable, so this
-    /// needs no entitlement change and leaves the sandbox profile untouched for the spike.
-    ///
-    ///     touch ~/.gltf-inspector-web-thumbnail     # web
-    ///     rm    ~/.gltf-inspector-web-thumbnail     # RealityKit
-    /// `homeDirectoryForCurrentUser` and `NSHomeDirectory()` both return the *container* home
-    /// inside a sandboxed extension, so they look for the marker in the wrong place and
-    /// silently report false. `getpwuid` reports the real home, which is also what the
-    /// home-relative read-only exception is scoped against.
-    private static var usesWebRenderer: Bool {
-        guard let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir else { return false }
-        let home = FileManager.default.string(
-            withFileSystemRepresentation: dir, length: strlen(dir)
-        )
-        let marker = URL(fileURLWithPath: home)
-            .appendingPathComponent(".gltf-inspector-web-thumbnail")
-        return FileManager.default.fileExists(atPath: marker.path)
+    private struct SharedHost {
+        let host: WebRendererHost
+        let environment: String
+        let toneMapping: String
     }
 
-    /// Renders through `WKWebView` and writes the PNG where Quick Look can pick it up.
-    ///
-    /// Reply mechanism is deliberately identical to the RealityKit path: Finder's generator
-    /// consumes `imageFileURL` reliably, while the `CGContext` drawing reply fails with
-    /// `QLThumbnailError 102` there even though it works under `qlmanage -x`.
     @MainActor
-    private static func renderWithWebGL(url: URL, pixel: Int) async throws -> URL {
-        let started = CFAbsoluteTimeGetCurrent()
-        AppLog.info(AppLog.webRenderer, "web thumbnail start \(url.lastPathComponent) \(pixel)px")
+    private static func render(url: URL, pixel: Int) async throws -> URL {
+        let previous = renderChain
+        let work = Task<URL, Error> { @MainActor in
+            _ = try? await previous?.value
+            return try await renderNow(url: url, pixel: pixel)
+        }
+        renderChain = work
+        return try await work.value
+    }
 
-        let host = try WebRendererHost(mode: .still)
-        try await host.start(size: pixel)
-        // App default, so a file's Finder icon matches how it opens.
+    @MainActor
+    private static func renderNow(url: URL, pixel: Int) async throws -> URL {
+        let started = CFAbsoluteTimeGetCurrent()
         let look = RendererLookDefaults.current()
-        try await host.setEnvironment(named: look.environment)
-        try await host.send { .setToneMapping(id: $0, name: look.toneMapping) }
+        let host = try await reusedHost(environment: look.environment, toneMapping: look.toneMapping, pixel: pixel)
         let info = try await host.load(model: url)
         let image = try await host.renderStill()
 
@@ -116,15 +69,30 @@ class ThumbnailProvider: QLThumbnailProvider {
             .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
         try StillRenderer.writePNG(image, to: fileURL)
 
-        let elapsed = (CFAbsoluteTimeGetCurrent() - started) * 1000
         AppLog.info(
             AppLog.webRenderer,
             String(
-                format: "web thumbnail ready %@ %.0fms total (%d triangles)",
-                url.lastPathComponent, elapsed, info.triangles
+                format: "thumbnail ready %@ %.0fms %dpx tris=%d",
+                url.lastPathComponent, (CFAbsoluteTimeGetCurrent() - started) * 1000,
+                image.width, info.triangles
             )
         )
         return fileURL
+    }
+
+    @MainActor
+    private static func reusedHost(environment: String, toneMapping: String, pixel: Int) async throws -> WebRendererHost {
+        if let shared, shared.environment == environment, shared.toneMapping == toneMapping {
+            try await shared.host.start(size: pixel)
+            return shared.host
+        }
+        let host = try WebRendererHost(mode: .still)
+        try await host.start(size: pixel)
+        // Cheap first call: load proceeds without waiting on HDR. `renderStill` joins IBL.
+        try await host.setEnvironment(named: environment)
+        try await host.send { .setToneMapping(id: $0, name: toneMapping) }
+        shared = SharedHost(host: host, environment: environment, toneMapping: toneMapping)
+        return host
     }
 
     /// Remove `glb-thumb-*.png` files older than a minute. Best-effort: the age guard keeps a

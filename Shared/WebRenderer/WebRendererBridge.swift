@@ -26,6 +26,10 @@ struct WebRendererCommand: Equatable {
         case setFieldOfView
         case setFileCamera
         case setMaterialVariant
+        case setFloor
+        case setCenter
+        case setWireframe
+        case setSelectedNode
     }
 
     var id: Int
@@ -165,6 +169,31 @@ struct WebRendererCommand: Equatable {
     /// `nil` restores the file's default variant.
     static func setMaterialVariant(id: Int, index: Int?) -> Self {
         var command = Self(id: id, kind: .setMaterialVariant)
+        command.index = index
+        return command
+    }
+
+    static func setFloor(id: Int, enabled: Bool) -> Self {
+        var command = Self(id: id, kind: .setFloor)
+        command.enabled = enabled
+        return command
+    }
+
+    static func setCenter(id: Int, enabled: Bool) -> Self {
+        var command = Self(id: id, kind: .setCenter)
+        command.enabled = enabled
+        return command
+    }
+
+    static func setWireframe(id: Int, enabled: Bool) -> Self {
+        var command = Self(id: id, kind: .setWireframe)
+        command.enabled = enabled
+        return command
+    }
+
+    /// `nil` clears the highlight.
+    static func setSelectedNode(id: Int, index: Int?) -> Self {
+        var command = Self(id: id, kind: .setSelectedNode)
         command.index = index
         return command
     }
@@ -334,6 +363,8 @@ struct WebRendererEvent: Equatable {
         case failed
         /// Something outside a command handler broke.
         case error
+        /// Load-stage ping from the page. Not tied to a command id.
+        case progress
     }
 
     var name: Name
@@ -348,6 +379,10 @@ struct WebRendererEvent: Equatable {
     var mode: String?
     var width: Int?
     var height: Int?
+    var parseMs: Int?
+    var fitMs: Int?
+    /// Live `load` only: first `renderFrame` after parse. Zero in still mode.
+    var firstFrameMs: Int?
     var camera: RendererCameraState?
 
     /// Returns nil for a body that is not a recognisable event, so the host can report a
@@ -369,9 +404,19 @@ struct WebRendererEvent: Equatable {
         self.sceneCount = object["sceneCount"] as? Int
         self.animationCount = object["animationCount"] as? Int
         self.mode = object["mode"] as? String
-        self.width = object["width"] as? Int
-        self.height = object["height"] as? Int
+        self.width = Self.intValue(object, "width")
+        self.height = Self.intValue(object, "height")
+        self.parseMs = Self.intValue(object, "parseMs")
+        self.fitMs = Self.intValue(object, "fitMs")
+        self.firstFrameMs = Self.intValue(object, "firstFrameMs")
         self.camera = RendererCameraState(json: object)
+    }
+
+    /// JS numbers arrive as `Int` or `Double` depending on the bridge.
+    private static func intValue(_ object: [String: Any], _ key: String) -> Int? {
+        if let value = object[key] as? Int { return value }
+        if let value = object[key] as? Double { return Int(value) }
+        return nil
     }
 }
 

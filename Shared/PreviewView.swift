@@ -1,3 +1,4 @@
+import AppKit
 import RealityKit
 import SwiftUI
 
@@ -41,14 +42,23 @@ struct PreviewView: View {
     var webCanvasURL: URL? = nil
     /// Look applied to the web canvas.
     var webCanvasLook = WebPreviewCanvas.Look()
+    /// Cached Finder icon shown under the web view until `load` unhides it. Quick Look only.
+    var placeholderImage: NSImage? = nil
+    /// Optional live host already constructed (Quick Look `loadView` prestart).
+    var webCanvasHost: WebRendererHost? = nil
 
     var body: some View {
         Group {
-            // The web canvas does its own loading, so it does not wait on the RealityKit
-            // convert. Quick Look takes this path with no convert at all, which is where the
-            // saved work matters most — its process is cold on every spacebar press.
+            // The web canvas shows its own spinner + file facts while WKWebView stays hidden.
+            // Quick Look takes this path with no RealityKit convert, which is where the
+            // wait is — its process is cold on every spacebar press.
             if let webCanvasURL, !state.isFailed {
-                WebPreviewCanvas(url: webCanvasURL, look: webCanvasLook)
+                WebPreviewCanvas(
+                    url: webCanvasURL,
+                    look: webCanvasLook,
+                    placeholderImage: placeholderImage,
+                    host: webCanvasHost
+                )
             } else {
                 switch state {
                 case .loading:

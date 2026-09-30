@@ -78,6 +78,24 @@ struct WebRendererControlsTests {
         // The model must still be there — a backdrop change must not disturb the render.
         let image = try await host.renderStill()
         #expect(opaqueSamples(in: image) > 50, "model vanished after the backdrop change")
+        assertTransparentCorners(image)
+    }
+
+    /// Environment-as-skybox or Khronos's opaque clear would fill every corner.
+    @Test(.enabled(if: TestModels.hasKhronosSamples))
+    func stillFrameCornersAreTransparent() async throws {
+        let host = try await makeHost()
+        assertTransparentCorners(try await host.renderStill())
+    }
+
+    private func assertTransparentCorners(_ image: CGImage) {
+        let rep = NSBitmapImageRep(cgImage: image)
+        let maxX = max(0, rep.pixelsWide - 1)
+        let maxY = max(0, rep.pixelsHigh - 1)
+        for (x, y) in [(0, 0), (maxX, 0), (0, maxY), (maxX, maxY)] {
+            let alpha = rep.colorAt(x: x, y: y)?.alphaComponent ?? 1
+            #expect(alpha < 0.01, "canvas corner (\(x),\(y)) is opaque: alpha=\(alpha)")
+        }
     }
 
     @Test(.enabled(if: TestModels.hasKhronosSamples))
@@ -154,6 +172,44 @@ struct WebRendererControlsTests {
 
         #expect(opaqueSamples(in: studio) > 50, "studio frame is empty")
         #expect(png(neutral) != png(studio), "environment switch did not change the lighting")
+    }
+
+    @Test(.enabled(if: TestModels.hasKhronosSamples))
+    func floorChangesPixelsWithoutMovingTheCamera() async throws {
+        let host = try await makeHost()
+        let before = try await host.cameraState()
+        try await expectVisibleChange(
+            host, applying: { .setFloor(id: $0, enabled: true) }, "floor"
+        )
+        let after = try await host.cameraState()
+        #expect(before.pose.distance == after.pose.distance, "floor moved the camera distance")
+        #expect(before.pose.target == after.pose.target, "floor moved the camera target")
+        #expect(before.pose.azimuth == after.pose.azimuth, "floor moved the camera azimuth")
+        #expect(before.pose.elevation == after.pose.elevation, "floor moved the camera elevation")
+    }
+
+    @Test(.enabled(if: TestModels.hasKhronosSamples))
+    func authoredOriginGizmoChangesTheRender() async throws {
+        let host = try await makeHost()
+        try await expectVisibleChange(
+            host, applying: { .setCenter(id: $0, enabled: false) }, "authored origin"
+        )
+    }
+
+    @Test(.enabled(if: TestModels.hasKhronosSamples))
+    func wireframeChangesTheRender() async throws {
+        let host = try await makeHost()
+        try await expectVisibleChange(
+            host, applying: { .setWireframe(id: $0, enabled: true) }, "wireframe"
+        )
+    }
+
+    @Test(.enabled(if: TestModels.hasKhronosSamples))
+    func selectingANodeHighlightsTheCanvas() async throws {
+        let host = try await makeHost()
+        try await expectVisibleChange(
+            host, applying: { .setSelectedNode(id: $0, index: 0) }, "selection"
+        )
     }
 }
 
@@ -242,5 +298,76 @@ struct RendererLookDefaultsTests {
 
         #expect(neutral != nil && studio != nil)
         #expect(neutral != studio, "changing the app default did not change the render")
+    }
+}
+
+/// Thumbnail path: still host + app look, including `.gltf` sidecars.
+@MainActor
+struct WebRendererThumbnailPathTests {
+    @Test
+    func sidecarGLTFProducesAStill() async throws {
+        let host = try WebRendererHost(mode: .still)
+        try await host.start(size: 128)
+        try await host.setEnvironment(named: "neutral")
+        _ = try await host.load(model: TestFixtures.cube)
+        let image = try await host.renderStill()
+        #expect(image.width > 8)
+        #expect(image.height > 8)
+    }
+
+    @Test
+    func corruptFileFailsInsteadOfHanging() async throws {
+        let host = try WebRendererHost(mode: .still)
+        try await host.start(size: 64)
+        await #expect(throws: Error.self) {
+            _ = try await host.load(model: TestFixtures.corrupt)
+        }
+    }
+
+    /// Cold still of BoomBox — the spike's 1807 ms comparison point.
+    @Test(.enabled(if: TestModels.hasKhronosSamples))
+    func recordsSingleFileStillTiming() async throws {
+        let started = CFAbsoluteTimeGetCurrent()
+        let host = try WebRendererHost(mode: .still)
+        try await host.start(size: 256)
+        try await host.setEnvironment(named: "neutral")
+        _ = try await host.load(model: TestModels.boomBox)
+        let image = try await host.renderStill()
+        let ms = (CFAbsoluteTimeGetCurrent() - started) * 1000
+        print(String(format: "thumb-bench single BoomBox %.0fms %dx%d", ms, image.width, image.height))
+        #expect(image.width == 256)
+        #expect(ms < 15_000)
+    }
+
+    /// 100 sequential stills on one warm host (the reuse lever) plus 12 cold hosts.
+    @Test
+    func recordsFolderScaleStillTiming() async throws {
+        let files = [TestFixtures.tiny] + TestModels.khronosGLBs.prefix(11)
+        let warmHost = try WebRendererHost(mode: .still)
+        try await warmHost.start(size: 64)
+        try await warmHost.setEnvironment(named: "neutral")
+        let warmStart = CFAbsoluteTimeGetCurrent()
+        for i in 0..<100 {
+            _ = try await warmHost.load(model: files[i % files.count])
+            _ = try await warmHost.renderStill()
+        }
+        let warmMs = (CFAbsoluteTimeGetCurrent() - warmStart) * 1000
+        print(String(format: "thumb-bench warm 100 stills %.0fms (%.0fms/file)", warmMs, warmMs / 100))
+
+        let coldCount = min(12, max(1, files.count))
+        let coldStart = CFAbsoluteTimeGetCurrent()
+        for i in 0..<coldCount {
+            let host = try WebRendererHost(mode: .still)
+            try await host.start(size: 64)
+            try await host.setEnvironment(named: "neutral")
+            _ = try await host.load(model: files[i % files.count])
+            _ = try await host.renderStill()
+        }
+        let coldMs = (CFAbsoluteTimeGetCurrent() - coldStart) * 1000
+        print(String(
+            format: "thumb-bench cold %d hosts %.0fms (%.0fms/file)",
+            coldCount, coldMs, coldMs / Double(coldCount)
+        ))
+        #expect(warmMs / 100 < 5_000)
     }
 }

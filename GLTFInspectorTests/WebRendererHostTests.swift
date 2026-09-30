@@ -44,6 +44,15 @@ struct WebRendererBridgeTests {
         #expect(event.name == .result)
         #expect(event.id == 4)
         #expect(event.triangles == 6036)
+        #expect(event.firstFrameMs == nil)
+    }
+
+    @Test
+    func eventParsesLiveFirstFrameMs() throws {
+        let event = try #require(WebRendererEvent(body: [
+            "event": "result", "id": 1, "firstFrameMs": 240,
+        ] as [String: Any]))
+        #expect(event.firstFrameMs == 240)
     }
 
     @Test
@@ -145,6 +154,18 @@ struct WebRendererHostTests {
 
         write(front, to: "web-renderer-azimuth-0.png")
         write(turned, to: "web-renderer-azimuth-120.png")
+    }
+
+    @Test
+    func liveLoadDrawsTheFirstFrameBeforeReturning() async throws {
+        let host = try WebRendererHost(mode: .live, timeout: .seconds(60))
+        try await host.start()
+        let info = try await host.load(model: TestFixtures.tiny)
+        #expect(info.triangles > 0)
+        #expect(info.width >= 1)
+        #expect(info.height >= 1)
+        // Still mode leaves this 0; live `load` now waits on the first GPU frame.
+        #expect(info.firstFrameMs >= 0)
     }
 
     @Test

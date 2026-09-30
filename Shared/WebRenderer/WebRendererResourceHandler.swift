@@ -34,9 +34,9 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
         let payload: Data?
         let mimeType: String
 
-        if url.path == "/model" {
-            mimeType = "model/gltf-binary"
-            payload = model.flatMap(Self.readSecurityScoped)
+        if url.path == "/model" || url.path.hasPrefix("/model/") {
+            mimeType = Self.modelMimeType(url.path)
+            payload = resolveModel(url.path)
         } else if let file = resolveEnvironment(url.path) {
             mimeType = "image/vnd.radiance"
             payload = try? Data(contentsOf: file)
@@ -70,6 +70,47 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
+
+    /// Serves the inspected file and its sidecars from the security-scoped folder.
+    /// `/model` and `/model/<basename>` are the primary file; `/model/<relative>` is a sibling.
+    private func resolveModel(_ path: String) -> Data? {
+        guard let model else { return nil }
+        let remainder: String
+        if path == "/model" {
+            remainder = ""
+        } else if path.hasPrefix("/model/") {
+            remainder = String(path.dropFirst("/model/".count))
+        } else {
+            return nil
+        }
+
+        let decoded = remainder.removingPercentEncoding ?? remainder
+        guard !decoded.contains("..") else { return nil }
+
+        let file: URL
+        if decoded.isEmpty || decoded == model.lastPathComponent {
+            file = model
+        } else {
+            file = model.deletingLastPathComponent().appendingPathComponent(decoded)
+        }
+
+        let folder = model.deletingLastPathComponent().standardizedFileURL.path
+        guard file.standardizedFileURL.path.hasPrefix(folder + "/") || file.standardizedFileURL == model.standardizedFileURL
+        else { return nil }
+
+        return Self.readSecurityScoped(file)
+    }
+
+    private static func modelMimeType(_ path: String) -> String {
+        let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+        switch ext {
+        case "gltf", "json": return "model/gltf+json"
+        case "bin": return "application/octet-stream"
+        case "png": return "image/png"
+        case "jpg", "jpeg": return "image/jpeg"
+        default: return "model/gltf-binary"
+        }
+    }
 
     /// Confines every request to the bundled renderer folder. A page that went wrong must not
     /// be able to read arbitrary files through this handler.

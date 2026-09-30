@@ -7,7 +7,7 @@ import PreviewUI
 /// `PreviewUI` type and the Quick Look and thumbnail extensions do not link that framework.
 extension WebPreviewCanvas.Look {
     @MainActor
-    init(_ viewport: some ViewportController, sceneIndex: Int) {
+    init(_ viewport: some ViewportController, sceneIndex: Int, selectedNodeIndex: Int? = nil) {
         let lighting = viewport.lighting
         self.init(
             environment: lighting.environment.rawValue,
@@ -21,7 +21,11 @@ extension WebPreviewCanvas.Look {
             debugChannel: Self.khronosDebugChannel(viewport.viewMode),
             fileCameraIndex: nil,
             materialVariantIndex: viewport.selectedMaterialVariantIndex,
-            sceneIndex: sceneIndex
+            sceneIndex: sceneIndex,
+            showsFloor: viewport.showsFloor,
+            isCentered: viewport.isCentered,
+            wireframe: viewport.viewMode == .wireframe,
+            selectedNodeIndex: selectedNodeIndex
         )
     }
 
@@ -37,9 +41,7 @@ extension WebPreviewCanvas.Look {
 
     /// Values are `GltfState.DebugOutput` strings — matched by string, so they must stay exact.
     ///
-    /// `wireframe` has no counterpart: the Khronos renderer has no wireframe mode. It falls back
-    /// to shaded rather than showing an unrelated channel, and the gap is recorded rather than
-    /// disguised.
+    /// Wireframe is a page overlay (`Look.wireframe`), not a Khronos debug channel.
     private static func khronosDebugChannel(_ mode: ViewMode) -> String {
         switch mode {
         case .shaded, .wireframe: "None"

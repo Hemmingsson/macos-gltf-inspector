@@ -54,9 +54,21 @@ const state = view.createState();
 const resources = view.createResourceLoader(undefined, undefined, "libs/");
 
 state.renderingParameters.toneMap = GltfState.ToneMaps.KHR_PBR_NEUTRAL;
+// First paint uses Khronos key+fill. HDR IBL is optional until `setEnvironment`
+// lands — `useIBL` stays off so the first frame is a lit silhouette, not a black clear.
+state.renderingParameters.useIBL = false;
+state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
+state.renderingParameters.clearColor = [0, 0, 0, 0];
+state.renderingParameters.renderEnvironmentMap = false;
 
 let live = false;
 let autoRotate = false;
+/** Inspector chrome drawn after the Khronos frame. Off until the host asks — still/thumbnail
+ *  must not inherit the document window's floor or gizmos. */
+let showFloor = false;
+let centerModel = true;
+let showWireframe = false;
+let selectedNodeIndex = null;
 
 /** Continuous rendering for the document window and Quick Look. */
 function tick() {
@@ -65,7 +77,11 @@ function tick() {
     // Spin the camera around the target rather than the model, so the authored transform is
     // never misrepresented — an inspector must not move geometry the file did not move.
     if (autoRotate && state.gltf) state.userCamera.orbit(1.2, 0);
-    view.renderFrame(state, canvas.width, canvas.height);
+    // `renderFrame` clears the drawing buffer even when there is no gltf — skip until load.
+    if (state.gltf) {
+        view.renderFrame(state, canvas.width, canvas.height);
+        drawOverlays();
+    }
     requestAnimationFrame(tick);
 }
 
@@ -98,6 +114,27 @@ function fitCamera() {
     if (scene === undefined) return;
     scene.applyTransformHierarchy(state.gltf);
     state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+    if (!centerModel) includeOriginInFraming();
+}
+
+/**
+ * When centering is off, the authored origin must be in frame — a model 40 units off-origin
+ * is a real inspector finding. Does not run for the floor toggle.
+ */
+function includeOriginInFraming() {
+    const camera = state.userCamera;
+    const min = camera.sceneExtents.min.slice();
+    const max = camera.sceneExtents.max.slice();
+    for (let i = 0; i < 3; i++) {
+        min[i] = Math.min(min[i], 0);
+        max[i] = Math.max(max[i], 0);
+        camera.sceneExtents.min[i] = min[i];
+        camera.sceneExtents.max[i] = max[i];
+    }
+    camera.fitDistanceToExtents(min, max);
+    camera.fitCameraTargetToExtents(min, max);
+    camera.fitPanSpeedToScene(min, max);
+    camera.fitCameraPlanesToExtents(min, max);
 }
 
 /**
@@ -107,6 +144,245 @@ function fitCamera() {
  * Carried over from the RealityKit implementation, per AGENTS.md: scroll is an *infinite*
  * dolly rather than a clamped zoom, and shift-drag pans.
  */
+let overlayProgram = null;
+let overlayBuffer = null;
+
+function compileOverlayProgram() {
+    if (overlayProgram) return overlayProgram;
+    const vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, `attribute vec3 a_pos; attribute vec3 a_color; uniform mat4 u_vp;
+        varying vec3 v_color; void main() { gl_Position = u_vp * vec4(a_pos, 1.0); v_color = a_color; }`);
+    gl.compileShader(vs);
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, `precision mediump float; varying vec3 v_color;
+        void main() { gl_FragColor = vec4(v_color, 1.0); }`);
+    gl.compileShader(fs);
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    overlayProgram = program;
+    overlayBuffer = gl.createBuffer();
+    return program;
+}
+
+function mulMat4(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+        for (let r = 0; r < 4; r++) {
+            o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1]
+                + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+        }
+    }
+    return o;
+}
+
+function transformPoint(m, x, y, z) {
+    return [
+        m[0] * x + m[4] * y + m[8] * z + m[12],
+        m[1] * x + m[5] * y + m[9] * z + m[13],
+        m[2] * x + m[6] * y + m[10] * z + m[14],
+    ];
+}
+
+function pushLine(lines, a, b, color) {
+    lines.push(a[0], a[1], a[2], color[0], color[1], color[2]);
+    lines.push(b[0], b[1], b[2], color[0], color[1], color[2]);
+}
+
+function sceneBounds() {
+    const min = state.userCamera.sceneExtents.min;
+    const max = state.userCamera.sceneExtents.max;
+    return {
+        min, max,
+        extentX: Math.max(1e-4, max[0] - min[0]),
+        extentY: Math.max(1e-4, max[1] - min[1]),
+        extentZ: Math.max(1e-4, max[2] - min[2]),
+    };
+}
+
+function collectPolarFloor(lines) {
+    const bounds = sceneBounds();
+    const diameter = 2.7 * Math.max(bounds.extentX, bounds.extentZ);
+    const radius = Math.max(diameter * 0.5, 0.001);
+    const y = bounds.min[1] - 0.001;
+    const color = [0.53, 0.53, 0.53];
+    const rings = 4;
+    const radials = 8;
+    const segments = 64;
+    for (let ring = 1; ring <= rings; ring++) {
+        const r = radius * ring / rings;
+        let prev = null;
+        for (let i = 0; i <= segments; i++) {
+            const a = (i / segments) * Math.PI * 2;
+            const p = [Math.cos(a) * r, y, Math.sin(a) * r];
+            if (prev) pushLine(lines, prev, p, color);
+            prev = p;
+        }
+    }
+    const inner = Math.max(radius * 0.03, 0.002);
+    for (let i = 0; i < radials; i++) {
+        const a = (i / radials) * Math.PI * 2;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        pushLine(lines, [c * inner, y, s * inner], [c * radius, y, s * radius], color);
+    }
+}
+
+function collectOriginGizmo(lines) {
+    const bounds = sceneBounds();
+    const size = 0.18 * Math.max(bounds.extentX, bounds.extentY, bounds.extentZ, 0.05);
+    pushLine(lines, [0, 0, 0], [size, 0, 0], [1, 0.2, 0.2]);
+    pushLine(lines, [0, 0, 0], [0, size, 0], [0.2, 1, 0.2]);
+    pushLine(lines, [0, 0, 0], [0, 0, size], [0.25, 0.45, 1]);
+}
+
+function nodeWorldMatrix(node) {
+    return node.getRenderedWorldTransform?.() ?? node.worldTransform;
+}
+
+function expandAABB(min, max, point) {
+    for (let i = 0; i < 3; i++) {
+        min[i] = Math.min(min[i], point[i]);
+        max[i] = Math.max(max[i], point[i]);
+    }
+}
+
+function primitiveAABB(gltf, primitive, world, min, max) {
+    const accessorIndex = primitive.attributes?.POSITION;
+    if (accessorIndex === undefined) return;
+    const accessor = gltf.accessors[accessorIndex];
+    if (!accessor?.min || !accessor?.max) return;
+    const corners = [];
+    for (const x of [accessor.min[0], accessor.max[0]]) {
+        for (const y of [accessor.min[1], accessor.max[1]]) {
+            for (const z of [accessor.min[2], accessor.max[2]]) {
+                corners.push(transformPoint(world, x, y, z));
+            }
+        }
+    }
+    for (const p of corners) expandAABB(min, max, p);
+}
+
+function subtreeAABB(rootIndex) {
+    const gltf = state.gltf;
+    if (!gltf) return null;
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    const stack = [rootIndex];
+    while (stack.length) {
+        const index = stack.pop();
+        const node = gltf.nodes?.[index];
+        if (!node) continue;
+        if (node.children) stack.push(...node.children);
+        if (node.mesh === undefined) continue;
+        const mesh = gltf.meshes[node.mesh];
+        const world = nodeWorldMatrix(node);
+        if (!mesh?.primitives || !world) continue;
+        for (const primitive of mesh.primitives) {
+            primitiveAABB(gltf, primitive, world, min, max);
+        }
+    }
+    if (!Number.isFinite(min[0])) {
+        const node = gltf.nodes[rootIndex];
+        const world = node && nodeWorldMatrix(node);
+        if (!world) return null;
+        const origin = transformPoint(world, 0, 0, 0);
+        return { min: origin, max: origin };
+    }
+    return { min, max };
+}
+
+function collectAABB(lines, box, color) {
+    const [x0, y0, z0] = box.min;
+    const [x1, y1, z1] = box.max;
+    const pad = 0.01 * Math.max(x1 - x0, y1 - y0, z1 - z0, 0.01);
+    const a = [x0 - pad, y0 - pad, z0 - pad];
+    const b = [x1 + pad, y1 + pad, z1 + pad];
+    const corners = [
+        [a[0], a[1], a[2]], [b[0], a[1], a[2]], [a[0], b[1], a[2]], [b[0], b[1], a[2]],
+        [a[0], a[1], b[2]], [b[0], a[1], b[2]], [a[0], b[1], b[2]], [b[0], b[1], b[2]],
+    ];
+    const edges = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+    for (const [i, j] of edges) pushLine(lines, corners[i], corners[j], color);
+}
+
+function collectWireframe(lines) {
+    const gltf = state.gltf;
+    const scene = gltf?.scenes?.[state.sceneIndex];
+    if (!scene) return;
+    const color = [0.85, 0.9, 1];
+    const stack = scene.nodes.slice();
+    while (stack.length) {
+        const node = gltf.nodes[stack.pop()];
+        if (!node) continue;
+        if (node.children) stack.push(...node.children);
+        if (node.mesh === undefined) continue;
+        const mesh = gltf.meshes[node.mesh];
+        const world = nodeWorldMatrix(node);
+        if (!mesh?.primitives || !world) continue;
+        for (const primitive of mesh.primitives) {
+            const accessor = gltf.accessors[primitive.attributes?.POSITION];
+            if (!accessor) continue;
+            const positions = accessor.getNormalizedDeinterlacedView?.(gltf);
+            if (!positions) continue;
+            let indices;
+            if (primitive.indices !== undefined) {
+                const ia = gltf.accessors[primitive.indices];
+                indices = ia.getNormalizedDeinterlacedView?.(gltf) ?? ia.getTypedView?.(gltf);
+            }
+            const count = indices ? indices.length : positions.length / 3;
+            const vertex = (i) => {
+                const idx = indices ? indices[i] : i;
+                return transformPoint(world, positions[idx * 3], positions[idx * 3 + 1], positions[idx * 3 + 2]);
+            };
+            for (let i = 0; i + 2 < count; i += 3) {
+                const p0 = vertex(i);
+                const p1 = vertex(i + 1);
+                const p2 = vertex(i + 2);
+                pushLine(lines, p0, p1, color);
+                pushLine(lines, p1, p2, color);
+                pushLine(lines, p2, p0, color);
+            }
+        }
+    }
+}
+
+function drawOverlays() {
+    if (!state.gltf) return;
+    if (!showFloor && centerModel && !showWireframe && selectedNodeIndex == null) return;
+    const program = compileOverlayProgram();
+    const lines = [];
+    if (showFloor) collectPolarFloor(lines);
+    if (!centerModel) collectOriginGizmo(lines);
+    if (showWireframe) collectWireframe(lines);
+    if (selectedNodeIndex != null) {
+        const box = subtreeAABB(selectedNodeIndex);
+        if (box) collectAABB(lines, box, [0.15, 0.75, 1]);
+    }
+    if (!lines.length) return;
+
+    const aspect = canvas.width / Math.max(1, canvas.height);
+    const view = state.userCamera.getViewMatrix(state.gltf);
+    const proj = state.userCamera.getProjectionMatrix(aspect);
+    const vp = mulMat4(proj, view);
+
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, overlayBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STREAM_DRAW);
+    const pos = gl.getAttribLocation(program, "a_pos");
+    const col = gl.getAttribLocation(program, "a_color");
+    gl.enableVertexAttribArray(pos);
+    gl.vertexAttribPointer(pos, 3, gl.FLOAT, false, 24, 0);
+    gl.enableVertexAttribArray(col);
+    gl.vertexAttribPointer(col, 3, gl.FLOAT, false, 24, 12);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_vp"), false, vp);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.disable(gl.CULL_FACE);
+    gl.drawArrays(gl.LINES, 0, lines.length / 6);
+}
+
 function installPointerControls() {
     let dragging = false;
     let panning = false;
@@ -172,19 +448,38 @@ const commands = {
             lut_charlie_file: "assets/lut_charlie.png",
             lut_sheen_E_file: "assets/lut_sheen_E.png",
         });
+        state.renderingParameters.useIBL = true;
         return {};
     },
 
     async load({ url }) {
-        const bytes = await (await fetch(url)).arrayBuffer();
-        state.gltf = await resources.loadGltf(bytes);
+        // String URL, not bytes: `.gltf` sidecars resolve relative to this path
+        // (`gltf-inspector:///model/<name>` → `/model/<bin>`), which Swift serves
+        // from the security-scoped folder. `loadGltf(ArrayBuffer)` is GLB-only.
+        const t0 = performance.now();
+        send({ event: "progress", stage: "load" });
+        state.gltf = await resources.loadGltf(url);
+        const parseMs = Math.round(performance.now() - t0);
         state.sceneIndex = state.gltf.scene ?? 0;
+        const tFit = performance.now();
         fitCamera();
+        const fitMs = Math.round(performance.now() - tFit);
         const stats = view.gatherStatistics(state) ?? {};
         // Still mode keeps the exact size `configure` was given; only live mode follows the
         // view. Resizing here would silently multiply a requested 512 by the device pixel
         // ratio and hand back a 1024 thumbnail.
-        if (live) resize();
+        let firstFrameMs = 0;
+        if (live) {
+            resize();
+            // `loadGltf` is CPU. The long blank after it is this first GPU frame
+            // (program link + texture upload). Do it before the command returns so
+            // Swift can keep the spinner up. `tick` would do it later, after reveal.
+            send({ event: "progress", stage: "frame" });
+            const tFrame = performance.now();
+            view.renderFrame(state, canvas.width, canvas.height);
+            drawOverlays();
+            firstFrameMs = Math.round(performance.now() - tFrame);
+        }
         return {
             width: canvas.width,
             height: canvas.height,
@@ -192,6 +487,9 @@ const commands = {
             animationCount: state.gltf.animations?.length ?? 0,
             triangles: stats.faceCount ?? 0,
             meshes: stats.meshCount ?? 0,
+            parseMs,
+            fitMs,
+            firstFrameMs,
         };
     },
 
@@ -315,10 +613,9 @@ const commands = {
     /**
      * `[r, g, b, a]` in 0-1. Alpha 0 lets the host window show through.
      *
-     * Painted as the page background, not `renderingParameters.clearColor`. The context is
-     * created with `alpha: true` and the renderer's final composite writes transparent, so
-     * `clearColor` only ever tints intermediate framebuffers and never reaches the canvas —
-     * setting it looks like it works and changes nothing.
+     * Painted as the page background, not `renderingParameters.clearColor`. `clearFrame`
+     * does write `clearColor` to the canvas; we keep that transparent so CSS (and the
+     * host window) stay visible around the model.
      */
     setBackdrop({ color }) {
         const [r, g, b, a] = color;
@@ -367,9 +664,37 @@ const commands = {
         return {};
     },
 
+    /** Visual only — does not refit or change orbit limits. */
+    setFloor({ enabled }) {
+        showFloor = !!enabled;
+        return {};
+    },
+
+    /**
+     * False reveals the authored origin (gizmo + framing that includes 0,0,0).
+     * True restores scene-only fit.
+     */
+    setCenter({ enabled }) {
+        centerModel = enabled !== false;
+        if (state.gltf) fitCamera();
+        return {};
+    },
+
+    setWireframe({ enabled }) {
+        showWireframe = !!enabled;
+        return {};
+    },
+
+    /** glTF node index, or omit to clear. */
+    setSelectedNode({ index }) {
+        selectedNodeIndex = Number.isInteger(index) ? index : null;
+        return {};
+    },
+
     /** Still mode: render one frame and hand back PNG bytes. */
     renderStill() {
         view.renderFrame(state, canvas.width, canvas.height);
+        drawOverlays();
         return { png: canvas.toDataURL("image/png") };
     },
 };

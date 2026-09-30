@@ -69,6 +69,14 @@ struct GLBBox {
         return try parseJSON(payload)
     }
 
+    /// JSON object for a `.gltf` sidecar or a GLB JSON chunk. Does not read the BIN.
+    static func peekDocumentJSON(from url: URL) throws -> [String: Any] {
+        if url.pathExtension.lowercased() == "gltf" {
+            return try parseJSON(Data(contentsOf: url, options: [.mappedIfSafe]))
+        }
+        return try peekJSON(from: url)
+    }
+
     /// Packs a sidecar `.gltf` (JSON + external/data-URI buffers and images) into a GLB
     /// so peek/prepare can run on one file. This is the usual workaround: glTF JSON is
     /// not a GLB JSON chunk (`glTF` magic + BIN), so `peekJSON`/`parse` reject it.
