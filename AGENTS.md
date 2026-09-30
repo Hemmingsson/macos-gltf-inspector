@@ -37,20 +37,24 @@ layout spec (code wins on what ships where).
 | `GLTFInspector/WebKit/` | WebKit adapter: `WebDocumentWindow` (page canvas + JSON panels, `canvasState`), `WebPreviewCanvas.Look` mapping, `FocusedPreviewCommands.web`. |
 | `PreviewExtension/` | Quick Look. `PreviewViewController` is the router (reads the switch, embeds a child controller); `QuickLookRealityKit.swift` (convert + `RealityPreviewCanvas` with its inline chrome, as `main`) and `QuickLookWebKit.swift` (prestarted page, no convert). Links `GLTFCore` + both renderers. |
 | `ThumbnailExtension/` | `ThumbnailProvider` is the router; `ThumbnailRealityKit.swift` (`RealityThumbnail` → `StillRenderer`, as `main`) and `ThumbnailWebKit.swift` (warm `WebRendererHost(.still)`). Links `GLTFCore` + both renderers. |
-| `GLTFInspectorTests/RealityKit/` | Tests of the RK renderer (`@testable import RendererRealityKit`). One test target for everything. |
-| `GLTFInspectorTests/WebKit/` | Tests of the web renderer (`@testable import RendererWebKit`). Cross-renderer harnesses (`PixelDiff*`, `LookProbeTests`) stay at the test root. |
+| `GLTFInspectorTests/` (root) | Renderer-neutral tests: import `GLTFCore` / the host / `PreviewUI`, **never a renderer**. Includes the pixel-diff core (`PixelDiff` comparator, `PixelDiffManifest`, `PixelDiffRun` loops), GLB byte builders (`TestGLBFixtures.swift`, `TestGLB` writer) and document / bounds / stats tests that read the JSON directly. One test target for everything. |
+| `GLTFInspectorTests/RealityKit/` | Tests of the RK renderer and RK-backed host code (`@testable import RendererRealityKit`): convert, entity helpers (`RealityTestHelpers.swift`), overlay / selection, `PixelDiffRealityKitTests` (+ its generator). |
+| `GLTFInspectorTests/WebKit/` | Tests of the web renderer (`@testable import RendererWebKit`): `PixelDiffWebKitTests` (+ the generator that records the manifest poses), `RendererTimingBenchTests`. |
+| `GLTFInspectorTests/CrossRenderer/` | Tests that drive both renderers (`LookProbeTests`); each file is wrapped in `#if canImport(RendererRealityKit) && canImport(RendererWebKit)`. |
 | `TestModels/References/` | Pinned sample manifest + per-renderer pixel-diff goldens (`webkit/`, `realitykit/`). |
 
 **Removing a renderer** (e.g. once one ships): delete its framework dir + target in `project.yml`
 (and its lines in the host / extension / test `dependencies:`), its adapter files
 (`GLTFInspector/<Renderer>/`, `PreviewExtension/QuickLook<Renderer>.swift`,
-`ThumbnailExtension/Thumbnail<Renderer>.swift`) and `GLTFInspectorTests/<Renderer>/`. The router
-files need no edit: their cases are `#if canImport(Renderer…)`. Cross-renderer test harnesses at
-the test root (`PixelDiff*`, `LookProbeTests`, and host tests that load through `EntityLoader`) import
-both renderers and must be trimmed by hand. Build clean (a fresh DerivedData): a stale framework
-module in `Build/Products` would keep `canImport` true. **Adding** code: only the adapter folders,
-the router files and `GLTFInspectorTests/<Renderer>/` may `import RendererRealityKit` /
-`RendererWebKit`; each framework exposes `static let features: Set<RendererFeature>` on its canvas,
+`ThumbnailExtension/Thumbnail<Renderer>.swift`) and `GLTFInspectorTests/<Renderer>/`. Nothing
+else needs an edit: the router files and `GLTFInspectorTests/CrossRenderer/` are
+`#if canImport(Renderer…)`, and root tests import no renderer. Optionally drop
+`TestModels/References/<renderer>/` and its manifest tolerance (nothing checks them any more).
+Build clean (a fresh DerivedData): a stale framework module in `Build/Products` would keep
+`canImport` true. Proven on this branch: no-RealityKit and no-WebKit silos both pass
+`dev.sh test`. **Adding** code: only the adapter folders,
+the router files, `GLTFInspectorTests/<Renderer>/` and (gated) `GLTFInspectorTests/CrossRenderer/`
+may `import RendererRealityKit` / `RendererWebKit`; each framework exposes `static let features: Set<RendererFeature>` on its canvas,
 and host chrome it cannot drive is hidden through `RendererAvailability` / `canHideNodes`, not `if`s.
 
 Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product on **`main`** is still RealityKit;
@@ -87,8 +91,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 `/Applications/glTF Inspector.app`. Dock/Spotlight use `/Applications`; run `build.sh` to
 install.
 
-**Renderer regressions:** `GLTFInspectorTests/PixelDiffTests.swift` re-renders every pinned
-Khronos sample (`TestModels/References/manifest.json`) through `WebRendererHost` *and* the
+**Renderer regressions:** `PixelDiffWebKitTests` / `PixelDiffRealityKitTests` (in the renderer
+test folders, over the neutral `GLTFInspectorTests/PixelDiff*.swift` core) re-render every pinned
+Khronos sample (`TestModels/References/manifest.json`) through `WebRendererHost` and the
 RealityKit `StillRenderer`, each against its own goldens in `TestModels/References/<renderer>/`.
 That is the proof baseline for renderer refactors — `xcodebuild` cannot assert on a scene built
 in JavaScript. The embedded validator runs over every fixture and sample (`GLTFValidatorCorpusTests`).
