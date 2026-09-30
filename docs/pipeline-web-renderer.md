@@ -87,7 +87,24 @@ The document window then applies the full live look through `EngineLookBridge` â
 ## Host dual path
 
 `HostShellRootView` sets `webCanvasURL` to the file as soon as it is opening. `PreviewView`
-draws `WebPreviewCanvas` without waiting on convert.
+draws `WebPreviewCanvas` without waiting on convert: the canvas region's state
+(`ShellRootView(canvasState:)`) comes from the web canvas, not from convert, so the page starts
+while convert runs, and a convert failure only affects RealityKit-backed chrome (sidebar,
+inspector). The window holds one `WebCanvasController` across the shell's
+`.id(shellMountID)` remount; the next mount adopts the running `WKWebView` (log:
+`viewport adopt`) instead of starting a second page.
+
+**Failure.** `WebCanvasController.phase` ends in `.failed(message)` when the page cannot
+start, rejects the file, or times out before first paint (log: `viewport failed`). The
+document window's canvas region and Quick Look's router show the message; the canvas's own
+chrome also drops its spinner. After first paint a failing look command is logged only.
+
+**Commands.** `FocusedPreviewCommands` (fit / preset / reset / screenshot â†’ `CGImage`) is
+registered by the mounted canvas in `PreviewView`; `EngineViewportController` forwards the
+View menu, Camera pill and Export PNG to it. The web canvas implements them in the page:
+`fit`, then `setCamera` with the preset's orbit angles and a distance scaled from the page's
+own fit by the preset's visible extent; the still is `renderStill` at the live canvas size.
+The host owns the save panel (`ScreenshotCameraPose.save`).
 
 In parallel, `PreviewView.State.loaded(from:)` still runs `EntityLoader.load` so
 `HostSidebarModel` can build `GLTFSessionDocument` from **original JSON**
@@ -98,7 +115,8 @@ Gaps that follow from that split (do not document as if they were done):
 
 - Hide / solo apply to the RealityKit `Entity`, not the Khronos scene.
 - Selection highlight is forwarded (`setSelectedNode`).
-- Camera fit / PNG export that read `PreviewInteraction` can disagree with the web camera.
+- Web Fit / Reset frame the page's front view; the RealityKit canvas opens front-three-quarter
+  with thin-axis framing.
 
 ---
 
@@ -107,7 +125,9 @@ Gaps that follow from that split (do not document as if they were done):
 Finder consumes `QLThumbnailReply(imageFileURL:)`. The CGContext drawing reply works under
 some `qlmanage` paths and fails in Finder with `QLThumbnailError 102`.
 
-One warm host is reused per thumbnail-extension process (serialized). Cold folder-scale
+One warm host is reused per thumbnail-extension process (serialized); a host that timed
+out or crashed (`WebRendererHost.isBroken`) is dropped so the next file gets a fresh page, and
+the error goes back to Quick Look, which shows the generic icon. Cold folder-scale
 start is much slower than a reuse on the same process.
 
 Thumbnail and preview targets need `com.apple.security.network.client` so WebKit can spawn
