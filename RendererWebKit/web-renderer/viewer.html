@@ -6,7 +6,7 @@
 
   Swift drives it by evaluating `__viewer.exec(<json>)`; the page answers on
   `webkit.messageHandlers.viewer`. Every command carries an `id` so replies can be correlated.
-  See Shared/WebRenderer/WebRendererBridge.swift for the typed Swift side.
+  See RendererWebKit/WebRendererBridge.swift for the typed Swift side.
 
   Nothing here is fetched from the network. All bytes arrive through the Swift scheme handler,
   and paths stay relative — the Khronos renderer rejects absolute URLs for its library and LUT

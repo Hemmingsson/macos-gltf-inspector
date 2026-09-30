@@ -68,9 +68,9 @@ missing samples fail the pixel-diff coverage test rather than skip. See
 ## How it works
 
 The file is served into a `WKWebView` over a custom `gltf-inspector://` scheme. The page
-(`Vendor/web-renderer/viewer.html`) loads the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
+(`RendererWebKit/web-renderer/viewer.html`) loads the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
 (`GltfView` / `GltfState`). Swift talks to the page through `__viewer.exec` and
-`webkit.messageHandlers.viewer` — see `Shared/WebRenderer/`.
+`webkit.messageHandlers.viewer` — see `RendererWebKit/`.
 
 Finder thumbnail, Quick Look, and the document window use **that same page**. A second HTML
 file would let the surfaces drift. Thumbnails run the page off-screen (`.still`) and take

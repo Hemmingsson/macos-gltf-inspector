@@ -7,7 +7,7 @@ import Testing
 /// One settings store for host + both extensions: the App Group suite and container.
 @MainActor
 struct AppGroupSettingsTests {
-    /// `PreviewUI` cannot import `Shared/`, so its `SettingKey` names are a second copy of
+    /// `PreviewUI` cannot import `GLTFCore`, so its `SettingKey` names are a second copy of
     /// `AppGroupSettings.Key`. A drift here means Settings writes a key the extensions never read.
     @Test
     func previewUIKeyNamesMatchTheGroupKeys() {

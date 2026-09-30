@@ -4,7 +4,7 @@ import RendererWebKit
 
 /// Maps the seam's look vocabulary onto the web renderer's.
 ///
-/// The mapping lives here, in the host, rather than in `Shared/`: `LightingSettings` is a
+/// The mapping lives here, in the host, rather than in `RendererWebKit`: `LightingSettings` is a
 /// `PreviewUI` type and the Quick Look and thumbnail extensions do not link that framework.
 extension WebPreviewCanvas.Look {
     @MainActor

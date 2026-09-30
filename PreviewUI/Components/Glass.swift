@@ -4,8 +4,8 @@ public extension View {
     /// `.buttonStyle` is not a `@ViewBuilder`-friendly value across `.glass` and
     /// `.glassProminent` (different types), so branch on the view instead.
     ///
-    /// Cribbed from Shared QL chrome glass styling rather than imported: `PreviewUI` must not
-    /// depend on `Shared/`.
+    /// Cribbed from the Quick Look chrome glass styling rather than imported: `PreviewUI` must not
+    /// depend on the renderer frameworks.
     func previewGlassButtonStyle(prominent: Bool) -> some View {
         modifier(PreviewGlassButtonStyleModifier(prominent: prominent))
     }

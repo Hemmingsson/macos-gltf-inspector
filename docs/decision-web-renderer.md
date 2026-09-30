@@ -199,8 +199,8 @@ on this machine was testing an arbitrary old build. The stale copies were unregi
 These were open after the thumbnail spike. On `webkit-renderer` the first two are done:
 
 - Quick Look **preview** in the same `WKWebView` page (`PreviewViewController` + `webCanvasURL`).
-- Khronos Sample Renderer vendored and driven from Swift (`Vendor/web-renderer/`,
-  `Shared/WebRenderer/`). Pixel-diff goldens live in `TestModels/References/`.
+- Khronos Sample Renderer vendored and driven from Swift (`RendererWebKit/web-renderer/`,
+  `RendererWebKit/`). Pixel-diff goldens live in `TestModels/References/`.
 - Behaviour under Developer ID + notarization — still not the proof this spike ran. The
   spike was Debug-signed. `com.apple.security.network.client` on a thumbnail extension that
   makes no network requests is defensible but has not been through notarization here.

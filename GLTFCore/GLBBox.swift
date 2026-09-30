@@ -2,7 +2,7 @@ import Foundation
 
 /// A GLB split into its JSON and BIN chunks — the read side. Writing GLBs (`serialize`,
 /// `packSidecar`, `writePrepared`) belongs to the RealityKit prepare path and lives there as an
-/// extension (`Shared/GLBBox+Write.swift`).
+/// extension (`RendererRealityKit/GLBBox+Write.swift`).
 public struct GLBBox {
     private static let magic = Data("glTF".utf8)
 

@@ -552,7 +552,7 @@ the enum but is not logged when nil materials get the gray default.)
 | Session document | `GLTFCore/GLTFSessionDocument.swift`, `GLTFCore/GLTFDocumentJSON.swift`, `RendererRealityKit/Convert/RealityKitConvert+Document.swift` |
 | Reports | `RendererRealityKit/PreparePipelineReport.swift`, `RendererRealityKit/ConvertProblemReport.swift` |
 | Validation | `GLTFCore/GLTFValidator.swift` |
-| Mount / view | `RendererRealityKit/PreviewScene.swift`, `Shared/PreviewView.swift` (picks web canvas or `RealityPreviewCanvas`), `RendererRealityKit/PreviewLighting.swift`, `RendererRealityKit/PreviewCamera.swift` |
+| Mount / view | `RendererRealityKit/PreviewScene.swift`, `GLTFInspector/PreviewView.swift` (picks web canvas or `RealityPreviewCanvas`), `RendererRealityKit/PreviewLighting.swift`, `RendererRealityKit/PreviewCamera.swift` |
 | Stills | `RendererRealityKit/StillRenderer.swift`, `RendererRealityKit/LiveStillRequest.swift` (host PNG export; the save panel is `GLTFInspector/Engine/ScreenshotCameraPose.swift`) |
 | Host wiring | `GLTFInspector/HostShellRootView.swift`, `RendererRealityKit/LoadedModel+Host.swift` |
 

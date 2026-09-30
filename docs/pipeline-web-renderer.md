@@ -1,7 +1,10 @@
 # glTF → WebKit (Khronos Sample Renderer)
 
 How a file becomes pixels on this branch. Every surface uses the same page
-(`Vendor/web-renderer/viewer.html`) inside a `WKWebView` owned by `WebRendererHost`.
+(`RendererWebKit/web-renderer/viewer.html`) inside a `WKWebView` owned by `WebRendererHost`.
+All of it lives in the extension-safe `RendererWebKit` framework; the page ships once, inside
+`RendererWebKit.framework`, and is found with `Bundle(for:)`. The HDRs come from `GLTFCore`
+(`KhronosEnvironments.bundledDirectory`).
 
 This is **not** the RealityKit convert path. Convert still runs in the host for inspector
 chrome — see [`pipeline-gltf-to-realitykit.md`](pipeline-gltf-to-realitykit.md).
@@ -23,8 +26,8 @@ chrome — see [`pipeline-gltf-to-realitykit.md`](pipeline-gltf-to-realitykit.md
 
 | Surface | Host | Mode | Loads convert? |
 | --- | --- | --- | --- |
-| Document window | `WebPreviewCanvas` in `PreviewView` | `.live` | Yes, in parallel — chrome only |
-| Quick Look preview | `PreviewViewController` sets `webCanvasURL` | `.live` | No |
+| Document window | `WebPreviewCanvas` in `PreviewView` (`GLTFInspector/`) | `.live` | Yes, in parallel — chrome only |
+| Quick Look preview | `PreviewViewController` → `QuickLookPreviewView` | `.live` | No |
 | Finder thumbnail | `ThumbnailProvider` + warm `WebRendererHost` | `.still` | No |
 
 `.still` never adds the web view to a window. Pixels come from `canvas.toDataURL()` via the
@@ -38,7 +41,7 @@ chrome — see [`pipeline-gltf-to-realitykit.md`](pipeline-gltf-to-realitykit.md
 ```mermaid
 flowchart LR
   disk[".glb / .gltf on disk"] --> handler["WebRendererResourceHandler"]
-  bundle["Vendor/web-renderer + IBL HDRs"] --> handler
+  bundle["RendererWebKit/web-renderer + GLTFCore HDRs"] --> handler
   handler --> page["viewer.html"]
   page --> khronos["GltfView / GltfState"]
   swift["WebRendererCommand"] --> exec["__viewer.exec"]
