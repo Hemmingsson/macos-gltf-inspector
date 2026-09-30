@@ -1,7 +1,6 @@
 import Foundation
 @testable import GLTFCore
 @testable import GLTFInspector
-@testable import RendererRealityKit
 import simd
 import Testing
 

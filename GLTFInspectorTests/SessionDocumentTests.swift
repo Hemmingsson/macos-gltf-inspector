@@ -1,37 +1,27 @@
 import Foundation
 @testable import GLTFCore
-@testable import GLTFInspector
-import RealityKit
-@testable import RendererRealityKit
 import Testing
 
+/// The sidebar document read from the file (`GLTFDocumentJSON`, as `EntityLoader` and the web
+/// window build it). Convert-side stamping and clips: `RealityKit/SessionDocumentConvertTests.swift`.
 struct SessionDocumentTests {
-    @MainActor
-    @Test func convertStampsNodeIndexZero() async throws {
-        let url = try writeTempOneNodeMeshGLB(nodeName: "Helmet")
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        #expect(stampedNodeIndices(in: model.entity).contains(0))
-        #expect(model.document.nodes.contains { $0.name == "Helmet" })
-        #expect(model.document.scenes.count >= 1)
-        #expect(model.document.defaultSceneIndex == 0)
-        #expect(model.document.scenes[model.document.defaultSceneIndex].rootNodeIndices.contains(0))
+    /// The document the loaders build: original JSON plus the file for binary payloads.
+    private func fileDocument(_ url: URL) throws -> GLTFSessionDocument {
+        GLTFDocumentJSON.makeDocument(json: try GLBBox.peekDocumentJSON(from: url), fileURL: url)
     }
 
-    @MainActor
-    @Test func convertStampsBoundMaterialAndHonestyFields() async throws {
+    @Test func documentBindsMaterialsAndHonestyFields() throws {
         let url = try writeTempMixedMapsMaterialGLB()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        #expect(!model.document.materials.isEmpty)
-        let bound = model.document.nodes.filter { !$0.materialIndices.isEmpty }
+        let document = try fileDocument(url)
+        #expect(!document.materials.isEmpty)
+        let bound = document.nodes.filter { !$0.materialIndices.isEmpty }
         #expect(!bound.isEmpty)
         for node in bound {
-            #expect(node.materialIndices.allSatisfy { model.document.materials.indices.contains($0) })
+            #expect(node.materialIndices.allSatisfy { document.materials.indices.contains($0) })
         }
-        let material = try #require(model.document.materials.first)
+        let material = try #require(document.materials.first)
         #expect(material.workflow == .metallicRoughness || material.workflow == .unlit)
         #expect([GLTFSessionDocument.Material.AlphaMode.opaque, .mask, .blend].contains(material.alphaMode))
         #expect(!material.textures.isEmpty)
@@ -41,100 +31,12 @@ struct SessionDocumentTests {
         #expect(!(slot.thumbnailPNG?.isEmpty ?? true))
     }
 
-    @MainActor
-    @Test func documentListsEverySceneFromAsset() async throws {
-        let url = try writeTempTwoSceneGLB()
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        #expect(model.document.scenes.count == 2)
-        #expect(model.document.defaultSceneIndex == 0)
-        #expect(model.document.scenes[0].rootNodeIndices == [0])
-        #expect(model.document.scenes[1].rootNodeIndices == [1])
-        let stamped = stampedNodeIndices(in: model.entity)
-        #expect(stamped.contains(0))
-        #expect(!stamped.contains(1))
-    }
-
-    @MainActor
-    @Test func lazyConvertSecondSceneStampsItsRoot() async throws {
-        let twoSceneURL = try writeTempTwoSceneGLB()
-        defer { try? FileManager.default.removeItem(at: twoSceneURL) }
-
-        let other = try await EntityLoader.convertScene(
-            index: 1,
-            from: twoSceneURL,
-            includeAnimations: true
-        )
-        #expect(stampedNodeIndices(in: other).contains(1))
-    }
-
-    @MainActor
-    @Test func loadWithSceneIndexMatchesConvertSceneForMultiSceneFixture() async throws {
-        let url = TestFixtures.multiScene
-
-        let loaded = try await EntityLoader.load(from: url, includeAnimations: false, sceneIndex: 1)
-        let converted = try await EntityLoader.convertScene(index: 1, from: url, includeAnimations: false)
-
-        #expect(loaded.document.scenes.count == 2)
-        #expect(stampedNodeIndices(in: loaded.entity) == stampedNodeIndices(in: converted))
-        #expect(stampedNodeIndices(in: loaded.entity).contains(1))
-    }
-
-    @MainActor
-    @Test func convertSceneOutOfRangeThrows1020() async throws {
-        let url = try writeTempTwoSceneGLB()
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        do {
-            _ = try await EntityLoader.convertScene(index: 99, from: url, includeAnimations: false)
-            Issue.record("expected GLTFInspectorError 1020")
-        } catch {
-            let nsError = error as NSError
-            #expect(nsError.domain == GLTFInspectorError.domain)
-            #expect(nsError.code == 1020)
-        }
-    }
-
-    @MainActor
-    @Test func staticBoxHasNoAnimations() async throws {
-        let url = try writeTempOneNodeMeshGLB(nodeName: "Box")
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let model = try await EntityLoader.load(from: url, includeAnimations: true)
-        #expect(model.document.animations.isEmpty)
-        #expect(model.entity.availableAnimations.isEmpty)
-    }
-
-    @MainActor
-    @Test func documentAnimationsMatchUsableClips() async throws {
-        let url = try writeTempTwoClipGLB()
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let model = try await EntityLoader.load(from: url, includeAnimations: true)
-        #expect(model.document.animations.count == 2)
-        #expect(model.document.animations.count == model.entity.availableAnimations.count)
-        #expect(model.document.animations[0].name == "ClipA")
-        #expect(model.document.animations[1].name == "ClipB")
-        #expect(model.document.animations[0].duration > 0)
-        #expect(model.document.animations[1].duration > 0)
-        #expect(model.document.animations[1].duration >= model.document.animations[0].duration)
-
-        let usable = PreviewClip.usable(on: model.entity, document: model.document)
-        let listed = PreviewClip.list(from: model.document)
-        #expect(usable.map(\.title) == ["ClipA", "ClipB"])
-        #expect(usable.map(\.id) == listed.map(\.id))
-        #expect(usable.map(\.title) == listed.map(\.title))
-        #expect(usable.map(\.name) == model.document.animations.map(\.name))
-    }
-
-    @MainActor
-    @Test func documentPersistsTypedNodeFieldsFromMixedKinds() async throws {
+    @Test func documentPersistsTypedNodeFieldsFromMixedKinds() throws {
         let url = try writeTempMixedNodeKindsGLB()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        let byName = Dictionary(uniqueKeysWithValues: model.document.nodes.map { ($0.name, $0) })
+        let document = try fileDocument(url)
+        let byName = Dictionary(uniqueKeysWithValues: document.nodes.map { ($0.name, $0) })
 
         let empty = try #require(byName["Empty"])
         #expect(empty.kind == .empty)
@@ -169,25 +71,24 @@ struct SessionDocumentTests {
         #expect(joint.kind == .empty)
         #expect(joint.skinIndex == nil)
 
-        #expect(model.document.nodes.first { $0.name == "Root" }?.children.count == 5)
+        #expect(document.nodes.first { $0.name == "Root" }?.children.count == 5)
     }
 
-    @MainActor
-    @Test func documentPersistsMaterialsAndMapPresence() async throws {
+    @Test func documentPersistsMaterialsAndMapPresence() throws {
         let url = try writeTempMixedMapsMaterialGLB()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        #expect(model.document.materials.count == 2)
+        let document = try fileDocument(url)
+        #expect(document.materials.count == 2)
 
-        let textured = try #require(model.document.materials.first { $0.name == "Textured" })
+        let textured = try #require(document.materials.first { $0.name == "Textured" })
         #expect(textured.maps.baseColor)
         #expect(textured.maps.normal)
         #expect(textured.maps.metallicRoughness)
         #expect(textured.maps.occlusion)
         #expect(!textured.maps.emissive)
 
-        let plain = try #require(model.document.materials.first { $0.name == "Plain" })
+        let plain = try #require(document.materials.first { $0.name == "Plain" })
         #expect(!plain.maps.baseColor)
         #expect(!plain.maps.normal)
         #expect(!plain.maps.metallicRoughness)
@@ -195,15 +96,14 @@ struct SessionDocumentTests {
         #expect(!plain.maps.emissive)
     }
 
-    @MainActor
-    @Test func documentEnumeratesPunctualLights() async throws {
+    @Test func documentEnumeratesPunctualLights() throws {
         let url = try writeTempPunctualLightsGLB()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        #expect(model.document.lights.count == 3)
+        let document = try fileDocument(url)
+        #expect(document.lights.count == 3)
 
-        let point = model.document.lights[0]
+        let point = document.lights[0]
         #expect(point.type == "point")
         #expect(point.intensity == 5)
         #expect(point.color == SIMD3<Float>(1, 1, 1))
@@ -211,7 +111,7 @@ struct SessionDocumentTests {
         #expect(point.innerCone == nil)
         #expect(point.outerCone == nil)
 
-        let sun = model.document.lights[1]
+        let sun = document.lights[1]
         #expect(sun.type == "directional")
         #expect(sun.intensity == 2.5)
         #expect(abs(sun.color.x - 1) < 0.0001)
@@ -220,7 +120,7 @@ struct SessionDocumentTests {
         #expect(sun.range == nil)
         #expect(sun.innerCone == nil)
 
-        let spot = model.document.lights[2]
+        let spot = document.lights[2]
         #expect(spot.type == "spot")
         #expect(spot.intensity == 8)
         #expect(spot.range == 12)
@@ -229,22 +129,24 @@ struct SessionDocumentTests {
         #expect(abs((spot.innerCone ?? -1) - 0.2) < 0.0001)
         #expect(abs((spot.outerCone ?? -1) - 0.5) < 0.0001)
 
-        #expect(model.document.nodes.first { $0.name == "Lamp" }?.lightIndex == 0)
-        #expect(model.document.nodes.first { $0.name == "SunNode" }?.lightIndex == 1)
-        #expect(model.document.nodes.first { $0.name == "SpotNode" }?.lightIndex == 2)
+        #expect(document.nodes.first { $0.name == "Lamp" }?.lightIndex == 0)
+        #expect(document.nodes.first { $0.name == "SunNode" }?.lightIndex == 1)
+        #expect(document.nodes.first { $0.name == "SpotNode" }?.lightIndex == 2)
     }
 
-    @MainActor
-    @Test func plainMeshHasNoDocumentLights() async throws {
+    @Test func plainMeshHasNoDocumentLights() throws {
         let url = try writeTempOneNodeMeshGLB(nodeName: "Box")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        #expect(model.document.lights.isEmpty)
+        let document = try fileDocument(url)
+        #expect(document.lights.isEmpty)
     }
 }
 
-private func writeTempTwoSceneGLB() throws -> URL {
+// MARK: - Fixtures (also used by the convert tests)
+
+
+func writeTempTwoSceneGLB() throws -> URL {
     let bin = floatTriangleBin()
     let json: [String: Any] = [
         "asset": ["version": "2.0"],
@@ -273,7 +175,7 @@ private func writeTempTwoSceneGLB() throws -> URL {
     return try writeTempGLB(json: json, bin: bin)
 }
 
-private func writeTempTwoClipGLB() throws -> URL {
+func writeTempTwoClipGLB() throws -> URL {
     var bin = floatTriangleBin()
     let positionLength = bin.count
     appendFloats([0, 1], to: &bin)
@@ -354,7 +256,7 @@ private func writeTempTwoClipGLB() throws -> URL {
     return try writeTempGLB(json: json, bin: bin)
 }
 
-private func writeTempMixedNodeKindsGLB() throws -> URL {
+func writeTempMixedNodeKindsGLB() throws -> URL {
     let bin = floatTriangleBin()
     let json: [String: Any] = [
         "asset": ["version": "2.0"],
@@ -410,7 +312,7 @@ private func writeTempMixedNodeKindsGLB() throws -> URL {
     return try writeTempGLB(json: json, bin: bin)
 }
 
-private func writeTempPunctualLightsGLB() throws -> URL {
+func writeTempPunctualLightsGLB() throws -> URL {
     let bin = floatTriangleBin()
     let json: [String: Any] = [
         "asset": ["version": "2.0"],
@@ -474,7 +376,7 @@ private func writeTempPunctualLightsGLB() throws -> URL {
     return try writeTempGLB(json: json, bin: bin)
 }
 
-private func writeTempMixedMapsMaterialGLB() throws -> URL {
+func writeTempMixedMapsMaterialGLB() throws -> URL {
     var bin = floatTriangleBin()
     let pngStart = bin.count
     let png = tinyPNG()
@@ -524,6 +426,5 @@ private func writeTempMixedMapsMaterialGLB() throws -> URL {
 }
 
 private func writeTempGLB(json: [String: Any], bin: Data) throws -> URL {
-    let data = try GLBBox.serialize(json: json, bin: bin)
-    return try GLBBox.writePrepared(data, prefix: "session-doc")
+    try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "session-doc")
 }

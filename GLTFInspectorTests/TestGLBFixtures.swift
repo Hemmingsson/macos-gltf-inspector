@@ -1,27 +1,44 @@
-import AppKit
-import CoreGraphics
 import Foundation
-@testable import GLTFCore
-@testable import GLTFInspector
-import RealityKit
-@testable import RendererRealityKit
-import simd
-import Testing
 
-@MainActor
-func pbrMaterials(in entity: Entity) -> [PhysicallyBasedMaterial] {
-    var out: [PhysicallyBasedMaterial] = []
-    if let model = entity.components[ModelComponent.self] {
-        for material in model.materials {
-            if let pbr = material as? PhysicallyBasedMaterial {
-                out.append(pbr)
-            }
-        }
+/// GLB bytes for tests, built in the test target so fixtures need no renderer. The same
+/// container `GLBBox.serialize` (RealityKit write side) produces: JSON chunk padded with spaces,
+/// BIN chunk padded with zeros.
+enum TestGLB {
+    struct InvalidJSON: Error {}
+
+    static func serialize(json: [String: Any], bin: Data) throws -> Data {
+        guard JSONSerialization.isValidJSONObject(json) else { throw InvalidJSON() }
+        var jsonData = try JSONSerialization.data(withJSONObject: json, options: [])
+        jsonData.append(Data(repeating: 0x20, count: pad4(jsonData.count)))
+        var binData = bin
+        binData.append(Data(count: pad4(binData.count)))
+
+        var out = Data()
+        out.append(contentsOf: Array("glTF".utf8))
+        out.append(contentsOf: uint32(2))
+        out.append(contentsOf: uint32(UInt32(12 + 8 + jsonData.count + 8 + binData.count)))
+        out.append(contentsOf: uint32(UInt32(jsonData.count)))
+        out.append(contentsOf: Array("JSON".utf8))
+        out.append(jsonData)
+        out.append(contentsOf: uint32(UInt32(binData.count)))
+        out.append(contentsOf: Array("BIN\0".utf8))
+        out.append(binData)
+        return out
     }
-    for child in entity.children {
-        out.append(contentsOf: pbrMaterials(in: child))
+
+    /// Writes `data` to a fresh temp `.glb`; the caller removes it.
+    static func writeTemp(_ data: Data, prefix: String) throws -> URL {
+        let out = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(prefix)-\(UUID().uuidString).glb")
+        try data.write(to: out)
+        return out
     }
-    return out
+
+    private static func pad4(_ count: Int) -> Int { (4 - count % 4) % 4 }
+
+    private static func uint32(_ value: UInt32) -> [UInt8] {
+        withUnsafeBytes(of: value.littleEndian) { Array($0) }
+    }
 }
 
 /// Three vertices. Mode 4 = TRIANGLES (legal). Mode 1 = LINES, 5 = TRIANGLE_STRIP.
@@ -51,7 +68,7 @@ func primitiveModeGLB(mode: Int) throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 /// One TRIANGLES primitive plus one LINES primitive sharing positions — loads, but
@@ -88,7 +105,7 @@ func mixedTrianglesAndLinesGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 func shortTriangleGLB() throws -> Data {
@@ -123,7 +140,7 @@ func shortTriangleGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 func metalRoughTriangleGLB() throws -> Data {
@@ -165,7 +182,7 @@ func metalRoughTriangleGLB() throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 func tinyPNG() -> Data {
@@ -263,41 +280,7 @@ func texturedPBRTriangleGLB(
     if !extensionsUsed.isEmpty {
         json["extensionsUsed"] = extensionsUsed
     }
-    return try GLBBox.serialize(json: json, bin: bin)
-}
-
-func hasVisibleEmissive(_ material: PhysicallyBasedMaterial) -> Bool {
-    if material.emissiveColor.texture != nil { return true }
-    guard let components = material.emissiveColor.color.cgColor.components, components.count >= 3 else {
-        return false
-    }
-    return max(components[0], max(components[1], components[2])) > 0.05
-}
-
-@MainActor
-func loadFirstPBR(_ glb: Data) async throws -> PhysicallyBasedMaterial {
-    let all = try await loadAllPBR(glb)
-    try #require(!all.isEmpty)
-    return all[0]
-}
-
-@MainActor
-func loadModel(_ glb: Data, includeAnimations: Bool = false) async throws -> EntityLoader.LoadedModel {
-    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("load-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: dir) }
-    let url = dir.appendingPathComponent("m.glb")
-    try glb.write(to: url)
-    return try await EntityLoader.load(from: url, includeAnimations: includeAnimations)
-}
-
-@MainActor
-func firstComponent<T: Component>(_ type: T.Type, in entity: Entity) -> T? {
-    if let found = entity.components[type] { return found }
-    for child in entity.children {
-        if let found = firstComponent(type, in: child) { return found }
-    }
-    return nil
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 func appendFloats(_ values: [Float], to data: inout Data) {
@@ -334,60 +317,7 @@ func writeTempOneNodeMeshGLB(nodeName: String, prefix: String = "one-node") thro
         "scenes": [["name": "Default", "nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.writePrepared(try GLBBox.serialize(json: json, bin: bin), prefix: prefix)
-}
-
-@MainActor
-func entity(nodeIndex: Int, in root: Entity) -> Entity? {
-    GLTFNodeLookup.entity(nodeIndex: nodeIndex, in: root)
-}
-
-@MainActor
-func namedEntity(_ name: String, in entity: Entity) -> Entity? {
-    if entity.name == name { return entity }
-    for child in entity.children {
-        if let found = namedEntity(name, in: child) { return found }
-    }
-    return nil
-}
-
-@MainActor
-func stampedNodeIndices(in entity: Entity) -> Set<Int> {
-    var found = Set<Int>()
-    func walk(_ node: Entity) {
-        if let id = node.components[GLTFNodeIDComponent.self]?.nodeIndex {
-            found.insert(id)
-        }
-        node.children.forEach(walk)
-    }
-    walk(entity)
-    return found
-}
-
-@MainActor
-func loadAllPBR(_ glb: Data) async throws -> [PhysicallyBasedMaterial] {
-    pbrMaterials(in: try await loadModel(glb).entity)
-}
-
-@MainActor
-func firstMeshUVs(in entity: Entity) -> [SIMD2<Float>]? {
-    if let model = entity.components[ModelComponent.self] {
-        for meshModel in model.mesh.contents.models {
-            for part in meshModel.parts {
-                if let uvs = part[MeshBuffers.textureCoordinates] {
-                    let array = Array(uvs)
-                    // LowLevelMesh-backed resources can expose an empty MeshBuffers view.
-                    if !array.isEmpty { return array }
-                }
-            }
-        }
-    }
-    for child in entity.children {
-        if let uvs = firstMeshUVs(in: child) {
-            return uvs
-        }
-    }
-    return nil
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
 }
 
 func multiMaterialTriangleGLB(
@@ -431,7 +361,7 @@ func multiMaterialTriangleGLB(
     if !extensionsUsed.isEmpty {
         json["extensionsUsed"] = extensionsUsed
     }
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }
 
 func instancedGLB(count: Int) throws -> Data {
@@ -472,5 +402,5 @@ func instancedGLB(count: Int) throws -> Data {
         "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
-    return try GLBBox.serialize(json: json, bin: bin)
+    return try TestGLB.serialize(json: json, bin: bin)
 }

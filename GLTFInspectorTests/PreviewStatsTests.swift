@@ -1,7 +1,6 @@
 import Foundation
 @testable import GLTFCore
 @testable import GLTFInspector
-@testable import RendererRealityKit
 import Testing
 
 struct PreviewStatsTests {
@@ -48,8 +47,8 @@ struct PreviewStatsTests {
             "scenes": [["nodes": [0]]],
             "scene": 0,
         ]
-        let data = try GLBBox.serialize(json: json, bin: bin)
-        let url = try GLBBox.writePrepared(data, prefix: "stats-tex")
+        let data = try TestGLB.serialize(json: json, bin: bin)
+        let url = try TestGLB.writeTemp(data, prefix: "stats-tex")
         defer { try? FileManager.default.removeItem(at: url) }
 
         let stats = PreviewStats.from(json: json, animationCount: 0, resourceURL: url)
