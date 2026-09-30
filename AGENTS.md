@@ -1,14 +1,22 @@
 # glTF Inspector (`webkit-renderer`)
 
 macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host **`GLTFInspector`** embeds
-`PreviewExtension` and `ThumbnailExtension`. **On-screen pixels** come from one
-`WKWebView` page running the Khronos glTF Sample Renderer (`RendererWebKit/` +
-`RendererWebKit/web-renderer/`). Goal: closest practical **1:1** with web glTF — same renderer in the
-window, Quick Look, and Finder icons.
+`PreviewExtension` and `ThumbnailExtension`. Two siloed renderers draw the model — the same one in
+the window, Quick Look and Finder icons:
 
-The host still runs **`EntityLoader` → GLTFKit2 → RealityKit convert** (`RendererRealityKit`) for the
-sidebar document, morphs, animations, and a few controls. That path does not draw the model when
-`webCanvasURL` is set.
+- **RealityKit** (`RendererRealityKit`, default, what `main` ships): `EntityLoader` → GLTFKit2 →
+  convert feeds the canvas *and* the RealityKit-only chrome (clips, morph sliders, hide/solo, debug
+  modes, convert report).
+- **WebKit** (`RendererWebKit` + `web-renderer/`): one `WKWebView` page running the Khronos glTF
+  Sample Renderer, for closest-practical **1:1** with web glTF. The page loads the file itself; the
+  panels come from the JSON alone (`GLTFDocumentSummary`) — **no convert runs**.
+
+**Renderer switch (temporary, developer-only):** `settings.preview.renderer` = `realitykit` |
+`webkit` in the App Group suite (`RendererKind`, default `realitykit`). No Settings UI: set it from
+the Debug build's **Develop ▸ Renderer** menu (the host is the only process that can write the group
+— a shell `defaults write` lands in another domain). Window, Quick Look and thumbnail read it when
+they open a file, so a change applies to new windows / previews / icons; open windows keep theirs.
+Debug builds also take `-GLTFRenderer webkit|realitykit` (launch-argument override, host only).
 
 **New features, UX, or chrome:** read [`DESIGN.md`](DESIGN.md) first — product principles, not
 layout spec (code wins on what ships where).
@@ -18,19 +26,32 @@ layout spec (code wins on what ships where).
 | Path | Role |
 | --- | --- |
 | `PreviewUI/` | Host chrome over seam protocols. **Do not import `GLTFCore` or a renderer framework.** |
-| `GLTFCore/` | Extension-safe framework: glTF file model (JSON document, GLB read side), validator, stats, App Group settings + `AppLook`, bundled Khronos HDRs (`KhronosEnvironments.bundledDirectory`), PNG writer, JSON model bounds (`ModelBounds`), neutral render values (`RenderLook`, `RenderViewMode`, `CameraPreset`, `RendererFeature`; host maps PreviewUI ↔ core in `Engine/EngineCoreMapping.swift`). No RealityKit / WebKit / AppKit / PreviewUI. Embedded once in the host; the extensions link it. |
-| `RendererRealityKit/` | Extension-safe RealityKit renderer framework over `GLTFCore`: `EntityLoader`, prepare + `Convert/`, the GLB write side, `RealityPreviewCanvas` (`PreviewScene` + Quick Look chrome), camera / lighting / floor / selection visuals, clips (`RealityClipPlayer`), morphs, debug modes, `StillRenderer` / `LiveStillRequest` (returns a `CGImage`; the host owns the save panel). Also `PreviewHostingView` / `PreviewEventView` (`PreviewInteraction` scroll/magnify/drag plumbing, generic over the root view) for both routers. Only target linking GLTFKit2 + DracoSwift; `GLBTry.h` is a public header (no bridging header), `GLBDracoDecompressor` is found by class name. Host code talks to it through neutral entry points (`LoadedModel` helpers, `PreviewOverlay` values, `PreviewDebugMode.renderViewMode`) and does not import RealityKit. Embedded once in the host; QL links it; the thumbnail extension does not. |
+| `GLTFCore/` | Extension-safe framework: glTF file model (JSON document, GLB read side), validator, stats, App Group settings + `AppLook`, bundled Khronos HDRs (`KhronosEnvironments.bundledDirectory`), PNG writer, JSON model bounds (`ModelBounds`), the JSON-only panel summary (`GLTFDocumentSummary`, `ViewModeAvailability`), the renderer switch (`RendererKind`), neutral render values (`RenderLook`, `RenderViewMode`, `CameraPreset`, `RendererFeature`; host maps PreviewUI ↔ core in `Engine/EngineCoreMapping.swift`). No RealityKit / WebKit / AppKit / PreviewUI. Embedded once in the host; the extensions link it. |
+| `RendererRealityKit/` | Extension-safe RealityKit renderer framework over `GLTFCore`: `EntityLoader`, prepare + `Convert/`, the GLB write side, `RealityPreviewCanvas` (`PreviewScene` + Quick Look chrome), camera / lighting / floor / selection visuals, clips (`RealityClipPlayer`), morphs, debug modes, `StillRenderer` / `LiveStillRequest` (returns a `CGImage`; the host owns the save panel). Also `PreviewHostingView` / `PreviewEventView` (`PreviewInteraction` scroll/magnify/drag plumbing, generic over the root view) for the RealityKit adapters, and `RealityThumbnail` (Finder icon). Only target linking GLTFKit2 + DracoSwift; `GLBTry.h` is a public header (no bridging header), `GLBDracoDecompressor` is found by class name. Host code talks to it through neutral entry points (`LoadedModel` helpers, `PreviewOverlay` values, `PreviewDebugMode.renderViewMode`) and does not import RealityKit. Embedded once in the host; both extensions link it. |
 | `RendererWebKit/` | Extension-safe WebKit renderer framework over `GLTFCore`: `WebRendererHost` (one `WKWebView`, `.live` / `.still`), scheme handler, command bridge, `WebPreviewCanvas` + `Look`, load copy, `CachedQuickLookThumbnail`. Public API is only what host/appexes call (`WebRendererHost` start / load / setEnvironment / setToneMapping / renderStill / isBroken, `WebPreviewCanvas(url:look:placeholderImage:host:controller:)`, `WebCanvasController` (phase ending in `.failed`, fit / reset / apply(preset:) / snapshot, survives a remount), `WebRendererMode`, `CachedQuickLookThumbnail.existingIcon`); tests use `@testable`. The only module that imports WebKit. Embedded once in the host; both extensions link it. |
 | `RendererWebKit/web-renderer/` | The one `viewer.html` + Khronos bundle. Ships once, inside `RendererWebKit.framework`, found via `Bundle(for:)` (in an appex `Bundle.main` is the appex). HDRs stay in `GLTFCore`. Do not fork a second page. |
-| `GLTFInspector/Engine/` | `Engine*` adapters — seam mapping only; no PreviewUI rewrites. `ScreenshotCameraPose` owns the PNG save panel. |
-| `GLTFInspector/HostShellRootView.swift` | Document window: shell + adapters + `PreviewView` (`webCanvasURL`). |
-| `GLTFInspector/PreviewView.swift` | Document-window canvas router: `WebPreviewCanvas` when `webCanvasURL` is set, else `RealityPreviewCanvas` (RK fallback). The mounted branch registers its `FocusedPreviewCommands` (`PreviewFocus.swift`: fit / preset / reset / screenshot → `CGImage`) with `EngineViewportController`; `canvasState` decides what the canvas region shows. Host-only, next to `PreviewSession`, `SelectionDetail`. |
-| `GLTFInspector/HostSidebarModel.swift` | Selection, scenes, variants — JSON-backed `GLTFSessionDocument`; hands hide/solo/selection to the canvas as `PreviewNodeVisibility`. |
-| `PreviewExtension/` | Quick Look: web canvas only, no convert. Its own minimal router `QuickLookPreviewView` (loading / failed / web) — the host `PreviewView` is not compiled here (it would drag in the RK fallback and host session; the copied loading/failed chrome is ~30 lines). The shared event plumbing lives in `RendererRealityKit`. Links `GLTFCore` + `RendererWebKit` + `RendererRealityKit` (for `PreviewInteraction` / `PreviewBackground`). |
-| `ThumbnailExtension/` | Still render via `WebRendererHost(.still)`. Links `GLTFCore` + `RendererWebKit` only. |
+| `GLTFInspector/` (generic) | Renderer-neutral host: **imports neither renderer**. `DocumentShell` (PreviewUI `ShellRootView` + adapters around one canvas), `DocumentWindowModel` (per-window sidebar, settings, viewport, open / validation lifecycle, `openSummary` for JSON-only panels), `PreviewSession`, `HostSidebarModel`, `PreviewFocus` (`FocusedPreviewCommands`: fit / preset / reset / screenshot → `CGImage`, registered by the mounted canvas, forwarded by `EngineViewportController`), `DevelopMenuCommands` (Debug-only switch). |
+| `GLTFInspector/Engine/` | `Engine*` adapters — seam mapping only; no PreviewUI rewrites. `RendererAvailability` narrows `DerivedAvailability` to the renderer's `features`. `ScreenshotCameraPose` owns the PNG save panel. |
+| `GLTFInspector/RendererRouter.swift` | The host's one renderer spot: `DocumentWindowRouter` reads the switch at open and mounts `RealityDocumentWindow` or `WebDocumentWindow`; each case is `#if canImport(<Renderer>)`. |
+| `GLTFInspector/RealityKit/` | RealityKit adapter: `RealityDocumentWindow` (convert → canvas + chrome, scene/variant reload, morphs), `PreviewView` + `HostPreviewContainer` (spinner / `RealityPreviewCanvas` / failure in `PreviewHostingView`), playback controller, and `+RealityKit` extensions (`EngineSceneModel(loaded:)`, `PreviewSession.bindings`, `HostSidebarModel: PreviewOverlay`, the offscreen PNG re-render). |
+| `GLTFInspector/WebKit/` | WebKit adapter: `WebDocumentWindow` (page canvas + JSON panels, `canvasState`), `WebPreviewCanvas.Look` mapping, `FocusedPreviewCommands.web`. |
+| `PreviewExtension/` | Quick Look. `PreviewViewController` is the router (reads the switch, embeds a child controller); `QuickLookRealityKit.swift` (convert + `RealityPreviewCanvas` with its inline chrome, as `main`) and `QuickLookWebKit.swift` (prestarted page, no convert). Links `GLTFCore` + both renderers. |
+| `ThumbnailExtension/` | `ThumbnailProvider` is the router; `ThumbnailRealityKit.swift` (`RealityThumbnail` → `StillRenderer`, as `main`) and `ThumbnailWebKit.swift` (warm `WebRendererHost(.still)`). Links `GLTFCore` + both renderers. |
 | `GLTFInspectorTests/RealityKit/` | Tests of the RK renderer (`@testable import RendererRealityKit`). One test target for everything. |
 | `GLTFInspectorTests/WebKit/` | Tests of the web renderer (`@testable import RendererWebKit`). Cross-renderer harnesses (`PixelDiff*`, `LookProbeTests`) stay at the test root. |
 | `TestModels/References/` | Pinned sample manifest + per-renderer pixel-diff goldens (`webkit/`, `realitykit/`). |
+
+**Removing a renderer** (e.g. once one ships): delete its framework dir + target in `project.yml`
+(and its lines in the host / extension / test `dependencies:`), its adapter files
+(`GLTFInspector/<Renderer>/`, `PreviewExtension/QuickLook<Renderer>.swift`,
+`ThumbnailExtension/Thumbnail<Renderer>.swift`) and `GLTFInspectorTests/<Renderer>/`. The router
+files need no edit: their cases are `#if canImport(Renderer…)`. Cross-renderer test harnesses at
+the test root (`PixelDiff*`, `LookProbeTests`, and host tests that load through `EntityLoader`) import
+both renderers and must be trimmed by hand. Build clean (a fresh DerivedData): a stale framework
+module in `Build/Products` would keep `canImport` true. **Adding** code: only the adapter folders,
+the router files and `GLTFInspectorTests/<Renderer>/` may `import RendererRealityKit` /
+`RendererWebKit`; each framework exposes `static let features: Set<RendererFeature>` on its canvas,
+and host chrome it cannot drive is hidden through `RendererAvailability` / `canHideNodes`, not `if`s.
 
 Ship **`GLTFInspector/`** — not legacy `GLBPreview/`. Product on **`main`** is still RealityKit;
 this worktree is throwaway until merged.
@@ -91,7 +112,8 @@ why WebKit → [`docs/decision-web-renderer.md`](docs/decision-web-renderer.md).
 | Dex / `.cursor/plans` | Intent only |
 
 Before `git worktree remove`: `git log main..<branch>`, merge/cherry-pick. **Document window**
-= host chrome + web canvas; **Quick Look** = web canvas, no convert. **`DESIGN.md`**: design
+= host chrome + the switched renderer's canvas; **Quick Look** / thumbnails follow the same switch
+(WebKit: no convert). **`DESIGN.md`**: design
 *principles* only — never paste shipped layout/state there. **`ShellRootView`**: fixed
 `Theme.sidebarWidth` / `inspectorWidth` — not drag-resizable unless a task adds it.
 
@@ -105,10 +127,11 @@ Cause: touching `@Observable PreviewInteraction` from `View.init`. Rule: `init` 
 `sidebar == nil`. The web canvas reports its own failure (`WebCanvasController.phase`);
 a convert failure only fails the panels, never a web canvas that draws.
 
-**3. First paint** — Quick Look and the web canvas load the file in the page. Do not wait on
-`EntityLoader` for pixels. The host still converts in parallel for chrome. The canvas region
-follows the web canvas (`ShellRootView(canvasState:)`), and the window's `WebCanvasController`
-outlives `.id(shellMountID)` so the remount adopts the running page.
+**3. First paint** — on WebKit, Quick Look and the web canvas load the file in the page; the window's
+panels read the JSON in parallel (no `EntityLoader`). The canvas region follows the page
+(`WebDocumentWindow.canvasState` → `ShellRootView(canvasState:)`), and the window's
+`WebCanvasController` outlives `.id(window.mountID)` so the remount adopts the running page. On
+RealityKit the canvas follows convert.
 
 **4. One renderer, relative URLs** — do not add a second `viewer.html`. The Khronos renderer
 rejects absolute library/LUT URLs; serve from the scheme-handler root. Load `libktx.js` and
@@ -126,12 +149,13 @@ Application Support for settings — in an appex that is its own container. Thum
 the harness. Regen uses the `TestModels/References/REGENERATE` sentinel
 (`./scripts/regenerate-pixel-references.sh`), not env vars. Look at the PNGs before committing.
 
-**7. Dual path gaps** — hide/solo still toggle the RK `Entity`; only selection is forwarded to
-the page (`setSelectedNode`). Fit / presets / reset / Export PNG act on the mounted canvas
-(`FocusedPreviewCommands`), so on the web path they drive the page camera. `proof.sh` exercises RK `StillRenderer` on fixtures only; the per-sample
+**7. Renderer gaps** — the page has no clip playback, morph weights, hide/solo, skeleton overlay or
+file-light toggle (`WebPreviewCanvas.features`); that chrome is absent in WebKit windows. Selection
+is forwarded to the page (`setSelectedNode`). Fit / presets / reset / Export PNG act on the mounted
+canvas (`FocusedPreviewCommands`). `proof.sh` exercises RK `StillRenderer` on fixtures only; the per-sample
 RK goldens are in the pixel-diff harness.
 
-**8. RealityKit fallback only** (`PreviewScene` when `webCanvasURL` is nil)
+**8. RealityKit canvas** (`PreviewScene`)
 
 - No `RealityViewCameraContent.entities` iteration in update — own `lookRoot`.
 - `.realityViewCameraControls(.orbit)` + turntable `cameraTarget`.
@@ -145,6 +169,7 @@ RK goldens are in the pixel-diff harness.
 open -a "/Applications/glTF Inspector.app" /path/to/file.glb
 log stream --style compact --info --predicate 'subsystem == "lol.mattias.gltf-inspector" OR (process == "glTF Inspector" AND composedMessage CONTAINS "Modifying state")'
 # one "open start", one "open ready" (or "open failed"); Modifying state ≈ 0
+# per renderer, Debug .build app: open -n -g -a "<.build app>" --args -GLTFRenderer webkit <file>
 ```
 
 **10. UI verification** — skill `macos-app-testing`. Non-intrusive by default: no focus steal,
