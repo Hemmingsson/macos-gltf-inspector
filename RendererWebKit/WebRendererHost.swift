@@ -50,6 +50,11 @@ public final class WebRendererHost: NSObject {
     private var hasLoadedModel = false
     private var environmentTask: Task<Void, Error>?
 
+    /// True once the page timed out, crashed or failed outside a command. Every later command
+    /// would wait out the timeout again, so owners that cache a host drop it.
+    public var isBroken: Bool { brokenBy != nil }
+    private var brokenBy: Error?
+
     /// The renderer surface, for `.live` hosting. Untouched in `.still`.
     var view: NSView { webView }
 
@@ -143,6 +148,7 @@ public final class WebRendererHost: NSObject {
     /// type is constructed through a static factory that takes the id.
     @discardableResult
     func send(_ make: (Int) -> WebRendererCommand) async throws -> WebRendererEvent {
+        if let brokenBy { throw brokenBy }
         guard isReady else { throw WebRendererError.notReady }
 
         let id = nextCommandID
@@ -299,6 +305,7 @@ public final class WebRendererHost: NSObject {
 
     /// Fails every outstanding waiter, including the page load.
     private func failAll(_ error: Error) {
+        brokenBy = error
         if let readyContinuation {
             self.readyContinuation = nil
             readyContinuation.resume(throwing: error)

@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 
 /// Typed Swift side of the `viewer.html` command channel.
 ///
@@ -342,6 +343,45 @@ struct RendererCameraState: Equatable, Sendable {
         self.pose = pose
         self.sceneMin = sceneMin
         self.sceneMax = sceneMax
+    }
+}
+
+extension RendererCameraState {
+    /// Camera distance that frames the measured box when seen from `preset`.
+    ///
+    /// The page's fit (`fitDistanceToExtents`) sizes the distance to the larger of the box's X
+    /// and Y extent — a front view. Distance is linear in that extent, so another view scales
+    /// the fitted distance by its own on-screen extent: Z/Y from the side, X/Z from above, the
+    /// full diagonal for the three-quarter view (all three axes are visible at once).
+    func distance(framing preset: CameraPreset) -> Double {
+        let size = (0..<3).map { sceneMax[$0] - sceneMin[$0] }
+        let front = max(size[0], size[1])
+        guard front > 0, pose.distance.isFinite else { return pose.distance }
+        let extent: Double = switch preset {
+        case .front, .back: front
+        case .left, .right: max(size[2], size[1])
+        case .top, .bottom: max(size[0], size[2])
+        case .isometric: boundingRadius * 2
+        }
+        return pose.distance * extent / front
+    }
+}
+
+extension CameraPreset {
+    /// Page orbit angles in degrees. `UserCamera` places the eye at
+    /// `R_y(azimuth) · R_x(elevation) · (0, 0, +d)`, so azimuth +90 looks from +X and a
+    /// *negative* elevation looks from above. Same views as the RealityKit presets
+    /// (yaw 0 = +Z front, +90 = +X right; pitch +90 = top).
+    var webOrbitAngles: (azimuth: Double, elevation: Double) {
+        switch self {
+        case .front: (0, 0)
+        case .back: (180, 0)
+        case .right: (90, 0)
+        case .left: (-90, 0)
+        case .top: (0, -90)
+        case .bottom: (0, 90)
+        case .isometric: (35, -18)
+        }
     }
 }
 

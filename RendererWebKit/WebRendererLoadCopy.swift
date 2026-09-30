@@ -35,6 +35,7 @@ enum WebRendererLoadCopy {
     static let model = "Loading model…"
     /// First GPU frame after parse — this is the long blank if the spinner is already gone.
     static let drawing = "Drawing…"
+    static let failed = "Failed to load model"
 
     static func message(for inventory: WebRendererAssetInventory?) -> String {
         guard let inventory else { return model }
