@@ -1,9 +1,10 @@
-import AppKit
 import GLTFCore
 import RendererRealityKit
 import RendererWebKit
 import SwiftUI
 
+/// Document-window canvas router: the web canvas when `webCanvasURL` is set, else the RealityKit
+/// fallback. Quick Look has its own router (`PreviewExtension/QuickLookPreviewView.swift`).
 struct PreviewView: View {
     enum State {
         case loading
@@ -36,7 +37,7 @@ struct PreviewView: View {
     /// Host passes `HostSidebarModel.overlayRevision` so RealityView updates on select/hide.
     /// Reading it through `any PreviewOverlay` alone is not a reliable SwiftUI dependency.
     var overlayRevision: Int = 0
-    /// Host-owned session; nil in Quick Look (PreviewScene seeds local `@State`).
+    /// Host-owned session; nil lets `PreviewScene` seed local `@State`.
     var session: PreviewSessionBindings? = nil
     /// When set, the model canvas is drawn by the shared web renderer instead of RealityKit.
     /// Migration step: overlays and camera chrome still belong to `PreviewScene` and are not
@@ -44,23 +45,12 @@ struct PreviewView: View {
     var webCanvasURL: URL? = nil
     /// Look applied to the web canvas.
     var webCanvasLook = WebPreviewCanvas.Look()
-    /// Cached Finder icon shown under the web view until `load` unhides it. Quick Look only.
-    var placeholderImage: NSImage? = nil
-    /// Optional live host already constructed (Quick Look `loadView` prestart).
-    var webCanvasHost: WebRendererHost? = nil
 
     var body: some View {
         Group {
             // The web canvas shows its own spinner + file facts while WKWebView stays hidden.
-            // Quick Look takes this path with no RealityKit convert, which is where the
-            // wait is — its process is cold on every spacebar press.
             if let webCanvasURL, !state.isFailed {
-                WebPreviewCanvas(
-                    url: webCanvasURL,
-                    look: webCanvasLook,
-                    placeholderImage: placeholderImage,
-                    host: webCanvasHost
-                )
+                WebPreviewCanvas(url: webCanvasURL, look: webCanvasLook)
             } else {
                 switch state {
                 case .loading:

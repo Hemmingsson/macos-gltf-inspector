@@ -7,7 +7,7 @@ import SwiftUI
 
 class PreviewViewController: NSViewController, QLPreviewingController {
     private let interaction = PreviewInteraction()
-    private var hostingView: PreviewHostingView!
+    private var hostingView: PreviewHostingView<QuickLookPreviewView>!
     private var loadTask: Task<Void, Never>?
     /// Live host kicked in `loadView` so the module compiles while QL builds chrome.
     /// `present` injects this same instance — no second `WKWebView`.
@@ -18,7 +18,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         let dark = Self.systemIsDark()
 
         hostingView = PreviewHostingView(
-            rootView: PreviewView(state: .loading, interaction: interaction, isDark: dark)
+            rootView: QuickLookPreviewView(state: .loading, isDark: dark)
         )
         hostingView.interaction = interaction
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -69,9 +69,8 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     private func present(url: URL, dark: Bool) {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         guard let host = prestartedHost else {
-            hostingView.rootView = PreviewView(
+            hostingView.rootView = QuickLookPreviewView(
                 state: .failed("Couldn't start the web renderer"),
-                interaction: interaction,
                 isDark: dark
             )
             return
@@ -79,17 +78,17 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         let defaults = AppGroupSettings.rendererLook()
         // Cache-only Icon Services read — does not start ThumbnailExtension.
         let placeholder = CachedQuickLookThumbnail.existingIcon(for: url)
-        hostingView.rootView = PreviewView(
-            state: .loading,
-            interaction: interaction,
-            isDark: dark,
-            webCanvasURL: url,
-            webCanvasLook: WebPreviewCanvas.Look(
-                environment: defaults.environment,
-                toneMapping: defaults.toneMapping
+        hostingView.rootView = QuickLookPreviewView(
+            state: .web(
+                url: url,
+                look: WebPreviewCanvas.Look(
+                    environment: defaults.environment,
+                    toneMapping: defaults.toneMapping
+                ),
+                placeholder: placeholder,
+                host: host
             ),
-            placeholderImage: placeholder,
-            webCanvasHost: host
+            isDark: dark
         )
     }
 

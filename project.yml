@@ -176,7 +176,6 @@ targets:
       - path: assets/ICON.icon
         type: file
         buildPhase: resources
-      - Shared
     # Not sandboxed. The only entitlement is the App Group, so Settings (group suite + look.json
     # in the group container) is visible to both extensions.
     entitlements:
@@ -283,13 +282,7 @@ targets:
     type: app-extension
     platform: macOS
     sources:
-      - path: PreviewExtension
-        includes:
-          - "*.swift"
-      - path: Shared
-        includes:
-          - PreviewView.swift
-          - PreviewHosting.swift
+      - PreviewExtension
     entitlements:
       path: PreviewExtension/PreviewExtension.entitlements
       properties:

@@ -15,7 +15,7 @@ struct HostPreviewContainer: NSViewRepresentable {
     var webCanvasURL: URL?
     var webCanvasLook: WebPreviewCanvas.Look
 
-    func makeNSView(context: Context) -> PreviewHostingView {
+    func makeNSView(context: Context) -> PreviewHostingView<PreviewView> {
         let view = PreviewHostingView(
             rootView: PreviewView(
                 state: state,
@@ -32,7 +32,7 @@ struct HostPreviewContainer: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: PreviewHostingView, context: Context) {
+    func updateNSView(_ nsView: PreviewHostingView<PreviewView>, context: Context) {
         nsView.interaction = interaction
         nsView.rootView = PreviewView(
             state: state,
@@ -46,7 +46,7 @@ struct HostPreviewContainer: NSViewRepresentable {
         )
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PreviewHostingView, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PreviewHostingView<PreviewView>, context: Context) -> CGSize? {
         CGSize(
             width: proposal.width ?? nsView.bounds.width,
             height: proposal.height ?? nsView.bounds.height
