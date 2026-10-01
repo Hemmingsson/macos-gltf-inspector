@@ -56,63 +56,7 @@ extension RealityKitConvert {
                 plan.positions.copy(elementFloats: 3, count: plan.vertexCount, to: dest)
             }
         )
-
-        if let normalBufferIndex = meshLayout.normalBufferIndex {
-            fillLowLevelVertexBuffer(
-                lowLevelMesh,
-                bufferIndex: normalBufferIndex,
-                plans: plans,
-                bytesPerVertex: 12,
-                write: { plan, dest in
-                    copy(plan.normals, elementFloats: 3, count: plan.vertexCount, to: dest)
-                }
-            )
-        }
-
-        if let tangentBufferIndex = meshLayout.tangentBufferIndex {
-            fillLowLevelVertexBuffer(
-                lowLevelMesh,
-                bufferIndex: tangentBufferIndex,
-                plans: plans,
-                bytesPerVertex: 16,
-                write: { plan, dest in
-                    copy(plan.tangents, elementFloats: 4, count: plan.vertexCount, to: dest)
-                }
-            )
-        }
-
-        for (set, uvBufferIndex) in meshLayout.uvBufferIndices.enumerated() {
-            guard let uvBufferIndex else { continue }
-            fillLowLevelVertexBuffer(
-                lowLevelMesh,
-                bufferIndex: uvBufferIndex,
-                plans: plans,
-                bytesPerVertex: 8,
-                write: { plan, dest in
-                    let nbytes = plan.vertexCount * 8
-                    copy(plan.uvs[set], count: nbytes, to: dest, or: { memset(dest, 0, nbytes) })
-                }
-            )
-        }
-
-        if let colorBufferIndex = meshLayout.colorBufferIndex {
-            fillLowLevelVertexBuffer(
-                lowLevelMesh,
-                bufferIndex: colorBufferIndex,
-                plans: plans,
-                bytesPerVertex: 16,
-                write: { plan, dest in
-                    let nbytes = plan.vertexCount * 16
-                    copy(plan.colors, count: nbytes, to: dest, or: {
-                        // Missing COLOR on a sibling primitive → opaque white.
-                        let out = dest.assumingMemoryBound(to: SIMD4<Float>.self)
-                        for i in 0..<plan.vertexCount {
-                            out[i] = SIMD4<Float>(1, 1, 1, 1)
-                        }
-                    })
-                }
-            )
-        }
+        fillLowLevelExtraBuffer(lowLevelMesh, layout: meshLayout, plans: plans)
 
         fillLowLevelIndexBuffer(lowLevelMesh, plans: plans)
 
@@ -213,13 +157,17 @@ extension RealityKitConvert {
         var indexCount: Int { indices.count }
     }
 
+    /// Positions stay in buffer 0 (tight memcpy). Every other attribute shares buffer 1 so
+    /// `vertexBufferCount` stays at 2 — `LowLevelMesh` rejects 5+ separate buffers.
     private struct LowLevelLayout {
         let attributes: [LowLevelMesh.Attribute]
         let layouts: [LowLevelMesh.Layout]
-        let normalBufferIndex: Int?
-        let tangentBufferIndex: Int?
-        let uvBufferIndices: [Int?]
-        let colorBufferIndex: Int?
+        let extraBufferIndex: Int?
+        let extraStride: Int
+        let normalOffset: Int?
+        let tangentOffset: Int?
+        let uvOffsets: [Int?]
+        let colorOffset: Int?
 
         static func make(
             anyNormals: Bool,
@@ -233,41 +181,50 @@ extension RealityKitConvert {
             var layouts: [LowLevelMesh.Layout] = [
                 .init(bufferIndex: 0, bufferStride: 12)
             ]
-            var normalBufferIndex: Int?
-            var tangentBufferIndex: Int?
-            var uvBufferIndices: [Int?] = [nil, nil]
-            var colorBufferIndex: Int?
+            var extraOffset = 0
+            var normalOffset: Int?
+            var tangentOffset: Int?
+            var uvOffsets: [Int?] = [nil, nil]
+            var colorOffset: Int?
+
+            func appendExtra(
+                semantic: LowLevelMesh.VertexSemantic,
+                format: MTLVertexFormat,
+                bytes: Int
+            ) -> Int {
+                let offset = extraOffset
+                attributes.append(.init(semantic: semantic, format: format, layoutIndex: 1, offset: offset))
+                extraOffset += bytes
+                return offset
+            }
+
             if anyNormals {
-                let idx = layouts.count
-                normalBufferIndex = idx
-                attributes.append(.init(semantic: .normal, format: .float3, layoutIndex: idx, offset: 0))
-                layouts.append(.init(bufferIndex: idx, bufferStride: 12))
+                normalOffset = appendExtra(semantic: .normal, format: .float3, bytes: 12)
             }
             if anyTangents {
-                let idx = layouts.count
-                tangentBufferIndex = idx
-                attributes.append(.init(semantic: .tangent, format: .float4, layoutIndex: idx, offset: 0))
-                layouts.append(.init(bufferIndex: idx, bufferStride: 16))
+                tangentOffset = appendExtra(semantic: .tangent, format: .float4, bytes: 16)
             }
             for (set, semantic) in [LowLevelMesh.VertexSemantic.uv0, .uv1].enumerated() where anyUVs[set] {
-                let idx = layouts.count
-                uvBufferIndices[set] = idx
-                attributes.append(.init(semantic: semantic, format: .float2, layoutIndex: idx, offset: 0))
-                layouts.append(.init(bufferIndex: idx, bufferStride: 8))
+                uvOffsets[set] = appendExtra(semantic: semantic, format: .float2, bytes: 8)
             }
             if anyColors {
-                let idx = layouts.count
-                colorBufferIndex = idx
-                attributes.append(.init(semantic: .color, format: .float4, layoutIndex: idx, offset: 0))
-                layouts.append(.init(bufferIndex: idx, bufferStride: 16))
+                colorOffset = appendExtra(semantic: .color, format: .float4, bytes: 16)
+            }
+
+            var extraBufferIndex: Int?
+            if extraOffset > 0 {
+                extraBufferIndex = 1
+                layouts.append(.init(bufferIndex: 1, bufferStride: extraOffset))
             }
             return LowLevelLayout(
                 attributes: attributes,
                 layouts: layouts,
-                normalBufferIndex: normalBufferIndex,
-                tangentBufferIndex: tangentBufferIndex,
-                uvBufferIndices: uvBufferIndices,
-                colorBufferIndex: colorBufferIndex
+                extraBufferIndex: extraBufferIndex,
+                extraStride: extraOffset,
+                normalOffset: normalOffset,
+                tangentOffset: tangentOffset,
+                uvOffsets: uvOffsets,
+                colorOffset: colorOffset
             )
         }
     }
@@ -351,6 +308,60 @@ extension RealityKitConvert {
         }
     }
 
+    @MainActor private func fillLowLevelExtraBuffer(
+        _ lowLevelMesh: LowLevelMesh,
+        layout: LowLevelLayout,
+        plans: [LowLevelMeshPrimitivePlan]
+    ) {
+        guard let bufferIndex = layout.extraBufferIndex, layout.extraStride > 0 else { return }
+        lowLevelMesh.withUnsafeMutableBytes(bufferIndex: bufferIndex) { dest in
+            guard let destBase = dest.baseAddress else { return }
+            var byteOffset = 0
+            for plan in plans {
+                let vertex = destBase + byteOffset
+                copy(
+                    plan.normals,
+                    elementFloats: 3,
+                    count: plan.vertexCount,
+                    to: vertex,
+                    stride: layout.extraStride,
+                    offset: layout.normalOffset
+                )
+                copy(
+                    plan.tangents,
+                    elementFloats: 4,
+                    count: plan.vertexCount,
+                    to: vertex,
+                    stride: layout.extraStride,
+                    offset: layout.tangentOffset
+                )
+                for set in 0..<2 {
+                    copy(
+                        plan.uvs[set],
+                        elementBytes: 8,
+                        count: plan.vertexCount,
+                        to: vertex,
+                        stride: layout.extraStride,
+                        offset: layout.uvOffsets[set],
+                        or: { dest in memset(dest, 0, 8) }
+                    )
+                }
+                copy(
+                    plan.colors,
+                    elementBytes: 16,
+                    count: plan.vertexCount,
+                    to: vertex,
+                    stride: layout.extraStride,
+                    offset: layout.colorOffset,
+                    or: { dest in
+                        dest.assumingMemoryBound(to: SIMD4<Float>.self).pointee = SIMD4<Float>(1, 1, 1, 1)
+                    }
+                )
+                byteOffset += plan.vertexCount * layout.extraStride
+            }
+        }
+    }
+
     @MainActor private func fillLowLevelIndexBuffer(
         _ lowLevelMesh: LowLevelMesh,
         plans: [LowLevelMeshPrimitivePlan]
@@ -378,25 +389,66 @@ extension RealityKitConvert {
         }
     }
 
-    private func copy(_ source: VertexFloats?, elementFloats: Int, count: Int, to dest: UnsafeMutableRawPointer) {
+    private func copy(
+        _ source: VertexFloats?,
+        elementFloats: Int,
+        count: Int,
+        to dest: UnsafeMutableRawPointer,
+        stride: Int,
+        offset: Int?
+    ) {
+        guard let offset else { return }
+        let elementBytes = elementFloats * MemoryLayout<Float>.size
         if let source {
-            source.copy(elementFloats: elementFloats, count: count, to: dest)
+            let nbytes = count * elementBytes
+            let packed = UnsafeMutableRawPointer.allocate(byteCount: max(nbytes, 1), alignment: 16)
+            defer { packed.deallocate() }
+            source.copy(elementFloats: elementFloats, count: count, to: packed)
+            scatter(packed, elementBytes: elementBytes, count: count, to: dest, stride: stride, offset: offset)
         } else {
-            memset(dest, 0, count * elementFloats * MemoryLayout<Float>.size)
+            for i in 0..<count {
+                memset(dest + i * stride + offset, 0, elementBytes)
+            }
         }
     }
 
-    private func copy<T>(_ values: [T]?, count: Int, to dest: UnsafeMutableRawPointer, or fill: () -> Void) {
+    private func copy<T>(
+        _ values: [T]?,
+        elementBytes: Int,
+        count: Int,
+        to dest: UnsafeMutableRawPointer,
+        stride: Int,
+        offset: Int?,
+        or fillVertex: (UnsafeMutableRawPointer) -> Void
+    ) {
+        guard let offset else { return }
         if let values {
             values.withUnsafeBytes { bytes in
                 guard let base = bytes.baseAddress else {
-                    fill()
+                    for i in 0..<count {
+                        fillVertex(dest + i * stride + offset)
+                    }
                     return
                 }
-                memcpy(dest, base, min(count, bytes.count))
+                scatter(base, elementBytes: elementBytes, count: count, to: dest, stride: stride, offset: offset)
             }
         } else {
-            fill()
+            for i in 0..<count {
+                fillVertex(dest + i * stride + offset)
+            }
+        }
+    }
+
+    private func scatter(
+        _ source: UnsafeRawPointer,
+        elementBytes: Int,
+        count: Int,
+        to dest: UnsafeMutableRawPointer,
+        stride: Int,
+        offset: Int
+    ) {
+        for i in 0..<count {
+            memcpy(dest + i * stride + offset, source + i * elementBytes, elementBytes)
         }
     }
 }
