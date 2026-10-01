@@ -123,7 +123,10 @@ public final class WebCanvasController {
         guard let host else { return }
 
         let modelChanged = loaded != url
-        guard modelChanged || appliedLook != look else { return }
+        // A look change during page start used to take the apply-only path (`modelChanged` is
+        // already false once `loaded` is set) and never `load` / `revealLive`.
+        let needsLoad = modelChanged || !didRevealLive
+        guard needsLoad || appliedLook != look else { return }
         loaded = url
         appliedLook = look
 
@@ -131,29 +134,39 @@ public final class WebCanvasController {
         work = Task { [host] in
             do {
                 var inventory: WebRendererAssetInventory?
-                if modelChanged {
+                if needsLoad {
                     didRevealLive = false
                     phase = .loading
                     showLoading(
                         title: WebRendererLoadCopy.starting,
                         detail: nil
                     )
-                    let peek = Task.detached(priority: .userInitiated) {
-                        WebRendererAssetInventory.peek(from: url)
-                    }
-                    Task {
-                        let peeked = await peek.value
-                        await MainActor.run {
-                            guard !self.didRevealLive, self.phase == .loading else { return }
-                            self.showLoading(
-                                title: WebRendererLoadCopy.message(for: peeked),
-                                detail: WebRendererLoadCopy.detail(for: peeked)
-                            )
+                    let peek: Task<WebRendererAssetInventory?, Never>?
+                    if modelChanged {
+                        let loadingURL = url
+                        let header = Task.detached(priority: .userInitiated) {
+                            WebRendererAssetInventory.peek(from: loadingURL)
                         }
+                        peek = header
+                        Task {
+                            let peeked = await header.value
+                            await MainActor.run {
+                                guard !self.didRevealLive, self.phase == .loading, self.loaded == loadingURL
+                                else { return }
+                                self.showLoading(
+                                    title: WebRendererLoadCopy.message(for: peeked),
+                                    detail: WebRendererLoadCopy.detail(for: peeked)
+                                )
+                            }
+                        }
+                    } else {
+                        peek = nil
                     }
                     try await host.start()
                     // The peek task above shows its copy; keep it for the "Drawing…" detail.
-                    inventory = await peek.value
+                    if let peek {
+                        inventory = await peek.value
+                    }
                     try Task.checkCancellation()
                 } else {
                     try await host.start()
@@ -163,7 +176,7 @@ public final class WebCanvasController {
                 // starts it after the model, so first paint does not wait on IBL.
                 try await host.apply(look)
 
-                if modelChanged {
+                if needsLoad {
                     showLoading(
                         title: WebRendererLoadCopy.drawing,
                         detail: WebRendererLoadCopy.detail(for: inventory)
