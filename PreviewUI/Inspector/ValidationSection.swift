@@ -19,7 +19,7 @@ public struct ValidationSection: View {
                     DSStatusBadge("Valid \(validation.formatLabel)", status: .valid)
                 } else {
                     DSDisclosureCard(
-                        summaryTitle,
+                        issueSummary(errors: validation.errorCount, warnings: validation.warningCount),
                         status: validation.errorCount > 0 ? .error : .warning,
                         isExpanded: $isExpanded,
                         messages: validation.issues.map {
@@ -36,18 +36,6 @@ public struct ValidationSection: View {
             // Warnings start open so an invalid file's problems are immediately readable.
             if !validation.isClean { isExpanded = true }
         }
-    }
-
-    private var summaryTitle: String {
-        let errors = validation.errorCount
-        let warnings = validation.warningCount
-        if errors > 0 && warnings > 0 {
-            return "\(errors) errors · \(warnings) warnings"
-        }
-        if errors > 0 {
-            return errors == 1 ? "1 error" : "\(errors) errors"
-        }
-        return warnings == 1 ? "1 warning" : "\(warnings) warnings"
     }
 }
 

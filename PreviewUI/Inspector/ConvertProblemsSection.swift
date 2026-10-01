@@ -17,7 +17,7 @@ public struct ConvertProblemsSection: View {
             InspectorSectionHeader("Not rendered as authored", top: DS.Spacing.m)
 
             DSDisclosureCard(
-                summaryTitle,
+                issueSummary(errors: problems.errorCount, warnings: problems.warningCount),
                 status: problems.errorCount > 0 ? .error : .warning,
                 isExpanded: $isExpanded,
                 messages: problems.entries.map {
@@ -31,18 +31,6 @@ public struct ConvertProblemsSection: View {
         .onAppear {
             if problems.errorCount > 0 { isExpanded = true }
         }
-    }
-
-    private var summaryTitle: String {
-        let errors = problems.errorCount
-        let warnings = problems.warningCount
-        if errors > 0 && warnings > 0 {
-            return "\(errors) errors · \(warnings) warnings"
-        }
-        if errors > 0 {
-            return errors == 1 ? "1 error" : "\(errors) errors"
-        }
-        return warnings == 1 ? "1 warning" : "\(warnings) warnings"
     }
 }
 
