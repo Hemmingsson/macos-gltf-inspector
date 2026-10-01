@@ -430,7 +430,7 @@ struct PreviewScene: View {
             syncSessionProjectionIfNeeded()
         }
         .onChange(of: interaction.openingFitResetID) { _, id in
-            // Menu / Task MainActor only — not RealityView update (AGENTS.md pitfall 4).
+            // Menu / Task MainActor only — not RealityView update (AGENTS.md pitfall 1).
             guard id > 0 else { return }
             resetOpeningFit()
         }
