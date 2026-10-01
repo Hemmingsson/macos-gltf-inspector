@@ -7,7 +7,7 @@ import SwiftUI
 public struct WebPreviewCanvas: NSViewRepresentable {
     let url: URL
     var look = Look()
-    /// Icon Services thumbnail already on disk. Nil on the host window and on a cache miss.
+    /// App Group poster or bounding-box proxy. Nil only when the owner has nothing to show.
     var placeholderImage: NSImage? = nil
     /// Live host already constructed (Quick Look `loadView` prestart). Nil in the document window.
     var host: WebRendererHost? = nil

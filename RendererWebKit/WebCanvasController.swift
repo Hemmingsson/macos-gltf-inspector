@@ -278,6 +278,8 @@ public final class WebCanvasController {
         view.layer?.isOpaque = false
         Self.pin(view, in: container, below: sibling)
         placeholderView = view
+        AppLog.signposter.emitEvent("poster shown")
+        AppLog.info(AppLog.webRenderer, "poster shown uptimeMs=\(AppLog.uptimeMs())")
     }
 
     /// Adds `view` edge-to-edge in `container` (on top, or below `sibling`).

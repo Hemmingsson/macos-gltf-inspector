@@ -49,8 +49,8 @@ final class WebQuickLookController: NSViewController, QLPreviewingController {
             )
             return
         }
-        // Cache-only Icon Services read — does not start ThumbnailExtension.
-        let placeholder = CachedQuickLookThumbnail.existingIcon(for: url)
+        // App Group poster from the thumbnail extension, or a JSON bounding-box proxy.
+        let placeholder = firstPixelNSImage(for: url, renderer: .webKit)
         hostingView.rootView = QuickLookWebView(
             state: .web(
                 url: url,
@@ -92,7 +92,7 @@ struct QuickLookWebView: View {
     enum State {
         case loading
         case failed(String)
-        /// Cached Finder icon shows under the web view until `load` unhides it.
+        /// App Group poster or bounding-box proxy under the web view until `load` unhides it.
         case web(
             url: URL,
             look: WebPreviewCanvas.Look,
@@ -133,4 +133,9 @@ struct QuickLookWebView: View {
             foreground: isDark ? .white : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
         )
     }
+}
+
+func firstPixelNSImage(for url: URL, renderer: RendererKind) -> NSImage {
+    let image = FirstPixelPreview.image(for: url, renderer: renderer)
+    return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
 }

@@ -50,6 +50,11 @@ enum WebThumbnail {
         let fileURL = ThumbnailProvider.outputURL()
         // The page's PNG as is (sRGB-tagged by WebKit): no decode and re-encode.
         try png.write(to: fileURL)
+        do {
+            try FirstPixelPreview.store(png: png, for: url, renderer: .webKit)
+        } catch {
+            AppLog.error(AppLog.webRenderer, "poster cache failed \(url.lastPathComponent): \(error.localizedDescription)")
+        }
 
         AppLog.info(
             AppLog.webRenderer,

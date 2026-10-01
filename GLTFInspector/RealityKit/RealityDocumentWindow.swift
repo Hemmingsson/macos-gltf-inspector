@@ -1,3 +1,4 @@
+import AppKit
 import GLTFCore
 import PreviewUI
 import RendererRealityKit
@@ -19,6 +20,8 @@ struct RealityDocumentWindow: View {
     /// Built once per loaded model: rebuilding it re-touches the live entity's animations. An empty
     /// controller (no clips) while nothing is loaded.
     @State private var playbackController = EngineAnimationPlaybackController()
+    /// App Group poster or bounding-box proxy while convert runs.
+    @State private var firstPixelImage: NSImage?
 
     init(documentURL: URL?) {
         self.documentURL = documentURL
@@ -51,6 +54,10 @@ struct RealityDocumentWindow: View {
                     registerCommands: { window.engineViewport.commands = $0 }
                 )
                 .canvasReadyMarker(renderer: .realityKit, isReady: true)
+            } else if let firstPixelImage {
+                Image(nsImage: firstPixelImage)
+                    .resizable()
+                    .scaledToFit()
             }
         }
         .onAppear {
@@ -77,10 +84,11 @@ struct RealityDocumentWindow: View {
         }
     }
 
-    /// The canvas follows convert.
+    /// Convert ready is the live canvas. During convert a poster / proxy is enough to leave
+    /// the spinner-only status view — first pixel, not first Metal frame.
     private var canvasState: ShellDocumentState {
         switch convert {
-        case .loading: .loading
+        case .loading: firstPixelImage == nil ? .loading : .ready
         case .ready: .ready
         case .failed(let message): .failed(message)
         }
@@ -151,6 +159,7 @@ struct RealityDocumentWindow: View {
         case .started(let started):
             generation = started
         }
+        firstPixelImage = firstPixelNSImage(for: url, renderer: .realityKit)
         convert = .loading
         morphTargets = []
         playbackController = EngineAnimationPlaybackController()

@@ -43,7 +43,12 @@ final class RealityQuickLookController: NSViewController, QLPreviewingController
 
     func preparePreviewOfFile(at url: URL) async throws {
         let dark = PreviewViewController.systemIsDark()
-        // Detached so Quick Look can present the loading view on the main actor before GLTFKit2
+        present(
+            .loading,
+            poster: firstPixelNSImage(for: url, renderer: .realityKit),
+            dark: dark
+        )
+        // Detached so Quick Look can present the poster on the main actor before GLTFKit2
         // convert occupies it.
         loadTask?.cancel()
         loadTask = Task.detached { [weak self] in
@@ -58,15 +63,21 @@ final class RealityQuickLookController: NSViewController, QLPreviewingController
     }
 
     @MainActor
-    private func present(_ state: RealityLoadState, dark: Bool) {
+    private func present(_ state: RealityLoadState, poster: NSImage? = nil, dark: Bool) {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        hostingView.rootView = QuickLookRealityView(state: state, interaction: interaction, isDark: dark)
+        hostingView.rootView = QuickLookRealityView(
+            state: state,
+            poster: poster,
+            interaction: interaction,
+            isDark: dark
+        )
     }
 }
 
-/// Spinner, `RealityPreviewCanvas`, or the failure message.
+/// Poster / proxy, `RealityPreviewCanvas`, or the failure message.
 struct QuickLookRealityView: View {
     let state: RealityLoadState
+    var poster: NSImage? = nil
     var interaction: PreviewInteraction
     var isDark: Bool
 
@@ -74,9 +85,15 @@ struct QuickLookRealityView: View {
         Group {
             switch state {
             case .loading:
-                ProgressView()
-                    .controlSize(.regular)
-                    .progressViewStyle(.circular)
+                if let poster {
+                    Image(nsImage: poster)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    ProgressView()
+                        .controlSize(.regular)
+                        .progressViewStyle(.circular)
+                }
             case .ready(let model):
                 RealityPreviewCanvas(model: model, interaction: interaction, isDark: isDark)
             case .failed(let message):

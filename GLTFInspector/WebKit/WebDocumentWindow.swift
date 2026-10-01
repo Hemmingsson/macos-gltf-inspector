@@ -1,3 +1,4 @@
+import AppKit
 import GLTFCore
 import PreviewUI
 import RendererWebKit
@@ -14,6 +15,8 @@ struct WebDocumentWindow: View {
     /// Outlives a canvas remount (`DocumentShell` ids the canvas by load generation) so the page
     /// started on open keeps drawing. Replaced only after it failed, for the next document.
     @State private var webCanvas = WebCanvasController()
+    /// App Group poster or bounding-box proxy while the page starts.
+    @State private var firstPixelImage: NSImage?
 
     init(documentURL: URL?) {
         self.documentURL = documentURL
@@ -84,6 +87,7 @@ struct WebDocumentWindow: View {
                     sceneIndex: window.sidebar?.activeSceneIndex ?? 0,
                     selectedNodeIndex: window.sidebar?.selectedNodeIndex
                 ),
+                placeholderImage: firstPixelImage,
                 controller: webCanvas
             )
             .canvasReadyMarker(renderer: .webKit, isReady: webCanvas.phase == .ready)
@@ -92,6 +96,7 @@ struct WebDocumentWindow: View {
     }
 
     private func loadDocument(_ url: URL) {
+        firstPixelImage = firstPixelNSImage(for: url, renderer: .webKit)
         guard case .started(let generation) = window.beginOpen(url) else { return }
         if case .failed = webCanvas.phase {
             webCanvas = WebCanvasController()
