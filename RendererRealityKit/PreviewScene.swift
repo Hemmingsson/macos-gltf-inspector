@@ -414,8 +414,7 @@ struct PreviewScene: View {
             if showsInlineChrome {
                 PreviewQuickLookChrome(
                     backdropIndex: backdropIndex,
-                    autoRotate: autoRotateBinding,
-                    isDark: isDark
+                    autoRotate: autoRotateBinding
                 )
             }
 
