@@ -8,12 +8,8 @@ public enum OverlayMetrics {
     public static let inset = DS.Spacing.xl
     /// Dimensions pill height. Slightly under `DS.Metrics.glassControl` so the readout stays compact.
     public static let dimensionsHeight: CGFloat = 30
-    /// Legacy rounded-rect radius; HUDs now use `DSHUDCapsule` (capsule). Kept for Phase 2 callers.
-    public static let dimensionsRadius: CGFloat = 9
     /// Playback bar height. Taller than a glass control so the scrubber sits comfortably.
     public static let playbackHeight: CGFloat = 42
-    /// Legacy rounded-rect radius; HUDs now use `DSHUDCapsule` (capsule). Kept for Phase 2 callers.
-    public static let playbackRadius: CGFloat = 13
     /// Playback scrub track width in the wireframe.
     public static let scrubWidth: CGFloat = 250
     /// Orientation gizmo box (`width: 66; height: 66`).
@@ -53,54 +49,4 @@ public enum OverlayMetrics {
             anchor: .topLeading
         )
     }
-}
-
-/// Thin wrapper over `DSHUDCapsule` for the dimensions / playback HUD slot.
-public struct OverlayChrome<Content: View>: View {
-    public var height: CGFloat
-    /// Ignored — `DSHUDCapsule` is a capsule. Kept so Phase 2 callers still compile.
-    public var cornerRadius: CGFloat = 0
-    public var horizontalPadding: CGFloat = DS.Spacing.l
-    @ViewBuilder public var content: () -> Content
-
-    public var body: some View {
-        let _ = cornerRadius
-        DSHUDCapsule(height: height, horizontalPadding: horizontalPadding) {
-            content()
-        }
-    }
-}
-
-// MARK: - Previews
-
-#Preview("dimensions slot") {
-    OverlayChrome(height: OverlayMetrics.dimensionsHeight) {
-        Image(systemName: "cube")
-            .font(DS.Font.callout)
-            .foregroundStyle(DS.Color.textSecondary)
-        Text("1.00 × 1.00 × 1.00 m")
-            .font(DS.Font.value)
-            .foregroundStyle(DS.Color.textPrimary)
-    }
-    .padding(DS.Spacing.xxl)
-}
-
-#Preview("playback slots") {
-    OverlayChrome(
-        height: OverlayMetrics.playbackHeight,
-        horizontalPadding: DS.Spacing.l
-    ) {
-        Text("Idle")
-            .font(DS.Font.body)
-            .foregroundStyle(DS.Color.textPrimary)
-        DSGlassIslandDivider()
-        PlaybackPlayButton(isPlaying: false) {}
-        DSHUDSlider(value: .constant(0.25), in: 0...1, accessibilityLabel: "Playhead")
-            .controlSize(.small)
-            .frame(width: OverlayMetrics.scrubWidth)
-        Text("00:00 / 00:02")
-            .font(DS.Font.value)
-            .foregroundStyle(DS.Color.textSecondary)
-    }
-    .padding(DS.Spacing.xxl)
 }
