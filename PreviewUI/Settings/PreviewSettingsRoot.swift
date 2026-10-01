@@ -36,13 +36,18 @@ public struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
     public var store: Store
     /// Host: copy + decode HDR into Application Support. Shell: store the file name only.
     public var importCustomEnvironment: ((URL) throws -> String)? = nil
+    /// Renderers linked into this build (`SettingKey.renderer` raw value + title). The picker
+    /// shows only when there is a choice.
+    public var renderers: [(raw: String, title: String)] = []
 
     public init(
         store: Store,
-        importCustomEnvironment: ((URL) throws -> String)? = nil
+        importCustomEnvironment: ((URL) throws -> String)? = nil,
+        renderers: [(raw: String, title: String)] = []
     ) {
         self.store = store
         self.importCustomEnvironment = importCustomEnvironment
+        self.renderers = renderers
     }
 
     public var body: some View {
@@ -51,7 +56,11 @@ public struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
                 GeneralSettingsPane(store: store)
             }
             Tab("Preview", systemImage: "cube.transparent") {
-                PreviewDefaultsPane(store: store, importCustomEnvironment: importCustomEnvironment)
+                PreviewDefaultsPane(
+                    store: store,
+                    importCustomEnvironment: importCustomEnvironment,
+                    renderers: renderers
+                )
             }
             Tab("About", systemImage: "info.circle") {
                 AboutSettingsPane()
@@ -174,6 +183,7 @@ private struct GeneralSettingsPane<Store: SettingsDefaultsStore>: View {
 private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
     var store: Store
     var importCustomEnvironment: ((URL) throws -> String)?
+    var renderers: [(raw: String, title: String)] = []
     @State private var importError: String?
 
     private let catalog: [(raw: String, title: String)] = [
@@ -184,6 +194,23 @@ private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
 
     var body: some View {
         Form {
+            if renderers.count > 1 {
+                Section {
+                    DSMenuPicker(
+                        "Renderer",
+                        selection: rendererBinding,
+                        options: renderers.map(\.raw)
+                    ) { raw in
+                        renderers.first { $0.raw == raw }?.title ?? raw
+                    }
+                } footer: {
+                    Text("Applies to new windows, Quick Look previews and Finder thumbnails. Open windows keep their renderer.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
             Section("Motion") {
                 Toggle("Auto-rotate", isOn: boolBinding(for: .autoRotate))
                 Toggle("Polar floor", isOn: boolBinding(for: .showFloor))
@@ -249,6 +276,13 @@ private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
         Binding(
             get: { store.value(for: .backdrop) },
             set: { store.set($0, for: .backdrop) }
+        )
+    }
+
+    private var rendererBinding: Binding<String> {
+        Binding(
+            get: { store.value(for: .renderer) },
+            set: { store.set($0, for: .renderer) }
         )
     }
 

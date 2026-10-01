@@ -89,11 +89,6 @@ struct GLTFInspectorApp: App {
             CommandGroup(replacing: .saveItem) {
                 HostFileMenuCommands()
             }
-            #if DEBUG
-            CommandMenu("Develop") {
-                DevelopMenuCommands()
-            }
-            #endif
         }
 
         WindowGroup(id: WelcomeWindow.id) {
@@ -110,7 +105,8 @@ struct GLTFInspectorApp: App {
                 store: EngineAppDefaultsBridge.shared,
                 importCustomEnvironment: { url in
                     try EngineAppDefaultsBridge.shared.importCustomEnvironment(from: url)
-                }
+                },
+                renderers: RendererRouter.settingsOptions
             )
         }
     }

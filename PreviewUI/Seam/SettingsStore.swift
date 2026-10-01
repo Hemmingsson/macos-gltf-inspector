@@ -46,6 +46,9 @@ public extension SettingKey where Value == String {
     /// framework — see `AppGroupSettings.rendererLook()` in the host.
     static var toneMapping: SettingKey<String> { .init(name: "settings.preview.toneMapping", fallback: "Khronos PBR Neutral") }
     static var customEnvironmentFile: SettingKey<String> { .init(name: "settings.preview.customEnvironmentFile", fallback: "") }
+    /// `RendererKind.rawValue` (`realitykit` / `webkit`). Read by the window, Quick Look and the
+    /// thumbnail when they open a file.
+    static var renderer: SettingKey<String> { .init(name: "settings.preview.renderer", fallback: "realitykit") }
 }
 
 /// Defaults (the App-default job) plus this window's overrides (the This-window job).

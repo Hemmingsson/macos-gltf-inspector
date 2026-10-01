@@ -89,8 +89,8 @@ flowchart LR
   convert --> chrome["Morphs, stats, some controls"]
 ```
 
-The host window is **`PreviewUI`** chrome over one renderer's canvas. A hidden developer switch
-(`settings.preview.renderer`, Debug ▸ Develop menu) picks RealityKit (default) or WebKit for new
+The host window is **`PreviewUI`** chrome over one renderer's canvas. **Settings ▸ Preview ▸ Renderer**
+(`settings.preview.renderer`) picks RealityKit (default) or WebKit for new
 windows, Quick Look and Finder thumbnails. On WebKit the page loads the file itself and the panels
 come from the JSON alone — no convert runs; on RealityKit one convert feeds canvas and chrome.
 Either way the outliner describes the **file** (`GLTFDocumentJSON` from original JSON), not the

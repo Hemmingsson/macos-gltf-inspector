@@ -17,6 +17,8 @@ struct AppGroupSettingsTests {
         #expect(SettingKey<BackdropStyle>.backdrop.name == AppGroupSettings.Key.background)
         #expect(SettingKey<String>.appearance.name == AppGroupSettings.Key.appearance)
         #expect(SettingKey<String>.toneMapping.name == AppGroupSettings.Key.toneMapping)
+        #expect(SettingKey<String>.renderer.name == AppGroupSettings.Key.renderer)
+        #expect(SettingKey<String>.renderer.fallback == RendererKind.default.rawValue)
     }
 
     /// Registered fallbacks agree with what `PreviewUI` shows on a fresh install.

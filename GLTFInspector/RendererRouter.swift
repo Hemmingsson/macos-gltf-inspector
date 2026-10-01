@@ -18,6 +18,16 @@ enum RendererRouter {
         return kinds
     }
 
+    /// Settings' Renderer picker options: linked renderers only.
+    static var settingsOptions: [(raw: String, title: String)] {
+        available.map { kind in
+            switch kind {
+            case .realityKit: (kind.rawValue, "RealityKit")
+            case .webKit: (kind.rawValue, "WebKit (Khronos)")
+            }
+        }
+    }
+
     /// Debug builds take a `-GLTFRenderer realitykit|webkit` launch argument over the stored switch,
     /// so a scripted real-window check can pick a renderer without writing the App Group.
     static var launchOverride: RendererKind? {

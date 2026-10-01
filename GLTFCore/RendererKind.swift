@@ -1,10 +1,10 @@
 import Foundation
 
-/// Which renderer draws the model: the temporary developer switch (`settings.preview.renderer`).
+/// Which renderer draws the model (`settings.preview.renderer`).
 ///
-/// Hidden on purpose — no Settings UI. The host's Debug-only Develop menu writes it into the App
-/// Group suite; the document window, Quick Look and the thumbnail read it when they open a file,
-/// so a change applies to the next window / preview / icon.
+/// Settings ▸ Preview ▸ Renderer writes it into the App Group suite; the document window, Quick
+/// Look and the thumbnail read it when they open a file, so a change applies to the next
+/// window / preview / icon.
 public enum RendererKind: String, Sendable, Hashable, CaseIterable {
     case realityKit = "realitykit"
     case webKit = "webkit"
