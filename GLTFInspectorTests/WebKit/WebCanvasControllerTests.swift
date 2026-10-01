@@ -58,7 +58,6 @@ struct WebCanvasControllerTests {
         let top = try await canvas.snapshot()
         try await canvas.apply(preset: .right)
         let right = try await canvas.snapshot()
-        try await canvas.reset()
 
         #expect(top.width > 1 && top.height > 1)
         #expect(right.width == top.width)
@@ -157,7 +156,7 @@ struct WebCanvasControllerTests {
 struct WebCameraPresetTests {
     private func state(min: [Double], max: [Double], distance: Double = 10) -> RendererCameraState {
         RendererCameraState(
-            camera: CameraPose(
+            pose: CameraPose(
                 azimuth: 0, elevation: 0, distance: distance,
                 target: [0, 0, 0], yfov: 0.8, znear: 0.1, zfar: 100
             ),

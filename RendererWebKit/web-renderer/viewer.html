@@ -63,7 +63,7 @@ canvas.addEventListener("webglcontextlost", (e) => {
 // (a thumbnail host may be read again without a new frame); live mode lets WebKit discard it.
 const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: !live, alpha: true });
 if (!gl) {
-    send({ event: "error", stage: "context", message: "WebGL 2 unavailable" });
+    send({ event: "error", message: "WebGL 2 unavailable" });
     throw new Error("WebGL 2 unavailable");
 }
 
@@ -173,13 +173,6 @@ function includeOriginInFraming() {
     camera.fitCameraPlanesToExtents(min, max);
 }
 
-/**
- * Orbit, dolly and pan are handled here rather than round-tripping every mouse delta through
- * Swift — input has to feel immediate, and a bridge hop per event would not.
- *
- * Carried over from the RealityKit implementation, per AGENTS.md: scroll is an *infinite*
- * dolly rather than a clamped zoom, and shift-drag pans.
- */
 let overlayProgram = null;
 let overlayBuffer = null;
 
@@ -419,6 +412,13 @@ function drawOverlays() {
     gl.drawArrays(gl.LINES, 0, lines.length / 6);
 }
 
+/**
+ * Orbit, dolly and pan are handled here rather than round-tripping every mouse delta through
+ * Swift — input has to feel immediate, and a bridge hop per event would not.
+ *
+ * Carried over from the RealityKit implementation, per AGENTS.md: scroll is an *infinite*
+ * dolly rather than a clamped zoom, and shift-drag pans.
+ */
 function installPointerControls() {
     let dragging = false;
     let panning = false;
@@ -519,7 +519,7 @@ function cameraState() {
     const look = camera.getLookDirection();
     const distance = camera.distance;
     return {
-        camera: {
+        pose: {
             azimuth: camera.rotAroundY * 180 / Math.PI,
             elevation: camera.rotAroundX * 180 / Math.PI,
             distance,
@@ -580,8 +580,6 @@ window.__viewer = {
         return {
             width: canvas.width,
             height: canvas.height,
-            sceneCount: state.gltf.scenes?.length ?? 0,
-            animationCount: state.gltf.animations?.length ?? 0,
             triangles: stats.faceCount ?? 0,
             meshes: stats.meshCount ?? 0,
             parseMs,
@@ -694,9 +692,9 @@ if (live) {
 
 // Anything that escapes a call still has to produce a message, or Swift only sees a timeout.
 window.addEventListener("error", (e) =>
-    send({ event: "error", stage: "runtime", message: String(e.error?.message ?? e.message) }));
+    send({ event: "error", message: String(e.error?.message ?? e.message) }));
 window.addEventListener("unhandledrejection", (e) =>
-    send({ event: "error", stage: "runtime", message: String(e.reason?.message ?? e.reason) }));
+    send({ event: "error", message: String(e.reason?.message ?? e.reason) }));
 
 send({ event: "ready" });
 </script>

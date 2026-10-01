@@ -12,6 +12,39 @@ public enum WebRendererMode: String {
     case live
 }
 
+extension WebRendererHost {
+    /// Model and stats reported by the page after a load.
+    public struct LoadInfo: Equatable, Decodable {
+        public var triangles: Int
+        var meshes: Int
+        /// Drawing-buffer size the page ended up with. Zero-ish values mean the view was never
+        /// laid out, which renders blank rather than failing.
+        var width: Int
+        var height: Int
+        /// Page-side `loadGltf` wall time in ms.
+        var parseMs: Int
+        /// Page-side `fitCamera` wall time in ms.
+        var fitMs: Int
+        /// Live only: first GPU `renderFrame` after parse. Zero in still mode.
+        var firstFrameMs: Int
+    }
+
+    /// `stats()`: what the page is drawing right now. Diagnostics and tests.
+    struct Stats: Decodable, Equatable {
+        var width: Int
+        var height: Int
+        var triangles: Int
+        var meshes: Int
+        /// Computed page background, e.g. `rgba(0, 0, 0, 0)`.
+        var background: String
+        /// Frames drawn since the previous `stats()` and their CPU ms (Khronos frame + overlays,
+        /// not GPU time); the page drains its buffer on every call.
+        var frameCount: Int
+        var frameP50Ms: Double
+        var frameP95Ms: Double
+    }
+}
+
 /// A camera stated completely: where it looks, from how far, at what angles, through which
 /// projection. Every field the renderer reads is here, so replaying a pose does not depend on
 /// scene extents or on `UserCamera.fitViewToScene`.
@@ -66,11 +99,9 @@ struct CameraCommand: Encodable, Equatable {
 /// The bounds come along because a caller that wants to frame the model on its own terms needs
 /// them: `pose.distance` only reports where this version of the renderer put the camera.
 struct RendererCameraState: Equatable, Decodable, Sendable {
-    var camera: CameraPose
+    var pose: CameraPose
     var sceneMin: [Double]
     var sceneMax: [Double]
-
-    var pose: CameraPose { camera }
 
     /// Centre of the measured box.
     var sceneCenter: [Double] {

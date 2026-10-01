@@ -16,7 +16,7 @@ extension FocusedPreviewCommands {
         }
         return FocusedPreviewCommands(
             fit: { run("fit") { try await canvas.fit() } },
-            reset: { run("reset") { try await canvas.reset() } },
+            reset: { run("reset") { try await canvas.fit() } },
             applyCameraPreset: { preset in
                 run("preset \(preset.rawValue)") { try await canvas.apply(preset: preset) }
             },

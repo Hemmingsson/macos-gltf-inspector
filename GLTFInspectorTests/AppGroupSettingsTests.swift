@@ -33,7 +33,31 @@ struct AppGroupSettingsTests {
         #expect(defaults.bool(forKey: AppGroupSettings.Key.showFloor) == SettingKey<Bool>.showFloor.fallback)
         #expect(defaults.string(forKey: AppGroupSettings.Key.background) == SettingKey<BackdropStyle>.backdrop.fallback.rawValue)
         #expect(defaults.string(forKey: AppGroupSettings.Key.toneMapping) == SettingKey<String>.toneMapping.fallback)
-        #expect(AppGroupSettings.defaultEnvironment == SettingKey<String>.environmentCatalog.fallback)
+        #expect(RenderLook.standard.environment.rawValue == SettingKey<String>.environmentCatalog.fallback)
+    }
+
+    /// Nothing stored yet: the review-oriented defaults. Khronos PBR Neutral distorts authored
+    /// colour least — the right default for a tool whose job is showing what is in the file.
+    @Test
+    func readerFallsBackToTheReviewOrientedDefaults() throws {
+        let suite = "gltf.app-group.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let look = AppGroupSettings.rendererLook(defaults: defaults, directory: dir)
+        #expect(look.environment.rawValue == "neutral")
+        #expect(look.toneMapping.rawValue == "Khronos PBR Neutral")
+    }
+
+    /// The stored string is what reaches the renderer, so a mismatch between the enum and the
+    /// persisted name silently renders with the wrong curve.
+    @Test
+    func everyToneMappingRoundTripsThroughItsStoredName() {
+        for option in ToneMapping.allCases {
+            #expect(ToneMapping.fromKhronosName(option.khronosName) == option)
+            #expect(RenderLook.ToneMapping(rawValue: option.khronosName) != nil)
+        }
     }
 
     /// Host writes through the same adapters Settings uses; a reader over the same suite and
@@ -56,8 +80,8 @@ struct AppGroupSettingsTests {
         bridge.set("ACES Filmic Tone Mapping (Hill)", for: .toneMapping)
 
         let look = AppGroupSettings.rendererLook(defaults: defaults, directory: dir)
-        #expect(look.environment == "field")
-        #expect(look.toneMapping == "ACES Filmic Tone Mapping (Hill)")
+        #expect(look.environment == .field)
+        #expect(look.toneMapping == .acesHill)
     }
 
     /// The test host is the app, which claims the group: the container must resolve to the
@@ -69,7 +93,6 @@ struct AppGroupSettingsTests {
         )
         #expect(url != nil)
         #expect(AppGroupSettings.containerURL.path.contains("Group Containers/\(AppGroupSettings.groupID)"))
-        #expect(AppLook.supportDirectory() == AppGroupSettings.containerURL)
         #expect(AppGroupSettings.defaults !== UserDefaults.standard)
     }
 

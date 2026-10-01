@@ -61,11 +61,10 @@ extension WebPreviewCanvas {
             defaults: UserDefaults = AppGroupSettings.defaults,
             directory: URL = AppGroupSettings.containerURL
         ) -> Self {
-            let stored = AppGroupSettings.rendererLook(defaults: defaults, directory: directory)
-            var render = RenderLook.standard
-            render.environment = KhronosEnvironments(rawValue: stored.environment) ?? .defaultLook
-            render.toneMapping = RenderLook.ToneMapping(rawValue: stored.toneMapping) ?? .pbrNeutral
-            return Self(render: render, showsFloor: showsFloor)
+            Self(
+                render: AppGroupSettings.rendererLook(defaults: defaults, directory: directory),
+                showsFloor: showsFloor
+            )
         }
     }
 }

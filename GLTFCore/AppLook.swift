@@ -15,14 +15,9 @@ public enum KhronosEnvironments: String, CaseIterable, Sendable, Codable {
         }
     }
 
-    /// The bundled `khronos/` HDR folder. It ships once, inside GLTFCore.framework; the host and
-    /// both extensions resolve it here. `Bundle.main` is the appex in an extension, so never
-    /// look there.
-    public static var bundledDirectory: URL? {
-        Bundle(for: CoreBundleToken.self).url(forResource: "khronos", withExtension: nil)
-    }
-
-    /// This environment's bundled `.hdr`; nil when it is missing from the bundle.
+    /// This environment's bundled `.hdr`; nil when it is missing from the bundle. The `khronos/`
+    /// folder ships once, inside GLTFCore.framework; `Bundle.main` is the appex in an extension,
+    /// so never look there.
     public var bundledURL: URL? {
         Bundle(for: CoreBundleToken.self).url(forResource: rawValue, withExtension: "hdr", subdirectory: "khronos")
     }
@@ -43,11 +38,6 @@ public struct AppLook: Codable, Equatable, Sendable {
 
     public var catalog: KhronosEnvironments {
         KhronosEnvironments(rawValue: catalogRaw) ?? .studioNeutral
-    }
-
-    /// App Group container — the same directory in the host and both extensions.
-    public static func supportDirectory() -> URL {
-        AppGroupSettings.containerURL
     }
 
     public static func lookURL(in directory: URL) -> URL {
@@ -82,12 +72,13 @@ public struct AppLook: Codable, Equatable, Sendable {
         }
     }
 
+    /// The look in the App Group container (the RealityKit lighting and still paths read it).
     public static var current: AppLook {
-        load(from: supportDirectory())
+        load(from: AppGroupSettings.containerURL)
     }
 
     public func resolvedHDRURL() -> URL? {
-        resolvedHDRURL(in: Self.supportDirectory())
+        resolvedHDRURL(in: AppGroupSettings.containerURL)
     }
 
     public func resolvedHDRURL(in directory: URL) -> URL? {
@@ -104,7 +95,7 @@ public struct AppLook: Codable, Equatable, Sendable {
 @MainActor
 @Observable
 public final class AppLookStore {
-    public static let shared = AppLookStore(directory: AppLook.supportDirectory())
+    public static let shared = AppLookStore(directory: AppGroupSettings.containerURL)
 
     /// App Group container (or test) directory that holds `look.json` + `ibl/`.
     public let directory: URL

@@ -1,6 +1,7 @@
 import Cocoa
 import GLTFCore
 import QuickLookUI
+import SwiftUI
 
 /// Quick Look principal class and the extension's one renderer router. It reads the renderer
 /// switch when Quick Look builds the preview and embeds that renderer's controller
@@ -50,5 +51,25 @@ class PreviewViewController: NSViewController, QLPreviewingController {
             return true
         }
         return false
+    }
+}
+
+/// Both renderers' Quick Look failure state. `foreground` stays the renderer's: RealityKit's
+/// follows its stored backdrop.
+struct QuickLookFailureView: View {
+    let message: String
+    let foreground: Color
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Failed to load model")
+                .font(.system(size: 13, weight: .semibold))
+            Text(message)
+                .font(.system(size: 12))
+                .multilineTextAlignment(.center)
+                .opacity(0.7)
+        }
+        .foregroundStyle(foreground)
+        .padding()
     }
 }

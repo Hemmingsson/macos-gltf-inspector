@@ -61,7 +61,7 @@ public struct ViewModeAvailability: Sendable, Equatable {
                 if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) {
                     hasVertexColors = true
                 }
-                let mode = GLBBox.intValue(primitive["mode"]) ?? 4
+                let mode = GLTFJSON.int(primitive["mode"]) ?? 4
                 if mode == 4 || mode == 5 || mode == 6 {
                     hasTriangles = true
                 }
@@ -95,7 +95,7 @@ public struct ViewModeAvailability: Sendable, Equatable {
             if maps.emissive {
                 hasEmissive = true
             }
-            if let emissive = float3(material["emissiveFactor"]), !nearZero(emissive) {
+            if let emissive = GLTFJSON.float3(material["emissiveFactor"]), !nearZero(emissive) {
                 hasEmissive = true
             }
 
@@ -131,17 +131,8 @@ public struct ViewModeAvailability: Sendable, Equatable {
     }
 
     private func hasNonDefault(_ value: Any?, default expected: Double) -> Bool {
-        guard let number = GLBBox.doubleValue(value) else { return false }
+        guard let number = GLTFJSON.double(value) else { return false }
         return abs(number - expected) > 0.0001
-    }
-
-    private func float3(_ value: Any?) -> SIMD3<Float>? {
-        guard let values = value as? [Any], values.count >= 3 else { return nil }
-        return SIMD3(
-            Float(GLBBox.doubleValue(values[0]) ?? 0),
-            Float(GLBBox.doubleValue(values[1]) ?? 0),
-            Float(GLBBox.doubleValue(values[2]) ?? 0)
-        )
     }
 
     private func nearZero(_ value: SIMD3<Float>) -> Bool {

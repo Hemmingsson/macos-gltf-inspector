@@ -18,39 +18,6 @@ import WebKit
 /// `error`) with no replies.
 @MainActor
 public final class WebRendererHost {
-    /// Model and stats reported by the page after a load.
-    public struct LoadInfo: Equatable, Decodable {
-        public var triangles: Int
-        var meshes: Int
-        var sceneCount: Int
-        var animationCount: Int
-        /// Drawing-buffer size the page ended up with. Zero-ish values mean the view was never
-        /// laid out, which renders blank rather than failing.
-        var width: Int
-        var height: Int
-        /// Page-side `loadGltf` wall time in ms.
-        var parseMs: Int
-        /// Page-side `fitCamera` wall time in ms.
-        var fitMs: Int
-        /// Live only: first GPU `renderFrame` after parse. Zero in still mode.
-        var firstFrameMs: Int
-    }
-
-    /// `stats()`: what the page is drawing right now. Diagnostics and tests.
-    struct Stats: Decodable, Equatable {
-        var width: Int
-        var height: Int
-        var triangles: Int
-        var meshes: Int
-        /// Computed page background, e.g. `rgba(0, 0, 0, 0)`.
-        var background: String
-        /// Frames drawn since the previous `stats()` and their CPU ms (Khronos frame + overlays,
-        /// not GPU time); the page drains its buffer on every call.
-        var frameCount: Int
-        var frameP50Ms: Double
-        var frameP95Ms: Double
-    }
-
     fileprivate static let messageName = "viewer"
     /// Calls `window.__viewer[fn]` with one JSON argument and hands back its result as JSON text
     /// — a `String` is the one result type that crosses the bridge without guessing.
@@ -90,9 +57,6 @@ public final class WebRendererHost {
     /// Short per-instance tag so the log shows whether a page start came from a new web view.
     var logID: String { String(UInt(bitPattern: ObjectIdentifier(self).hashValue), radix: 36) }
 
-    /// Process uptime in ms — the debug log's wall stamps are whole seconds.
-    static func uptimeMs() -> Int { Int(ProcessInfo.processInfo.systemUptime * 1000) }
-
     public init(mode: WebRendererMode, size: Int = 512, timeout: Duration = .seconds(15)) throws {
         guard let rendererRoot = Bundle(for: WebRendererHost.self).url(forResource: "web-renderer", withExtension: nil)
         else { throw WebRendererError.missingRendererBundle }
@@ -100,10 +64,7 @@ public final class WebRendererHost {
         self.mode = mode
         self.size = size
         self.timeout = timeout
-        resources = WebRendererResourceHandler(
-            rendererRoot: rendererRoot,
-            environmentRoot: KhronosEnvironments.bundledDirectory
-        )
+        resources = WebRendererResourceHandler(rendererRoot: rendererRoot)
         delegate = Delegate()
 
         let configuration = WKWebViewConfiguration()
@@ -136,7 +97,7 @@ public final class WebRendererHost {
             defer { AppLog.signposter.endInterval("page", interval) }
             AppLog.info(
                 AppLog.webRenderer,
-                "page start begin host=\(logID) mode=\(mode.rawValue) retry=\(brokenBy != nil) uptimeMs=\(Self.uptimeMs())"
+                "page start begin host=\(logID) mode=\(mode.rawValue) retry=\(brokenBy != nil) uptimeMs=\(AppLog.uptimeMs())"
             )
             brokenBy = nil
             do {
@@ -149,7 +110,7 @@ public final class WebRendererHost {
             }
             AppLog.info(
                 AppLog.webRenderer,
-                "page start ready host=\(logID) mode=\(mode.rawValue) pageMs=\(Self.ms(since: began)) uptimeMs=\(Self.uptimeMs())"
+                "page start ready host=\(logID) mode=\(mode.rawValue) pageMs=\(Self.ms(since: began)) uptimeMs=\(AppLog.uptimeMs())"
             )
         }
         startTask = task

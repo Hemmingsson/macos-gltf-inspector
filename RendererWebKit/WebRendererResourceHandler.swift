@@ -13,18 +13,14 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
     /// Renderer files live at the scheme root rather than under a prefix: the Khronos renderer
     /// resolves its own `libs/` and `assets/` relative to the page, and rejects absolute URLs.
     private let rendererRoot: URL
-    /// IBL `.hdr` files, served under `/environments/`. Kept as a separate root so the
-    /// several-megabyte environments are not duplicated into the renderer folder.
-    private let environmentRoot: URL?
     private var model: URL?
 
-    init(rendererRoot: URL, environmentRoot: URL?) {
+    init(rendererRoot: URL) {
         self.rendererRoot = rendererRoot.standardizedFileURL
-        self.environmentRoot = environmentRoot?.standardizedFileURL
     }
 
     /// The file currently under inspection. Swapping it is how a new model is loaded; the page
-    /// always fetches the same `/model` URL.
+    /// fetches it as `/model/<name>`.
     func setModel(_ url: URL?) {
         model = url
     }
@@ -35,10 +31,10 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
         let payload: Data?
         let mimeType: String
 
-        if url.path == "/model" || url.path.hasPrefix("/model/") {
+        if url.path.hasPrefix("/model/") {
             mimeType = Self.modelMimeType(url.path)
             payload = resolveModel(url.path)
-        } else if let file = resolveEnvironment(url.path) {
+        } else if let file = Self.resolveEnvironment(url.path) {
             mimeType = "image/vnd.radiance"
             payload = try? Data(contentsOf: file)
         } else if let file = resolve(url.path) {
@@ -73,17 +69,10 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
 
     /// Serves the inspected file and its sidecars from the security-scoped folder.
-    /// `/model` and `/model/<basename>` are the primary file; `/model/<relative>` is a sibling.
+    /// `/model/<basename>` is the primary file; `/model/<relative>` is a sibling.
     private func resolveModel(_ path: String) -> Data? {
-        guard let model else { return nil }
-        let remainder: String
-        if path == "/model" {
-            remainder = ""
-        } else if path.hasPrefix("/model/") {
-            remainder = String(path.dropFirst("/model/".count))
-        } else {
-            return nil
-        }
+        guard let model, path.hasPrefix("/model/") else { return nil }
+        let remainder = String(path.dropFirst("/model/".count))
 
         let decoded = remainder.removingPercentEncoding ?? remainder
         guard !decoded.contains("..") else { return nil }
@@ -124,12 +113,13 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
         return candidate
     }
 
-    private func resolveEnvironment(_ path: String) -> URL? {
+    /// `/environments/<stem>.hdr` is the bundled Khronos HDR of that name (it ships in
+    /// GLTFCore, not in the renderer folder). Nothing else under the prefix is served.
+    private static func resolveEnvironment(_ path: String) -> URL? {
         let prefix = "/environments/"
-        guard let environmentRoot, path.hasPrefix(prefix) else { return nil }
-        let name = String(path.dropFirst(prefix.count))
-        guard !name.isEmpty, !name.contains("/"), !name.contains("..") else { return nil }
-        return environmentRoot.appendingPathComponent(name)
+        guard path.hasPrefix(prefix), path.hasSuffix(".hdr") else { return nil }
+        let stem = String(path.dropFirst(prefix.count).dropLast(".hdr".count))
+        return KhronosEnvironments(rawValue: stem)?.bundledURL
     }
 
     private static func readSecurityScoped(_ url: URL) -> Data? {
@@ -147,7 +137,6 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
         case "json": "application/json"
         case "wasm": "application/wasm"
         case "png": "image/png"
-        case "hdr": "image/vnd.radiance"
         default: "application/octet-stream"
         }
     }

@@ -23,11 +23,11 @@ public enum GLTFDocumentJSON {
         let materialsByMesh = meshesJSON.map { boundMaterialIndices($0, materialCount: materialsJSON.count) }
 
         var document = GLTFSessionDocument()
-        document.defaultSceneIndex = GLBBox.intValue(json["scene"]) ?? 0
+        document.defaultSceneIndex = GLTFJSON.int(json["scene"]) ?? 0
         document.scenes = (json["scenes"] as? [[String: Any]] ?? []).map { scene in
             GLTFSessionDocument.Scene(
                 name: scene["name"] as? String ?? "",
-                rootNodeIndices: intArray(scene["nodes"]).filter { nodesJSON.indices.contains($0) }
+                rootNodeIndices: GLTFJSON.ints(scene["nodes"]).filter { nodesJSON.indices.contains($0) }
             )
         }
         let camerasJSON = json["cameras"] as? [[String: Any]] ?? []
@@ -98,7 +98,7 @@ public enum GLTFDocumentJSON {
         materialsByMesh: [[Int]]
     ) -> GLTFSessionDocument.Node {
         func reference(_ value: Any?, limit: Int) -> Int? {
-            guard let index = GLBBox.intValue(value), index >= 0, index < limit else { return nil }
+            guard let index = GLTFJSON.int(value), index >= 0, index < limit else { return nil }
             return index
         }
         let meshIndex = reference(node["mesh"], limit: counts.meshes)
@@ -113,7 +113,7 @@ public enum GLTFDocumentJSON {
         return GLTFSessionDocument.Node(
             index: index,
             name: node["name"] as? String ?? "",
-            children: intArray(node["children"]).filter { $0 >= 0 && $0 < counts.nodes },
+            children: GLTFJSON.ints(node["children"]).filter { $0 >= 0 && $0 < counts.nodes },
             kind: GLTFSessionDocument.Node.inferredKind(
                 meshIndex: meshIndex,
                 cameraIndex: cameraIndex,
@@ -141,13 +141,13 @@ public enum GLTFDocumentJSON {
     private static func decomposedTransform(
         _ node: [String: Any]
     ) -> (translation: SIMD3<Float>, rotation: simd_quatf, scale: SIMD3<Float>) {
-        if let values = GLBBox.doubleArray(node["matrix"]), values.count == 16 {
+        if let values = GLTFJSON.doubles(node["matrix"]), values.count == 16 {
             return decompose(matrix(from: values))
         }
-        let translation = float3(node["translation"]) ?? .zero
-        let scale = float3(node["scale"]) ?? .one
+        let translation = GLTFJSON.float3(node["translation"]) ?? .zero
+        let scale = GLTFJSON.float3(node["scale"]) ?? .one
         var rotation = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
-        if let values = GLBBox.doubleArray(node["rotation"]), values.count == 4 {
+        if let values = GLTFJSON.doubles(node["rotation"]), values.count == 4 {
             rotation = simd_quatf(
                 ix: Float(values[0]),
                 iy: Float(values[1]),
@@ -214,22 +214,14 @@ public enum GLTFDocumentJSON {
         var maxUV = 0
         for primitive in mesh["primitives"] as? [[String: Any]] ?? [] {
             let attributes = primitive["attributes"] as? [String: Any] ?? [:]
-            let positions = accessorCount(attributes["POSITION"], accessors: accessors)
-            stamp.vertexCount += positions
+            stamp.vertexCount += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
             if attributes["NORMAL"] != nil { stamp.hasNormals = true }
             if attributes["TANGENT"] != nil { stamp.hasTangents = true }
             if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) { stamp.hasVertexColors = true }
             for uv in 0..<8 where attributes["TEXCOORD_\(uv)"] != nil {
                 maxUV = max(maxUV, uv + 1)
             }
-            let count = primitive["indices"] != nil
-                ? accessorCount(primitive["indices"], accessors: accessors)
-                : positions
-            switch GLBBox.intValue(primitive["mode"]) ?? 4 {
-            case 4: stamp.triangleCount += count / 3
-            case 5, 6: stamp.triangleCount += max(0, count - 2)
-            default: break
-            }
+            stamp.triangleCount += GLTFJSON.triangleCount(primitive, accessors: accessors)
         }
         stamp.uvSetCount = maxUV
         return stamp
@@ -240,18 +232,13 @@ public enum GLTFDocumentJSON {
         var seen = Set<Int>()
         var indices: [Int] = []
         for primitive in mesh["primitives"] as? [[String: Any]] ?? [] {
-            guard let index = GLBBox.intValue(primitive["material"]),
+            guard let index = GLTFJSON.int(primitive["material"]),
                   index >= 0, index < materialCount,
                   seen.insert(index).inserted
             else { continue }
             indices.append(index)
         }
         return indices
-    }
-
-    private static func accessorCount(_ value: Any?, accessors: [[String: Any]]) -> Int {
-        guard let index = GLBBox.intValue(value), accessors.indices.contains(index) else { return 0 }
-        return GLBBox.intValue(accessors[index]["count"]) ?? 0
     }
 
     private static func makeMorph(_ mesh: [String: Any], meshIndex: Int) -> GLTFSessionDocument.Morph? {
@@ -280,19 +267,19 @@ public enum GLTFDocumentJSON {
                 name: name,
                 type: "orthographic",
                 yfov: nil,
-                znear: float(ortho["znear"]) ?? 0,
-                zfar: float(ortho["zfar"]),
-                xmag: float(ortho["xmag"]),
-                ymag: float(ortho["ymag"])
+                znear: GLTFJSON.float(ortho["znear"]) ?? 0,
+                zfar: GLTFJSON.float(ortho["zfar"]),
+                xmag: GLTFJSON.float(ortho["xmag"]),
+                ymag: GLTFJSON.float(ortho["ymag"])
             )
         }
         let perspective = camera["perspective"] as? [String: Any] ?? [:]
         return GLTFSessionDocument.Camera(
             name: name,
             type: "perspective",
-            yfov: float(perspective["yfov"]),
-            znear: float(perspective["znear"]) ?? 0,
-            zfar: float(perspective["zfar"]),
+            yfov: GLTFJSON.float(perspective["yfov"]),
+            znear: GLTFJSON.float(perspective["znear"]) ?? 0,
+            zfar: GLTFJSON.float(perspective["zfar"]),
             xmag: nil,
             ymag: nil
         )
@@ -310,180 +297,17 @@ public enum GLTFDocumentJSON {
         let type = (light["type"] as? String)?.lowercased() ?? "directional"
         let isSpot = type == "spot"
         let spot = light["spot"] as? [String: Any] ?? [:]
-        let range = float(light["range"])
+        let range = GLTFJSON.float(light["range"])
         return GLTFSessionDocument.Light(
             name: light["name"] as? String ?? "",
             type: ["point", "spot", "directional"].contains(type) ? type : "directional",
-            color: float3(light["color"]) ?? .one,
-            intensity: float(light["intensity"]) ?? 1,
+            color: GLTFJSON.float3(light["color"]) ?? .one,
+            intensity: GLTFJSON.float(light["intensity"]) ?? 1,
             // Directional light has no falloff; an absent or non-positive range is infinite.
             range: (type != "directional" && (range ?? 0) > 0) ? range : nil,
-            innerCone: isSpot ? (float(spot["innerConeAngle"]) ?? 0) : nil,
-            outerCone: isSpot ? (float(spot["outerConeAngle"]) ?? .pi / 4) : nil
+            innerCone: isSpot ? (GLTFJSON.float(spot["innerConeAngle"]) ?? 0) : nil,
+            outerCone: isSpot ? (GLTFJSON.float(spot["outerConeAngle"]) ?? .pi / 4) : nil
         )
-    }
-
-    // MARK: - Materials
-
-    private static let specGlossExtension = "KHR_materials_pbrSpecularGlossiness"
-
-    private static func makeMaterial(_ material: [String: Any]) -> GLTFSessionDocument.Material {
-        let extensions = material["extensions"] as? [String: Any] ?? [:]
-        let specGloss = extensions[specGlossExtension] as? [String: Any]
-        let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
-
-        let workflow: GLTFSessionDocument.Material.Workflow
-        if extensions["KHR_materials_unlit"] != nil {
-            workflow = .unlit
-        } else if specGloss != nil {
-            workflow = .specularGlossiness
-        } else {
-            workflow = .metallicRoughness
-        }
-
-        let alphaMode: GLTFSessionDocument.Material.AlphaMode
-        switch (material["alphaMode"] as? String)?.uppercased() {
-        case "MASK": alphaMode = .mask
-        case "BLEND": alphaMode = .blend
-        default: alphaMode = .opaque
-        }
-
-        // Factors are reported at their glTF-effective value: an omitted key still shades the
-        // model. The inspector hides the calm defaults, so this never adds noise.
-        let baseColor = specGloss.flatMap { float4($0["diffuseFactor"]) }
-            ?? float4(pbr["baseColorFactor"])
-            ?? SIMD4<Float>(1, 1, 1, 1)
-        let isSpecGloss = workflow == .specularGlossiness
-
-        return GLTFSessionDocument.Material(
-            name: material["name"] as? String ?? "",
-            maps: MaterialMapPresence.from(json: material),
-            workflow: workflow,
-            alphaMode: alphaMode,
-            isDoubleSided: material["doubleSided"] as? Bool ?? false,
-            metallicFactor: isSpecGloss ? nil : (float(pbr["metallicFactor"]) ?? 1),
-            roughnessFactor: isSpecGloss ? nil : (float(pbr["roughnessFactor"]) ?? 1),
-            alphaCutoff: alphaMode == .mask ? (float(material["alphaCutoff"]) ?? 0.5) : nil,
-            baseColorFactor: baseColor,
-            emissiveFactor: float3(material["emissiveFactor"]),
-            // Scale/strength only mean something on top of their map.
-            normalScale: (material["normalTexture"] as? [String: Any]).map {
-                float($0["scale"]) ?? 1
-            },
-            occlusionStrength: (material["occlusionTexture"] as? [String: Any]).map {
-                float($0["strength"]) ?? 1
-            },
-            textures: textureSlots(material)
-        )
-    }
-
-    /// Authored map bindings in inspector order. Mirrors `MaterialMapPresence.from(json:)`.
-    private static func textureSlots(_ material: [String: Any]) -> [GLTFSessionDocument.TextureSlot] {
-        textureRefs(material).map { ref in
-            GLTFSessionDocument.TextureSlot(
-                kind: ref.kind,
-                texCoord: GLBBox.intValue(ref.params["texCoord"]) ?? 0
-            )
-        }
-    }
-
-    /// Every authored texture binding on a material, in the order the inspector lists them.
-    private static func textureRefs(
-        _ material: [String: Any]
-    ) -> [(kind: GLTFSessionDocument.TextureSlot.Kind, params: [String: Any])] {
-        let extensions = material["extensions"] as? [String: Any] ?? [:]
-        let specGloss = extensions[specGlossExtension] as? [String: Any] ?? [:]
-        let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
-        let specular = extensions["KHR_materials_specular"] as? [String: Any] ?? [:]
-        let clearcoat = extensions["KHR_materials_clearcoat"] as? [String: Any] ?? [:]
-
-        var refs: [(kind: GLTFSessionDocument.TextureSlot.Kind, params: [String: Any])] = []
-        func append(_ kind: GLTFSessionDocument.TextureSlot.Kind, _ candidates: [Any?]) {
-            for candidate in candidates {
-                if let params = candidate as? [String: Any] {
-                    refs.append((kind, params))
-                    return
-                }
-            }
-        }
-        append(.baseColor, [pbr["baseColorTexture"], specGloss["diffuseTexture"]])
-        append(.metallicRoughness, [pbr["metallicRoughnessTexture"]])
-        append(.normal, [material["normalTexture"]])
-        append(.occlusion, [material["occlusionTexture"]])
-        append(.emissive, [material["emissiveTexture"]])
-        append(.specular, [
-            specular["specularTexture"],
-            specular["specularColorTexture"],
-            specGloss["specularGlossinessTexture"],
-        ])
-        append(.clearcoat, [clearcoat["clearcoatTexture"]])
-        append(.clearcoatRoughness, [clearcoat["clearcoatRoughnessTexture"]])
-        append(.clearcoatNormal, [clearcoat["clearcoatNormalTexture"]])
-        return refs
-    }
-
-    /// Pixel size + PNG thumb per bound map, decoded straight from the file's images.
-    private static func stampTexturePreviews(
-        _ document: inout GLTFSessionDocument,
-        json: [String: Any],
-        materialsJSON: [[String: Any]],
-        binary: GLTFBinaryStore
-    ) {
-        let textures = json["textures"] as? [[String: Any]] ?? []
-        let images = json["images"] as? [[String: Any]] ?? []
-        guard !textures.isEmpty, !images.isEmpty else { return }
-
-        var previews: [Int: (size: (width: Int, height: Int)?, thumb: Data?)] = [:]
-        func preview(forImage index: Int) -> (size: (width: Int, height: Int)?, thumb: Data?) {
-            if let cached = previews[index] { return cached }
-            var built: (size: (width: Int, height: Int)?, thumb: Data?) = (nil, nil)
-            if images.indices.contains(index), let bytes = binary.imageBytes(images[index]) {
-                built = (GLTFImageDecode.pixelSize(of: bytes), GLTFImageDecode.thumbnailPNG(from: bytes, maxEdge: 96))
-            }
-            previews[index] = built
-            return built
-        }
-
-        for materialIndex in document.materials.indices {
-            guard materialsJSON.indices.contains(materialIndex) else { continue }
-            let bindings = textureBindings(materialsJSON[materialIndex])
-            var slots = document.materials[materialIndex].textures
-            for slotIndex in slots.indices {
-                guard let textureIndex = bindings[slots[slotIndex].kind],
-                      textures.indices.contains(textureIndex),
-                      let imageIndex = imageIndex(for: textures[textureIndex])
-                else { continue }
-                let built = preview(forImage: imageIndex)
-                slots[slotIndex].width = built.size?.width
-                slots[slotIndex].height = built.size?.height
-                slots[slotIndex].thumbnailPNG = built.thumb
-            }
-            document.materials[materialIndex].textures = slots
-        }
-    }
-
-    /// `source`, or the decoded image behind a supported texture extension.
-    private static func imageIndex(for texture: [String: Any]) -> Int? {
-        if let source = GLBBox.intValue(texture["source"]) { return source }
-        let extensions = texture["extensions"] as? [String: Any] ?? [:]
-        for name in ["EXT_texture_webp", "KHR_texture_basisu"] {
-            if let entry = extensions[name] as? [String: Any],
-               let source = GLBBox.intValue(entry["source"]) {
-                return source
-            }
-        }
-        return nil
-    }
-
-    private static func textureBindings(
-        _ material: [String: Any]
-    ) -> [GLTFSessionDocument.TextureSlot.Kind: Int] {
-        var bindings: [GLTFSessionDocument.TextureSlot.Kind: Int] = [:]
-        for ref in textureRefs(material) {
-            guard let index = GLBBox.intValue(ref.params["index"]) else { continue }
-            bindings[ref.kind] = index
-        }
-        return bindings
     }
 
     // MARK: - Skins
@@ -493,10 +317,10 @@ public enum GLTFDocumentJSON {
         index: Int,
         nodes: [[String: Any]]
     ) -> GLTFSessionDocument.Skin {
-        let joints = intArray(skin["joints"]).filter { nodes.indices.contains($0) }
+        let joints = GLTFJSON.ints(skin["joints"]).filter { nodes.indices.contains($0) }
         var parentByNode: [Int: Int] = [:]
         for (nodeIndex, node) in nodes.enumerated() {
-            for child in intArray(node["children"]) where nodes.indices.contains(child) {
+            for child in GLTFJSON.ints(node["children"]) where nodes.indices.contains(child) {
                 parentByNode[child] = nodeIndex
             }
         }
@@ -534,7 +358,7 @@ public enum GLTFDocumentJSON {
         var maxTime = -Float.infinity
         var sampleCount = 0
         for sampler in animation["samplers"] as? [[String: Any]] ?? [] {
-            guard let inputIndex = GLBBox.intValue(sampler["input"]),
+            guard let inputIndex = GLTFJSON.int(sampler["input"]),
                   accessors.indices.contains(inputIndex)
             else { continue }
             let range = inputRange(accessors[inputIndex], binary: binary)
@@ -560,13 +384,13 @@ public enum GLTFDocumentJSON {
         _ accessor: [String: Any],
         binary: GLTFBinaryStore
     ) -> (count: Int, minTime: Float, maxTime: Float) {
-        let count = GLBBox.intValue(accessor["count"]) ?? 0
+        let count = GLTFJSON.int(accessor["count"]) ?? 0
         var minTime = Float.infinity
         var maxTime = -Float.infinity
-        if let low = GLBBox.doubleArray(accessor["min"])?.first.map(Float.init), low.isFinite {
+        if let low = GLTFJSON.doubles(accessor["min"])?.first.map(Float.init), low.isFinite {
             minTime = low
         }
-        if let high = GLBBox.doubleArray(accessor["max"])?.first.map(Float.init), high.isFinite {
+        if let high = GLTFJSON.doubles(accessor["max"])?.first.map(Float.init), high.isFinite {
             maxTime = high
         }
         if minTime.isFinite, maxTime.isFinite {
@@ -578,30 +402,5 @@ public enum GLTFDocumentJSON {
         if let first = times.first, first.isFinite { minTime = min(minTime, first) }
         if let last = times.last, last.isFinite { maxTime = max(maxTime, last) }
         return (max(count, times.count), minTime, maxTime)
-    }
-
-    // MARK: - JSON scalars
-
-    private static func intArray(_ value: Any?) -> [Int] {
-        (value as? [Any])?.compactMap { GLBBox.intValue($0) } ?? []
-    }
-
-    private static func float(_ value: Any?) -> Float? {
-        GLBBox.doubleValue(value).map(Float.init)
-    }
-
-    private static func float3(_ value: Any?) -> SIMD3<Float>? {
-        guard let values = GLBBox.doubleArray(value), values.count >= 3 else { return nil }
-        return SIMD3<Float>(Float(values[0]), Float(values[1]), Float(values[2]))
-    }
-
-    private static func float4(_ value: Any?) -> SIMD4<Float>? {
-        guard let values = GLBBox.doubleArray(value), values.count >= 4 else { return nil }
-        return SIMD4<Float>(
-            Float(values[0]),
-            Float(values[1]),
-            Float(values[2]),
-            Float(values[3])
-        )
     }
 }

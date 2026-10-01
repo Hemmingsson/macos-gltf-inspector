@@ -1,8 +1,8 @@
 import Foundation
-import ImageIO
 
-/// Mesh / material / node / texture from the glTF JSON header. Animation count
-/// comes from converted usable clips, not `json["animations"]`.
+/// Mesh / material / node / texture counts from the glTF JSON header (image headers for
+/// `maxTextureEdge`). The caller supplies the animation count: playable clips on RealityKit,
+/// JSON clips with a duration on WebKit.
 public struct PreviewStats: Equatable {
     public struct Row: Equatable {
         public let label: String
@@ -37,21 +37,17 @@ public struct PreviewStats: Equatable {
         fileSizeBytes: nil
     )
 
-    public static func from(json: [String: Any], fileSizeBytes: Int64? = nil) -> PreviewStats {
-        fromJSONCounts(json, animationCount: 0, fileSizeBytes: fileSizeBytes, resourceURL: nil)
-    }
-
     public static func from(
         json: [String: Any],
-        animationCount: Int,
+        animationCount: Int = 0,
         fileSizeBytes: Int64? = nil,
         resourceURL: URL? = nil
     ) -> PreviewStats {
-        fromJSONCounts(
-            json,
+        from(
+            json: json,
             animationCount: animationCount,
             fileSizeBytes: fileSizeBytes,
-            resourceURL: resourceURL
+            binary: GLTFBinaryStore(json: json, fileURL: resourceURL)
         )
     }
 
@@ -59,10 +55,10 @@ public struct PreviewStats: Equatable {
     public var overlayFacts: [Row] {
         var lines: [Row] = []
         if triangleCount > 0 {
-            lines.append(Row(label: "triangles", value: compact(triangleCount)))
+            lines.append(Row(label: "triangles", value: Self.compactCount(triangleCount)))
         }
         if vertexCount > 0 {
-            lines.append(Row(label: "vertices", value: compact(vertexCount)))
+            lines.append(Row(label: "vertices", value: Self.compactCount(vertexCount)))
         }
         if textureCount > 0 {
             let value = maxTextureEdge.map { "\(textureCount) · max \($0)²" } ?? "\(textureCount)"
@@ -102,11 +98,12 @@ public struct PreviewStats: Equatable {
         return lines
     }
 
-    private static func fromJSONCounts(
-        _ json: [String: Any],
+    /// `binary` resolves image bytes for `maxTextureEdge`; share one with the document parse.
+    static func from(
+        json: [String: Any],
         animationCount: Int,
         fileSizeBytes: Int64?,
-        resourceURL: URL?
+        binary: GLTFBinaryStore
     ) -> PreviewStats {
         let materials = json["materials"] as? [[String: Any]] ?? []
         let meshes = json["meshes"] as? [[String: Any]] ?? []
@@ -120,7 +117,7 @@ public struct PreviewStats: Equatable {
             pbrLabel: pbrLabel(materials),
             animationCount: animationCount,
             textureCount: (json["textures"] as? [Any])?.count ?? 0,
-            maxTextureEdge: maxTextureEdge(json: json, resourceURL: resourceURL),
+            maxTextureEdge: maxTextureEdge(json: json, binary: binary),
             hasVertexColors: geometry.hasColors,
             isRigged: !skins.isEmpty || geometry.hasJoints,
             morphGeometryCount: geometry.morphMeshes,
@@ -128,66 +125,13 @@ public struct PreviewStats: Equatable {
         )
     }
 
-    /// Max `max(width, height)` via ImageIO properties (header read, not full raster).
-    private static func maxTextureEdge(json: [String: Any], resourceURL: URL?) -> Int? {
+    /// Max `max(width, height)` from the image headers (no full raster decode).
+    private static func maxTextureEdge(json: [String: Any], binary: GLTFBinaryStore) -> Int? {
         let images = json["images"] as? [[String: Any]] ?? []
-        guard !images.isEmpty else { return nil }
-        let bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
-        let bin = glbBin(from: resourceURL)
-        let baseDir = resourceURL?.deletingLastPathComponent()
-        var maxEdge = 0
-        for image in images {
-            guard let data = imageBytes(image, bin: bin, bufferViews: bufferViews, baseDir: baseDir),
-                  let edge = imageMaxEdge(data)
-            else { continue }
-            maxEdge = max(maxEdge, edge)
+        let edges = images.compactMap { image in
+            binary.imageBytes(image).flatMap(GLTFImageDecode.pixelSize).map { max($0.width, $0.height) }
         }
-        return maxEdge > 0 ? maxEdge : nil
-    }
-
-    private static func glbBin(from url: URL?) -> Data? {
-        guard let url, url.pathExtension.lowercased() == "glb",
-              let data = try? Data(contentsOf: url, options: [.mappedIfSafe]),
-              let box = try? GLBBox.parse(data)
-        else { return nil }
-        return box.bin
-    }
-
-    private static func imageBytes(
-        _ image: [String: Any],
-        bin: Data?,
-        bufferViews: [[String: Any]],
-        baseDir: URL?
-    ) -> Data? {
-        if let viewIndex = GLBBox.intValue(image["bufferView"]),
-           bufferViews.indices.contains(viewIndex),
-           let bin {
-            let view = bufferViews[viewIndex]
-            let offset = GLBBox.intValue(view["byteOffset"]) ?? 0
-            let length = GLBBox.intValue(view["byteLength"]) ?? 0
-            guard offset >= 0, length > 0, offset + length <= bin.count else { return nil }
-            return bin.subdata(in: offset..<(offset + length))
-        }
-        if let uri = image["uri"] as? String, !uri.isEmpty {
-            if uri.hasPrefix("data:"), let comma = uri.firstIndex(of: ",") {
-                let payload = String(uri[uri.index(after: comma)...])
-                return Data(base64Encoded: payload)
-            }
-            guard let baseDir else { return nil }
-            let file = URL(fileURLWithPath: uri, relativeTo: baseDir)
-            return try? Data(contentsOf: file, options: [.mappedIfSafe])
-        }
-        return nil
-    }
-
-    private static func imageMaxEdge(_ data: Data) -> Int? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
-        else { return nil }
-        let width = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0
-        let height = (props[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0
-        let edge = max(width, height)
-        return edge > 0 ? edge : nil
+        return edges.max()
     }
 
     private static func pbrLabel(_ materials: [[String: Any]]) -> String {
@@ -241,22 +185,8 @@ public struct PreviewStats: Equatable {
                 if let targets = primitive["targets"] as? [Any], !targets.isEmpty {
                     meshHasMorph = true
                 }
-                out.vertices += accessorCount(attributes["POSITION"], accessors: accessors)
-                let mode = GLBBox.intValue(primitive["mode"]) ?? 4
-                let count: Int
-                if let indices = primitive["indices"] {
-                    count = accessorCount(indices, accessors: accessors)
-                } else {
-                    count = accessorCount(attributes["POSITION"], accessors: accessors)
-                }
-                switch mode {
-                case 4:
-                    out.triangles += count / 3
-                case 5, 6:
-                    out.triangles += max(0, count - 2)
-                default:
-                    break
-                }
+                out.vertices += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
+                out.triangles += GLTFJSON.triangleCount(primitive, accessors: accessors)
             }
             if meshHasMorph {
                 out.morphMeshes += 1
@@ -265,12 +195,8 @@ public struct PreviewStats: Equatable {
         return out
     }
 
-    private static func accessorCount(_ value: Any?, accessors: [[String: Any]]) -> Int {
-        guard let index = GLBBox.intValue(value), accessors.indices.contains(index) else { return 0 }
-        return GLBBox.intValue(accessors[index]["count"]) ?? 0
-    }
-
-    private func compact(_ value: Int) -> String {
+    /// `1234` → `1.2k`, `2_000_000` → `2M`; below 1000 the plain count.
+    public static func compactCount(_ value: Int) -> String {
         let magnitude = abs(value)
         if magnitude < 1000 {
             return "\(value)"
@@ -281,7 +207,7 @@ public struct PreviewStats: Equatable {
         return trimCompact(Double(value) / 1_000_000, suffix: "M")
     }
 
-    private func trimCompact(_ value: Double, suffix: String) -> String {
+    private static func trimCompact(_ value: Double, suffix: String) -> String {
         if abs(value.rounded() - value) < 0.05 {
             return String(format: "%.0f%@", value.rounded(), suffix)
         }

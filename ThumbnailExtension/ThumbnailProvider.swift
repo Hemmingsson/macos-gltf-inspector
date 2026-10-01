@@ -47,6 +47,14 @@ class ThumbnailProvider: QLThumbnailProvider {
         #endif
     }
 
+    private static let outputPrefix = "glb-thumb-"
+
+    /// A fresh temp PNG path for one reply. `sweepStaleThumbnails` clears these later.
+    static func outputURL() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(outputPrefix)\(UUID().uuidString).png")
+    }
+
     /// Remove `glb-thumb-*.png` files older than a minute. Best-effort: the age guard keeps a
     /// concurrent request's just-written file from being deleted before Quick Look reads it.
     private static func sweepStaleThumbnails() {
@@ -58,7 +66,7 @@ class ThumbnailProvider: QLThumbnailProvider {
         ) else { return }
         let cutoff = Date(timeIntervalSinceNow: -60)
         for entry in entries
-        where entry.lastPathComponent.hasPrefix("glb-thumb-") && entry.pathExtension == "png" {
+        where entry.lastPathComponent.hasPrefix(outputPrefix) && entry.pathExtension == "png" {
             let modified = (try? entry.resourceValues(forKeys: [.contentModificationDateKey]))?
                 .contentModificationDate
             if let modified, modified < cutoff {

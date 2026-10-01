@@ -22,6 +22,11 @@ public enum AppLog {
     /// Points of Interest. Free when nobody is recording; never a substitute for a log line.
     public static let signposter = OSSignposter(subsystem: subsystem, category: .pointsOfInterest)
 
+    /// Process uptime in ms, for ordering host and canvas log lines (the log stamps are seconds).
+    public static func uptimeMs() -> Int {
+        Int(ProcessInfo.processInfo.systemUptime * 1000)
+    }
+
     private static let fileLock = NSLock()
     private static var logFilePath: String?
 

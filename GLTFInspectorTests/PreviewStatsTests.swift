@@ -51,12 +51,29 @@ struct PreviewStatsTests {
         let url = try TestGLB.writeTemp(data, prefix: "stats-tex")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let stats = PreviewStats.from(json: json, animationCount: 0, resourceURL: url)
+        let stats = PreviewStats.from(json: json, resourceURL: url)
         #expect(stats.textureCount == 1)
         #expect(stats.maxTextureEdge == 1)
         #expect(stats.overlayFacts.contains {
             $0.label == "textures" && $0.value == "1 · max 1²"
         })
+    }
+
+    @Test func maxTextureEdgeFromSidecarBufferView() throws {
+        let png = tinyPNG()
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stats-sidecar-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try png.write(to: folder.appendingPathComponent("image data.bin"))
+        let json: [String: Any] = [
+            "buffers": [["uri": "image%20data.bin", "byteLength": png.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": png.count]],
+            "images": [["mimeType": "image/png", "bufferView": 0]],
+            "textures": [["source": 0]],
+        ]
+        let stats = PreviewStats.from(json: json, resourceURL: folder.appendingPathComponent("model.gltf"))
+        #expect(stats.maxTextureEdge == 1)
     }
 
     @Test func trianglesAndFileSizeOverlay() {

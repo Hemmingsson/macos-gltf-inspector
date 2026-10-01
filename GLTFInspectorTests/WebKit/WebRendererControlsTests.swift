@@ -217,12 +217,11 @@ struct WebRendererControlsTests {
     }
 }
 
-/// The one-renderer rule applied to *look*, not just to renderer.
-///
-/// Same renderer is necessary but not sufficient: if the window, Quick Look and the thumbnail
-/// disagree about environment or tone mapping, the same file still renders three ways.
+/// The one-renderer rule applied to *look*, not just to renderer: Quick Look and the thumbnail
+/// render with the look Settings stored (`WebPreviewCanvas.Look.stored`). The reader itself is
+/// covered by `AppGroupSettingsTests`.
 @MainActor
-struct RendererLookDefaultsTests {
+struct StoredLookRenderTests {
     /// A throwaway suite + look directory standing in for the App Group.
     private struct Store {
         let defaults: UserDefaults
@@ -242,44 +241,9 @@ struct RendererLookDefaultsTests {
             look.save(to: directory)
         }
 
-        func look() -> (environment: String, toneMapping: String) {
-            AppGroupSettings.rendererLook(defaults: defaults, directory: directory)
-        }
-
         func tearDown() {
             defaults.removePersistentDomain(forName: suiteName)
             try? FileManager.default.removeItem(at: directory)
-        }
-    }
-
-    @Test
-    func fallsBackToTheReviewOrientedDefaults() throws {
-        let store = try Store()
-        defer { store.tearDown() }
-        let look = store.look()
-        #expect(look.environment == "neutral")
-        // Khronos PBR Neutral distorts authored colour least — the right default for a tool
-        // whose job is showing what is in the file.
-        #expect(look.toneMapping == "Khronos PBR Neutral")
-    }
-
-    @Test
-    func readsWhatTheAppStored() throws {
-        let store = try Store()
-        defer { store.tearDown() }
-        store.setEnvironment("field")
-        store.defaults.set("ACES Filmic Tone Mapping (Hill)", forKey: AppGroupSettings.Key.toneMapping)
-        let look = store.look()
-        #expect(look.environment == "field")
-        #expect(look.toneMapping == "ACES Filmic Tone Mapping (Hill)")
-    }
-
-    /// The stored string is what reaches the renderer, so a mismatch between the enum and the
-    /// persisted name silently renders with the wrong curve.
-    @Test
-    func everyToneMappingRoundTripsThroughItsStoredName() {
-        for option in ToneMapping.allCases {
-            #expect(ToneMapping.fromKhronosName(option.khronosName) == option)
         }
     }
 

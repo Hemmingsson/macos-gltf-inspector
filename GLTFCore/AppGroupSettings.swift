@@ -26,17 +26,15 @@ public enum AppGroupSettings {
         // UserDefaults keys: the host routes them into `look.json` (`AppLook`).
     }
 
-    public static let defaultEnvironment = KhronosEnvironments.studioNeutral.rawValue
-    public static let defaultToneMapping = RenderLook.ToneMapping.pbrNeutral.rawValue
-
-    /// Fresh-install values. `register(defaults:)` is per process, so the host and each extension
-    /// call `registerDefaults()` before reading.
+    /// Fresh-install values. `register(defaults:)` is per process: the host registers them at
+    /// launch and `rendererLook` before an extension reads; other extension reads pass their own
+    /// fallback.
     public static var defaultValues: [String: Any] {
         [
             Key.background: "window",
             Key.autoRotate: true,
             Key.showFloor: true,
-            Key.toneMapping: defaultToneMapping,
+            Key.toneMapping: RenderLook.standard.toneMapping.rawValue,
         ]
     }
 
@@ -65,17 +63,21 @@ public enum AppGroupSettings {
         defaults.register(defaults: defaultValues)
     }
 
-    /// Environment stem + Khronos tone-map name for the web renderer, as Settings stored them.
-    /// Registers the fresh-install defaults first so a caller cannot forget.
+    /// The look Settings stored, for surfaces with no window state of their own (Quick Look and
+    /// the Finder thumbnail): the environment from `look.json`, the tone mapping from the suite,
+    /// everything else `RenderLook.standard`. Registers the fresh-install defaults first so a
+    /// caller cannot forget.
     public static func rendererLook(
         defaults: UserDefaults = defaults,
         directory: URL = containerURL
-    ) -> (environment: String, toneMapping: String) {
+    ) -> RenderLook {
         registerDefaults(in: defaults)
-        let environment = AppLook.load(from: directory).catalog.rawValue
-        let toneMapping = defaults.string(forKey: Key.toneMapping) ?? defaultToneMapping
-        // Lets a Quick Look / thumbnail run prove which container the appex resolved.
-        AppLog.info(AppLog.lighting, "renderer look \(environment) / \(toneMapping) from \(directory.path)")
-        return (environment, toneMapping)
+        var look = RenderLook.standard
+        look.environment = AppLook.load(from: directory).catalog
+        if let stored = defaults.string(forKey: Key.toneMapping),
+           let toneMapping = RenderLook.ToneMapping(rawValue: stored) {
+            look.toneMapping = toneMapping
+        }
+        return look
     }
 }

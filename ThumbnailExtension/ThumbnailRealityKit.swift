@@ -9,8 +9,7 @@ enum RealityKitThumbnail {
     static func render(url: URL, pixel: Int) async throws -> URL {
         let started = CFAbsoluteTimeGetCurrent()
         let image = try await RealityThumbnail.render(url: url, pixel: pixel)
-        let fileURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
+        let fileURL = ThumbnailProvider.outputURL()
         try PNGWriter.write(image, to: fileURL)
         AppLog.info(
             AppLog.thumbnail,

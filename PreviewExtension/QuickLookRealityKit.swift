@@ -92,16 +92,10 @@ struct QuickLookRealityView: View {
             case .ready(let model):
                 RealityPreviewCanvas(model: model, interaction: interaction, isDark: isDark)
             case .failed(let message):
-                VStack(spacing: 8) {
-                    Text("Failed to load model")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(message)
-                        .font(.system(size: 12))
-                        .multilineTextAlignment(.center)
-                        .opacity(0.7)
-                }
-                .foregroundStyle(PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true))
-                .padding()
+                QuickLookFailureView(
+                    message: message,
+                    foreground: PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
