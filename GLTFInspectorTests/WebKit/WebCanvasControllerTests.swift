@@ -58,7 +58,6 @@ struct WebCanvasControllerTests {
         let top = try await canvas.snapshot()
         try await canvas.apply(preset: .right)
         let right = try await canvas.snapshot()
-        try await canvas.reset()
 
         #expect(top.width > 1 && top.height > 1)
         #expect(right.width == top.width)

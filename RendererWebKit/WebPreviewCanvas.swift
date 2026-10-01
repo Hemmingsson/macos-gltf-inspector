@@ -120,14 +120,10 @@ public final class WebCanvasController {
 
     // MARK: - Camera commands (the mounted canvas's half of the host's canvas commands)
 
-    /// Frames the model from the page's opening view (front).
+    /// Frames the model from the page's opening view (front). Also the canvas half of Reset:
+    /// the owner restores Center and the other session values first.
     public func fit() async throws {
         try await readyHost().camera(.fit)
-    }
-
-    /// The opening view. The owner restores Center and the other session values first.
-    public func reset() async throws {
-        try await fit()
     }
 
     /// Canned orbit angle, framed from the page's measured scene box.
