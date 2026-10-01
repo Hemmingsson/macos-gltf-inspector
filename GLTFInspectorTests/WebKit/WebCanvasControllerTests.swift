@@ -9,11 +9,11 @@ import Testing
 /// through the page, and a page that survives a remount of `WebPreviewCanvas`.
 @MainActor
 struct WebCanvasControllerTests {
-    /// Waits for the controller to leave `.loading`. The live page reports a load in well under
-    /// the host's 15 s timeout; the cap only keeps a regression from hanging the suite.
+    /// Waits for the controller to leave `.loading`. The cap only keeps a regression from hanging
+    /// the suite.
     private func settledPhase(
         of canvas: WebCanvasController,
-        within limit: Duration = .seconds(30)
+        within limit: Duration = WebKitTest.timeout
     ) async throws -> WebCanvasController.Phase {
         let deadline = ContinuousClock.now + limit
         while canvas.phase == .loading, ContinuousClock.now < deadline {
@@ -22,10 +22,13 @@ struct WebCanvasControllerTests {
         return canvas.phase
     }
 
-    private func mount(_ canvas: WebCanvasController, url: URL) -> NSView {
+    /// Mounts on a test-budget live host (`existing:`), so a loaded machine cannot time out the page.
+    /// A remount of an attached controller reuses its running host and ignores `existing:`.
+    private func mount(_ canvas: WebCanvasController, url: URL) throws -> NSView {
         let container = NSView(frame: CGRect(x: 0, y: 0, width: 320, height: 240))
+        let fresh = try canvas.host == nil ? WebKitTest.host(.live) : nil
         canvas.attach(
-            to: container, url: url, look: WebPreviewCanvas.Look(), placeholder: nil, existing: nil
+            to: container, url: url, look: WebPreviewCanvas.Look(), placeholder: nil, existing: fresh
         )
         return container
     }
@@ -33,7 +36,7 @@ struct WebCanvasControllerTests {
     @Test
     func corruptFileEndsInFailedNotASpinner() async throws {
         let canvas = WebCanvasController()
-        _ = mount(canvas, url: TestFixtures.corrupt)
+        _ = try mount(canvas, url: TestFixtures.corrupt)
 
         let phase = try await settledPhase(of: canvas)
         guard case .failed(let message) = phase else {
@@ -50,7 +53,7 @@ struct WebCanvasControllerTests {
     @Test
     func loadedCanvasTakesCameraCommandsAndSnapshots() async throws {
         let canvas = WebCanvasController()
-        _ = mount(canvas, url: TestFixtures.cube)
+        _ = try mount(canvas, url: TestFixtures.cube)
         #expect(try await settledPhase(of: canvas) == .ready)
 
         try await canvas.fit()
@@ -71,12 +74,12 @@ struct WebCanvasControllerTests {
     @Test
     func remountAdoptsTheRunningPage() async throws {
         let canvas = WebCanvasController()
-        let first = mount(canvas, url: TestFixtures.cube)
+        let first = try mount(canvas, url: TestFixtures.cube)
         #expect(try await settledPhase(of: canvas) == .ready)
         let webView = try #require(first.subviews.first { $0.className.contains("WKWebView") })
 
         WebPreviewCanvas.dismantleNSView(first, coordinator: canvas)
-        let second = mount(canvas, url: TestFixtures.cube)
+        let second = try mount(canvas, url: TestFixtures.cube)
 
         #expect(webView.superview === second)
         #expect(canvas.phase == .ready)
@@ -91,7 +94,7 @@ struct WebCanvasControllerTests {
     @Test
     func lostContextRestartsThePageOnceThenFails() async throws {
         let canvas = WebCanvasController()
-        _ = mount(canvas, url: TestFixtures.cube)
+        _ = try mount(canvas, url: TestFixtures.cube)
         #expect(try await settledPhase(of: canvas) == .ready)
         let host = try #require(canvas.host)
 
@@ -124,7 +127,7 @@ struct WebCanvasControllerTests {
             try await host.camera(.fit)
         }
         // A later start loads a fresh page instead of rethrowing the old failure.
-        host.timeout = .seconds(30)
+        host.timeout = WebKitTest.timeout
         try await host.start()
         #expect(!host.isBroken)
     }
@@ -133,7 +136,7 @@ struct WebCanvasControllerTests {
     /// serving the next call.
     @Test
     func aHungCallTimesOutWithoutFailingTheNext() async throws {
-        let host = try WebRendererHost(mode: .still, size: 64, timeout: .seconds(30))
+        let host = try WebKitTest.host(size: 64)
         try await host.start()
         try await host.evaluate(
             "(() => { const camera = window.__viewer.camera; window.__viewer.camera = (c) => c.op === 'fit' ? (window.__hung = new Promise(() => {})) : camera(c); return 1 })()"
@@ -142,7 +145,7 @@ struct WebCanvasControllerTests {
         await #expect(throws: WebRendererError.timedOut) {
             try await host.camera(.fit)
         }
-        host.timeout = .seconds(30)
+        host.timeout = WebKitTest.timeout
         try await host.camera(.get)
         #expect(!host.isBroken)
     }

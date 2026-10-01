@@ -15,9 +15,7 @@ import Testing
 @MainActor
 struct WebRendererControlsTests {
     private func makeHost() async throws -> WebRendererHost {
-        let host = try WebRendererHost(mode: .still, size: 192)
-        try await host.start()
-        try await host.apply(WebPreviewCanvas.Look())
+        let host = try await WebKitTest.stillHost(size: 192)
         _ = try await host.load(
             model: TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
         )
@@ -294,7 +292,7 @@ struct RendererLookDefaultsTests {
         defer { store.tearDown() }
 
         func render() async throws -> Data? {
-            let host = try WebRendererHost(mode: .still, size: 160)
+            let host = try WebKitTest.host(size: 160)
             try await host.start()
             try await host.apply(.stored(defaults: store.defaults, directory: store.directory))
             _ = try await host.load(model: model)
@@ -317,9 +315,7 @@ struct RendererLookDefaultsTests {
 struct WebRendererThumbnailPathTests {
     @Test
     func sidecarGLTFProducesAStill() async throws {
-        let host = try WebRendererHost(mode: .still, size: 128)
-        try await host.start()
-        try await host.apply(WebPreviewCanvas.Look())
+        let host = try await WebKitTest.stillHost(size: 128)
         _ = try await host.load(model: TestFixtures.cube)
         let image = try await host.renderStill()
         #expect(image.width > 8)
@@ -328,7 +324,7 @@ struct WebRendererThumbnailPathTests {
 
     @Test
     func corruptFileFailsInsteadOfHanging() async throws {
-        let host = try WebRendererHost(mode: .still, size: 64)
+        let host = try WebKitTest.host(size: 64)
         try await host.start()
         await #expect(throws: Error.self) {
             _ = try await host.load(model: TestFixtures.corrupt)

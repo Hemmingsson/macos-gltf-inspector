@@ -72,19 +72,12 @@ struct WebRendererHostTests {
         print("web renderer proof → \(url.path)")
     }
 
-    private func makeStillHost(size: Int = 512) async throws -> WebRendererHost {
-        let host = try WebRendererHost(mode: .still, size: size)
-        try await host.start()
-        try await host.apply(WebPreviewCanvas.Look())
-        return host
-    }
-
     @Test(.enabled(if: TestModels.hasKhronosSamples))
     func stillModeRendersOffscreen() async throws {
         let model = TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
         try #require(FileManager.default.fileExists(atPath: model.path))
 
-        let host = try await makeStillHost()
+        let host = try await WebKitTest.stillHost()
         let info = try await host.load(model: model)
         #expect(info.triangles > 0)
         #expect(info.meshes > 0)
@@ -103,7 +96,7 @@ struct WebRendererHostTests {
     @Test(.enabled(if: TestModels.hasKhronosSamples))
     func cameraCommandChangesTheRenderedImage() async throws {
         let model = TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
-        let host = try await makeStillHost(size: 256)
+        let host = try await WebKitTest.stillHost(size: 256)
         try await host.load(model: model)
 
         try await host.camera(.orbit(azimuth: 0, elevation: 0))
@@ -131,7 +124,7 @@ struct WebRendererHostTests {
 
     @Test
     func liveLoadDrawsTheFirstFrameBeforeReturning() async throws {
-        let host = try WebRendererHost(mode: .live, timeout: .seconds(60))
+        let host = try WebKitTest.host(.live)
         try await host.start()
         let info = try await host.load(model: TestFixtures.tiny)
         #expect(info.triangles > 0)
@@ -143,7 +136,7 @@ struct WebRendererHostTests {
 
     @Test
     func commandBeforeReadyFailsRatherThanHanging() async throws {
-        let host = try WebRendererHost(mode: .still)
+        let host = try WebKitTest.host()
         await #expect(throws: WebRendererError.notReady) {
             try await host.camera(.fit)
         }
@@ -153,7 +146,7 @@ struct WebRendererHostTests {
     /// own message — not as a timeout.
     @Test
     func commandThatThrowsInThePageReportsTheReason() async throws {
-        let host = try WebRendererHost(mode: .still, size: 64, timeout: .seconds(8))
+        let host = try WebKitTest.host(size: 64)
         try await host.start()
 
         _ = try await host.load(model: TestFixtures.tiny)
@@ -170,7 +163,7 @@ struct WebRendererHostTests {
 
     @Test(.enabled(if: TestModels.hasKhronosSamples))
     func corruptFileFailsLoudly() async throws {
-        let host = try await makeStillHost(size: 128)
+        let host = try await WebKitTest.stillHost(size: 128)
         await #expect(throws: (any Error).self) {
             _ = try await host.load(model: TestFixtures.corrupt)
         }
@@ -180,7 +173,7 @@ struct WebRendererHostTests {
     /// WebKit's encoder adds the chunk; this catches a WebKit that stops doing so.
     @Test
     func stillPNGIsTaggedSRGBAndSized() async throws {
-        let host = try WebRendererHost(mode: .still, size: 64)
+        let host = try WebKitTest.host(size: 64)
         try await host.start()
         try await host.load(model: TestFixtures.tiny)
         let png = try await host.renderStillPNG(size: 96)
