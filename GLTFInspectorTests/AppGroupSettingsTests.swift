@@ -33,7 +33,7 @@ struct AppGroupSettingsTests {
         #expect(defaults.bool(forKey: AppGroupSettings.Key.showFloor) == SettingKey<Bool>.showFloor.fallback)
         #expect(defaults.string(forKey: AppGroupSettings.Key.background) == SettingKey<BackdropStyle>.backdrop.fallback.rawValue)
         #expect(defaults.string(forKey: AppGroupSettings.Key.toneMapping) == SettingKey<String>.toneMapping.fallback)
-        #expect(AppGroupSettings.defaultEnvironment == SettingKey<String>.environmentCatalog.fallback)
+        #expect(RenderLook.standard.environment.rawValue == SettingKey<String>.environmentCatalog.fallback)
     }
 
     /// Host writes through the same adapters Settings uses; a reader over the same suite and
@@ -56,8 +56,8 @@ struct AppGroupSettingsTests {
         bridge.set("ACES Filmic Tone Mapping (Hill)", for: .toneMapping)
 
         let look = AppGroupSettings.rendererLook(defaults: defaults, directory: dir)
-        #expect(look.environment == "field")
-        #expect(look.toneMapping == "ACES Filmic Tone Mapping (Hill)")
+        #expect(look.environment == .field)
+        #expect(look.toneMapping == .acesHill)
     }
 
     /// The test host is the app, which claims the group: the container must resolve to the

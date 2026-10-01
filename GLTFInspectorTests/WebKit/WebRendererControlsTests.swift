@@ -242,7 +242,7 @@ struct RendererLookDefaultsTests {
             look.save(to: directory)
         }
 
-        func look() -> (environment: String, toneMapping: String) {
+        func look() -> RenderLook {
             AppGroupSettings.rendererLook(defaults: defaults, directory: directory)
         }
 
@@ -257,10 +257,10 @@ struct RendererLookDefaultsTests {
         let store = try Store()
         defer { store.tearDown() }
         let look = store.look()
-        #expect(look.environment == "neutral")
+        #expect(look.environment.rawValue == "neutral")
         // Khronos PBR Neutral distorts authored colour least — the right default for a tool
         // whose job is showing what is in the file.
-        #expect(look.toneMapping == "Khronos PBR Neutral")
+        #expect(look.toneMapping.rawValue == "Khronos PBR Neutral")
     }
 
     @Test
@@ -270,8 +270,8 @@ struct RendererLookDefaultsTests {
         store.setEnvironment("field")
         store.defaults.set("ACES Filmic Tone Mapping (Hill)", forKey: AppGroupSettings.Key.toneMapping)
         let look = store.look()
-        #expect(look.environment == "field")
-        #expect(look.toneMapping == "ACES Filmic Tone Mapping (Hill)")
+        #expect(look.environment.rawValue == "field")
+        #expect(look.toneMapping.rawValue == "ACES Filmic Tone Mapping (Hill)")
     }
 
     /// The stored string is what reaches the renderer, so a mismatch between the enum and the
