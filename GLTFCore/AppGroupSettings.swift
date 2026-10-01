@@ -17,7 +17,6 @@ public enum AppGroupSettings {
     public enum Key {
         public static let autoRotate = "settings.preview.autoRotate"
         public static let background = "settings.preview.background"
-        public static let showToolbar = "settings.preview.showToolbar"
         public static let showFloor = "settings.preview.showFloor"
         public static let appearance = "settings.general.appearance"
         public static let toneMapping = "settings.preview.toneMapping"

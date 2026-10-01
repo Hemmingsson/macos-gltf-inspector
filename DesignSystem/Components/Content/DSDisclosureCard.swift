@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// An expandable status card — "2 warnings" that opens onto the list of issues. Replaces the
-/// hand-rolled amber `StatusWarningCard`.
+/// An expandable status card — "2 warnings" that opens onto the list of issues.
 ///
 /// A real `DisclosureGroup` (so expansion is a binding the caller owns and the content is only
 /// built when open), styled by `DSDisclosureCardStyle`: status glyph + emphasised title, a

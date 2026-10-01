@@ -43,7 +43,4 @@ public final class MockSelectionModel: SelectionModel {
     public func isolate(_ id: NodeID?) {
         isolated = id
     }
-
-    /// Minimal mesh detail for inspector / outliner previews.
-    public static let cubeMeshDetail = NodeDetailFixtures.mesh
 }

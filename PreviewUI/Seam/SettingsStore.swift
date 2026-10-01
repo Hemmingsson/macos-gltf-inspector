@@ -22,8 +22,6 @@ public extension SettingKey where Value == Bool {
     static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: true) }
     /// Session-only. Never registered as a persisted app default.
     static var center: SettingKey<Bool> { .init(name: "settings.preview.center", fallback: true) }
-    /// Host `showToolbar` — pills visible on open.
-    static var showPills: SettingKey<Bool> { .init(name: "settings.preview.showToolbar", fallback: true) }
     static var useEnvironmentMap: SettingKey<Bool> { .init(name: "settings.preview.useEnvironmentMap", fallback: true) }
 }
 
@@ -54,8 +52,8 @@ public extension SettingKey where Value == String {
 /// Defaults (the App-default job) plus this window's overrides (the This-window job).
 ///
 /// Storage is the single source of truth; the render reads the effective value via
-/// `sessionValue(for:)`. The canvas pills never write defaults — only Settings does,
-/// or an explicit `promoteToDefault` (DESIGN.md three-job rule).
+/// `sessionValue(for:)`. The canvas pills never write defaults — only Settings does
+/// (DESIGN.md three-job rule).
 @MainActor
 public protocol SettingsStore: AnyObject, Observable {
     /// The app default, as new windows will open.
@@ -65,8 +63,6 @@ public protocol SettingsStore: AnyObject, Observable {
     func sessionValue<Value>(for key: SettingKey<Value>) -> Value
     /// Override for this window only.
     func setSession<Value>(_ value: Value, for key: SettingKey<Value>)
-    /// Make this window's current value the app default.
-    func promoteToDefault<Value>(_ key: SettingKey<Value>)
     /// Drop this window's overrides and fall back to the defaults.
     func clearSession()
 }

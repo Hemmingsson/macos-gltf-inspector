@@ -8,13 +8,13 @@ public struct OrientationGizmo: View {
         ZStack {
             Canvas { context, size in
                 let origin = Self.origin(in: size)
-                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x + 30, y: origin.y), color: OverlayMetrics.axisX)
-                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x, y: origin.y - 30), color: OverlayMetrics.axisY)
-                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x + 18, y: origin.y + 10), color: OverlayMetrics.axisZ)
+                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x + 30, y: origin.y), color: DS.Color.Axis.x)
+                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x, y: origin.y - 30), color: DS.Color.Axis.y)
+                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x + 18, y: origin.y + 10), color: DS.Color.Axis.z)
 
-                OverlayMetrics.drawAxisLabel(context, "X", at: CGPoint(x: origin.x + 33, y: origin.y + 3), color: OverlayMetrics.axisX)
-                OverlayMetrics.drawAxisLabel(context, "Y", at: CGPoint(x: origin.x - 4, y: origin.y - 32), color: OverlayMetrics.axisY)
-                OverlayMetrics.drawAxisLabel(context, "Z", at: CGPoint(x: origin.x + 20, y: origin.y + 15), color: OverlayMetrics.axisZ)
+                OverlayMetrics.drawAxisLabel(context, "X", at: CGPoint(x: origin.x + 33, y: origin.y + 3), color: DS.Color.Axis.x)
+                OverlayMetrics.drawAxisLabel(context, "Y", at: CGPoint(x: origin.x - 4, y: origin.y - 32), color: DS.Color.Axis.y)
+                OverlayMetrics.drawAxisLabel(context, "Z", at: CGPoint(x: origin.x + 20, y: origin.y + 15), color: DS.Color.Axis.z)
             }
 
             GeometryReader { geo in

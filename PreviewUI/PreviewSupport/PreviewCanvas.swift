@@ -1,7 +1,7 @@
 import DesignSystem
 import SwiftUI
 
-/// Fixed-width preview surface with theme background and contrast-aware borders.
+/// Fixed-width preview surface on the chrome or canvas background.
 ///
 /// Use in `#Preview` blocks with `traits: .fixedLayout(width:height:)` — sidebar (248) and
 /// inspector (288) widths match `DS.Metrics.sidebarWidth` / `DS.Metrics.inspectorWidth`.
@@ -35,7 +35,6 @@ public struct PreviewCanvas<Content: View>: View {
       .frame(maxHeight: height == nil ? nil : .infinity, alignment: .top)
       .frame(height: height)
       .background(backgroundColor)
-      .themeContrastEnvironment()
   }
 
   private var backgroundColor: Color {
@@ -44,12 +43,4 @@ public struct PreviewCanvas<Content: View>: View {
     case .canvas: DS.Color.Canvas.ground
     }
   }
-}
-
-public extension PreviewCanvas {
-  /// Left sidebar column width (`DS.Metrics.sidebarWidth`).
-  static var sidebarWidth: CGFloat { DS.Metrics.sidebarWidth }
-
-  /// Right inspector column width (`DS.Metrics.inspectorWidth`).
-  static var inspectorWidth: CGFloat { DS.Metrics.inspectorWidth }
 }

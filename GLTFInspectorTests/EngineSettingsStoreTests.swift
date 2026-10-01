@@ -55,8 +55,6 @@ struct EngineSettingsStoreTests {
 
         store.setSession(false, for: .center)
         store.setSession(.orthographic, for: .projection)
-        store.promoteToDefault(.center)
-        store.promoteToDefault(.projection)
 
         #expect(store.sessionValue(for: .center) == false)
         #expect(store.sessionValue(for: .projection) == .orthographic)
@@ -68,76 +66,5 @@ struct EngineSettingsStoreTests {
         store.clearSession()
         #expect(store.sessionValue(for: .center) == true)
         #expect(store.sessionValue(for: .projection) == .perspective)
-    }
-
-    @Test func environmentKeyPromoteWritesAppLook() throws {
-        let suite = "engine.settings.applook.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defaults.removePersistentDomain(forName: suite)
-        defer { defaults.removePersistentDomain(forName: suite) }
-
-        let lookDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("engine-settings-env-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: lookDir) }
-
-        let defaultsStore = AppDefaultsStore(defaults: defaults)
-        let lookStore = AppLookStore(directory: lookDir)
-        let store = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
-
-        #expect(store.default(for: .useEnvironmentMap) == true)
-        #expect(store.default(for: .environmentCatalog) == KhronosEnvironments.studioNeutral.rawValue)
-        #expect(store.default(for: .customEnvironmentFile) == "")
-
-        store.setSession(false, for: .useEnvironmentMap)
-        store.setSession(KhronosEnvironments.field.rawValue, for: .environmentCatalog)
-        store.setSession("studio.hdr", for: .customEnvironmentFile)
-        store.promoteToDefault(.useEnvironmentMap)
-        store.promoteToDefault(.environmentCatalog)
-        store.promoteToDefault(.customEnvironmentFile)
-
-        #expect(lookStore.look.useEnvironmentMap == false)
-        #expect(lookStore.look.catalogRaw == KhronosEnvironments.field.rawValue)
-        #expect(lookStore.look.customFileName == "studio.hdr")
-        #expect(AppLook.load(from: lookDir).customFileName == "studio.hdr")
-
-        // Must not leak into the host UserDefaults suite.
-        #expect(defaults.object(forKey: SettingKey<Bool>.useEnvironmentMap.name) == nil)
-        #expect(defaults.object(forKey: SettingKey<String>.environmentCatalog.name) == nil)
-        #expect(defaults.object(forKey: SettingKey<String>.customEnvironmentFile.name) == nil)
-    }
-
-    @Test func canvasPromoteWritesUserDefaults() throws {
-        let suite = "engine.settings.canvas.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defaults.removePersistentDomain(forName: suite)
-        defer { defaults.removePersistentDomain(forName: suite) }
-
-        let lookDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("engine-settings-canvas-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: lookDir) }
-
-        let defaultsStore = AppDefaultsStore(defaults: defaults)
-        let lookStore = AppLookStore(directory: lookDir)
-        let store = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
-
-        store.setSession(false, for: .showFloor)
-        store.setSession(.dark, for: .backdrop)
-        store.setSession(false, for: .showPills)
-        store.setSession("dark", for: .appearance)
-        store.promoteToDefault(.showFloor)
-        store.promoteToDefault(.backdrop)
-        store.promoteToDefault(.showPills)
-        store.promoteToDefault(.appearance)
-
-        #expect(defaultsStore.value(for: .showFloor) == false)
-        #expect(defaultsStore.value(for: .backdrop) == .dark)
-        #expect(defaultsStore.value(for: .showPills) == false)
-        #expect(defaultsStore.value(for: .appearance) == "dark")
-        #expect(defaults.bool(forKey: AppGroupSettings.Key.showFloor) == false)
-        #expect(defaults.string(forKey: AppGroupSettings.Key.background) == BackdropStyle.dark.rawValue)
-        #expect(defaults.bool(forKey: AppGroupSettings.Key.showToolbar) == false)
-        #expect(defaults.string(forKey: AppGroupSettings.Key.appearance) == "dark")
     }
 }

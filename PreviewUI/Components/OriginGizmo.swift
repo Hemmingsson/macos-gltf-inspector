@@ -16,40 +16,40 @@ public struct OriginGizmo: View {
                         context,
                         from: origin,
                         to: CGPoint(x: origin.x + 54, y: origin.y),
-                        color: OverlayMetrics.axisX,
+                        color: DS.Color.Axis.x,
                         lineWidth: 2.2
                     )
                     OverlayMetrics.strokeAxis(
                         context,
                         from: origin,
                         to: CGPoint(x: origin.x, y: origin.y - 60),
-                        color: OverlayMetrics.axisY,
+                        color: DS.Color.Axis.y,
                         lineWidth: 2.2
                     )
                     OverlayMetrics.strokeAxis(
                         context,
                         from: origin,
                         to: CGPoint(x: origin.x - 34, y: origin.y + 18),
-                        color: OverlayMetrics.axisZ,
+                        color: DS.Color.Axis.z,
                         lineWidth: 2.2
                     )
 
                     OverlayMetrics.drawAxisLabel(
                         context, "X",
                         at: CGPoint(x: origin.x + 58, y: origin.y + 4),
-                        color: OverlayMetrics.axisX,
+                        color: DS.Color.Axis.x,
                         size: 11
                     )
                     OverlayMetrics.drawAxisLabel(
                         context, "Y",
                         at: CGPoint(x: origin.x - 6, y: origin.y - 64),
-                        color: OverlayMetrics.axisY,
+                        color: DS.Color.Axis.y,
                         size: 11
                     )
                     OverlayMetrics.drawAxisLabel(
                         context, "Z",
                         at: CGPoint(x: origin.x - 54, y: origin.y + 26),
-                        color: OverlayMetrics.axisZ,
+                        color: DS.Color.Axis.z,
                         size: 11
                     )
                 }

@@ -113,7 +113,6 @@ public struct ShellRootView<
         .frame(minWidth: 900, minHeight: 600)
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-        .themeContrastEnvironment()
         .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: showsInspector)
         .onAppear(perform: seedSessionIfNeeded)
     }

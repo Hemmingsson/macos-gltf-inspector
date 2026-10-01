@@ -13,7 +13,6 @@ struct AppGroupSettingsTests {
     func previewUIKeyNamesMatchTheGroupKeys() {
         #expect(SettingKey<Bool>.autoRotate.name == AppGroupSettings.Key.autoRotate)
         #expect(SettingKey<Bool>.showFloor.name == AppGroupSettings.Key.showFloor)
-        #expect(SettingKey<Bool>.showPills.name == AppGroupSettings.Key.showToolbar)
         #expect(SettingKey<BackdropStyle>.backdrop.name == AppGroupSettings.Key.background)
         #expect(SettingKey<String>.appearance.name == AppGroupSettings.Key.appearance)
         #expect(SettingKey<String>.toneMapping.name == AppGroupSettings.Key.toneMapping)

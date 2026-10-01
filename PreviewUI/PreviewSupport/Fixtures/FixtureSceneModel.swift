@@ -118,38 +118,6 @@ public struct FixtureSceneModel: SceneModel {
     dimensions: Dimensions(width: 12, height: 4, depth: 8)
   )
 
-  public static let rigged = FixtureSceneModel(
-    fileName: "Rigged.gltf",
-    scenes: [cubeScene],
-    nodeTree: [
-      SceneNode(kind: .empty, index: 0, name: "Armature", children: [
-        SceneNode(kind: .empty, index: 1, name: "Hip", children: [
-          SceneNode(kind: .mesh, index: 0, name: "Body"),
-          SceneNode(kind: .empty, index: 2, name: "Head")
-        ])
-      ])
-    ],
-    materials: [MaterialFixtures.fullPBR],
-    skins: [
-      SkinInfo(
-        index: 0,
-        name: "Armature",
-        jointCount: 24,
-        jointNames: ["Hip", "Spine", "Chest", "Head", "Shoulder.L", "Shoulder.R"]
-      )
-    ],
-    stats: Stats(
-      triangleCount: 18_240,
-      vertexCount: 21_600,
-      meshCount: 1,
-      materialCount: 1,
-      textureCount: 5,
-      maxTextureDimension: 2048,
-      isRigged: true
-    ),
-    dimensions: Dimensions(width: 0.6, height: 1.8, depth: 0.35)
-  )
-
   public static let morph = FixtureSceneModel(
     fileName: "MorphTriangle.gltf",
     scenes: [cubeScene],
@@ -207,44 +175,5 @@ public struct FixtureSceneModel: SceneModel {
     pipelineReport: PipelineReport(entries: [
       PipelineReport.Entry(kind: .lighting, title: "File lights", detail: "3 punctual lights")
     ])
-  )
-
-  public static let cameras = FixtureSceneModel(
-    fileName: "PerspAndOrtho.gltf",
-    scenes: [cubeScene],
-    nodeTree: [
-      SceneNode(kind: .empty, index: 0, name: "Stage", children: [
-        SceneNode(kind: .mesh, index: 0, name: "Subject"),
-        SceneNode(kind: .camera, index: 0, name: "Hero"),
-        SceneNode(kind: .camera, index: 1, name: "Ortho")
-      ])
-    ],
-    cameras: [
-      CameraInfo(
-        index: 0,
-        name: "Hero",
-        projection: .perspective,
-        fieldOfViewDegrees: 50,
-        zNear: 0.05,
-        zFar: 200
-      ),
-      CameraInfo(
-        index: 1,
-        name: "Ortho",
-        projection: .orthographic,
-        xMag: 4,
-        yMag: 3,
-        zNear: 0.1,
-        zFar: 100
-      )
-    ],
-    materials: [MaterialFixtures.cube],
-    stats: Stats(
-      triangleCount: 2_400,
-      vertexCount: 4_800,
-      meshCount: 1,
-      materialCount: 1
-    ),
-    dimensions: Dimensions(width: 2, height: 1.5, depth: 1)
   )
 }

@@ -8,15 +8,13 @@ import Observation
 @MainActor
 @Observable
 public final class AppDefaultsStore {
-    public static let shared = AppDefaultsStore()
-
     /// Observation poke — SwiftUI tracks live defaults when Settings changes a key.
     public private(set) var revision: UInt64 = 0
 
     private let defaults: UserDefaults
     private var observer: NSObjectProtocol?
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(defaults: UserDefaults) {
         self.defaults = defaults
         observer = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,

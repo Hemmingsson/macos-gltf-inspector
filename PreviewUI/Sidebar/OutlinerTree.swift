@@ -1,37 +1,12 @@
 import Foundation
 
-/// Layout constants for the Scene outliner tree.
-///
-/// Each depth level indents by `indentPerLevel` (= disclosure column + gap) so a child’s chevron
-/// left edge lines up with the parent row’s icon column.
-public enum OutlinerTreeMetrics {
-    public static let rowMargin: CGFloat = 6
-    public static let treeLeading: CGFloat = 8
-    public static let flatLeading: CGFloat = 14
-    public static let trailing: CGFloat = 12
-    public static let vertical: CGFloat = 5
-
-    public static let disclosureSize: CGFloat = 14
-    public static let disclosureGap: CGFloat = 4
-    public static var indentPerLevel: CGFloat { disclosureSize + disclosureGap }
-
-    public static let iconSize: CGFloat = 16
-    public static let contentGap: CGFloat = 8
-    public static let eyeSize: CGFloat = 18
-}
-
 /// Pure expand/collapse helpers for the Scene section — kept free of SwiftUI so fold behaviour
 /// can be proved without driving a window.
 public enum OutlinerTree {
     /// Full scene-graph tree preserving hierarchy for all authored node kinds.
-    public static func fullRoots(_ nodes: [SceneNode], depth: Int = 0) -> [OutlinerItem] {
+    public static func fullRoots(_ nodes: [SceneNode]) -> [OutlinerItem] {
         nodes.map { node in
-            OutlinerItem(
-                id: node.id,
-                name: node.name,
-                depth: depth,
-                children: fullRoots(node.children, depth: depth + 1)
-            )
+            OutlinerItem(id: node.id, name: node.name, children: fullRoots(node.children))
         }
     }
 

@@ -14,8 +14,7 @@ public extension DS.Metrics {
     static let cellStrokeWidth: CGFloat = 1
 
     /// Side of the fixed glyph box of a `DSTypeIcon`, so row titles line up whatever each
-    /// symbol's natural width. Scaled with the text size via `@ScaledMetric`. Matches
-    /// `PreviewUI.OutlinerTreeMetrics.iconSize`.
+    /// symbol's natural width. Scaled with the text size via `@ScaledMetric`.
     static let typeIcon: CGFloat = 16
 
     /// Minimum width of the short axis label ("P", "R", "S") in a `DSVectorRow`, so the value

@@ -5,9 +5,7 @@ import SwiftUI
 /// Native sidebar outliner: `List(selection:)` + `.listStyle(.sidebar)`, one `Section` per
 /// SCENE / MATERIALS / …, recursive `DisclosureGroup`s bound to the existing expansion set.
 ///
-/// S1f: native list selection. If that look is later judged wrong, paint
-/// `DS.Color.selectionFill` on `NodeRow` (`paintsSelection`) and drive arrows with
-/// `.onMoveCommand` — do not invent a second expansion model.
+/// S1f: native list selection — `NodeRow` draws no selection of its own.
 public struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
     public var model: Model
     public var selection: Selection

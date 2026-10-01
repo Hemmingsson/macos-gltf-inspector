@@ -33,12 +33,6 @@ public enum NodeDetailFixtures {
         )
     )
 
-    public static let scene = NodeDetail(
-        id: NodeID(kind: .scene, index: 0),
-        name: "Scene",
-        sceneRootCount: 1
-    )
-
     public static let camera = NodeDetail(
         id: NodeID(kind: .camera, index: 0),
         name: "Main Camera",
@@ -82,11 +76,5 @@ public enum NodeDetailFixtures {
         id: NodeID(kind: .morph, index: 0),
         name: "Smile",
         morph: MorphInfo(index: 0, meshName: "Face", targetNames: ["Smile", "Blink"])
-    )
-
-    public static let empty = NodeDetail(
-        id: NodeID(kind: .empty, index: 0),
-        name: "Group",
-        transform: .identity
     )
 }
