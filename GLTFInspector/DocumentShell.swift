@@ -32,7 +32,6 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
                 \.engineViewport,
                 !window.hasLoadedDocument && viewport.commands == nil ? nil : viewport
             )
-            .focusedSceneValue(\.shellPanelChrome, window.panels)
             .onAppear {
                 dismissWindow(id: WelcomeWindow.id)
             }

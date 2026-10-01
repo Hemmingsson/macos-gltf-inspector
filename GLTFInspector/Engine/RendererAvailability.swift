@@ -24,6 +24,4 @@ struct RendererAvailability: Availability {
     var availableDebugChannels: [ViewMode] {
         file.availableDebugChannels.filter { $0 != .wireframe || features.contains(.wireframe) }
     }
-    /// Hide / solo in the outliner (`EngineSelectionModel.canHideNodes`).
-    var canHideNodes: Bool { features.contains(.nodeVisibility) }
 }
