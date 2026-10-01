@@ -481,7 +481,7 @@ struct PreviewScene: View {
                 lastTick = now
                 if autoRotateActive, useSystemOrbit {
                     interaction.refreshPointerTimeout()
-                    if !interaction.suppressesAutoRotate {
+                    if !interaction.isCameraGesturing {
                         // Keep yaw on `frame` (not `@State`) so the tick does not
                         // invalidate SwiftUI every 16ms — only the entity updates.
                         frame.autoRotateYaw += Float(dt) * 20 * .pi / 180

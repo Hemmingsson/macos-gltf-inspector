@@ -76,8 +76,6 @@ public final class PreviewInteraction {
     /// Floor so near-focus scroll ticks still advance instead of asymptoting.
     private let dollyKeepAhead: Float = 0.08
 
-    var suppressesAutoRotate: Bool { isCameraGesturing }
-
     public init() {}
 
     func refreshPointerTimeout() {

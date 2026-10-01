@@ -36,18 +36,18 @@ struct PreviewInteractionTests {
     @Test func markFittedClearsPause() {
         let interaction = PreviewInteraction()
         interaction.noteOrbitDrag()
-        #expect(interaction.suppressesAutoRotate)
+        #expect(interaction.isCameraGesturing)
         interaction.markFitted()
-        #expect(!interaction.suppressesAutoRotate)
+        #expect(!interaction.isCameraGesturing)
         #expect(!interaction.isCameraGesturing)
     }
 
     @Test func pointerUpResumesImmediately() {
         let interaction = PreviewInteraction()
         interaction.noteOrbitDrag()
-        #expect(interaction.suppressesAutoRotate)
+        #expect(interaction.isCameraGesturing)
         interaction.notePointerUp()
-        #expect(!interaction.suppressesAutoRotate)
+        #expect(!interaction.isCameraGesturing)
         #expect(!interaction.isCameraGesturing)
     }
 
