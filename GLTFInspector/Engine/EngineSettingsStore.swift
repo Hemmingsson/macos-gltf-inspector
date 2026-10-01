@@ -3,16 +3,14 @@ import GLTFCore
 import Observation
 import PreviewUI
 
-/// Per-window lazy overlay on `AppDefaultsStore`, with environment keys routed to `AppLookStore`.
+/// Per-window lazy overlay on the app defaults (`EngineAppDefaultsBridge`).
 ///
 /// Untouched keys track the observed app default live. `center` / `projection` are
-/// session-only — never written as app defaults. Environment IBL keys have no host
-/// `UserDefaults` entry; they read/write `AppLook` via `AppLookStore.apply(_:)`.
+/// session-only — never written as app defaults.
 @MainActor
 @Observable
 final class EngineSettingsStore: SettingsStore {
-    let defaultsStore: AppDefaultsStore
-    let lookStore: AppLookStore
+    let appDefaults: EngineAppDefaultsBridge
 
     /// This window's overrides by key name; a value is always its key's `Value`.
     private var overrides: [String: any Sendable] = [:]
@@ -21,18 +19,11 @@ final class EngineSettingsStore: SettingsStore {
         defaultsStore: AppDefaultsStore? = nil,
         lookStore: AppLookStore? = nil
     ) {
-        self.defaultsStore = defaultsStore ?? .appGroup
-        self.lookStore = lookStore ?? .shared
+        appDefaults = EngineAppDefaultsBridge(defaultsStore: defaultsStore, lookStore: lookStore)
     }
 
     func `default`<Value>(for key: SettingKey<Value>) -> Value {
-        if EngineAppLookRouting.isAppLookKey(key) {
-            return EngineAppLookRouting.read(key, from: lookStore)
-        }
-        if Self.isSessionOnly(key) {
-            return key.fallback
-        }
-        return defaultsStore.value(for: key)
+        Self.isSessionOnly(key) ? key.fallback : appDefaults.value(for: key)
     }
 
     func sessionValue<Value>(for key: SettingKey<Value>) -> Value {
@@ -50,11 +41,8 @@ final class EngineSettingsStore: SettingsStore {
         overrides.removeAll()
     }
 
-    // MARK: - Key routing
-
     private static func isSessionOnly<Value>(_ key: SettingKey<Value>) -> Bool {
         key.name == SettingKey<Bool>.center.name
             || key.name == SettingKey<Projection>.projection.name
     }
-
 }

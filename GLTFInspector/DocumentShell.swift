@@ -35,7 +35,7 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
             .onAppear {
                 dismissWindow(id: WelcomeWindow.id)
             }
-            .onChange(of: window.settings.defaultsStore.revision) { _, _ in
+            .onChange(of: window.settings.appDefaults.defaultsStore.revision) { _, _ in
                 // Live-track canvas for keys that still have no session override.
                 viewport.syncFromSettings()
             }
