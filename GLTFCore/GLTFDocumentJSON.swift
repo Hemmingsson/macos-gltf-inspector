@@ -14,6 +14,9 @@ public enum GLTFDocumentJSON {
     }
 
     static func makeDocument(json: [String: Any], binary: GLTFBinaryStore) -> GLTFSessionDocument {
+        let interval = AppLog.signposter.beginInterval("json.document")
+        defer { AppLog.signposter.endInterval("json.document", interval) }
+
         let nodesJSON = json["nodes"] as? [[String: Any]] ?? []
         let meshesJSON = json["meshes"] as? [[String: Any]] ?? []
         let accessors = json["accessors"] as? [[String: Any]] ?? []
@@ -33,17 +36,17 @@ public enum GLTFDocumentJSON {
         let camerasJSON = json["cameras"] as? [[String: Any]] ?? []
         let lightsJSON = punctualLights(json)
         let skinsJSON = json["skins"] as? [[String: Any]] ?? []
-        document.nodes = nodesJSON.enumerated().map { index, node in
-            makeNode(
-                node,
-                index: index,
-                counts: Counts(
-                    nodes: nodesJSON.count,
-                    meshes: meshesJSON.count,
-                    cameras: camerasJSON.count,
-                    lights: lightsJSON.count,
-                    skins: skinsJSON.count
-                ),
+        let counts = Counts(
+            nodes: nodesJSON.count,
+            meshes: meshesJSON.count,
+            cameras: camerasJSON.count,
+            lights: lightsJSON.count,
+            skins: skinsJSON.count
+        )
+        document.nodes = AppLog.signposter.withIntervalSignpost("json.document.nodes") {
+            makeNodes(
+                nodesJSON,
+                counts: counts,
                 geometryByMesh: geometryByMesh,
                 materialsByMesh: materialsByMesh
             )
@@ -51,8 +54,13 @@ public enum GLTFDocumentJSON {
         document.cameras = camerasJSON.map(makeCamera)
         document.lights = lightsJSON.map(makeLight)
         document.materials = materialsJSON.map(makeMaterial)
-        document.skins = skinsJSON.enumerated().map { index, skin in
-            makeSkin(skin, index: index, nodes: nodesJSON)
+        if !skinsJSON.isEmpty {
+            document.skins = AppLog.signposter.withIntervalSignpost("json.document.skins") {
+                let parents = nodeParents(nodesJSON)
+                return skinsJSON.enumerated().map { index, skin in
+                    makeSkin(skin, index: index, nodes: nodesJSON, parentByNode: parents)
+                }
+            }
         }
         document.morphs = meshesJSON.enumerated().compactMap { index, mesh in
             makeMorph(mesh, meshIndex: index)
@@ -60,7 +68,9 @@ public enum GLTFDocumentJSON {
         document.animations = (json["animations"] as? [[String: Any]] ?? []).compactMap { animation in
             makeAnimation(animation, accessors: accessors, binary: binary)
         }
-        stampTexturePreviews(&document, json: json, materialsJSON: materialsJSON, binary: binary)
+        AppLog.signposter.withIntervalSignpost("json.document.textures") {
+            stampTexturePreviews(&document, json: json, materialsJSON: materialsJSON, binary: binary)
+        }
         return document
     }
 
@@ -90,6 +100,58 @@ public enum GLTFDocumentJSON {
         var skins = 0
     }
 
+    private static let parallelNodeThreshold = 2_048
+
+    private static func makeNodes(
+        _ nodesJSON: [[String: Any]],
+        counts: Counts,
+        geometryByMesh: [MeshGeometry],
+        materialsByMesh: [[Int]]
+    ) -> [GLTFSessionDocument.Node] {
+        let count = nodesJSON.count
+        guard count > 0 else { return [] }
+        if count < parallelNodeThreshold {
+            return (0..<count).map { index in
+                makeNode(
+                    nodesJSON[index],
+                    index: index,
+                    counts: counts,
+                    geometryByMesh: geometryByMesh,
+                    materialsByMesh: materialsByMesh
+                )
+            }
+        }
+        return [GLTFSessionDocument.Node](unsafeUninitializedCapacity: count) { buffer, initialized in
+            let base = buffer.baseAddress!
+            DispatchQueue.concurrentPerform(iterations: count) { index in
+                base.advanced(by: index).initialize(
+                    to: makeNode(
+                        nodesJSON[index],
+                        index: index,
+                        counts: counts,
+                        geometryByMesh: geometryByMesh,
+                        materialsByMesh: materialsByMesh
+                    )
+                )
+            }
+            initialized = count
+        }
+    }
+
+    private enum NodeKey {
+        static let mesh = "mesh" as NSString
+        static let camera = "camera" as NSString
+        static let name = "name" as NSString
+        static let children = "children" as NSString
+        static let matrix = "matrix" as NSString
+        static let translation = "translation" as NSString
+        static let rotation = "rotation" as NSString
+        static let scale = "scale" as NSString
+        static let skin = "skin" as NSString
+        static let extensions = "extensions" as NSString
+        static let light = "light" as NSString
+    }
+
     private static func makeNode(
         _ node: [String: Any],
         index: Int,
@@ -97,23 +159,26 @@ public enum GLTFDocumentJSON {
         geometryByMesh: [MeshGeometry],
         materialsByMesh: [[Int]]
     ) -> GLTFSessionDocument.Node {
+        let dict = node as NSDictionary
         func reference(_ value: Any?, limit: Int) -> Int? {
             guard let index = GLTFJSON.int(value), index >= 0, index < limit else { return nil }
             return index
         }
-        let meshIndex = reference(node["mesh"], limit: counts.meshes)
-        let cameraIndex = reference(node["camera"], limit: counts.cameras)
-        let lightIndex = reference(
-            ((node["extensions"] as? [String: Any])?[lightsExtension] as? [String: Any])?["light"],
-            limit: counts.lights
-        )
-        let skinIndex = reference(node["skin"], limit: counts.skins)
-        let transform = decomposedTransform(node)
+        let meshIndex = counts.meshes == 0 ? nil : reference(dict.object(forKey: NodeKey.mesh), limit: counts.meshes)
+        let cameraIndex = counts.cameras == 0
+            ? nil
+            : reference(dict.object(forKey: NodeKey.camera), limit: counts.cameras)
+        let lightIndex = counts.lights == 0
+            ? nil
+            : reference(punctualLightIndex(dict), limit: counts.lights)
+        let skinIndex = counts.skins == 0 ? nil : reference(dict.object(forKey: NodeKey.skin), limit: counts.skins)
+        let transform = decomposedTransform(dict)
         let geometry = meshIndex.map { geometryByMesh[$0] } ?? MeshGeometry()
         return GLTFSessionDocument.Node(
             index: index,
-            name: node["name"] as? String ?? "",
-            children: GLTFJSON.ints(node["children"]).filter { $0 >= 0 && $0 < counts.nodes },
+            name: dict.object(forKey: NodeKey.name) as? String ?? "",
+            children: GLTFJSON.ints(dict.object(forKey: NodeKey.children))
+                .filter { $0 >= 0 && $0 < counts.nodes },
             kind: GLTFSessionDocument.Node.inferredKind(
                 meshIndex: meshIndex,
                 cameraIndex: cameraIndex,
@@ -137,46 +202,43 @@ public enum GLTFDocumentJSON {
         )
     }
 
+    private static func punctualLightIndex(_ node: NSDictionary) -> Any? {
+        let extensions = node.object(forKey: NodeKey.extensions) as? NSDictionary
+        let punctual = extensions?.object(forKey: lightsExtension) as? NSDictionary
+        return punctual?.object(forKey: NodeKey.light)
+    }
+
     /// glTF nodes carry either TRS or a `matrix`; the sidebar always shows TRS.
     private static func decomposedTransform(
-        _ node: [String: Any]
+        _ node: NSDictionary
     ) -> (translation: SIMD3<Float>, rotation: simd_quatf, scale: SIMD3<Float>) {
-        if let values = GLTFJSON.doubles(node["matrix"]), values.count == 16 {
-            return decompose(matrix(from: values))
+        if let matrix = GLTFJSON.float4x4(node.object(forKey: NodeKey.matrix)) {
+            return decompose(matrix)
         }
-        let translation = GLTFJSON.float3(node["translation"]) ?? .zero
-        let scale = GLTFJSON.float3(node["scale"]) ?? .one
-        var rotation = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
-        if let values = GLTFJSON.doubles(node["rotation"]), values.count == 4 {
-            rotation = simd_quatf(
-                ix: Float(values[0]),
-                iy: Float(values[1]),
-                iz: Float(values[2]),
-                r: Float(values[3])
-            )
+        let translation = GLTFJSON.float3(node.object(forKey: NodeKey.translation)) ?? .zero
+        let scale = GLTFJSON.float3(node.object(forKey: NodeKey.scale)) ?? .one
+        var rotation = identityRotation
+        if let values = GLTFJSON.float4(node.object(forKey: NodeKey.rotation)) {
+            rotation = simd_quatf(ix: values.x, iy: values.y, iz: values.z, r: values.w)
         }
         return (translation, rotation, scale)
     }
 
-    private static func matrix(from values: [Double]) -> simd_float4x4 {
-        let f = values.map(Float.init)
-        return simd_float4x4(
-            SIMD4<Float>(f[0], f[1], f[2], f[3]),
-            SIMD4<Float>(f[4], f[5], f[6], f[7]),
-            SIMD4<Float>(f[8], f[9], f[10], f[11]),
-            SIMD4<Float>(f[12], f[13], f[14], f[15])
-        )
-    }
+    private static let identityRotation = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
 
     private static func decompose(
         _ m: simd_float4x4
     ) -> (translation: SIMD3<Float>, rotation: simd_quatf, scale: SIMD3<Float>) {
         let translation = SIMD3<Float>(m.columns.3.x, m.columns.3.y, m.columns.3.z)
-        var basis = simd_float3x3(
-            SIMD3<Float>(m.columns.0.x, m.columns.0.y, m.columns.0.z),
-            SIMD3<Float>(m.columns.1.x, m.columns.1.y, m.columns.1.z),
-            SIMD3<Float>(m.columns.2.x, m.columns.2.y, m.columns.2.z)
-        )
+        let c0 = SIMD3<Float>(m.columns.0.x, m.columns.0.y, m.columns.0.z)
+        let c1 = SIMD3<Float>(m.columns.1.x, m.columns.1.y, m.columns.1.z)
+        let c2 = SIMD3<Float>(m.columns.2.x, m.columns.2.y, m.columns.2.z)
+        // Instance dumps are mostly +axis scale + translation; skip the quat for those.
+        if c0.y == 0, c0.z == 0, c1.x == 0, c1.z == 0, c2.x == 0, c2.y == 0,
+           c0.x > 0, c1.y > 0, c2.z > 0 {
+            return (translation, identityRotation, SIMD3<Float>(c0.x, c1.y, c2.z))
+        }
+        var basis = simd_float3x3(c0, c1, c2)
         var scale = SIMD3<Float>(
             simd_length(basis.columns.0),
             simd_length(basis.columns.1),
@@ -312,18 +374,24 @@ public enum GLTFDocumentJSON {
 
     // MARK: - Skins
 
-    private static func makeSkin(
-        _ skin: [String: Any],
-        index: Int,
-        nodes: [[String: Any]]
-    ) -> GLTFSessionDocument.Skin {
-        let joints = GLTFJSON.ints(skin["joints"]).filter { nodes.indices.contains($0) }
+    private static func nodeParents(_ nodes: [[String: Any]]) -> [Int: Int] {
         var parentByNode: [Int: Int] = [:]
+        parentByNode.reserveCapacity(nodes.count)
         for (nodeIndex, node) in nodes.enumerated() {
             for child in GLTFJSON.ints(node["children"]) where nodes.indices.contains(child) {
                 parentByNode[child] = nodeIndex
             }
         }
+        return parentByNode
+    }
+
+    private static func makeSkin(
+        _ skin: [String: Any],
+        index: Int,
+        nodes: [[String: Any]],
+        parentByNode: [Int: Int]
+    ) -> GLTFSessionDocument.Skin {
+        let joints = GLTFJSON.ints(skin["joints"]).filter { nodes.indices.contains($0) }
         let jointNames = joints.enumerated().map { offset, nodeIndex in
             JointNames.resolved(nodes[nodeIndex]["name"] as? String, index: offset)
         }

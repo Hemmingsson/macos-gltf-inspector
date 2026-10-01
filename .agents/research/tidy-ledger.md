@@ -175,3 +175,9 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - No `dev.sh bench` / Warrior_Girl_2 numbers in this lane (parent benches). Target remains < 50 ms channel↔channel on the node-heavy corpus.
 - Skeleton `updateBones` is O(J) transform sets on cached joint refs; PreviewScene ticks it at 16 ms while the overlay is on (animation + auto-rotate). Not hooked to `SceneEvents.Update`.
 - No Emma Frost bench / real-window check here. Target remains < 2 ms per update.
+## WP document
+
+- Warrior_Girl_2 wall is 944k JSON `matrix` nodes (191 MB JSON chunk), not skins (0) or image headers (9). `peekJSON` / `JSONSerialization` of that chunk is outside `makeDocument` and still unpaid.
+- Texture-heavy files (BoomBox, Flame_Knight) still spend most of `makeDocument` in ImageIO thumbnail decode. One `CGImageSource` now serves size + thumb; skipping thumbs would change inspector output.
+- Node build uses `DispatchQueue.concurrentPerform` above 2048 nodes. A typed glTF decoder (no `NSDictionary` / `NSNumber`) was not attempted — would re-parse the 191 MB chunk.
+- Skin parent map is built once, and only when the file has skins. Emma Frost / other rigs were not re-timed here.
