@@ -21,7 +21,7 @@ struct ModelDimensionsTests {
     @Test @MainActor func cubeMatchesLoggedUnitExtent() async throws {
         let url = TestFixtures.cube
         let model = try await EntityLoader.load(from: url, includeAnimations: false)
-        let dims = PreviewCamera.dimensions(of: model.entity, relativeTo: model.entity)
+        let dims = model.extent.dimensions
         #expect(dims != nil)
         guard let dims else { return }
         // Authored accessor min/max are ±0.5 → 1 m cube; matches former extent log.

@@ -363,7 +363,7 @@ public enum PreviewCamera {
     /// collision boxes do not push the camera out. Falls back to the full entity
     /// if nothing has a mesh yet.
     ///
-    /// For a W×H×D meters readout see `dimensions(of:relativeTo:)` / `ModelDimensions`.
+    /// For a W×H×D meters readout see `LoadedModel.extent` / `ModelDimensions`.
     @MainActor
     static func modelBounds(of entity: Entity, relativeTo reference: Entity? = nil) -> BoundingBox {
         var boxes: [BoundingBox] = []
