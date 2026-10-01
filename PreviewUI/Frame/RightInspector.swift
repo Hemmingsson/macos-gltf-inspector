@@ -45,7 +45,7 @@ public struct RightInspector<Selection: SelectionModel>: View {
                 }
                 .focusSection()
             } else {
-                InspectorStatusView(state: documentState)
+                ShellStatusView(state: documentState, placement: .inspector)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

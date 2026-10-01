@@ -50,7 +50,7 @@ public struct CanvasRegion<
                 case .ready:
                     content()
                 case .empty, .loading, .failed:
-                    CanvasStatusView(state: documentState)
+                    ShellStatusView(state: documentState, placement: .canvas)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
