@@ -75,7 +75,6 @@ struct PreviewScene: View {
     @State private var pendingReady: AppLook?
     @State private var appliedLook: AppLook?
     @State private var appliedFloorLineIndex = -1
-    @State private var prefetchGeneration = 0
     /// Must be `@State` — parent `updateNSView` recreates the view struct.
     @State private var frame = PreviewFrame()
     private let lookStore = AppLookStore.shared
@@ -430,15 +429,19 @@ struct PreviewScene: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
         }
-        .onAppear {
+        .task(id: lookStore.look) {
             // Lighting is never part of open — warm HDR after the model is on screen.
-            prefetchLook(lookStore.look)
+            // A newer look cancels this task, so a stale prefetch never lands. The load itself
+            // runs in its own task so cancelling does not abort a half-built EnvironmentResource.
+            let look = lookStore.look
+            if look.useEnvironmentMap {
+                await Task { await PreviewLighting.prefetchLook(look) }.value
+                guard !Task.isCancelled else { return }
+            }
+            pendingReady = look
         }
         .onChange(of: isDark) { _, _ in
             appliedFloorLineIndex = -1
-        }
-        .onChange(of: lookStore.look) { _, look in
-            prefetchLook(look)
         }
         .onChange(of: orthographicValue) { _, _ in
             // Toggle from View menu — apply when system orbit owns the camera.
@@ -547,20 +550,6 @@ struct PreviewScene: View {
         guard frame.appliedFieldOfViewDegrees != want else { return }
         PreviewCamera.applyFieldOfView(to: camera, degrees: want)
         frame.appliedFieldOfViewDegrees = want
-    }
-
-    private func prefetchLook(_ look: AppLook) {
-        guard look.useEnvironmentMap else {
-            pendingReady = look
-            return
-        }
-        prefetchGeneration += 1
-        let generation = prefetchGeneration
-        Task {
-            await PreviewLighting.prefetchLook(look)
-            guard generation == prefetchGeneration else { return }
-            pendingReady = look
-        }
     }
 
     private func chromeTint(active: Bool) -> Color {
