@@ -59,8 +59,7 @@ public struct FixtureSceneModel: SceneModel {
 
   private static let cubeScene = SceneInfo(
     index: 0,
-    name: "Scene",
-    rootNodeIDs: [NodeID(kind: .empty, index: 0)]
+    name: "Scene"
   )
 
   private static let cubeNodeTree: [SceneNode] = [
@@ -81,7 +80,6 @@ public struct FixtureSceneModel: SceneModel {
     materials: [MaterialFixtures.cube],
     stats: Stats(
       triangleCount: 12,
-      vertexCount: 24,
       meshCount: 1,
       materialCount: 1,
       textureCount: 2,
@@ -94,8 +92,8 @@ public struct FixtureSceneModel: SceneModel {
   public static let multiScene = FixtureSceneModel(
     fileName: "TwoScenes.gltf",
     scenes: [
-      SceneInfo(index: 0, name: "Overview", rootNodeIDs: [NodeID(kind: .empty, index: 0)]),
-      SceneInfo(index: 1, name: "Detail", rootNodeIDs: [NodeID(kind: .empty, index: 1)])
+      SceneInfo(index: 0, name: "Overview"),
+      SceneInfo(index: 1, name: "Detail")
     ],
     nodeTree: [
       SceneNode(kind: .empty, index: 0, name: "Overview Root", children: [
@@ -108,7 +106,6 @@ public struct FixtureSceneModel: SceneModel {
     materials: [MaterialFixtures.cube, MaterialFixtures.fullPBR],
     stats: Stats(
       triangleCount: 8_420,
-      vertexCount: 12_640,
       meshCount: 2,
       materialCount: 2,
       textureCount: 6,
@@ -130,10 +127,8 @@ public struct FixtureSceneModel: SceneModel {
     morphs: [MorphFixtures.triangle, MorphFixtures.face],
     stats: Stats(
       triangleCount: 1,
-      vertexCount: 3,
       meshCount: 1,
-      materialCount: 1,
-      morphTargetCount: 7
+      materialCount: 1
     ),
     dimensions: Dimensions(width: 1, height: 1, depth: 0.01)
   )
@@ -165,7 +160,6 @@ public struct FixtureSceneModel: SceneModel {
     materials: [MaterialFixtures.cube],
     stats: Stats(
       triangleCount: 2_400,
-      vertexCount: 4_800,
       meshCount: 1,
       materialCount: 1,
       textureCount: 2,

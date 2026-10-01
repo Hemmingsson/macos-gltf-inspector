@@ -140,13 +140,10 @@ public struct SceneNode: Sendable, Hashable, Identifiable {
 public struct SceneInfo: Sendable, Hashable, Identifiable {
     public var id: NodeID
     public var name: String
-    /// Roots of this scene inside `SceneModel.nodeTree`.
-    public var rootNodeIDs: [NodeID]
 
-    public init(index: Int, name: String, rootNodeIDs: [NodeID] = []) {
+    public init(index: Int, name: String) {
         self.id = NodeID(kind: .scene, index: index)
         self.name = name
-        self.rootNodeIDs = rootNodeIDs
     }
 }
 
@@ -272,7 +269,7 @@ public enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Iden
     }
 }
 
-/// One *present* texture binding on a material. Width/height and preview tint are optional —
+/// One *present* texture binding on a material. Width/height are optional —
 /// the engine adapter can omit anything it does not know yet.
 public struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
     public var map: MaterialMap
@@ -280,9 +277,6 @@ public struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
     public var height: Int?
     /// glTF `texCoord`. Inspector omits the UV set when this is 0.
     public var texCoord: Int
-    /// Flat placeholder for the inspector swatch / map strip. Live engine can leave this nil
-    /// and later supply an image handle without RealityKit types in the seam.
-    public var previewColor: RGBColor?
     /// Small PNG thumb stamped at convert (max edge 96). Nil when decode failed / KTX2.
     public var thumbnailPNG: Data?
 
@@ -293,14 +287,12 @@ public struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
         width: Int? = nil,
         height: Int? = nil,
         texCoord: Int = 0,
-        previewColor: RGBColor? = nil,
         thumbnailPNG: Data? = nil
     ) {
         self.map = map
         self.width = width
         self.height = height
         self.texCoord = texCoord
-        self.previewColor = previewColor
         self.thumbnailPNG = thumbnailPNG
     }
 
@@ -339,18 +331,12 @@ public struct MaterialInfo: Sendable, Hashable, Identifiable {
     public var metallicFactor: Double?
     public var roughnessFactor: Double?
     public var emissiveFactor: RGBColor?
-    /// KHR_materials_emissive_strength multiplier when present.
-    public var emissiveStrength: Double?
     public var normalScale: Double?
     public var occlusionStrength: Double?
     /// Meaningful when `alphaMode == .mask`.
     public var alphaCutoff: Double?
     /// Mesh display names that reference this material (Materials-list selection).
     public var usedByMeshNames: [String]
-    /// Optional triangle coverage across those meshes.
-    public var usedByTriangleCount: Int?
-    /// Distinct image count when known (may be lower than `textures.count` if maps share).
-    public var uniqueTextureCount: Int?
 
     public init(
         index: Int,
@@ -364,13 +350,10 @@ public struct MaterialInfo: Sendable, Hashable, Identifiable {
         metallicFactor: Double? = nil,
         roughnessFactor: Double? = nil,
         emissiveFactor: RGBColor? = nil,
-        emissiveStrength: Double? = nil,
         normalScale: Double? = nil,
         occlusionStrength: Double? = nil,
         alphaCutoff: Double? = nil,
-        usedByMeshNames: [String] = [],
-        usedByTriangleCount: Int? = nil,
-        uniqueTextureCount: Int? = nil
+        usedByMeshNames: [String] = []
     ) {
         self.id = NodeID(kind: .material, index: index)
         self.name = name
@@ -382,13 +365,10 @@ public struct MaterialInfo: Sendable, Hashable, Identifiable {
         self.metallicFactor = metallicFactor
         self.roughnessFactor = roughnessFactor
         self.emissiveFactor = emissiveFactor
-        self.emissiveStrength = emissiveStrength
         self.normalScale = normalScale
         self.occlusionStrength = occlusionStrength
         self.alphaCutoff = alphaCutoff
         self.usedByMeshNames = usedByMeshNames
-        self.usedByTriangleCount = usedByTriangleCount
-        self.uniqueTextureCount = uniqueTextureCount
         if textures.isEmpty {
             self.maps = maps
         } else {
@@ -466,7 +446,6 @@ public struct GeometryInfo: Sendable, Hashable {
     public var triangleCount: Int
     public var vertexCount: Int
     public var uvSetCount: Int
-    public var hasNormals: Bool
     public var hasTangents: Bool
     public var hasVertexColors: Bool
 
@@ -474,14 +453,12 @@ public struct GeometryInfo: Sendable, Hashable {
         triangleCount: Int,
         vertexCount: Int,
         uvSetCount: Int = 1,
-        hasNormals: Bool = true,
         hasTangents: Bool = false,
         hasVertexColors: Bool = false
     ) {
         self.triangleCount = triangleCount
         self.vertexCount = vertexCount
         self.uvSetCount = uvSetCount
-        self.hasNormals = hasNormals
         self.hasTangents = hasTangents
         self.hasVertexColors = hasVertexColors
     }
@@ -541,7 +518,6 @@ public struct NodeDetail: Sendable, Hashable, Identifiable {
 /// The inspector's File section.
 public struct Stats: Sendable, Hashable {
     public var triangleCount: Int
-    public var vertexCount: Int
     public var meshCount: Int
     public var materialCount: Int
     public var textureCount: Int
@@ -549,34 +525,23 @@ public struct Stats: Sendable, Hashable {
     public var maxTextureDimension: Int?
     public var animationCount: Int
     public var fileSizeBytes: Int64?
-    public var hasVertexColors: Bool
-    public var isRigged: Bool
-    public var morphTargetCount: Int
 
     public init(
         triangleCount: Int = 0,
-        vertexCount: Int = 0,
         meshCount: Int = 0,
         materialCount: Int = 0,
         textureCount: Int = 0,
         maxTextureDimension: Int? = nil,
         animationCount: Int = 0,
-        fileSizeBytes: Int64? = nil,
-        hasVertexColors: Bool = false,
-        isRigged: Bool = false,
-        morphTargetCount: Int = 0
+        fileSizeBytes: Int64? = nil
     ) {
         self.triangleCount = triangleCount
-        self.vertexCount = vertexCount
         self.meshCount = meshCount
         self.materialCount = materialCount
         self.textureCount = textureCount
         self.maxTextureDimension = maxTextureDimension
         self.animationCount = animationCount
         self.fileSizeBytes = fileSizeBytes
-        self.hasVertexColors = hasVertexColors
-        self.isRigged = isRigged
-        self.morphTargetCount = morphTargetCount
     }
 }
 
@@ -818,7 +783,6 @@ public enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable, Ide
     }
 }
 
-/// What the lighting popover edits.
 /// The bundled image-based lighting environments.
 ///
 /// glTF files carry no environment of their own, so what a model looks like is partly the app's
@@ -878,6 +842,7 @@ public enum ToneMapping: String, Sendable, Hashable, CaseIterable, Identifiable 
     }
 }
 
+/// What the lighting popover edits.
 public struct LightingSettings: Sendable, Hashable {
     /// Exposure compensation in stops.
     public var exposure: Double

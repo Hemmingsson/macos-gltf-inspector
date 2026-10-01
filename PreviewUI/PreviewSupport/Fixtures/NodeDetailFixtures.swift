@@ -10,7 +10,7 @@ public enum NodeDetailFixtures {
             rotationDegrees: .zero,
             scale: .one
         ),
-        geometry: GeometryInfo(triangleCount: 12, vertexCount: 24, uvSetCount: 1, hasNormals: true)
+        geometry: GeometryInfo(triangleCount: 12, vertexCount: 24, uvSetCount: 1)
     )
 
     public static let material = NodeDetail(
@@ -28,8 +28,7 @@ public enum NodeDetailFixtures {
             baseColorFactor: .white,
             metallicFactor: 0,
             roughnessFactor: 0.5,
-            usedByMeshNames: ["Cube"],
-            usedByTriangleCount: 12
+            usedByMeshNames: ["Cube"]
         )
     )
 

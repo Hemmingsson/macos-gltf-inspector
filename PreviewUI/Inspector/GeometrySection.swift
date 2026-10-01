@@ -50,7 +50,6 @@ public struct GeometrySection: View {
                 triangleCount: 18_240,
                 vertexCount: 21_600,
                 uvSetCount: 2,
-                hasNormals: true,
                 hasTangents: true,
                 hasVertexColors: true
             )
@@ -65,7 +64,6 @@ public struct GeometrySection: View {
                 triangleCount: 18_240,
                 vertexCount: 21_600,
                 uvSetCount: 2,
-                hasNormals: true,
                 hasTangents: true,
                 hasVertexColors: true
             )

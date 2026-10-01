@@ -146,8 +146,6 @@ public struct MaterialSection: View {
                     shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline)
                 }
                 .accessibilityHidden(true)
-        } else if let color = texture.previewColor {
-            MaterialSwatch(color: Color(rgb: color), size: side)
         } else {
             shape
                 .fill(DS.Color.cardFill)
@@ -171,11 +169,7 @@ public struct MaterialSection: View {
     }
 
     private func emissiveValueLabel(_ factor: RGBColor) -> String {
-        var parts = [MaterialInspectorSupport.hexLabel(factor)]
-        if let strength = material.emissiveStrength, abs(strength - 1) > 0.004 {
-            parts.append("×\(MaterialInspectorSupport.scalarLabel(strength))")
-        }
-        return parts.joined(separator: " ")
+        MaterialInspectorSupport.hexLabel(factor)
     }
 
     private func factorColorRow(_ label: String, _ color: RGBColor) -> some View {

@@ -138,13 +138,7 @@ extension EngineSceneModel {
 
     private static func mapScenes(_ document: GLTFSessionDocument) -> [SceneInfo] {
         document.scenes.enumerated().map { index, scene in
-            let rooted = scene.rootNodeIndices.map { rootIndex -> NodeID in
-                if let node = document.nodes.first(where: { $0.index == rootIndex }) {
-                    return NodeID(kind: nodeKind(node.kind), index: node.index)
-                }
-                return NodeID(kind: .empty, index: rootIndex)
-            }
-            return SceneInfo(index: index, name: sceneName(scene, index: index), rootNodeIDs: rooted)
+            SceneInfo(index: index, name: sceneName(scene, index: index))
         }
     }
 
@@ -269,14 +263,13 @@ extension EngineSceneModel {
                 thumbnailPNG: slot.thumbnailPNG
             )
         }
-        let maps = textures.isEmpty ? materialMaps(material.maps) : Set(textures.map(\.map))
         return MaterialInfo(
             index: index,
             name: displayName(material.name, fallback: "Material \(index)"),
             workflow: mapWorkflow(material.workflow),
             alphaMode: mapAlphaMode(material.alphaMode),
             isDoubleSided: material.isDoubleSided,
-            maps: maps,
+            maps: materialMaps(material.maps),
             textures: textures,
             baseColorFactor: material.baseColorFactor.map {
                 RGBColor(red: Double($0.x), green: Double($0.y), blue: Double($0.z))
@@ -357,16 +350,12 @@ extension EngineSceneModel {
         let meshCount = Set(document.nodes.compactMap(\.meshIndex)).count
         return Stats(
             triangleCount: stats.triangleCount,
-            vertexCount: stats.vertexCount,
             meshCount: meshCount,
             materialCount: stats.materialCount,
             textureCount: stats.textureCount,
             maxTextureDimension: stats.maxTextureEdge,
             animationCount: stats.animationCount,
-            fileSizeBytes: stats.fileSizeBytes,
-            hasVertexColors: stats.hasVertexColors,
-            isRigged: stats.isRigged,
-            morphTargetCount: document.morphs.reduce(0) { $0 + $1.targetNames.count }
+            fileSizeBytes: stats.fileSizeBytes
         )
     }
 
