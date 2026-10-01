@@ -106,6 +106,8 @@ struct RendererSwitchTests {
 
         let everything = RendererAvailability(model: model, viewModes: modes, features: Set(RendererFeature.allCases))
         #expect(everything.hasAnimations)
+        #expect(everything.showsDoubleSided)
+        #expect(everything.showsSkeletonOverlay)
         #expect(everything.availableDebugChannels == [.shaded, .wireframe, .channel(.baseColor), .channel(.normals)])
 
         let pageOnly = RendererAvailability(
@@ -114,6 +116,8 @@ struct RendererSwitchTests {
             features: [.debugChannels, .materialVariants, .nodeSelection]
         )
         #expect(!pageOnly.hasAnimations)
+        #expect(!pageOnly.showsDoubleSided)
+        #expect(!pageOnly.showsSkeletonOverlay)
         #expect(pageOnly.availableDebugChannels == [.shaded, .channel(.baseColor), .channel(.normals)])
 
         let none = RendererAvailability(model: model, viewModes: modes, features: [])

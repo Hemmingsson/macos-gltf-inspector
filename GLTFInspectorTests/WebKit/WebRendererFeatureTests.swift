@@ -12,5 +12,7 @@ struct WebRendererFeatureTests {
         #expect(!features.contains(.animationPlayback))
         #expect(!features.contains(.morphTargets))
         #expect(!features.contains(.nodeVisibility))
+        #expect(!features.contains(.doubleSided))
+        #expect(!features.contains(.skeletonOverlay))
     }
 }

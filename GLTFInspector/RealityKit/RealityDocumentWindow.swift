@@ -25,7 +25,7 @@ struct RealityDocumentWindow: View {
         _window = State(
             wrappedValue: DocumentWindowModel(
                 documentURL: documentURL,
-                canHideNodes: RealityPreviewCanvas.features.contains(.nodeVisibility)
+                features: RealityPreviewCanvas.features
             )
         )
     }
@@ -34,7 +34,6 @@ struct RealityDocumentWindow: View {
         DocumentShell(
             window: window,
             canvasState: canvasState,
-            features: RealityPreviewCanvas.features,
             playback: playbackController,
             morphTargets: morphTargets,
             onSetMorphWeight: applyMorphWeight

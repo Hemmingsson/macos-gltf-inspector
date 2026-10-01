@@ -20,4 +20,25 @@ struct RendererAvailability: Availability {
     var availableDebugChannels: [ViewMode] {
         file.availableDebugChannels.filter { $0 != .wireframe || features.contains(.wireframe) }
     }
+    var showsDoubleSided: Bool { features.contains(.doubleSided) }
+    var showsSkeletonOverlay: Bool { features.contains(.skeletonOverlay) }
+}
+
+/// View-menu items that exist only when the mounted renderer can drive them.
+enum HostViewMenuToggle: String, CaseIterable, Sendable {
+    case doubleSided
+    case showSkeleton
+}
+
+enum HostViewMenuAvailability {
+    static func toggles(for features: Set<RendererFeature>) -> [HostViewMenuToggle] {
+        HostViewMenuToggle.allCases.filter { isAvailable($0, features: features) }
+    }
+
+    static func isAvailable(_ item: HostViewMenuToggle, features: Set<RendererFeature>) -> Bool {
+        switch item {
+        case .doubleSided: features.contains(.doubleSided)
+        case .showSkeleton: features.contains(.skeletonOverlay)
+        }
+    }
 }

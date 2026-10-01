@@ -54,8 +54,8 @@ public struct WebPreviewCanvas: NSViewRepresentable {
 
 extension WebPreviewCanvas {
     /// What the page can do today (`Look` fields and page commands). No clip playback, morph
-    /// weights, hide/solo, skeleton overlay or file-light toggle: the page renders the file as
-    /// authored. Host availability hides the matching chrome.
+    /// weights, hide/solo, skeleton overlay, double-sided override or file-light toggle: the
+    /// page renders the file as authored. Host availability hides the matching chrome.
     public static let features: Set<RendererFeature> = [
         .wireframe,
         .debugChannels,

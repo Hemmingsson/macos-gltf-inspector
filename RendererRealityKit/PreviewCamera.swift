@@ -8,7 +8,7 @@ public enum PreviewCamera {
     static let yawDegrees: Float = 35
     /// Default front-three-quarter pitch (degrees). Iso preset uses the same value.
     static let pitchDegrees: Float = 18
-    static let previewFitPadding: Float = 1.02
+    static let previewFitPadding: Float = RenderCamera.fitPadding
     static let thumbnailFitPadding: Float = 1.08
     static let autoRotateSpinName = "autoRotateSpin"
     /// RGB axis triad at the authored glTF origin when Center is off.

@@ -136,18 +136,15 @@ extension PreviewCamera {
         padding: Float,
         fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) -> Float {
-        let axes = framingAxes(toCamera: toCamera)
-        let half = extent * 0.5
         // RealityView.make often runs before layout; a ~0 aspect used to push the
         // camera tens of kilometers away so the first frames looked empty.
-        let safeAspect = clampedAspect(aspect)
-        let vHalfFOV = RenderCamera.clampedFieldOfView(fieldOfViewInDegrees) * .pi / 360
-        let hHalfFOV = atan(tan(vHalfFOV) * safeAspect)
-        let distanceV = projectedHalf(axes.up, halfExtent: half) / tan(vHalfFOV)
-        let distanceH = projectedHalf(axes.right, halfExtent: half) / tan(hHalfFOV)
-        // + depth so the near face of the box still fits, not just the center slice.
-        let distance = max(distanceV, distanceH) + projectedHalf(axes.forward, halfExtent: half)
-        return max(0.0001, distance * padding)
+        return RenderCamera.fitDistance(
+            extent: extent,
+            toCamera: toCamera,
+            aspect: aspect,
+            padding: padding,
+            fieldOfViewInDegrees: fieldOfViewInDegrees
+        )
     }
 
     /// Unit vector from model center toward the camera for yaw/pitch (degrees).

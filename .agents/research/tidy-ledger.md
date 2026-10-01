@@ -149,3 +149,6 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - `ViewModeMenuChrome.interpolatesTitle` is a contract flag for the unit test, not a ViewInspector of the modifier. No XCUITest / settled screenshot (parent: no XCUITest, no focus steal). The real snap is `.contentTransition(.identity)` + `.transaction { $0.animation = nil }` on `DSGlassMenuButton` titled `Text` (also stops clip-name interpolation).
 - Emissive strength is JSON → `GLTFSessionDocument.Material` → `EngineSceneModel` → `MaterialInfo` only. RealityKit convert already reads GLTFKit2's `emissiveStrength`; not re-plumbed.
 - No real-window check for Reset View or the inspector row (no `/Applications`, no focus steal).
+## W4 webkit-bugs
+
+- Clip transport bar on animated WebKit windows is a deliberate `RendererFeature.animationPlayback` gap, not a missing overlay. `WebPreviewCanvas.features` omits `.animationPlayback`; `RendererAvailability.hasAnimations` is then false and PreviewUI hides `PlaybackBar`. The Khronos page has no clip transport API, so do not add a fake bar. Implement playback (page clock + `RendererFeature.animationPlayback`) before showing transport.

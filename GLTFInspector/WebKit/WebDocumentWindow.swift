@@ -20,7 +20,7 @@ struct WebDocumentWindow: View {
         _window = State(
             wrappedValue: DocumentWindowModel(
                 documentURL: documentURL,
-                canHideNodes: WebPreviewCanvas.features.contains(.nodeVisibility)
+                features: WebPreviewCanvas.features
             )
         )
     }
@@ -29,7 +29,6 @@ struct WebDocumentWindow: View {
         DocumentShell(
             window: window,
             canvasState: canvasState,
-            features: WebPreviewCanvas.features,
             playback: NoClipPlayback()
         ) {
             canvas

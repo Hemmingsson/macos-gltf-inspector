@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import GLTFCore
+import simd
 import Testing
 @testable import GLTFInspector
 @testable import RendererWebKit
@@ -196,20 +197,38 @@ struct WebCameraPresetTests {
     }
 
     @Test
-    func presetDistanceScalesThePageFitByTheVisibleExtent() {
-        // 2 wide, 1 tall, 4 deep: the page's front fit sized the distance to 2.
+    func presetDistanceUsesSharedFitRule() {
         let box = state(min: [-1, -0.5, -2], max: [1, 0.5, 2])
-        #expect(box.distance(framing: .front) == 10)
-        #expect(box.distance(framing: .back) == 10)
-        #expect(box.distance(framing: .left) == 20)
-        #expect(box.distance(framing: .right) == 20)
-        #expect(box.distance(framing: .top) == 20)
-        #expect(abs(box.distance(framing: .isometric) - 10 * (21.0).squareRoot() / 2) < 1e-9)
+        let extent = SIMD3<Float>(2, 1, 4)
+        func expected(_ preset: CameraPreset) -> Double {
+            let angles = preset.webOrbitAngles
+            return Double(
+                RenderCamera.fitDistance(
+                    extent: extent,
+                    toCamera: RenderCamera.lookDirection(
+                        azimuthDegrees: angles.azimuth,
+                        elevationDegrees: angles.elevation
+                    ),
+                    fieldOfViewInDegrees: Float(0.8 * 180 / .pi)
+                )
+            )
+        }
+        for preset in CameraPreset.allCases {
+            #expect(abs(box.distance(framing: preset) - expected(preset)) < 1e-5)
+        }
     }
 
     @Test
-    func flatBoxKeepsTheFittedDistance() {
-        #expect(state(min: [0, 0, 0], max: [0, 0, 1]).distance(framing: .left) == 10)
+    func flatBoxUsesSharedFitRuleFromTheSide() {
+        let box = state(min: [0, 0, 0], max: [0, 0, 1])
+        let expected = Double(
+            RenderCamera.fitDistance(
+                extent: SIMD3(0, 0, 1),
+                toCamera: RenderCamera.lookDirection(azimuthDegrees: -90, elevationDegrees: 0),
+                fieldOfViewInDegrees: Float(0.8 * 180 / .pi)
+            )
+        )
+        #expect(abs(box.distance(framing: .left) - expected) < 1e-5)
     }
 
     @Test

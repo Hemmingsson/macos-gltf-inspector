@@ -1,5 +1,6 @@
 import Foundation
 import GLTFCore
+import simd
 
 // Values that cross the page bridge. The page exposes five async functions on `window.__viewer`
 // (`open`, `apply`, `camera`, `still`, `stats`); `WebRendererHost.call` sends one JSON argument
@@ -130,21 +131,26 @@ struct RendererCameraState: Equatable, Decodable, Sendable {
 
     /// Camera distance that frames the measured box when seen from `preset`.
     ///
-    /// The page's fit (`fitDistanceToExtents`) sizes the distance to the larger of the box's X
-    /// and Y extent — a front view. Distance is linear in that extent, so another view scales
-    /// the fitted distance by its own on-screen extent: Z/Y from the side, X/Z from above, the
-    /// full diagonal for the three-quarter view (all three axes are visible at once).
+    /// Same projected-AABB + near-face + `RenderCamera.fitPadding` rule as RealityKit Fit
+    /// and the page's `applySharedFitDistance`.
     func distance(framing preset: CameraPreset) -> Double {
-        let size = (0..<3).map { sceneMax[$0] - sceneMin[$0] }
-        let front = max(size[0], size[1])
-        guard front > 0, pose.distance.isFinite else { return pose.distance }
-        let extent: Double = switch preset {
-        case .front, .back: front
-        case .left, .right: max(size[2], size[1])
-        case .top, .bottom: max(size[0], size[2])
-        case .isometric: boundingRadius * 2
-        }
-        return pose.distance * extent / front
+        guard isMeasurable else { return pose.distance }
+        let extent = SIMD3<Float>(
+            Float(sceneMax[0] - sceneMin[0]),
+            Float(sceneMax[1] - sceneMin[1]),
+            Float(sceneMax[2] - sceneMin[2])
+        )
+        let angles = preset.webOrbitAngles
+        return Double(
+            RenderCamera.fitDistance(
+                extent: extent,
+                toCamera: RenderCamera.lookDirection(
+                    azimuthDegrees: angles.azimuth,
+                    elevationDegrees: angles.elevation
+                ),
+                fieldOfViewInDegrees: Float(pose.yfov * 180 / .pi)
+            )
+        )
     }
 }
 

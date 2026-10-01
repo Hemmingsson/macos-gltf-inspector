@@ -52,12 +52,22 @@ private struct HostViewMenuBody: View {
         Toggle("Orthographic", systemImage: "perspective", isOn: orthographic)
             .keyboardShortcut(DS.Shortcuts.action(.orthographic))
 
-        Toggle("Double-Sided", systemImage: "square.on.square", isOn: bind(\.doubleSided, viewport.setDoubleSided))
-        Toggle(
-            "Show Skeleton",
-            systemImage: "point.3.connected.trianglepath.dotted",
-            isOn: bind(\.showSkeleton, viewport.setShowSkeleton)
-        )
+        ForEach(HostViewMenuAvailability.toggles(for: viewport.features), id: \.self) { item in
+            switch item {
+            case .doubleSided:
+                Toggle(
+                    "Double-Sided",
+                    systemImage: "square.on.square",
+                    isOn: bind(\.doubleSided, viewport.setDoubleSided)
+                )
+            case .showSkeleton:
+                Toggle(
+                    "Show Skeleton",
+                    systemImage: "point.3.connected.trianglepath.dotted",
+                    isOn: bind(\.showSkeleton, viewport.setShowSkeleton)
+                )
+            }
+        }
 
         Divider()
 

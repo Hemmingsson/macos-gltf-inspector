@@ -5,7 +5,8 @@ import SwiftUI
 
 /// Document window chrome: PreviewUI `ShellRootView` + engine adapters around one renderer's
 /// canvas. Renderer-neutral — the window roots in `RealityKit/` and `WebKit/` own loading and
-/// the canvas, and pass in what their renderer offers (`features`, playback, morph sliders).
+/// the canvas, and pass in playback / morph sliders. Feature availability comes from
+/// `window.features` (the mounted renderer's `RendererFeature` set).
 ///
 /// Pills / selection / export / playback / scene+variant write through the engine adapters into
 /// the window's `DocumentWindowModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
@@ -14,7 +15,6 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
     let window: DocumentWindowModel
     /// Canvas region state; the panels follow `window.phase`.
     let canvasState: ShellDocumentState
-    let features: Set<RendererFeature>
     let playback: Playback
     var morphTargets: [MorphTargetControl] = []
     var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
@@ -46,7 +46,7 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
         let availability = RendererAvailability(
             model: model,
             viewModes: window.previewSession.viewModes,
-            features: features
+            features: window.features
         )
         ShellRootView(
             model: model,
