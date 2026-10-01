@@ -7,29 +7,15 @@ import RealityKit
 import GLTFKit2
 import simd
 
-typealias PlatformColor = NSColor
-
-fileprivate class UniqueNameGenerator {
-    private var countsForPrefixes = [String : Int]()
-
-    func nextUniqueName(prefix: String) -> String {
-        if let existingCount = countsForPrefixes[prefix] {
-            countsForPrefixes[prefix] = existingCount + 1
-            return "\(prefix)\(existingCount + 1)"
-        } else {
-            countsForPrefixes[prefix] = 1
-            return "\(prefix)1"
-        }
-    }
-}
-
 final class RealityKitConvert {
 
     let colorSpace = NSColorSpace(cgColorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)!)!
-    fileprivate let nameGenerator = UniqueNameGenerator()
+    private var uniqueNameCounts: [String: Int] = [:]
 
     func nextUniqueName(prefix: String) -> String {
-        nameGenerator.nextUniqueName(prefix: prefix)
+        let count = uniqueNameCounts[prefix, default: 0] + 1
+        uniqueNameCounts[prefix] = count
+        return "\(prefix)\(count)"
     }
 
     var pathsForSkeletonIDs: [/*MeshResource.Skeleton.ID*/String : BindTarget.EntityPath] = [:]
@@ -232,7 +218,7 @@ final class RealityKitConvert {
         return BindTarget.entity(entityName(of: node))
     }
 
-    func platformColor(for vector: simd_float4) -> PlatformColor {
+    func platformColor(for vector: simd_float4) -> NSColor {
         let components = [CGFloat(vector.x), CGFloat(vector.y), CGFloat(vector.z), CGFloat(vector.w)]
         return NSColor(colorSpace: colorSpace, components: components, count: components.count)
     }
