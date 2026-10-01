@@ -44,11 +44,3 @@ public struct PreviewCanvas<Content: View>: View {
     }
   }
 }
-
-public extension PreviewCanvas {
-  /// Left sidebar column width (`DS.Metrics.sidebarWidth`).
-  static var sidebarWidth: CGFloat { DS.Metrics.sidebarWidth }
-
-  /// Right inspector column width (`DS.Metrics.inspectorWidth`).
-  static var inspectorWidth: CGFloat { DS.Metrics.inspectorWidth }
-}
