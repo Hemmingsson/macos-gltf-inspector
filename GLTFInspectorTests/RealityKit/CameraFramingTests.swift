@@ -59,8 +59,8 @@ struct FitCameraTests {
             minBound: minBound,
             maxBound: maxBound,
             padding: 1,
-            yaw: PreviewCamera.CameraPreset.right.yawDegrees,
-            pitch: PreviewCamera.CameraPreset.right.pitchDegrees,
+            yaw: GLTFCore.CameraPreset.right.yawDegrees,
+            pitch: GLTFCore.CameraPreset.right.pitchDegrees,
             applyThinAxisOverride: false
         )
         #expect(position.x > 0)
@@ -70,22 +70,22 @@ struct FitCameraTests {
 
 struct CameraPresetTests {
     @Test func angleTableMatchesPillCopy() {
-        #expect(PreviewCamera.CameraPreset.front.yawDegrees == 0)
-        #expect(PreviewCamera.CameraPreset.front.pitchDegrees == 0)
-        #expect(PreviewCamera.CameraPreset.back.yawDegrees == 180)
-        #expect(PreviewCamera.CameraPreset.left.yawDegrees == -90)
-        #expect(PreviewCamera.CameraPreset.right.yawDegrees == 90)
-        #expect(PreviewCamera.CameraPreset.top.pitchDegrees == 90)
-        #expect(PreviewCamera.CameraPreset.bottom.pitchDegrees == -90)
-        #expect(PreviewCamera.CameraPreset.isometric.yawDegrees == PreviewCamera.yawDegrees)
-        #expect(PreviewCamera.CameraPreset.isometric.pitchDegrees == PreviewCamera.pitchDegrees)
-        #expect(PreviewCamera.CameraPreset.allCases.count == 7)
+        #expect(GLTFCore.CameraPreset.front.yawDegrees == 0)
+        #expect(GLTFCore.CameraPreset.front.pitchDegrees == 0)
+        #expect(GLTFCore.CameraPreset.back.yawDegrees == 180)
+        #expect(GLTFCore.CameraPreset.left.yawDegrees == -90)
+        #expect(GLTFCore.CameraPreset.right.yawDegrees == 90)
+        #expect(GLTFCore.CameraPreset.top.pitchDegrees == 90)
+        #expect(GLTFCore.CameraPreset.bottom.pitchDegrees == -90)
+        #expect(GLTFCore.CameraPreset.isometric.yawDegrees == PreviewCamera.yawDegrees)
+        #expect(GLTFCore.CameraPreset.isometric.pitchDegrees == PreviewCamera.pitchDegrees)
+        #expect(GLTFCore.CameraPreset.allCases.count == 7)
     }
 
     @Test func frontPlacesCameraOnPlusZ() {
         let minBound = SIMD3<Float>(-0.5, -0.5, -0.5)
         let maxBound = SIMD3<Float>(0.5, 0.5, 0.5)
-        let p = PreviewCamera.CameraPreset.front
+        let p = GLTFCore.CameraPreset.front
         let position = PreviewCamera.cameraPosition(
             minBound: minBound,
             maxBound: maxBound,
@@ -102,7 +102,7 @@ struct CameraPresetTests {
     @Test func topPlacesCameraOnPlusY() {
         let minBound = SIMD3<Float>(-0.5, -0.5, -0.5)
         let maxBound = SIMD3<Float>(0.5, 0.5, 0.5)
-        let p = PreviewCamera.CameraPreset.top
+        let p = GLTFCore.CameraPreset.top
         let position = PreviewCamera.cameraPosition(
             minBound: minBound,
             maxBound: maxBound,
@@ -119,7 +119,7 @@ struct CameraPresetTests {
     @Test func backLeftRightBottomAxes() {
         let minBound = SIMD3<Float>(-0.5, -0.5, -0.5)
         let maxBound = SIMD3<Float>(0.5, 0.5, 0.5)
-        func pos(_ preset: PreviewCamera.CameraPreset) -> SIMD3<Float> {
+        func pos(_ preset: GLTFCore.CameraPreset) -> SIMD3<Float> {
             PreviewCamera.cameraPosition(
                 minBound: minBound,
                 maxBound: maxBound,

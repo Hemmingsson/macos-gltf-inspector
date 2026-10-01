@@ -98,12 +98,12 @@ struct RealityDocumentWindow: View {
         return FocusedPreviewCommands(
             fit: { reframingCamera() },
             reset: resetPreviewView,
-            applyCameraPreset: { reframingCamera(preset: PreviewCamera.CameraPreset(rawValue: $0.rawValue)) },
+            applyCameraPreset: { reframingCamera(preset: $0) },
             screenshot: renderRealityStill
         )
     }
 
-    private func reframingCamera(preset: PreviewCamera.CameraPreset? = nil) {
+    private func reframingCamera(preset: GLTFCore.CameraPreset? = nil) {
         let session = window.previewSession
         window.sidebar?.selectedCameraIndex = nil
         guard interaction.reframe(

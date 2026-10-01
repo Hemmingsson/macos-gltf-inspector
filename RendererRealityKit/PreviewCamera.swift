@@ -26,50 +26,6 @@ public enum PreviewCamera {
     private static let axisGizmoLength: Float = 0.2
     private static let axisGizmoThickness: Float = 0.008
 
-    /// View-menu / Camera-pill presets. Angles are degrees for `cameraPosition`.
-    /// Thin-axis override is off when applying a preset so faces stay square-on.
-    public enum CameraPreset: String, CaseIterable, Identifiable, Sendable {
-        case front, back, left, right, top, bottom, isometric
-
-        public var id: String { rawValue }
-
-        public var title: String { rawValue.capitalized }
-
-        /// SF Symbols for the throwaway View menu (Camera pill uses `cube` for the group).
-        public var menuSymbol: String {
-            switch self {
-            case .front: "arrow.up.to.line"
-            case .back: "arrow.down.to.line"
-            case .left: "arrow.left.to.line"
-            case .right: "arrow.right.to.line"
-            case .top: "arrow.up.to.line.compact"
-            case .bottom: "arrow.down.to.line.compact"
-            case .isometric: "cube"
-            }
-        }
-
-        /// Yaw degrees: 0 = +Z (front), +90 = +X (right), ±180 = −Z (back), −90 = −X (left).
-        var yawDegrees: Float {
-            switch self {
-            case .front, .top, .bottom: return 0
-            case .back: return 180
-            case .right: return 90
-            case .left: return -90
-            case .isometric: return PreviewCamera.yawDegrees
-            }
-        }
-
-        /// Pitch degrees: 0 = horizon, +90 = top-down, −90 = bottom-up.
-        var pitchDegrees: Float {
-            switch self {
-            case .front, .back, .left, .right: return 0
-            case .top: return 90
-            case .bottom: return -90
-            case .isometric: return PreviewCamera.pitchDegrees
-            }
-        }
-    }
-
     /// Pivot origin = visual center when `center` is true. Spin child holds the
     /// model so auto-rotate does not yaw `cameraTarget`. File cameras stay on
     /// nodes; live camera components are stripped so the preview camera is the
@@ -698,5 +654,30 @@ public enum PreviewCamera {
         }
         camera.setPosition(eye, relativeTo: nil)
         camera.orientation = simd_quatf(simd_float3x3(columns: (right, up, -look)))
+    }
+}
+
+/// Preset orbit angles in degrees for `PreviewCamera.cameraPosition`.
+/// Thin-axis override is off when applying a preset so faces stay square-on.
+extension CameraPreset {
+    /// Yaw degrees: 0 = +Z (front), +90 = +X (right), ±180 = −Z (back), −90 = −X (left).
+    var yawDegrees: Float {
+        switch self {
+        case .front, .top, .bottom: return 0
+        case .back: return 180
+        case .right: return 90
+        case .left: return -90
+        case .isometric: return PreviewCamera.yawDegrees
+        }
+    }
+
+    /// Pitch degrees: 0 = horizon, +90 = top-down, −90 = bottom-up.
+    var pitchDegrees: Float {
+        switch self {
+        case .front, .back, .left, .right: return 0
+        case .top: return 90
+        case .bottom: return -90
+        case .isometric: return PreviewCamera.pitchDegrees
+        }
     }
 }
