@@ -2,6 +2,7 @@ import CoreGraphics
 import GLTFCore
 import ImageIO
 @preconcurrency import Metal
+import os
 import RealityKit
 import simd
 import UniformTypeIdentifiers
@@ -157,6 +158,8 @@ final class StillRenderer {
         environmentYaw: Float,
         look: AppLook
     ) async throws -> (renderer: RealityRenderer, texture: MTLTexture) {
+        let interval = AppLog.signposter.beginInterval("still.build")
+        defer { AppLog.signposter.endInterval("still.build", interval) }
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw error("No Metal device", code: 1)
         }
@@ -200,6 +203,8 @@ final class StillRenderer {
 
     func capture() async throws -> CGImage {
         let output = try RealityRenderer.CameraOutput(.singleProjection(colorTexture: texture))
+        let interval = AppLog.signposter.beginInterval("still.capture")
+        defer { AppLog.signposter.endInterval("still.capture", interval) }
         return try await withCheckedThrowingContinuation { continuation in
             do {
                 try renderer.updateAndRender(deltaTime: 0, cameraOutput: output, onComplete: { [texture, width, height] _ in

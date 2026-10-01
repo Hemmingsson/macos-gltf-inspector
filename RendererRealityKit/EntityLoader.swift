@@ -1,6 +1,7 @@
 import Foundation
 import GLTFCore
 import GLTFKit2
+import os
 import RealityKit
 
 public enum EntityLoader {
@@ -216,10 +217,12 @@ public enum EntityLoader {
         maxTextureEdge: Int? = nil
     ) async throws -> Converted {
         let name = source.url.lastPathComponent
-        let asset = try GLTFAsset(
-            url: source.url,
-            options: [GLTFAssetLoadingOption.assetDirectoryURLKey: source.directory]
-        )
+        let asset = try AppLog.signposter.withIntervalSignpost("parse") {
+            try GLTFAsset(
+                url: source.url,
+                options: [GLTFAssetLoadingOption.assetDirectoryURLKey: source.directory]
+            )
+        }
         if let materialVariantIndex {
             MaterialVariants.apply(variantIndex: materialVariantIndex, to: asset)
         }

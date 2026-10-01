@@ -1,6 +1,7 @@
 import GLTFCore
 import GLTFKit2
 import Metal
+import os
 import RealityKit
 
 private enum TextureFilter {
@@ -207,7 +208,10 @@ class RealityKitResourceContext {
 
         guard let image = cachedCGImage(for: gltfImage) else { return nil }
         let options = TextureResource.CreateOptions(semantic: semantic)
-        guard let resource = try? TextureResource(image: image, withName: nil, options: options) else { return nil }
+        let upload = AppLog.signposter.withIntervalSignpost("texture.upload") {
+            try? TextureResource(image: image, withName: nil, options: options)
+        }
+        guard let resource = upload else { return nil }
         storeTextureResource(resource, for: gltfImage, semantic: semantic)
         return resource
     }
@@ -220,7 +224,9 @@ class RealityKitResourceContext {
         if let existing = cgImagesForImageIdentifiers[gltfImage.identifier] {
             return existing
         }
-        let cgImage = (gltfImage.newCGImage()?.takeRetainedValue()).map(capped)
+        let cgImage = AppLog.signposter.withIntervalSignpost("texture.decode") {
+            (gltfImage.newCGImage()?.takeRetainedValue()).map(capped)
+        }
         if let cgImage {
             cgImagesForImageIdentifiers[gltfImage.identifier] = cgImage
         }

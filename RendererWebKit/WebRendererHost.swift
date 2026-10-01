@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import Foundation
 import GLTFCore
+import os
 import WebKit
 
 /// Owns the `WKWebView` that every surface renders through — Finder thumbnail, Quick Look
@@ -126,6 +127,8 @@ public final class WebRendererHost {
         }
         let task = Task {
             let began = ContinuousClock.now
+            let interval = AppLog.signposter.beginInterval("page")
+            defer { AppLog.signposter.endInterval("page", interval) }
             AppLog.info(
                 AppLog.webRenderer,
                 "page start begin host=\(logID) mode=\(mode.rawValue) retry=\(brokenBy != nil) uptimeMs=\(Self.uptimeMs())"
@@ -227,6 +230,8 @@ public final class WebRendererHost {
         guard isReady else { throw WebRendererError.notReady }
 
         let json = String(decoding: try JSONEncoder().encode(argument), as: UTF8.self)
+        let interval = AppLog.signposter.beginInterval("page.call", "\(function, privacy: .public)")
+        defer { AppLog.signposter.endInterval("page.call", interval) }
         nextCallID += 1
         let id = nextCallID
         let text: String = try await withCheckedThrowingContinuation { continuation in

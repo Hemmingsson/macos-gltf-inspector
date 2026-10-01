@@ -18,6 +18,9 @@ public enum AppLog {
     public static let host = Logger(subsystem: subsystem, category: "host")
     /// Everything rendered through WebKit — host, bridge and resource serving.
     public static let webRenderer = Logger(subsystem: subsystem, category: "webrenderer")
+    /// Open-pipeline intervals (parse, convert, page, still, first frame) for Instruments ›
+    /// Points of Interest. Free when nobody is recording; never a substitute for a log line.
+    public static let signposter = OSSignposter(subsystem: subsystem, category: .pointsOfInterest)
 
     private static let fileLock = NSLock()
     private static var logFilePath: String?

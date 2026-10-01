@@ -3,6 +3,7 @@
 
 import AppKit
 import GLTFCore
+import os
 import RealityKit
 import GLTFKit2
 import simd
@@ -52,13 +53,15 @@ final class RealityKitConvert {
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
 
-        try GLBTry.run {
-            do {
-                for node in scene.nodes {
-                    rootEntity.addChild(try self.convert(node: node, context: context))
+        try AppLog.signposter.withIntervalSignpost("convert.nodes") {
+            try GLBTry.run {
+                do {
+                    for node in scene.nodes {
+                        rootEntity.addChild(try self.convert(node: node, context: context))
+                    }
+                } catch {
+                    AppLog.error(AppLog.load, "Error when converting scene: \(error)")
                 }
-            } catch {
-                AppLog.error(AppLog.load, "Error when converting scene: \(error)")
             }
         }
         guard EntityLoader.modelComponentCount(in: rootEntity) > 0 else {
@@ -66,12 +69,14 @@ final class RealityKitConvert {
         }
 
         do {
-            try GLBTry.run {
-                for animation in asset.animations {
-                    do {
-                        try self.convert(animation: animation, skins: asset.skins).store(in: rootEntity)
-                    } catch {
-                        AppLog.error(AppLog.load, "animation convert failed: \(error)")
+            try AppLog.signposter.withIntervalSignpost("convert.clips") {
+                try GLBTry.run {
+                    for animation in asset.animations {
+                        do {
+                            try self.convert(animation: animation, skins: asset.skins).store(in: rootEntity)
+                        } catch {
+                            AppLog.error(AppLog.load, "animation convert failed: \(error)")
+                        }
                     }
                 }
             }
