@@ -182,9 +182,15 @@ public enum PreviewCamera {
         aspect: Float = 1,
         padding: Float = previewFitPadding
     ) -> Float {
-        orthographicScale(
-            minBound: bounds.min,
-            maxBound: bounds.max,
+        let extent = bounds.max - bounds.min
+        return orthographicScale(
+            extent: extent,
+            toCamera: lookDirection(
+                extent: extent,
+                yaw: yawDegrees,
+                pitch: pitchDegrees,
+                applyThinAxisOverride: true
+            ),
             aspect: aspect,
             padding: padding
         )
@@ -206,29 +212,6 @@ public enum PreviewCamera {
         return orthographicScale(
             extent: bounds.max - bounds.min,
             toCamera: offset / radius,
-            aspect: aspect,
-            padding: padding
-        )
-    }
-
-    static func orthographicScale(
-        minBound: SIMD3<Float>,
-        maxBound: SIMD3<Float>,
-        aspect: Float = 1,
-        padding: Float = previewFitPadding,
-        yaw: Float = yawDegrees,
-        pitch: Float = pitchDegrees,
-        applyThinAxisOverride: Bool = true
-    ) -> Float {
-        let extent = maxBound - minBound
-        return orthographicScale(
-            extent: extent,
-            toCamera: lookDirection(
-                extent: extent,
-                yaw: yaw,
-                pitch: pitch,
-                applyThinAxisOverride: applyThinAxisOverride
-            ),
             aspect: aspect,
             padding: padding
         )
