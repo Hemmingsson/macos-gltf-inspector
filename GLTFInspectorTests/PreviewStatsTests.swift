@@ -59,6 +59,27 @@ struct PreviewStatsTests {
         })
     }
 
+    @Test func maxTextureEdgeFromSidecarBufferView() throws {
+        let png = tinyPNG()
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stats-sidecar-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try png.write(to: folder.appendingPathComponent("image data.bin"))
+        let json: [String: Any] = [
+            "buffers": [["uri": "image%20data.bin", "byteLength": png.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": png.count]],
+            "images": [["mimeType": "image/png", "bufferView": 0]],
+            "textures": [["source": 0]],
+        ]
+        let stats = PreviewStats.from(
+            json: json,
+            animationCount: 0,
+            resourceURL: folder.appendingPathComponent("model.gltf")
+        )
+        #expect(stats.maxTextureEdge == 1)
+    }
+
     @Test func trianglesAndFileSizeOverlay() {
         let json: [String: Any] = [
             "accessors": [
