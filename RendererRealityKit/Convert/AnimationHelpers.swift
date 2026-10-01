@@ -61,15 +61,6 @@ enum AnimationSampling {
         guard minTime.isFinite, maxTime.isFinite else { return false }
         return sampleCount > 1 && maxTime - minTime > minimumDuration
     }
-
-    static func documentedDuration(_ animation: GLTFAnimation) -> Double {
-        var maxTime: Float = 0
-        for sampler in animation.samplers {
-            let hi = inputRange(of: sampler).maxTime
-            if hi.isFinite { maxTime = max(maxTime, hi) }
-        }
-        return Double(max(maxTime, 0))
-    }
 }
 
 private extension Array {
@@ -104,15 +95,12 @@ func glbCubicInterp(
 }
 
 protocol AnimatedValue {
-    var sampleCount: Int { get }
     var minimumTime: Float { get }
     var maximumTime: Float { get }
-    var interpolation: GLTFInterpolationMode { get }
     var keyTimes: [Float] { get }
 }
 
 extension AnimatedValue {
-    var sampleCount: Int { keyTimes.count }
     var minimumTime: Float { keyTimes.first ?? 0 }
     var maximumTime: Float { keyTimes.last ?? 0 }
 
@@ -267,8 +255,7 @@ final class TransformSampler {
         target: GLTFNode,
         translationChannel: GLTFAnimationChannel?,
         rotationChannel: GLTFAnimationChannel?,
-        scaleChannel: GLTFAnimationChannel?,
-        maximumSampleInterval: Float
+        scaleChannel: GLTFAnimationChannel?
     ) {
         var minTime: Float = .infinity
         var maxTime: Float = -.infinity
@@ -349,7 +336,7 @@ final class TransformSampler {
         let averageKeyDuration = duration / Float(max(keyCount, 1))
         recommendedSampleInterval = AnimationSampling.sampleInterval(
             averageKeyDuration: averageKeyDuration,
-            maximum: maximumSampleInterval
+            maximum: AnimationSampling.defaultInterval
         )
     }
 

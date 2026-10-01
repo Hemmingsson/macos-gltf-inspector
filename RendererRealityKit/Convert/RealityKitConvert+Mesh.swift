@@ -11,7 +11,7 @@ extension RealityKitConvert {
     func convert(skin gltfSkin: GLTFSkin) -> MeshResource.Skeleton? {
         let skeletonName = gltfSkin.name ?? nextUniqueName(prefix: "Skin")
         let jointNames = gltfSkin.joints.enumerated().map { index, joint in
-            Skin.resolvedName(joint.name, index: index)
+            JointNames.resolved(joint.name, index: index)
         }
 
         let jointParents = gltfSkin.joints.map { skeletonNode in

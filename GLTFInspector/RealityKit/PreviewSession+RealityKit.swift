@@ -35,8 +35,7 @@ extension PreviewSession {
                     guard modes.indices.contains(index) else { return }
                     self.viewMode = modes[index].renderViewMode
                 }
-            ),
-            debugModes: modes
+            )
         )
     }
 

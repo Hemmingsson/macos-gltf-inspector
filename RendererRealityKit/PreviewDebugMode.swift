@@ -11,25 +11,6 @@ public enum PreviewDebugMode: Equatable, Hashable {
     case vertexColors
     case visualization(ModelDebugOptionsComponent.VisualizationMode)
 
-    var shortTitle: String {
-        switch self {
-        case .none: "None"
-        case .wire: "Wire"
-        case .vertexColors: "RGB"
-        case .visualization(let mode): Self.labels(for: mode).title
-        }
-    }
-
-    /// Stable id for seam menus (not localized). Prefer short labels over SDK rawValues.
-    var channelID: String {
-        switch self {
-        case .none: "none"
-        case .wire: "wire"
-        case .vertexColors: "vertexColors"
-        case .visualization(let mode): Self.labels(for: mode).id
-        }
-    }
-
     /// Renderer-neutral reading. Vertex colours and SDK modes with no glTF channel read as shaded.
     public var renderViewMode: RenderViewMode {
         switch self {
@@ -97,18 +78,6 @@ public enum PreviewDebugMode: Equatable, Hashable {
         }
     }
 
-    /// PreviewUI `Availability.availableDebugChannels` — same filter as `available(from:)`,
-    /// Sendable titles only (no RealityKit types on the seam).
-    static func availableDebugChannels(from json: [String: Any]) -> [PreviewDebugChannel] {
-        available(from: json).map { mode in
-            PreviewDebugChannel(id: mode.channelID, title: mode.shortTitle)
-        }
-    }
-
-    static func apply(_ mode: PreviewDebugMode, to root: Entity, store: DebugMaterialStore) {
-        apply(mode, doubleSided: false, to: root, store: store)
-    }
-
     /// Rebuild material overrides from the store baseline so wire + double-sided don't stack.
     /// `doubleSided` forces `faceCulling = .none`; leaving it restores via `store`.
     static func apply(
@@ -138,35 +107,6 @@ public enum PreviewDebugMode: Equatable, Hashable {
             applyDoubleSided(root)
         }
     }
-
-    private static func labels(
-        for mode: ModelDebugOptionsComponent.VisualizationMode
-    ) -> (id: String, title: String) {
-        switch mode {
-        case .normal: ("normal", "Nrm")
-        case .textureCoordinates: ("uv", "UV")
-        case .baseColor: ("baseColor", "Base")
-        case .metallic: ("metallic", "Met")
-        case .roughness: ("roughness", "Rgh")
-        case .ambientOcclusion: ("ao", "AO")
-        case .emissive: ("emissive", "Emit")
-        case .finalAlpha: ("alpha", "A")
-        case .specular: ("specular", "Spec")
-        case .tangent: ("tangent", "Tan")
-        case .clearcoat: ("clearcoat", "Coat")
-        case .clearcoatRoughness: ("clearcoatRoughness", "CoatR")
-        case .clearcoatNormal: ("clearcoatNormal", "CoatN")
-        case .lightingDiffuse: ("lightingDiffuse", "Diff")
-        case .lightingSpecular: ("lightingSpecular", "LSpec")
-        default: (mode.rawValue, mode.rawValue)
-        }
-    }
-}
-
-/// Sendable debug-channel row for PreviewUI Availability / view-mode menus.
-struct PreviewDebugChannel: Identifiable, Equatable, Sendable, Hashable {
-    let id: String
-    let title: String
 }
 
 /// Original materials so wireframe can be undone.

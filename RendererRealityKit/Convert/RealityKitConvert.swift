@@ -7,35 +7,20 @@ import RealityKit
 import GLTFKit2
 import simd
 
-typealias PlatformColor = NSColor
-
-fileprivate class UniqueNameGenerator {
-    private var countsForPrefixes = [String : Int]()
-
-    func nextUniqueName(prefix: String) -> String {
-        if let existingCount = countsForPrefixes[prefix] {
-            countsForPrefixes[prefix] = existingCount + 1
-            return "\(prefix)\(existingCount + 1)"
-        } else {
-            countsForPrefixes[prefix] = 1
-            return "\(prefix)1"
-        }
-    }
-}
-
 final class RealityKitConvert {
 
     let colorSpace = NSColorSpace(cgColorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)!)!
-    fileprivate let nameGenerator = UniqueNameGenerator()
+    private var uniqueNameCounts: [String: Int] = [:]
 
     func nextUniqueName(prefix: String) -> String {
-        nameGenerator.nextUniqueName(prefix: prefix)
+        let count = uniqueNameCounts[prefix, default: 0] + 1
+        uniqueNameCounts[prefix] = count
+        return "\(prefix)\(count)"
     }
 
     var pathsForSkeletonIDs: [/*MeshResource.Skeleton.ID*/String : BindTarget.EntityPath] = [:]
     var skeletonIDsByJointName: [String: [/*MeshResource.Skeleton.ID*/String]] = [:]
     var skeletonTransformsByJointName : [String: Transform] = [:]
-    var sourceAsset: GLTFAsset?
     /// Per-node file index and unique entity name, built once per convert (was an O(n) scan per node).
     private var nodeIndices: [ObjectIdentifier: Int] = [:]
     private var entityNames: [ObjectIdentifier: String] = [:]
@@ -57,7 +42,6 @@ final class RealityKitConvert {
     /// ObjC exceptions, and a bad clip must not take the meshes with it (this replaces the old
     /// "no visible mesh -> convert everything again without animations" pass).
     @MainActor func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
-        sourceAsset = asset
         indexNodes(asset.nodes)
         ignoreBakedEmissive = RealityPolicy.fileLooksBaked(asset.materials.map(RealityPolicy.EmissiveHint.init))
         if ignoreBakedEmissive {
@@ -85,7 +69,7 @@ final class RealityKitConvert {
             try GLBTry.run {
                 for animation in asset.animations {
                     do {
-                        try self.convert(animation: animation).store(in: rootEntity)
+                        try self.convert(animation: animation, skins: asset.skins).store(in: rootEntity)
                     } catch {
                         AppLog.error(AppLog.load, "animation convert failed: \(error)")
                     }
@@ -234,7 +218,7 @@ final class RealityKitConvert {
         return BindTarget.entity(entityName(of: node))
     }
 
-    func platformColor(for vector: simd_float4) -> PlatformColor {
+    func platformColor(for vector: simd_float4) -> NSColor {
         let components = [CGFloat(vector.x), CGFloat(vector.y), CGFloat(vector.z), CGFloat(vector.w)]
         return NSColor(colorSpace: colorSpace, components: components, count: components.count)
     }

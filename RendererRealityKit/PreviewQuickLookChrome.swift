@@ -7,12 +7,6 @@ struct PreviewQuickLookChrome: View {
     @Binding var backdropIndex: Int
     @Binding var autoRotate: Bool
 
-    /// `isDark` is unused: glass buttons use hierarchical ink and no longer tint per backdrop.
-    init(backdropIndex: Binding<Int>, autoRotate: Binding<Bool>, isDark _: Bool) {
-        self._backdropIndex = backdropIndex
-        self._autoRotate = autoRotate
-    }
-
     var body: some View {
         VStack(alignment: .trailing, spacing: DS.Metrics.clusterSpacing) {
             DSGlassIconButton(

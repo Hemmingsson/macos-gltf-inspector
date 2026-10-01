@@ -25,14 +25,3 @@ public struct ModelDimensions: Equatable, Sendable {
         String(format: "%.2f × %.2f × %.2f m", width, height, depth)
     }
 }
-
-extension PreviewCamera {
-    /// W×H×D from `modelBounds` of `entity`, in meters.
-    @MainActor
-    static func dimensions(
-        of entity: Entity,
-        relativeTo reference: Entity? = nil
-    ) -> ModelDimensions? {
-        ModelDimensions(bounds: modelBounds(of: entity, relativeTo: reference))
-    }
-}
