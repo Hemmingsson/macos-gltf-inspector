@@ -152,3 +152,9 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 ## W4 webkit-bugs
 
 - Clip transport bar on animated WebKit windows is a deliberate `RendererFeature.animationPlayback` gap, not a missing overlay. `WebPreviewCanvas.features` omits `.animationPlayback`; `RendererAvailability.hasAnimations` is then false and PreviewUI hides `PlaybackBar`. The Khronos page has no clip transport API, so do not add a fake bar. Implement playback (page clock + `RendererFeature.animationPlayback`) before showing transport.
+## W4 realitykit
+
+- Extra attributes scatter through a temp packed copy into buffer 1; positions stay tight memcpy. A fully interleaved single buffer was not measured (`dev.sh bench` out of scope).
+- `MeshBuffers.positions` is populated even for `MeshResource(from: LowLevelMesh)`, so empty MeshBuffers is not a LowLevelMesh vs MeshDescriptor oracle.
+- PreviewScene `@State playback` is now Quick Look only; host first-frame pose is `RealityClipPlayer.init`. The unused host-side `@State` can drop later with the W1 C1 leftover.
+- No real-window Fit / clip-play check (no XCUITest, no `/Applications`).

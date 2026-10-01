@@ -41,6 +41,15 @@ struct PreviewInteractionTests {
         #expect(!interaction.isCameraGesturing)
     }
 
+    @Test func markFittedKeepsSessionFieldOfView() throws {
+        let camera = PerspectiveCamera()
+        camera.camera.fieldOfViewInDegrees = 60
+        let interaction = PreviewInteraction()
+        interaction.bind(camera: camera, orbitFocus: Entity())
+        interaction.markFitted()
+        #expect(abs(camera.camera.fieldOfViewInDegrees - 60) < 0.001)
+    }
+
     @Test func pointerUpResumesImmediately() {
         let interaction = PreviewInteraction()
         interaction.noteOrbitDrag()

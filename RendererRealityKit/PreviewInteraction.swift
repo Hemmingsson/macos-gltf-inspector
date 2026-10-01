@@ -89,7 +89,6 @@ public final class PreviewInteraction {
     func markFitted() {
         didFit = true
         endPointerGesture()
-        resetFOV()
     }
 
     /// Bumped from the View menu. `PreviewScene` applies opening fit on MainActor —
@@ -168,12 +167,6 @@ public final class PreviewInteraction {
         isPanning = false
         gestureBeganAt = nil
         lastPanWindowPoint = nil
-    }
-
-    @MainActor
-    private func resetFOV() {
-        guard let camera else { return }
-        PreviewCamera.applyFieldOfView(to: camera, degrees: RenderCamera.defaultFieldOfViewDegrees)
     }
 
     /// Dolly along the camera look axis (not eye→target). Factor &lt; 1 advances;
