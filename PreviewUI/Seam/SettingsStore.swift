@@ -22,8 +22,6 @@ public extension SettingKey where Value == Bool {
     static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: true) }
     /// Session-only. Never registered as a persisted app default.
     static var center: SettingKey<Bool> { .init(name: "settings.preview.center", fallback: true) }
-    /// Host `showToolbar` — pills visible on open.
-    static var showPills: SettingKey<Bool> { .init(name: "settings.preview.showToolbar", fallback: true) }
     static var useEnvironmentMap: SettingKey<Bool> { .init(name: "settings.preview.useEnvironmentMap", fallback: true) }
 }
 
