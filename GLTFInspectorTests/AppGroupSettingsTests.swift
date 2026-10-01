@@ -36,6 +36,30 @@ struct AppGroupSettingsTests {
         #expect(RenderLook.standard.environment.rawValue == SettingKey<String>.environmentCatalog.fallback)
     }
 
+    /// Nothing stored yet: the review-oriented defaults. Khronos PBR Neutral distorts authored
+    /// colour least — the right default for a tool whose job is showing what is in the file.
+    @Test
+    func readerFallsBackToTheReviewOrientedDefaults() throws {
+        let suite = "gltf.app-group.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let look = AppGroupSettings.rendererLook(defaults: defaults, directory: dir)
+        #expect(look.environment.rawValue == "neutral")
+        #expect(look.toneMapping.rawValue == "Khronos PBR Neutral")
+    }
+
+    /// The stored string is what reaches the renderer, so a mismatch between the enum and the
+    /// persisted name silently renders with the wrong curve.
+    @Test
+    func everyToneMappingRoundTripsThroughItsStoredName() {
+        for option in ToneMapping.allCases {
+            #expect(ToneMapping.fromKhronosName(option.khronosName) == option)
+            #expect(RenderLook.ToneMapping(rawValue: option.khronosName) != nil)
+        }
+    }
+
     /// Host writes through the same adapters Settings uses; a reader over the same suite and
     /// directory (what each appex does) sees them.
     @Test
