@@ -3,17 +3,10 @@ import RealityKit
 @testable import RendererRealityKit
 import Testing
 
-struct PreviewDebugModeTests {
-    @Test func titlesAndVariableValue() {
-        #expect(PreviewDebugMode.none.shortTitle == "None")
-        #expect(PreviewDebugMode.wire.shortTitle == "Wire")
-        #expect(PreviewDebugMode.vertexColors.shortTitle == "RGB")
-        #expect(PreviewDebugMode.visualization(.normal).shortTitle == "Nrm")
-        #expect(PreviewDebugMode.visualization(.textureCoordinates).shortTitle == "UV")
-        #expect(PreviewDebugMode.visualization(.lightingDiffuse).shortTitle == "Diff")
-        #expect(PreviewDebugMode.visualization(.lightingSpecular).shortTitle == "LSpec")
-    }
+private let diffuse = PreviewDebugMode.visualization(.lightingDiffuse)
+private let lightSpecular = PreviewDebugMode.visualization(.lightingSpecular)
 
+struct PreviewDebugModeTests {
     @Test func baseAndUVMeshIncludesExpectedModes() {
         let json: [String: Any] = [
             "accessors": [["count": 3]],
@@ -31,7 +24,7 @@ struct PreviewDebugModeTests {
             ]],
         ]
         let modes = PreviewDebugMode.available(from: json)
-        #expect(modes.map(\.shortTitle) == ["None", "Wire", "UV", "Base", "Diff", "LSpec"])
+        #expect(modes == [.none, .wire, .visualization(.textureCoordinates), .visualization(.baseColor), diffuse, lightSpecular])
         #expect(!modes.contains(.vertexColors))
     }
 
@@ -47,12 +40,12 @@ struct PreviewDebugModeTests {
                 "occlusionTexture": ["index": 0],
             ]],
         ]
-        let titles = PreviewDebugMode.available(from: json).map(\.shortTitle)
-        #expect(titles.contains("AO"))
-        #expect(titles.contains("Nrm"))
-        #expect(titles.contains("Wire"))
-        #expect(titles.contains("Diff"))
-        #expect(titles.contains("LSpec"))
+        let modes = PreviewDebugMode.available(from: json)
+        #expect(modes.contains(.visualization(.ambientOcclusion)))
+        #expect(modes.contains(.visualization(.normal)))
+        #expect(modes.contains(.wire))
+        #expect(modes.contains(diffuse))
+        #expect(modes.contains(lightSpecular))
     }
 
     @Test func unlitSkipsMetallicRoughness() {
@@ -71,8 +64,8 @@ struct PreviewDebugModeTests {
                 ],
             ]],
         ]
-        let titles = PreviewDebugMode.available(from: json).map(\.shortTitle)
-        #expect(titles == ["None", "Wire", "Base", "Diff", "LSpec"])
+        let modes = PreviewDebugMode.available(from: json)
+        #expect(modes == [.none, .wire, .visualization(.baseColor), diffuse, lightSpecular])
     }
 
     @Test func metalRoughTextureAddsMetAndRgh() {
@@ -83,12 +76,12 @@ struct PreviewDebugModeTests {
                 ],
             ]],
         ]
-        let titles = PreviewDebugMode.available(from: json).map(\.shortTitle)
-        #expect(titles.contains("Met"))
-        #expect(titles.contains("Rgh"))
-        #expect(titles.contains("Base"))
-        #expect(!titles.contains("Wire"))
-        #expect(!titles.contains("Diff"))
+        let modes = PreviewDebugMode.available(from: json)
+        #expect(modes.contains(.visualization(.metallic)))
+        #expect(modes.contains(.visualization(.roughness)))
+        #expect(modes.contains(.visualization(.baseColor)))
+        #expect(!modes.contains(.wire))
+        #expect(!modes.contains(diffuse))
     }
 
     @Test func vertexColorsAddsRGB() {
@@ -103,8 +96,8 @@ struct PreviewDebugModeTests {
                 ]],
             ]],
         ]
-        let titles = PreviewDebugMode.available(from: json).map(\.shortTitle)
-        #expect(titles == ["None", "Wire", "Diff", "LSpec", "RGB"])
+        let modes = PreviewDebugMode.available(from: json)
+        #expect(modes == [.none, .wire, diffuse, lightSpecular, .vertexColors])
     }
 
     @Test func wrapUsesFilteredCount() {
@@ -113,7 +106,7 @@ struct PreviewDebugModeTests {
         ])
         #expect(modes.first == Optional(PreviewDebugMode.none))
         let next = (0 + 1) % modes.count
-        #expect(modes[next].shortTitle == "Base")
+        #expect(modes[next] == .visualization(.baseColor))
     }
 
     @MainActor
@@ -186,7 +179,7 @@ struct PreviewDebugModeTests {
         #expect(restored.triangleFillMode == .fill)
     }
 
-    @Test func availableDebugChannelsMapsRichVersusSparse() {
+    @Test func availableModesRichVersusSparse() {
         let rich: [String: Any] = [
             "meshes": [[
                 "primitives": [[
@@ -215,16 +208,13 @@ struct PreviewDebugModeTests {
                 ]],
             ]],
         ]
-        let richIDs = PreviewDebugMode.availableDebugChannels(from: rich).map(\.id)
-        let sparseIDs = PreviewDebugMode.availableDebugChannels(from: sparse).map(\.id)
-        #expect(richIDs.contains("normal"))
-        #expect(richIDs.contains("metallic"))
-        #expect(richIDs.contains("vertexColors"))
-        #expect(richIDs.contains("lightingDiffuse"))
-        #expect(!sparseIDs.contains("normal"))
-        #expect(!sparseIDs.contains("metallic"))
-        #expect(!sparseIDs.contains("vertexColors"))
-        #expect(sparseIDs == ["none", "wire", "lightingDiffuse", "lightingSpecular"])
-        #expect(richIDs.count > sparseIDs.count)
+        let richModes = PreviewDebugMode.available(from: rich)
+        let sparseModes = PreviewDebugMode.available(from: sparse)
+        #expect(richModes.contains(.visualization(.normal)))
+        #expect(richModes.contains(.visualization(.metallic)))
+        #expect(richModes.contains(.vertexColors))
+        #expect(richModes.contains(diffuse))
+        #expect(sparseModes == [.none, .wire, diffuse, lightSpecular])
+        #expect(richModes.count > sparseModes.count)
     }
 }
