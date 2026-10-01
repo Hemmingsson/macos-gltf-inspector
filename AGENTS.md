@@ -66,6 +66,7 @@ this worktree is throwaway until merged.
 ```bash
 ./scripts/dev.sh install          # worktree-aware → .build/ (+ /Applications on main); no open; keeps the signed test bundle in PlugIns/ after a test run
 ./scripts/dev.sh test             # xcodegen + xcodebuild test into this branch's DerivedData (args → xcodebuild)
+./scripts/dev.sh uitest           # opt-in GLTFInspectorUITests (own scheme; real windows, steals focus) → .build/uitest.xcresult
 ./scripts/dev.sh run cube         # install + launch fixture; logs → .build/logs/debug.log
 ./scripts/dev.sh logs             # tail debug log (agents: read .build/logs/debug.log)
 ./scripts/build.sh                # install + open /Applications + verify (ship check; main checkout only)
