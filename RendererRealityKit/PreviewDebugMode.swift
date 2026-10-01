@@ -78,10 +78,6 @@ public enum PreviewDebugMode: Equatable, Hashable {
         }
     }
 
-    static func apply(_ mode: PreviewDebugMode, to root: Entity, store: DebugMaterialStore) {
-        apply(mode, doubleSided: false, to: root, store: store)
-    }
-
     /// Rebuild material overrides from the store baseline so wire + double-sided don't stack.
     /// `doubleSided` forces `faceCulling = .none`; leaving it restores via `store`.
     static func apply(

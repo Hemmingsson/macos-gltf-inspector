@@ -116,10 +116,10 @@ struct PreviewDebugModeTests {
         let entity = ModelEntity(mesh: .generateBox(size: 0.2), materials: [material])
         let store = DebugMaterialStore()
 
-        PreviewDebugMode.apply(.vertexColors, to: entity, store: store)
+        PreviewDebugMode.apply(.vertexColors, doubleSided: false, to: entity, store: store)
         #expect(entity.components[ModelComponent.self]?.materials.first is UnlitMaterial)
 
-        PreviewDebugMode.apply(.none, to: entity, store: store)
+        PreviewDebugMode.apply(.none, doubleSided: false, to: entity, store: store)
         let restored = try #require(
             entity.components[ModelComponent.self]?.materials.first as? PhysicallyBasedMaterial
         )
@@ -130,7 +130,7 @@ struct PreviewDebugModeTests {
     @Test func lightingDiffuseSetsDebugComponent() {
         let entity = ModelEntity(mesh: .generateBox(size: 0.2), materials: [SimpleMaterial()])
         let store = DebugMaterialStore()
-        PreviewDebugMode.apply(.visualization(.lightingDiffuse), to: entity, store: store)
+        PreviewDebugMode.apply(.visualization(.lightingDiffuse), doubleSided: false, to: entity, store: store)
         #expect(
             entity.components[ModelDebugOptionsComponent.self]?.visualizationMode == .lightingDiffuse
         )
