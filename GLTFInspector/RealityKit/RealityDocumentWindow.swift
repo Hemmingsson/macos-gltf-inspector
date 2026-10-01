@@ -21,7 +21,12 @@ struct RealityDocumentWindow: View {
 
     init(documentURL: URL?) {
         self.documentURL = documentURL
-        _window = State(wrappedValue: DocumentWindowModel(documentURL: documentURL))
+        _window = State(
+            wrappedValue: DocumentWindowModel(
+                documentURL: documentURL,
+                canHideNodes: RealityPreviewCanvas.features.contains(.nodeVisibility)
+            )
+        )
     }
 
     var body: some View {

@@ -13,13 +13,18 @@ struct WebDocumentWindow: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var window: DocumentWindowModel
-    /// Outlives the shell's `.id` remount so the page started on open keeps drawing when the
-    /// panels land. Replaced only after it failed, for the next document.
+    /// Outlives a canvas remount (`DocumentShell` ids the canvas by load generation) so the page
+    /// started on open keeps drawing. Replaced only after it failed, for the next document.
     @State private var webCanvas = WebCanvasController()
 
     init(documentURL: URL?) {
         self.documentURL = documentURL
-        _window = State(wrappedValue: DocumentWindowModel(documentURL: documentURL))
+        _window = State(
+            wrappedValue: DocumentWindowModel(
+                documentURL: documentURL,
+                canHideNodes: WebPreviewCanvas.features.contains(.nodeVisibility)
+            )
+        )
     }
 
     var body: some View {

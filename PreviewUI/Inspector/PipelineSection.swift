@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// "What our pipeline did" — silent import changes, so nothing is altered without a receipt.
@@ -6,30 +7,32 @@ public struct PipelineSection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Theme.hair
-                .frame(height: Theme.hairlineWidth)
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
+            Divider()
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.top, DS.Spacing.m)
 
-            InspectorSectionHeader(title: "This model, our pipeline")
+            DSSectionHeader("This model, our pipeline")
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.top, DS.Spacing.m)
+                .padding(.bottom, DS.Spacing.xs)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 ForEach(report.entries) { entry in
-                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.s) {
                         Circle()
-                            .fill(dotColor(for: entry))
+                            .fill(dotStyle(for: entry))
                             .frame(width: 6, height: 6)
-                            .padding(.top, 5)
+                            .padding(.top, DS.Spacing.xs)
                         Text(entryLabel(entry))
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.textValue)
+                            .font(DS.Font.callout)
+                            .foregroundStyle(DS.Color.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 2)
-            .padding(.bottom, 12)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.top, DS.Spacing.xxs)
+            .padding(.bottom, DS.Spacing.l)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Pipeline: \(report.entries.map { entryLabel($0) }.joined(separator: "; "))")
@@ -45,28 +48,30 @@ public struct PipelineSection: View {
         return entry.title
     }
 
-    /// Conversion / dequant steps are "we did work" (green); lighting is status (quiet).
-    private func dotColor(for entry: PipelineReport.Entry) -> Color {
-        entry.kind == .lighting ? Theme.text3 : Theme.animation
+    /// Conversion / dequant steps are "we did work" (role green); lighting is status (quiet).
+    private func dotStyle(for entry: PipelineReport.Entry) -> AnyShapeStyle {
+        entry.kind == .lighting
+            ? AnyShapeStyle(DS.Color.textTertiary)
+            : AnyShapeStyle(DS.Color.Role.animation)
     }
 }
 
 // MARK: - Previews
 
 #Preview("studio") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         PipelineSection(report: FixtureSceneModel.cube.pipelineReport)
     }
 }
 
 #Preview("file-lights") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         PipelineSection(report: FixtureSceneModel.lights.pipelineReport)
     }
 }
 
 #Preview("conversion") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         PipelineSection(
             report: PipelineReport(entries: [
                 PipelineReport.Entry(kind: .conversion, title: "KHR_materials_clearcoat"),

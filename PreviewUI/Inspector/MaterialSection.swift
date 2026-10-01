@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import SwiftUI
 
 /// Bound material readout.
@@ -19,7 +20,10 @@ public struct MaterialSection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Material")
+            DSSectionHeader("Material")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
 
             Group {
                 switch density {
@@ -27,9 +31,9 @@ public struct MaterialSection: View {
                 case .full: fullBody
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 2)
-            .padding(.bottom, 10)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.top, DS.Spacing.xxs)
+            .padding(.bottom, DS.Spacing.l)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -38,17 +42,17 @@ public struct MaterialSection: View {
     // MARK: Compact (mesh)
 
     private var compactBody: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                NodeIcon(kind: .material)
+        VStack(alignment: .leading, spacing: DS.Spacing.m) {
+            HStack(spacing: DS.Spacing.m) {
+                DSTypeIcon(.material)
                 Text(material.name)
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.text)
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Color.textPrimary)
                     .lineLimit(1)
             }
 
             if !material.orderedMaps.isEmpty {
-                FlexibleChipRow(items: material.orderedMaps.map(\.shortTitle), chipsPerRow: 4)
+                FlexibleChipRow(items: material.orderedMaps.map(\.shortTitle))
             }
         }
     }
@@ -56,18 +60,12 @@ public struct MaterialSection: View {
     // MARK: Full (material selected)
 
     private var fullBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: DS.Spacing.l) {
             VStack(spacing: 0) {
-                InspectorFactRow(
-                    label: "Workflow",
-                    value: MaterialInspectorSupport.workflowTitle(material.workflow)
-                )
-                InspectorFactRow(
-                    label: "Alpha",
-                    value: MaterialInspectorSupport.alphaTitle(material)
-                )
-                InspectorFactRow(
-                    label: "Faces",
+                DSFactRow("Workflow", value: MaterialInspectorSupport.workflowTitle(material.workflow))
+                DSFactRow("Alpha", value: MaterialInspectorSupport.alphaTitle(material))
+                DSFactRow(
+                    "Faces",
                     value: material.isDoubleSided ? "Double-sided" : "Single-sided"
                 )
             }
@@ -79,34 +77,22 @@ public struct MaterialSection: View {
                 }
                 if MaterialInspectorSupport.showsMetallic(material),
                    let value = material.metallicFactor {
-                    InspectorFactRow(
-                        label: "Metallic",
-                        value: MaterialInspectorSupport.scalarLabel(value)
-                    )
+                    DSFactRow("Metallic", value: MaterialInspectorSupport.scalarLabel(value))
                 }
                 if MaterialInspectorSupport.showsRoughness(material),
                    let value = material.roughnessFactor {
-                    InspectorFactRow(
-                        label: "Roughness",
-                        value: MaterialInspectorSupport.scalarLabel(value)
-                    )
+                    DSFactRow("Roughness", value: MaterialInspectorSupport.scalarLabel(value))
                 }
                 if MaterialInspectorSupport.showsEmissive(material) {
                     emissiveRow
                 }
                 if MaterialInspectorSupport.showsNormalScale(material),
                    let value = material.normalScale {
-                    InspectorFactRow(
-                        label: "Normal scale",
-                        value: MaterialInspectorSupport.scalarLabel(value)
-                    )
+                    DSFactRow("Normal scale", value: MaterialInspectorSupport.scalarLabel(value))
                 }
                 if MaterialInspectorSupport.showsOcclusionStrength(material),
                    let value = material.occlusionStrength {
-                    InspectorFactRow(
-                        label: "Occlusion",
-                        value: MaterialInspectorSupport.scalarLabel(value)
-                    )
+                    DSFactRow("Occlusion", value: MaterialInspectorSupport.scalarLabel(value))
                 }
             }
 
@@ -118,60 +104,59 @@ public struct MaterialSection: View {
                     }
                 }
             } else if !material.orderedMaps.isEmpty {
-                FlexibleChipRow(items: material.orderedMaps.map(\.shortTitle), chipsPerRow: 4)
+                FlexibleChipRow(items: material.orderedMaps.map(\.shortTitle))
             }
 
             if let usage = MaterialInspectorSupport.usageTitle(material) {
-                InspectorFactRow(label: "Used by", value: usage)
+                DSFactRow("Used by", value: usage)
             }
         }
     }
 
     private func mapRow(_ texture: MaterialTextureInfo) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DS.Spacing.m) {
             mapThumb(texture)
             Text(texture.map.title)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.text2)
+                .font(DS.Font.callout)
+                .foregroundStyle(DS.Color.textSecondary)
                 .lineLimit(1)
-            Spacer(minLength: 8)
+            Spacer(minLength: DS.Spacing.m)
             if let size = texture.sizeLabel {
                 Text(size)
-                    .font(.system(size: 12).monospacedDigit())
-                    .foregroundStyle(Theme.textValue)
+                    .font(DS.Font.value)
+                    .foregroundStyle(DS.Color.textPrimary)
             }
             if texture.texCoord != 0 {
                 Text("UV\(texture.texCoord)")
-                    .font(.system(size: 11).monospacedDigit())
-                    .foregroundStyle(Theme.text3)
+                    .font(DS.Font.subheadline.monospacedDigit())
+                    .foregroundStyle(DS.Color.textTertiary)
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, DS.Spacing.xxs)
     }
 
     @ViewBuilder
     private func mapThumb(_ texture: MaterialTextureInfo) -> some View {
         let side: CGFloat = 28
+        let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
         if let data = texture.thumbnailPNG, let nsImage = NSImage(data: data) {
             Image(nsImage: nsImage)
                 .resizable()
                 .interpolation(.medium)
                 .frame(width: side, height: side)
-                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .clipShape(shape)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: Theme.hairlineWidth)
+                    shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline)
                 }
                 .accessibilityHidden(true)
         } else if let color = texture.previewColor {
             MaterialSwatch(color: Color(rgb: color), size: side)
         } else {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Theme.card)
+            shape
+                .fill(DS.Color.cardFill)
                 .frame(width: side, height: side)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: Theme.hairlineWidth)
+                    shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline)
                 }
                 .accessibilityHidden(true)
         }
@@ -180,17 +165,12 @@ public struct MaterialSection: View {
     @ViewBuilder
     private var emissiveRow: some View {
         let factor = material.emissiveFactor ?? .black
-        HStack(spacing: 6) {
-            Text("Emissive")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.text2)
-            Spacer(minLength: 8)
-            MaterialSwatch(color: Color(rgb: factor), size: 12)
-            Text(emissiveValueLabel(factor))
-                .font(.system(size: 12).monospacedDigit())
-                .foregroundStyle(Theme.textValue)
+        DSFactRow("Emissive") {
+            HStack(spacing: DS.Spacing.s) {
+                MaterialSwatch(color: Color(rgb: factor), size: 12)
+                Text(emissiveValueLabel(factor))
+            }
         }
-        .padding(.vertical, 2)
     }
 
     private func emissiveValueLabel(_ factor: RGBColor) -> String {
@@ -202,17 +182,12 @@ public struct MaterialSection: View {
     }
 
     private func factorColorRow(_ label: String, _ color: RGBColor) -> some View {
-        HStack(spacing: 6) {
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.text2)
-            Spacer(minLength: 8)
-            MaterialSwatch(color: Color(rgb: color), size: 12)
-            Text(MaterialInspectorSupport.hexLabel(color))
-                .font(.system(size: 12).monospacedDigit())
-                .foregroundStyle(Theme.textValue)
+        DSFactRow(label) {
+            HStack(spacing: DS.Spacing.s) {
+                MaterialSwatch(color: Color(rgb: color), size: 12)
+                Text(MaterialInspectorSupport.hexLabel(color))
+            }
         }
-        .padding(.vertical, 2)
     }
 
     private var accessibilityLabel: String {
@@ -235,13 +210,13 @@ public struct MaterialSection: View {
 // MARK: - Previews
 
 #Preview("compact") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         MaterialSection(material: MaterialFixtures.cube, density: .compact)
     }
 }
 
 #Preview("full") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let detail = NodeDetailFixtures.material
         MaterialSection(material: detail.material!, density: .full)
     }

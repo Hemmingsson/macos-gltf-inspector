@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Runtime morph-target weight sliders (re-homed from the deleted host outliner).
@@ -10,28 +11,27 @@ public struct MorphWeightsSection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Morphs")
-            VStack(alignment: .leading, spacing: 8) {
+            DSSectionHeader("Morphs")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
+
+            VStack(alignment: .leading, spacing: DS.Spacing.m) {
                 ForEach(targets) { target in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(target.name)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        Slider(
-                            value: Binding(
-                                get: { target.weight },
-                                set: { onSetWeight(target.id, $0) }
-                            ),
-                            in: 0...1
-                        )
-                        .controlSize(.small)
-                        .accessibilityLabel("Morph \(target.name)")
-                    }
+                    DSSlider(
+                        target.name,
+                        value: Binding(
+                            get: { target.weight },
+                            set: { onSetWeight(target.id, $0) }
+                        ),
+                        in: 0...1,
+                        step: 0.01
+                    ) { String(format: "%.2f", $0) }
+                    .controlSize(.small)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 10)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.bottom, DS.Spacing.l)
         }
     }
 }
@@ -39,7 +39,7 @@ public struct MorphWeightsSection: View {
 // MARK: - Previews
 
 #Preview("1 target") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         MorphWeightsSection(
             targets: [MorphFixtures.triangleControls[0]],
             onSetWeight: { _, _ in }
@@ -48,7 +48,7 @@ public struct MorphWeightsSection: View {
 }
 
 #Preview("3 targets") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         MorphWeightsSection(
             targets: Array(MorphFixtures.faceControls.prefix(3)),
             onSetWeight: { _, _ in }

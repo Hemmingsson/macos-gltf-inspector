@@ -21,8 +21,15 @@ final class DocumentWindowModel {
     var documentURL: URL?
     /// Panel state (sidebar / inspector); the renderer root decides the canvas region's.
     private(set) var phase: ShellDocumentState = .loading
-    private(set) var sidebar: HostSidebarModel?
+    private(set) var sidebar: HostSidebarModel? {
+        didSet { selection = EngineSelectionModel(sidebar: activeSidebar, canHideNodes: canHideNodes) }
+    }
     let placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
+    /// From the mounted renderer's `RendererFeature.nodeVisibility`.
+    let canHideNodes: Bool
+    /// Window-owned selection adapter over `activeSidebar`, rebuilt only when the sidebar is
+    /// replaced (open / adopt / failure) — never in a view body, so `ShellRootView` keeps it.
+    private(set) var selection: EngineSelectionModel
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
     let panels = ShellPanelChrome()
@@ -37,8 +44,10 @@ final class DocumentWindowModel {
     /// `sceneModel`.
     private var loadedSceneModel: EngineSceneModel?
 
-    init(documentURL: URL?) {
+    init(documentURL: URL?, canHideNodes: Bool = true) {
         self.documentURL = documentURL
+        self.canHideNodes = canHideNodes
+        selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: canHideNodes)
         engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
     }
 
@@ -58,15 +67,6 @@ final class DocumentWindowModel {
             dimensions: Dimensions(width: 0, height: 0, depth: 0, authoredOrigin: .zero),
             validation: validation
         )
-    }
-
-    /// Remounts the shell adapters that capture sidebar / playback once.
-    var mountID: String {
-        switch phase {
-        case .empty, .loading: "loading-\(loadGeneration)"
-        case .ready: "ready-\(loadGeneration)"
-        case .failed(let message): "failed-\(loadGeneration)-\(message)"
-        }
     }
 
     var exportName: String {

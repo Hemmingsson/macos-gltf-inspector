@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Small colour tile for material factor readouts and map thumbnails.
@@ -5,20 +6,18 @@ public struct MaterialSwatch: View {
     public var color: Color
     public var size: CGFloat
 
-    @Environment(\.previewBorder) private var border
-
     public init(color: Color, size: CGFloat) {
         self.color = color
         self.size = size
     }
 
     public var body: some View {
-        RoundedRectangle(cornerRadius: max(4, size * 0.18), style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
+        shape
             .fill(color)
             .frame(width: size, height: size)
             .overlay {
-                RoundedRectangle(cornerRadius: max(4, size * 0.18), style: .continuous)
-                    .strokeBorder(border, lineWidth: Theme.hairlineWidth)
+                shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline)
             }
             .accessibilityHidden(true)
     }
@@ -27,11 +26,11 @@ public struct MaterialSwatch: View {
 // MARK: - Previews
 
 #Preview("thumbnail") {
-    MaterialSwatch(color: Color(red: 0.82, green: 0.24, blue: 0.18), size: 28)
-        .padding(24)
+    MaterialSwatch(color: DS.Color.Role.material, size: 28)
+        .padding(DS.Spacing.xxl)
 }
 
 #Preview("compact") {
-    MaterialSwatch(color: Color(red: 0.82, green: 0.24, blue: 0.18), size: 12)
-        .padding(24)
+    MaterialSwatch(color: DS.Color.Role.material, size: 12)
+        .padding(DS.Spacing.xxl)
 }

@@ -25,6 +25,13 @@ schemes:
         targets:
           PreviewUI: all
 
+    DesignCatalog:
+      build:
+        targets:
+          DesignCatalog: all
+      run:
+        config: Debug
+
 # Shared across every target so signing and versions live in one place.
 settings:
   base:
@@ -46,6 +53,27 @@ packages:
     from: "1.5.7"
 
 targets:
+  # DS tokens + components (Liquid Glass wrappers). Extension-safe: RendererRealityKit's Quick
+  # Look chrome links it, so the extensions resolve it from the host's embedded copy.
+  DesignSystem:
+    type: framework
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - DesignSystem
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.DesignSystem
+        PRODUCT_MODULE_NAME: DesignSystem
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        APPLICATION_EXTENSION_API_ONLY: YES
+      configs:
+        Release:
+          ARCHS: arm64 x86_64
+          ONLY_ACTIVE_ARCH: NO
+
   PreviewUI:
     type: framework
     platform: macOS
@@ -64,6 +92,33 @@ targets:
         Release:
           ARCHS: arm64 x86_64
           ONLY_ACTIVE_ARCH: NO
+    dependencies:
+      - target: DesignSystem
+        embed: false
+
+  # Showcase app for the design system: every token, DS component and PreviewUI composite
+  # rendered with real Liquid Glass over light / dark canvas and the checkerboard.
+  # `./scripts/dev.sh catalog` builds and launches it in the background.
+  DesignCatalog:
+    type: application
+    platform: macOS
+    sources:
+      - DesignCatalog
+    settings:
+      base:
+        PRODUCT_NAME: DesignCatalog
+        PRODUCT_MODULE_NAME: DesignCatalog
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.design-catalog
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Design Catalog
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+    dependencies:
+      - target: DesignSystem
+        embed: true
+      - target: PreviewUI
+        embed: true
 
   # Renderer-neutral, extension-safe core: glTF file model, validator, stats, App Group
   # settings, bundled Khronos HDRs. Linked by the host (embedded once), both extensions and the
@@ -132,6 +187,9 @@ targets:
           ONLY_ACTIVE_ARCH: NO
     dependencies:
       - target: GLTFCore
+        embed: false
+      # Quick Look chrome (PreviewQuickLookChrome) uses the DS glass buttons.
+      - target: DesignSystem
         embed: false
       - package: GLTFKit2
       - package: DracoSwift
@@ -259,6 +317,8 @@ targets:
           CODE_SIGN_IDENTITY: "Developer ID Application"
           ENABLE_TESTABILITY: NO
     dependencies:
+      - target: DesignSystem
+        embed: true
       - target: GLTFCore
         embed: true
       - target: RendererRealityKit
@@ -395,4 +455,5 @@ targets:
         embed: false
       - target: RendererWebKit
         embed: false
+      - target: DesignSystem
       - target: PreviewUI

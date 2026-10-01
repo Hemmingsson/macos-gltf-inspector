@@ -1,38 +1,46 @@
+import DesignSystem
 import SwiftUI
 
-/// Left-to-right wrap of chips. `chipsPerRow` matches inspector width (geometry ≈3, maps ≈4).
+/// Left-to-right wrap of chips. How many fit depends on the pane width — there is no
+/// `chipsPerRow`.
 public struct FlexibleChipRow: View {
     public var items: [String]
-    public var chipsPerRow: Int = 4
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(rows, id: \.self) { row in
-                HStack(spacing: 6) {
-                    ForEach(row, id: \.self) { title in
-                        InspectorChip(title: title)
-                    }
-                }
+        DSFlowLayout {
+            ForEach(items, id: \.self) { title in
+                DSChip(title)
             }
         }
-    }
-
-    private var rows: [[String]] {
-        let step = max(chipsPerRow, 1)
-        return stride(from: 0, to: items.count, by: step).map { start in
-            Array(items[start..<min(start + step, items.count)])
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 // MARK: - Previews
 
-#Preview("wrap") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+#Preview("wrap ideal") {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         FlexibleChipRow(
-            items: ["12 tris", "24 verts", "1 UV set", "Tangents", "Vertex colors"],
-            chipsPerRow: 3
+            items: ["12 tris", "24 verts", "1 UV set", "Tangents", "Vertex colors"]
         )
-        .padding(.horizontal, 14)
+        .padding(.horizontal, DS.Spacing.l)
+    }
+}
+
+#Preview("wrap minimum") {
+    PreviewCanvas(width: DS.Metrics.inspectorWidthRange.lowerBound) {
+        FlexibleChipRow(
+            items: ["12 tris", "24 verts", "1 UV set", "Tangents", "Vertex colors"]
+        )
+        .padding(.horizontal, DS.Spacing.l)
+    }
+}
+
+#Preview("wrap maximum") {
+    PreviewCanvas(width: DS.Metrics.inspectorWidthRange.upperBound) {
+        FlexibleChipRow(
+            items: ["12 tris", "24 verts", "1 UV set", "Tangents", "Vertex colors"]
+        )
+        .padding(.horizontal, DS.Spacing.l)
     }
 }

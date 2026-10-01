@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Left column — structure. The document says which file this is; the outliner says what is in it.
@@ -11,76 +12,92 @@ public struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport
     public var viewport: Viewport
     public var documentState: ShellDocumentState = .ready
     /// Visual state of the leading chrome toggle (accent while the column is open).
-    public var isSidebarVisible: Bool
-    public var onToggleSidebar: () -> Void
+    public var isSidebarVisible: Bool = true
+    public var onToggleSidebar: () -> Void = {}
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SidebarChromeRow(
-                isSidebarVisible: isSidebarVisible,
-                trailingAligned: true,
-                onToggleSidebar: onToggleSidebar
-            )
-
-            DocumentHeader(
-                fileName: documentState.isReady ? model.fileName : documentState.panelDocumentTitle,
-                sceneName: documentState.isReady ? currentSceneName : nil,
-                variantNames: documentState.isReady ? model.materialVariantNames : [],
-                selectedVariantIndex: viewport.selectedMaterialVariantIndex,
-                onSelectVariant: { viewport.setMaterialVariant($0) }
-            )
-
+        Group {
             if documentState.isReady {
-                // Scrolls independently of the document header and the pinned file footer.
-                ScrollView {
+                OutlinerList(
+                    model: model,
+                    selection: selection,
+                    onActivate: activate
+                )
+                .safeAreaInset(edge: .top, spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        ForEach(OutlinerSection.sections(of: model)) { section in
-                            OutlinerSectionView(
-                                section: section,
-                                selection: selection,
-                                onSelect: { item in
-                                    if item.id.kind == .scene {
-                                        viewport.setScene(item.id)
-                                    } else if item.id.kind == .camera {
-                                        viewport.setFileCamera(item.id)
-                                    }
-                                    selection.select(selection.selected == item.id ? nil : item.id)
-                                }
-                            )
-                        }
+                        sidebarChrome
+                        documentCard
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 12)
                 }
-                .focusSection()
-
-                fileFooter
+                .safeAreaBar(edge: .bottom, spacing: 0) {
+                    ViewThatFits(in: .vertical) {
+                        fileFooter(showsFile: true, showsPipeline: true)
+                        fileFooter(showsFile: true, showsPipeline: false)
+                        fileFooter(showsFile: false, showsPipeline: false)
+                    }
+                    .frame(maxHeight: 280, alignment: .top)
+                }
             } else {
-                SidebarStatusView(state: documentState)
+                VStack(alignment: .leading, spacing: 0) {
+                    sidebarChrome
+                    documentCard
+                    SidebarStatusView(state: documentState)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.chrome)
     }
 
-    /// File facts + honesty — pinned under the outliner scroll.
+    private var sidebarChrome: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            DSGlassIconButton(
+                isSidebarVisible ? "Hide Sidebar" : "Show Sidebar",
+                systemImage: "sidebar.leading",
+                isEngaged: isSidebarVisible,
+                action: onToggleSidebar
+            )
+            .dsGlassPlacement(.inIsland)
+        }
+        .padding(.trailing, DS.Spacing.l)
+        .dsChromeBandAligned()
+        .accessibilityElement(children: .contain)
+    }
+
+    private var documentCard: some View {
+        DocumentHeader(
+            fileName: documentState.isReady ? model.fileName : documentState.panelDocumentTitle,
+            sceneName: documentState.isReady ? currentSceneName : nil,
+            variantNames: documentState.isReady ? model.materialVariantNames : [],
+            selectedVariantIndex: viewport.selectedMaterialVariantIndex,
+            onSelectVariant: { viewport.setMaterialVariant($0) }
+        )
+    }
+
+    /// File facts + honesty — pinned under the outliner. `ViewThatFits` drops pipeline, then
+    /// file stats, rather than nesting a `ScrollView`.
     @ViewBuilder
-    private var fileFooter: some View {
+    private func fileFooter(showsFile: Bool, showsPipeline: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    FileSection(stats: model.stats, fileName: model.fileName)
-                    ValidationSection(validation: model.validation)
-                    ConvertProblemsSection(problems: model.convertProblems)
-                    if !model.pipelineReport.isEmpty {
-                        PipelineSection(report: model.pipelineReport)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 10)
+            if showsFile {
+                FileSection(stats: model.stats, fileName: model.fileName)
             }
-            .frame(maxHeight: 280)
+            ValidationSection(validation: model.validation)
+            ConvertProblemsSection(problems: model.convertProblems)
+            if showsPipeline, !model.pipelineReport.isEmpty {
+                PipelineSection(report: model.pipelineReport)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func activate(_ item: OutlinerItem) {
+        if item.id.kind == .scene {
+            viewport.setScene(item.id)
+        } else if item.id.kind == .camera {
+            viewport.setFileCamera(item.id)
         }
     }
 
@@ -129,7 +146,7 @@ private struct LeftSidebarPreviewHost: View {
     }
 
     var body: some View {
-        PreviewCanvas(width: Theme.sidebarWidth, height: height) {
+        PreviewCanvas(width: DS.Metrics.sidebarWidth, height: height) {
             LeftSidebar(
                 model: FixtureSceneModel.cube,
                 selection: selection,
@@ -142,18 +159,18 @@ private struct LeftSidebarPreviewHost: View {
     }
 }
 
-#Preview("ready", traits: .fixedLayout(width: Theme.sidebarWidth, height: 520)) {
+#Preview("ready", traits: .fixedLayout(width: 248, height: 520)) {
     LeftSidebarPreviewHost(mode: .ready)
 }
 
-#Preview("empty", traits: .fixedLayout(width: Theme.sidebarWidth, height: 320)) {
+#Preview("empty", traits: .fixedLayout(width: 248, height: 320)) {
     LeftSidebarPreviewHost(mode: .empty)
 }
 
-#Preview("loading", traits: .fixedLayout(width: Theme.sidebarWidth, height: 320)) {
+#Preview("loading", traits: .fixedLayout(width: 248, height: 320)) {
     LeftSidebarPreviewHost(mode: .loading)
 }
 
-#Preview("failed", traits: .fixedLayout(width: Theme.sidebarWidth, height: 320)) {
+#Preview("failed", traits: .fixedLayout(width: 248, height: 320)) {
     LeftSidebarPreviewHost(mode: .failed)
 }

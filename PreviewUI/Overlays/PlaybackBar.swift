@@ -1,45 +1,42 @@
+import DesignSystem
 import SwiftUI
 
 /// Bottom-centre animation controls.
 ///
 /// Shown only when `Availability.hasAnimations`. Transport lives on
-/// `ClipPlaybackController` — the bar never owns a local clock.
+/// `ClipPlaybackController` — the bar never owns a local clock. One `DSHUDCapsule` so the play
+/// button is borderless inside the glass (no glass on glass).
 public struct PlaybackBar<Playback: ClipPlaybackController>: View {
     public var playback: Playback
 
     @State private var isSeeking = false
 
     public var body: some View {
-        OverlayChrome(
+        DSHUDCapsule(
             height: OverlayMetrics.playbackHeight,
-            cornerRadius: OverlayMetrics.playbackRadius,
-            horizontalPadding: 14
+            horizontalPadding: DS.Spacing.l,
+            spacing: DS.Spacing.l
         ) {
             clipMenu
 
-            Theme.hair
-                .frame(width: Theme.hairlineWidth, height: 20)
-                .accessibilityHidden(true)
+            DSGlassIslandDivider()
 
             playButton
 
-            Slider(
+            DSHUDSlider(
                 value: Binding(
                     get: { playback.time },
                     set: { playback.seek($0) }
                 ),
-                in: 0...max(playback.duration, 0.001)
-            ) { editing in
-                isSeeking = editing
-            }
+                in: 0...max(playback.duration, 0.001),
+                accessibilityLabel: "Animation time"
+            ) { isSeeking = $0 }
             .controlSize(.small)
-            .tint(Theme.accent)
             .frame(width: OverlayMetrics.scrubWidth)
-            .accessibilityLabel("Animation time")
 
             Text(timeLabel)
-                .font(.system(size: 11).monospacedDigit())
-                .foregroundStyle(Theme.text2)
+                .font(DS.Font.value)
+                .foregroundStyle(DS.Color.textSecondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .accessibilityLabel("Time")
@@ -63,33 +60,21 @@ public struct PlaybackBar<Playback: ClipPlaybackController>: View {
     @ViewBuilder
     private var clipMenu: some View {
         if playback.clips.count > 1 {
-            Menu {
-                Picker("Animation clip", selection: clipBinding) {
+            DSGlassMenuButton(
+                "Animation clip",
+                systemImage: "film",
+                style: .titled(playback.activeClip?.name ?? "Clip")
+            ) {
+                DSInlineMenuPicker("Animation clip", selection: clipBinding) {
                     ForEach(playback.clips) { clip in
                         Text(clip.name).tag(Optional(clip.id))
                     }
                 }
-                .pickerStyle(.inline)
-                .labelsHidden()
-            } label: {
-                HStack(spacing: 5) {
-                    Text(playback.activeClip?.name ?? "Clip")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.glyph)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Theme.glyph)
-                }
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .help("Animation clip")
-            .accessibilityLabel("Animation clip")
-            .accessibilityValue(playback.activeClip?.name ?? "")
         } else if let only = playback.activeClip ?? playback.clips.first {
             Text(only.name)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.glyph)
+                .font(DS.Font.body)
+                .foregroundStyle(DS.Color.textPrimary)
                 .accessibilityLabel("Animation clip")
                 .accessibilityValue(only.name)
         }

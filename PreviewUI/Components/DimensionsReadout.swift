@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Bottom-trailing W×H×D pill.
@@ -5,16 +6,16 @@ public struct DimensionsReadout: View {
     public var dimensions: Dimensions
 
     public var body: some View {
-        OverlayChrome(height: OverlayMetrics.dimensionsHeight, cornerRadius: OverlayMetrics.dimensionsRadius) {
+        DSHUDCapsule(height: OverlayMetrics.dimensionsHeight) {
             Image(systemName: "cube")
-                .font(.system(size: 12, weight: .regular))
+                .font(DS.Font.callout)
                 .symbolRenderingMode(.monochrome)
-                .foregroundStyle(Theme.text2)
+                .foregroundStyle(DS.Color.textSecondary)
                 .accessibilityHidden(true)
 
             Text(label)
-                .font(.system(size: 12).monospacedDigit())
-                .foregroundStyle(Theme.glyph)
+                .font(DS.Font.value)
+                .foregroundStyle(DS.Color.textPrimary)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)

@@ -1,10 +1,11 @@
+import DesignSystem
 import SwiftUI
 
-/// The file-name block at the top of the sidebar.
+/// The file-name block at the top of the sidebar — `DSDocumentCard` plus an optional
+/// material-variant `DSMenuPicker`.
 ///
-/// This is where the document identifies itself. The window has no title band (DESIGN.md: the
-/// file name lives in the sidebar), so if this block is missing there is nothing anywhere on
-/// screen that says which file you are looking at.
+/// The window has no title band (DESIGN.md: the file name lives in the sidebar), so if this
+/// block is missing there is nothing anywhere on screen that says which file you are looking at.
 public struct DocumentHeader: View {
     public var fileName: String
     /// The scene being shown. Nil for a file with no named scene — the subtitle then collapses
@@ -14,75 +15,40 @@ public struct DocumentHeader: View {
     public var selectedVariantIndex: Int?
     public var onSelectVariant: (Int?) -> Void = { _ in }
 
-    @Environment(\.previewHair) private var hair
-
     public var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 9) {
-                // Accent, not a type tint: this is the document itself, not a row in the outliner.
-                Image(systemName: "cube")
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(Theme.accent)
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(fileName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.text)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    if let sceneName {
-                        Text(sceneName)
-                            .font(.system(size: 11))
-                            .foregroundStyle(Theme.text2)
-                            .lineLimit(1)
-                    }
+        Group {
+            if variantNames.isEmpty {
+                DSDocumentCard(fileName, subtitle: sceneName)
+            } else {
+                DSDocumentCard(fileName, subtitle: sceneName) {
+                    DSMenuPicker(
+                        "Material variant",
+                        selection: Binding(
+                            get: { selectedVariantIndex },
+                            set: onSelectVariant
+                        ),
+                        options: [nil] + variantNames.indices.map { Optional($0) },
+                        labelVisibility: .hidden
+                    ) { $0.map { variantNames[$0] } ?? "Default" }
+                    .controlSize(.small)
                 }
-
-                Spacer(minLength: 0)
-            }
-
-            if !variantNames.isEmpty {
-                Picker(
-                    "Variant",
-                    selection: Binding(
-                        get: { selectedVariantIndex },
-                        set: onSelectVariant
-                    )
-                ) {
-                    Text("Default").tag(Optional<Int>.none)
-                    ForEach(Array(variantNames.enumerated()), id: \.offset) { index, name in
-                        Text(name).tag(Optional(index))
-                    }
-                }
-                .labelsHidden()
-                .controlSize(.small)
-                .accessibilityLabel("Material variant")
             }
         }
-        .padding(.vertical, 7)
-        .padding(.horizontal, 10)
-        .background(Theme.card, in: .rect(cornerRadius: 8))
-        // `strokeBorder`, not `stroke`: a stroke straddles the edge and would spill half its
-        // width outside the 8 pt corner.
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(hair, lineWidth: Theme.hairlineWidth))
-        .padding(.horizontal, 10)
-        .padding(.bottom, 8)
-        .accessibilityElement(children: .combine)
+        .padding(.horizontal, DS.Spacing.paneInset)
+        .padding(.vertical, DS.Spacing.m)
     }
 }
 
 // MARK: - Previews
 
-#Preview("file only", traits: .fixedLayout(width: Theme.sidebarWidth, height: 72)) {
-    PreviewCanvas(width: Theme.sidebarWidth, height: 72) {
+#Preview("file only", traits: .fixedLayout(width: 248, height: 72)) {
+    PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 72) {
         DocumentHeader(fileName: FixtureSceneModel.cube.fileName)
     }
 }
 
-#Preview("with scene", traits: .fixedLayout(width: Theme.sidebarWidth, height: 88)) {
-    PreviewCanvas(width: Theme.sidebarWidth, height: 88) {
+#Preview("with scene", traits: .fixedLayout(width: 248, height: 88)) {
+    PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 88) {
         DocumentHeader(
             fileName: FixtureSceneModel.cube.fileName,
             sceneName: FixtureSceneModel.cube.scenes.first?.name
@@ -90,8 +56,8 @@ public struct DocumentHeader: View {
     }
 }
 
-#Preview("with variants", traits: .fixedLayout(width: Theme.sidebarWidth, height: 116)) {
-    PreviewCanvas(width: Theme.sidebarWidth, height: 116) {
+#Preview("with variants", traits: .fixedLayout(width: 248, height: 116)) {
+    PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 116) {
         DocumentHeader(
             fileName: "Variants.glb",
             sceneName: "Scene",

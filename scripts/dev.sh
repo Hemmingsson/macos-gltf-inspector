@@ -9,6 +9,7 @@
 #   ./scripts/dev.sh fixtures             # list fixture ids
 #   ./scripts/dev.sh fixture-path <id>    # resolve absolute path (for launch/tasks)
 #   ./scripts/dev.sh app-path             # Mach-O inside .build app (for launch.json)
+#   ./scripts/dev.sh catalog [-page id]   # build DesignCatalog + launch in background (open -g)
 set -euo pipefail
 
 source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
@@ -16,7 +17,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
 DEFAULT_FIXTURE=cube
 
 usage() {
-  sed -n '2,13p' "$0"
+  sed -n '2,12p' "$0"
 }
 
 require_xcodegen() {
@@ -101,6 +102,22 @@ dev_logs() {
     --predicate 'subsystem == "lol.mattias.gltf-inspector"'
 }
 
+# DesignCatalog: build into this branch's DerivedData and launch without taking focus.
+# Relaunches (quits only this build's catalog process) so the new build and any args apply.
+# Args pass through to the app, e.g. `-page colors -appearance dark`.
+dev_catalog() {
+  require_xcodegen
+  cd "$ROOT"
+  xcodegen generate
+  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+    xcodebuild -scheme DesignCatalog -destination 'platform=macOS' \
+    -derivedDataPath "$DERIVED_DATA" build
+  # Process path is /private/tmp/... even when CATALOG_APP is /tmp/...
+  pkill -f "DesignCatalog.app/Contents/MacOS/DesignCatalog" 2>/dev/null || true
+  echo "launch $CATALOG_APP"
+  open -g "$CATALOG_APP" --args "$@"
+}
+
 dev_fixtures() {
   dev_fixture_ids
 }
@@ -139,6 +156,9 @@ case "$cmd" in
     ;;
   app-path)
     echo "$EXEC"
+    ;;
+  catalog)
+    dev_catalog "$@"
     ;;
   *)
     echo "unknown command: $cmd" >&2

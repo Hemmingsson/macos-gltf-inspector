@@ -1,3 +1,4 @@
+import DesignSystem
 import Foundation
 import SwiftUI
 
@@ -114,34 +115,38 @@ public struct OutlinerSectionView<Selection: SelectionModel>: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: section.title)
-
-            if section.folds {
-                ForEach(section.items) { item in
-                    OutlinerTreeBranch(
-                        item: item,
-                        expanded: expandedBinding,
-                        selection: selection
-                    )
-                }
-            } else {
-                ForEach(section.items) { item in
-                    NodeRow(
-                        item: item,
-                        isSelected: selection.selected == item.id,
-                        selection: selection
-                    ) {
-                        if let onSelect {
-                            onSelect(item)
-                        } else {
-                            selection.select(selection.selected == item.id ? nil : item.id)
-                        }
+        List(selection: listSelection) {
+            Section {
+                if section.folds {
+                    ForEach(section.items) { item in
+                        OutlinerDisclosure(
+                            item: item,
+                            expanded: expandedBinding,
+                            selection: selection
+                        )
+                    }
+                } else {
+                    ForEach(section.items) { item in
+                        NodeRow(
+                            item: item,
+                            isSelected: selection.selected == item.id,
+                            selection: selection
+                        )
+                        .tag(Optional(item.id))
                     }
                 }
+            } header: {
+                DSSectionHeader(section.title)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .listStyle(.sidebar)
+        .focusSection()
+        .onExitCommand { selection.select(nil) }
+        .onKeyPress(.escape) {
+            guard selection.selected != nil else { return .ignored }
+            selection.select(nil)
+            return .handled
+        }
         .onAppear {
             guard section.folds, expanded == nil else { return }
             seedExpansionIfNeeded()
@@ -152,42 +157,30 @@ public struct OutlinerSectionView<Selection: SelectionModel>: View {
         }
     }
 
+    private var listSelection: Binding<NodeID?> {
+        Binding(
+            get: { selection.selected },
+            set: { newID in
+                selection.select(newID)
+                if let newID, let onSelect, let item = Self.item(id: newID, in: section.items) {
+                    onSelect(item)
+                }
+            }
+        )
+    }
+
+    private static func item(id: NodeID, in items: [OutlinerItem]) -> OutlinerItem? {
+        for item in items {
+            if item.id == id { return item }
+            if let found = Self.item(id: id, in: item.children) { return found }
+        }
+        return nil
+    }
+
     /// Seed once from `onAppear` — never from `View.init` (AGENTS.md pitfall #1).
     private func seedExpansionIfNeeded() {
         guard ownedExpanded.isEmpty else { return }
         ownedExpanded = OutlinerTree.defaultExpandedIDs(roots: section.items)
-    }
-}
-
-/// Recursive emit into the scroll `VStack` — only rows whose ancestors are expanded appear.
-private struct OutlinerTreeBranch<Selection: SelectionModel>: View {
-    let item: OutlinerItem
-    @Binding var expanded: Set<NodeID>
-    var selection: Selection
-
-    private var isExpanded: Bool { expanded.contains(item.id) }
-
-    var body: some View {
-        NodeRow(
-            item: item,
-            isSelected: selection.selected == item.id,
-            selection: selection,
-            treeFolding: true,
-            isExpanded: isExpanded,
-            onToggleExpand: toggleExpand
-        ) {
-            selection.select(selection.selected == item.id ? nil : item.id)
-        }
-
-        if item.hasChildren, isExpanded {
-            ForEach(item.children) { child in
-                OutlinerTreeBranch(item: child, expanded: $expanded, selection: selection)
-            }
-        }
-    }
-
-    private func toggleExpand(recursive: Bool) {
-        OutlinerTree.toggle(item, recursive: recursive, expanded: &expanded)
     }
 }
 
@@ -244,7 +237,7 @@ private struct OutlinerSectionPreviewHost: View {
     }
 
     var body: some View {
-        PreviewCanvas(width: Theme.sidebarWidth, height: height) {
+        PreviewCanvas(width: DS.Metrics.sidebarWidth, height: height) {
             OutlinerSectionView(
                 section: section,
                 selection: selection,
@@ -254,18 +247,18 @@ private struct OutlinerSectionPreviewHost: View {
     }
 }
 
-#Preview("materials", traits: .fixedLayout(width: Theme.sidebarWidth, height: 80)) {
+#Preview("materials", traits: .fixedLayout(width: 248, height: 80)) {
     OutlinerSectionPreviewHost(mode: .materials)
 }
 
-#Preview("scene graph", traits: .fixedLayout(width: Theme.sidebarWidth, height: 132)) {
+#Preview("scene graph", traits: .fixedLayout(width: 248, height: 132)) {
     OutlinerSectionPreviewHost(mode: .sceneGraph)
 }
 
-#Preview("scenes", traits: .fixedLayout(width: Theme.sidebarWidth, height: 72)) {
+#Preview("scenes", traits: .fixedLayout(width: 248, height: 72)) {
     OutlinerSectionPreviewHost(mode: .scenes)
 }
 
-#Preview("selected", traits: .fixedLayout(width: Theme.sidebarWidth, height: 104)) {
+#Preview("selected", traits: .fixedLayout(width: 248, height: 104)) {
     OutlinerSectionPreviewHost(mode: .selected)
 }

@@ -1,32 +1,33 @@
+import DesignSystem
 import SwiftUI
 
-/// Selection identity under the action cluster.
+/// Selection identity under the Open-in row.
 public struct IdentityRow: View {
     public var name: String
     public var kindTitle: String
     public var kind: NodeKind
 
     public var body: some View {
-        HStack(alignment: .center, spacing: 9) {
-            NodeIcon(kind: kind)
+        HStack(alignment: .center, spacing: DS.Spacing.m) {
+            DSTypeIcon(DSTypeRole(rawValue: kind.rawValue) ?? .empty)
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.text)
+                    .font(DS.Font.bodyEmphasized)
+                    .foregroundStyle(DS.Color.textPrimary)
                     .lineLimit(1)
                 Text(kindTitle)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.text2)
+                    .font(DS.Font.subheadline)
+                    .foregroundStyle(DS.Color.textSecondary)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.top, 2)
-        .padding(.bottom, 10)
-        .padding(.leading, 14)
-        .padding(.trailing, 12)
+        .padding(.top, DS.Spacing.xxs)
+        .padding(.bottom, DS.Spacing.l)
+        .padding(.leading, DS.Spacing.l)
+        .padding(.trailing, DS.Spacing.l)
         .accessibilityElement(children: .combine)
     }
 }
@@ -34,7 +35,7 @@ public struct IdentityRow: View {
 // MARK: - Previews
 
 #Preview("mesh") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let detail = NodeDetailFixtures.mesh
         IdentityRow(
             name: detail.name,
@@ -45,7 +46,7 @@ public struct IdentityRow: View {
 }
 
 #Preview("material") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let detail = NodeDetailFixtures.material
         IdentityRow(
             name: detail.name,

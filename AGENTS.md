@@ -25,7 +25,9 @@ layout spec (code wins on what ships where).
 
 | Path | Role |
 | --- | --- |
-| `PreviewUI/` | Host chrome over seam protocols. **Do not import `GLTFCore` or a renderer framework.** |
+| `PreviewUI/` | Host chrome over seam protocols. **Do not import `GLTFCore` or a renderer framework.** Feature code uses DesignSystem wrappers — no raw `Slider` / `Picker` / `glassEffect` / `GlassEffectContainer` / `Color(red:`. |
+| `DesignSystem/` | Extension-safe framework: `DS` tokens (color, spacing, metrics, motion, `DS.Shortcuts`) and the Liquid Glass / control components. Linked by `PreviewUI`, `RendererRealityKit` (Quick Look chrome) and the host (embedded once). No GLTFCore / renderer imports. |
+| `DesignCatalog/` | Showcase app for tokens, DS components and PreviewUI composites (`./scripts/dev.sh catalog`). |
 | `GLTFCore/` | Extension-safe framework: glTF file model (JSON document, GLB read side), validator, stats, App Group settings + `AppLook`, bundled Khronos HDRs (`KhronosEnvironments.bundledDirectory`), PNG writer, JSON model bounds (`ModelBounds`), the JSON-only panel summary (`GLTFDocumentSummary`, `ViewModeAvailability`), the renderer switch (`RendererKind`), neutral render values (`RenderLook`, `RenderViewMode`, `CameraPreset`, `RendererFeature`; host maps PreviewUI ↔ core in `Engine/EngineCoreMapping.swift`). No RealityKit / WebKit / AppKit / PreviewUI. Embedded once in the host; the extensions link it. |
 | `RendererRealityKit/` | Extension-safe RealityKit renderer framework over `GLTFCore`: `EntityLoader` (no file rewrite: GLTFKit2 parses the file as authored), `SpecGlossBake`, `Convert/`, `RealityLook` (the one `RenderLook` → RealityKit mapping) and `RealityPolicy` (reported non-spec rules), `RealityPreviewCanvas` (`PreviewScene` + Quick Look chrome), camera / lighting / floor / selection visuals, clips (`RealityClipPlayer`), morphs, debug modes, `StillRenderer` / `LiveStillRequest` (returns a `CGImage`; the host owns the save panel). Also `PreviewHostingView` / `PreviewEventView` (`PreviewInteraction` scroll/magnify/drag plumbing, generic over the root view) for the RealityKit adapters, and `RealityThumbnail` (Finder icon). Only target linking GLTFKit2 + DracoSwift; `GLBTry.h` is a public header (no bridging header), `GLBDracoDecompressor` is found by class name. Host code talks to it through neutral entry points (`LoadedModel` helpers, `PreviewOverlay` values, `PreviewDebugMode.renderViewMode`) and does not import RealityKit. Embedded once in the host; both extensions link it. |
 | `RendererWebKit/` | Extension-safe WebKit renderer framework over `GLTFCore`: `WebRendererHost` (one `WKWebView`, `.live` / `.still`; `callAsyncJavaScript` on five page functions — open / apply / camera / still / stats — each call with its own timeout), scheme handler, `WebPreviewCanvas` + `Look` (`RenderLook` + view state, mapped to page values once in `WebRendererLook.swift`), load copy, `CachedQuickLookThumbnail`. Public API is only what host/appexes call (`WebRendererHost` start / load / apply / renderStill / renderStillPNG / isBroken, `WebPreviewCanvas.Look` + `Look.stored()`, `WebRendererError`, `WebPreviewCanvas(url:look:placeholderImage:host:controller:)`, `WebCanvasController` (phase ending in `.failed`, fit / reset / apply(preset:) / snapshot, survives a remount), `WebRendererMode`, `CachedQuickLookThumbnail.existingIcon`); tests use `@testable`. The only module that imports WebKit. Embedded once in the host; both extensions link it. |
@@ -131,9 +133,11 @@ why WebKit → [`docs/decision-web-renderer.md`](docs/decision-web-renderer.md).
 
 Before `git worktree remove`: `git log main..<branch>`, merge/cherry-pick. **Document window**
 = host chrome + the switched renderer's canvas; **Quick Look** / thumbnails follow the same switch
-(WebKit: no convert). **`DESIGN.md`**: design
-*principles* only — never paste shipped layout/state there. **`ShellRootView`**: fixed
-`Theme.sidebarWidth` / `inspectorWidth` — not drag-resizable unless a task adds it.
+(WebKit: no convert; Quick Look = minimal chrome). **`DESIGN.md`**: design *principles* only —
+never paste shipped layout/state there (use code/tests/`AGENTS.md`). **`ShellRootView`**:
+`NavigationSplitView` + selection-driven `.inspector`; column widths from `DS.Metrics` (sidebar
+220…520, inspector 260…560). **Canvas** is full-bleed (`.ignoresSafeArea()`, no `.clipped()`)
+under the floating panes; overlay clusters stay in the leading/trailing safe area.
 
 ## Pitfalls — do not repeat
 

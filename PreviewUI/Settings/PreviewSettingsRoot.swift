@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -82,14 +83,12 @@ private struct GeneralSettingsPane<Store: SettingsDefaultsStore>: View {
     var body: some View {
         Form {
             Section("Appearance") {
-                LabeledContent("Appearance") {
-                    Picker("Appearance", selection: appearanceBinding) {
-                        ForEach(AppAppearance.allCases) { option in
-                            Text(option.title).tag(option.rawValue)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
+                DSMenuPicker(
+                    "Appearance",
+                    selection: appearanceBinding,
+                    options: AppAppearance.allCases.map(\.rawValue)
+                ) { raw in
+                    AppAppearance(rawValue: raw)?.title ?? raw
                 }
             }
 
@@ -191,28 +190,29 @@ private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
             }
 
             Section("Appearance") {
-                Picker("Background", selection: backdropBinding) {
-                    ForEach(BackdropStyle.allCases) { style in
-                        Text(style.title).tag(style)
-                    }
-                }
-                Toggle("Show pills on open", isOn: boolBinding(for: .showPills))
+                DSMenuPicker(
+                    "Background",
+                    selection: backdropBinding,
+                    options: Array(BackdropStyle.allCases)
+                ) { $0.title }
             }
 
             Section {
                 Toggle("Use environment map", isOn: boolBinding(for: .useEnvironmentMap))
-                Picker("Environment", selection: catalogBinding) {
-                    ForEach(catalog, id: \.raw) { item in
-                        Text(item.title).tag(item.raw)
-                    }
+                DSMenuPicker(
+                    "Environment",
+                    selection: catalogBinding,
+                    options: catalog.map(\.raw)
+                ) { raw in
+                    catalog.first { $0.raw == raw }?.title ?? raw
                 }
                 // App default, not per-window: this is what thumbnails and Quick Look read,
                 // so a file's Finder icon matches how it opens.
-                Picker("Tone mapping", selection: toneMappingBinding) {
-                    ForEach(ToneMapping.allCases) { option in
-                        Text(option.title).tag(option)
-                    }
-                }
+                DSMenuPicker(
+                    "Tone mapping",
+                    selection: toneMappingBinding,
+                    options: ToneMapping.allCases
+                ) { $0.title }
                 Button("Add your own…") {
                     addCustomHDR()
                 }

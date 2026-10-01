@@ -41,6 +41,12 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
                 // Live-track canvas for keys that still have no session override.
                 viewport.syncFromSettings()
             }
+            // The shell is not remounted per load (`NavigationSplitView` keeps its columns), so
+            // its one-shot `seedSession` runs once; re-seed each time a document lands.
+            .onChange(of: window.phase.isReady) { _, ready in
+                guard ready else { return }
+                window.seedSession(settings: window.settings)
+            }
             .onDrop(of: [.fileURL], isTargeted: nil) {
                 DocumentOpening.handleDrop($0, openDocument: openDocument)
             }
@@ -58,10 +64,7 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
             availability: availability,
             documentState: window.phase,
             canvasState: canvasState,
-            selection: EngineSelectionModel(
-                sidebar: window.activeSidebar,
-                canHideNodes: availability.canHideNodes
-            ),
+            selection: window.selection,
             viewport: window.engineViewport,
             settings: window.settings,
             playback: playback,
@@ -69,17 +72,18 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
             morphTargets: morphTargets,
             onSetMorphWeight: onSetMorphWeight,
             seedSession: { window.seedSession(settings: $0) },
-            openInMenu: AnyView(OpenInChromeMenu(documentURL: window.documentURL))
+            openInMenu: AnyView(OpenInMenuItems(documentURL: window.loadingURL ?? window.documentURL))
         ) {
+            // A new document (or a RealityKit scene / variant reload) remounts the canvas only;
+            // the split view, settings and viewport keep their identity.
             canvas()
+                .id(window.loadGeneration)
         }
-        // Remount adapters that capture sidebar/playback once; keep settings + viewport identity.
-        .id(window.mountID)
     }
 }
 
-/// "Open in…" menu: Reveal in Finder, and Blender when installed.
-private struct OpenInChromeMenu: View {
+/// Finder / Blender items only — `ActionRow` wraps them in `DSGlassMenuButton`.
+private struct OpenInMenuItems: View {
     let documentURL: URL?
 
     private var blenderAppURL: URL? {
@@ -96,37 +100,24 @@ private struct OpenInChromeMenu: View {
     }
 
     var body: some View {
-        Menu {
+        Button {
+            guard let documentURL else { return }
+            NSWorkspace.shared.activateFileViewerSelecting([documentURL])
+        } label: {
+            appMenuLabel(title: "Reveal in Finder", appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder"), fallbackSymbol: "folder")
+        }
+        .disabled(documentURL == nil)
+
+        if let blenderAppURL {
             Button {
                 guard let documentURL else { return }
-                NSWorkspace.shared.activateFileViewerSelecting([documentURL])
+                let config = NSWorkspace.OpenConfiguration()
+                NSWorkspace.shared.open([documentURL], withApplicationAt: blenderAppURL, configuration: config)
             } label: {
-                appMenuLabel(title: "Reveal in Finder", appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder"), fallbackSymbol: "folder")
+                appMenuLabel(title: "Open in Blender", appURL: blenderAppURL, fallbackSymbol: "cube")
             }
             .disabled(documentURL == nil)
-
-            if let blenderAppURL {
-                Button {
-                    guard let documentURL else { return }
-                    let config = NSWorkspace.OpenConfiguration()
-                    NSWorkspace.shared.open([documentURL], withApplicationAt: blenderAppURL, configuration: config)
-                } label: {
-                    appMenuLabel(title: "Open in Blender", appURL: blenderAppURL, fallbackSymbol: "cube")
-                }
-                .disabled(documentURL == nil)
-            }
-        } label: {
-            ChromeIconButton(
-                symbol: "square.and.arrow.up",
-                title: "Open in…",
-                prominent: false,
-                action: {}
-            )
-            .allowsHitTesting(false)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
     }
 
     @ViewBuilder
