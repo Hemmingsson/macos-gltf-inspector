@@ -1,0 +1,5 @@
+only_rules: [cyclomatic_complexity, function_body_length, type_body_length, file_length, function_parameter_count, nesting]
+cyclomatic_complexity: {warning: 15, error: 25}
+function_body_length: {warning: 80, error: 150}
+type_body_length: {warning: 400, error: 800}
+file_length: {warning: 600, error: 1000, ignore_comment_only_lines: true}
