@@ -502,7 +502,7 @@ function cameraState() {
     const look = camera.getLookDirection();
     const distance = camera.distance;
     return {
-        camera: {
+        pose: {
             azimuth: camera.rotAroundY * 180 / Math.PI,
             elevation: camera.rotAroundX * 180 / Math.PI,
             distance,

@@ -26,7 +26,7 @@ struct WebRendererBridgeTests {
     @Test
     func cameraStateDecodesThePageShape() throws {
         let data = Data(#"""
-        {"camera":{"azimuth":25,"elevation":-18,"distance":4,"target":[0,1,0],"yfov":0.78,"znear":0.01,"zfar":10},
+        {"pose":{"azimuth":25,"elevation":-18,"distance":4,"target":[0,1,0],"yfov":0.78,"znear":0.01,"zfar":10},
          "sceneMin":[-1,0,-1],"sceneMax":[1,2,1]}
         """#.utf8)
         let state = try JSONDecoder().decode(RendererCameraState.self, from: data)

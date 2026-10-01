@@ -66,11 +66,9 @@ struct CameraCommand: Encodable, Equatable {
 /// The bounds come along because a caller that wants to frame the model on its own terms needs
 /// them: `pose.distance` only reports where this version of the renderer put the camera.
 struct RendererCameraState: Equatable, Decodable, Sendable {
-    var camera: CameraPose
+    var pose: CameraPose
     var sceneMin: [Double]
     var sceneMax: [Double]
-
-    var pose: CameraPose { camera }
 
     /// Centre of the measured box.
     var sceneCenter: [Double] {

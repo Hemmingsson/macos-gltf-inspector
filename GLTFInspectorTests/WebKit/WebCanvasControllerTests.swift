@@ -156,7 +156,7 @@ struct WebCanvasControllerTests {
 struct WebCameraPresetTests {
     private func state(min: [Double], max: [Double], distance: Double = 10) -> RendererCameraState {
         RendererCameraState(
-            camera: CameraPose(
+            pose: CameraPose(
                 azimuth: 0, elevation: 0, distance: distance,
                 target: [0, 0, 0], yfov: 0.8, znear: 0.1, zfar: 100
             ),
