@@ -128,15 +128,9 @@ struct QuickLookWebView: View {
     }
 
     private func failedView(_ message: String) -> some View {
-        VStack(spacing: 8) {
-            Text("Failed to load model")
-                .font(.system(size: 13, weight: .semibold))
-            Text(message)
-                .font(.system(size: 12))
-                .multilineTextAlignment(.center)
-                .opacity(0.7)
-        }
-        .foregroundStyle(isDark ? Color.white : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255))
-        .padding()
+        QuickLookFailureView(
+            message: message,
+            foreground: isDark ? .white : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255)
+        )
     }
 }
