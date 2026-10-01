@@ -39,9 +39,9 @@ private final class PreviewFrame {
 struct PreviewScene: View {
     let entity: Entity
     /// Session document — clip names for `PreviewClip.usable` (RK often drops them).
-    var document: GLTFSessionDocument = GLTFSessionDocument()
-    var stats: PreviewStats?
-    var debugModes: [PreviewDebugMode]
+    let document: GLTFSessionDocument
+    let stats: PreviewStats
+    let debugModes: [PreviewDebugMode]
     @Bindable var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)?
@@ -82,21 +82,18 @@ struct PreviewScene: View {
     private let lookStore = AppLookStore.shared
 
     init(
-        entity: Entity,
-        document: GLTFSessionDocument = GLTFSessionDocument(),
-        stats: PreviewStats?,
-        debugModes: [PreviewDebugMode] = [.none],
-        studioIBLExponent: Float = 0,
+        model: EntityLoader.LoadedModel,
         interaction: PreviewInteraction,
         isDark: Bool,
-        sidebar: (any PreviewOverlay)? = nil,
-        overlayRevision: Int = 0,
-        session: PreviewSessionBindings? = nil
+        sidebar: (any PreviewOverlay)?,
+        overlayRevision: Int,
+        session: PreviewSessionBindings?
     ) {
+        let entity = model.entity
         self.entity = entity
-        self.document = document
-        self.stats = stats
-        self.debugModes = debugModes.isEmpty ? [.none] : debugModes
+        document = model.document
+        stats = model.stats
+        debugModes = model.debugModes.isEmpty ? [.none] : model.debugModes
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
@@ -118,7 +115,7 @@ struct PreviewScene: View {
         _localOrthographic = State(initialValue: false)
         _localExposureEV = State(initialValue: 0)
         // Match auto-dim when the file brought punctual lights (`studioIBLExponent == -2`).
-        _localDimStudioForFileLights = State(initialValue: studioIBLExponent < 0)
+        _localDimStudioForFileLights = State(initialValue: model.studioIBLExponent < 0)
         _localEnvironmentYaw = State(initialValue: 0)
         _localDoubleSided = State(initialValue: false)
         _localShowSkeleton = State(initialValue: false)
@@ -193,10 +190,7 @@ struct PreviewScene: View {
     private var fieldOfViewValue: Float {
         RenderCamera.clampedFieldOfView(fieldOfViewBinding.wrappedValue)
     }
-    private var documentSkins: [GLTFSessionDocument.Skin] {
-        let fromSidebar = sidebar?.document.skins ?? []
-        return fromSidebar.isEmpty ? document.skins : fromSidebar
-    }
+    private var documentSkins: [GLTFSessionDocument.Skin] { document.skins }
     private var effectiveIBLExponent: Float {
         RealityLook.iblExponent(
             exposureEV: exposureEVValue,
@@ -401,7 +395,7 @@ struct PreviewScene: View {
                 )
             }
 
-            if showsInlineChrome, let facts = stats?.overlayFacts, !facts.isEmpty {
+            if showsInlineChrome, let facts = stats.overlayFacts, !facts.isEmpty {
                 PreviewOverlayFacts(facts: facts, tint: chromeTint)
                     .allowsHitTesting(false)
                     .padding(.leading, 14)
@@ -494,18 +488,18 @@ struct PreviewScene: View {
     }
 
     private func applyFileCamera() {
-        guard let sidebar, let index = sidebar.selectedCameraIndex,
-              sidebar.document.cameras.indices.contains(index),
+        guard let index = sidebar?.selectedCameraIndex,
+              document.cameras.indices.contains(index),
               let preview = frame.camera
         else { return }
-        let node = sidebar.document.nodes.first(where: { $0.cameraIndex == index })
+        let node = document.nodes.first(where: { $0.cameraIndex == index })
         guard let node,
               let cameraNode = GLTFNodeLookup.entity(nodeIndex: node.index, in: entity)
         else { return }
         PreviewCamera.applyFileView(
             to: preview,
             cameraNode: cameraNode,
-            spec: sidebar.document.cameras[index]
+            spec: document.cameras[index]
         )
     }
 
@@ -625,11 +619,7 @@ public struct RealityPreviewCanvas: View {
 
     public var body: some View {
         PreviewScene(
-            entity: model.entity,
-            document: model.document,
-            stats: model.stats,
-            debugModes: model.debugModes,
-            studioIBLExponent: model.studioIBLExponent,
+            model: model,
             interaction: interaction,
             isDark: isDark,
             sidebar: sidebar,
