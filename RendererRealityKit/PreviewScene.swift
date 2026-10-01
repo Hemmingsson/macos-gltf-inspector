@@ -214,10 +214,6 @@ struct PreviewScene: View {
         PreviewBackground.at(backdropIndex.wrappedValue).color
     }
 
-    private var tickWhileActive: Bool {
-        autoRotateActive
-    }
-
     var body: some View {
         let _ = overlayRevision
         let _ = debugModeIndexValue
@@ -442,8 +438,8 @@ struct PreviewScene: View {
             guard let pivot = frame.pivot else { return }
             sidebar?.applyIfNeeded(to: pivot)
         }
-        .task(id: tickWhileActive) {
-            guard tickWhileActive else { return }
+        .task(id: autoRotateActive) {
+            guard autoRotateActive else { return }
             var lastTick = Date()
             while !Task.isCancelled {
                 let now = Date()
