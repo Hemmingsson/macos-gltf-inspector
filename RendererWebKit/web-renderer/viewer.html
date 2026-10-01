@@ -156,13 +156,6 @@ function includeOriginInFraming() {
     camera.fitCameraPlanesToExtents(min, max);
 }
 
-/**
- * Orbit, dolly and pan are handled here rather than round-tripping every mouse delta through
- * Swift — input has to feel immediate, and a bridge hop per event would not.
- *
- * Carried over from the RealityKit implementation, per AGENTS.md: scroll is an *infinite*
- * dolly rather than a clamped zoom, and shift-drag pans.
- */
 let overlayProgram = null;
 let overlayBuffer = null;
 
@@ -402,6 +395,13 @@ function drawOverlays() {
     gl.drawArrays(gl.LINES, 0, lines.length / 6);
 }
 
+/**
+ * Orbit, dolly and pan are handled here rather than round-tripping every mouse delta through
+ * Swift — input has to feel immediate, and a bridge hop per event would not.
+ *
+ * Carried over from the RealityKit implementation, per AGENTS.md: scroll is an *infinite*
+ * dolly rather than a clamped zoom, and shift-drag pans.
+ */
 function installPointerControls() {
     let dragging = false;
     let panning = false;
