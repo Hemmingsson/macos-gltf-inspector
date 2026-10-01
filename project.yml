@@ -456,4 +456,6 @@ targets:
       - target: RendererWebKit
         embed: false
       - target: DesignSystem
+        embed: false
       - target: PreviewUI
+        embed: false
