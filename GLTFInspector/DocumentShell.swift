@@ -41,13 +41,15 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
 
     @ViewBuilder
     private var shellRoot: some View {
+        // One snapshot per body: `sceneModel` copies the model and remaps validation.
+        let model = window.sceneModel
         let availability = RendererAvailability(
-            model: window.sceneModel,
+            model: model,
             viewModes: window.previewSession.viewModes,
             features: features
         )
         ShellRootView(
-            model: window.sceneModel,
+            model: model,
             availability: availability,
             documentState: window.phase,
             canvasState: canvasState,
@@ -60,7 +62,7 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
             openInMenu: AnyView(OpenInMenuItems(documentURL: window.loadingURL ?? window.documentURL))
         ) {
             // A new document (or a RealityKit scene / variant reload) remounts the canvas only;
-            // the split view, settings and viewport keep their identity.
+            // the split view and viewport keep their identity.
             canvas()
                 .id(window.loadGeneration)
         }
