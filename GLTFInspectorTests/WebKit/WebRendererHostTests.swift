@@ -1,5 +1,7 @@
 import AppKit
 import Foundation
+import GLTFCore
+import simd
 import Testing
 @testable import GLTFInspector
 @testable import RendererWebKit
@@ -33,6 +35,15 @@ struct WebRendererBridgeTests {
         #expect(state.pose.azimuth == 25)
         #expect(state.sceneCenter == [0, 1, 0])
         #expect(state.isMeasurable && state.pose.isFinite)
+        let front = state.distance(framing: .front)
+        let expected = Double(
+            RenderCamera.fitDistance(
+                extent: SIMD3<Float>(2, 2, 2),
+                toCamera: RenderCamera.lookDirection(azimuthDegrees: 0, elevationDegrees: 0),
+                fieldOfViewInDegrees: Float(0.78 * 180 / .pi)
+            )
+        )
+        #expect(abs(front - expected) < 0.0001)
     }
 }
 

@@ -142,3 +142,7 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - C2 leftover: `OutlinerTree.treeIdentity` still flattens folding roots once per `OutlinerList` body for `onChange`. `sections` is now computed once; dropping the flatten would need a cheaper identity.
 - C8b host `CanvasStatusView` / PreviewView loading branches: host lane, not this tree.
 - C7 mock store: `[String: any Sendable]` does not compile (`as? any Sendable` is a marker-protocol cast). Uses `[String: Any]` instead.
+
+## W4 webkit-bugs
+
+- Clip transport bar on animated WebKit windows is a deliberate `RendererFeature.animationPlayback` gap, not a missing overlay. `WebPreviewCanvas.features` omits `.animationPlayback`; `RendererAvailability.hasAnimations` is then false and PreviewUI hides `PlaybackBar`. The Khronos page has no clip transport API, so do not add a fake bar. Implement playback (page clock + `RendererFeature.animationPlayback`) before showing transport.

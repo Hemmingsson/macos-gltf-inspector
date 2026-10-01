@@ -189,7 +189,73 @@ function fitCamera() {
     scene.applyTransformHierarchy(state.gltf);
     state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
     if (!centerModel) includeOriginInFraming();
+    applySharedFitDistance();
     applyProjection();
+}
+
+/**
+ * Khronos `fitDistanceToExtents` fills the XY box with no margin. RealityKit Fit uses a
+ * projected AABB + near-face depth + 1.02 padding (`RenderCamera.fitDistance`). Same numbers.
+ */
+const FIT_PADDING = 1.02;
+
+function clamp(value, lo, hi) {
+    return Math.min(hi, Math.max(lo, value));
+}
+
+function sharedFitDistance(extent, toCamera, aspect, fovDeg, padding) {
+    const len = Math.hypot(toCamera[0], toCamera[1], toCamera[2]);
+    const dir = len > 1e-4
+        ? [toCamera[0] / len, toCamera[1] / len, toCamera[2] / len]
+        : [0, 0, 1];
+    const forward = [-dir[0], -dir[1], -dir[2]];
+    let right = [-forward[2], 0, forward[0]];
+    const rightLen = Math.hypot(right[0], right[1], right[2]);
+    right = rightLen < 1e-4 ? [1, 0, 0] : right.map((v) => v / rightLen);
+    const up = [
+        right[1] * forward[2] - right[2] * forward[1],
+        right[2] * forward[0] - right[0] * forward[2],
+        right[0] * forward[1] - right[1] * forward[0],
+    ];
+    const upLen = Math.hypot(up[0], up[1], up[2]);
+    const upN = up.map((v) => v / upLen);
+    const half = extent.map((e) => e * 0.5);
+    const projectedHalf = (axis) =>
+        Math.abs(axis[0]) * half[0] + Math.abs(axis[1]) * half[1] + Math.abs(axis[2]) * half[2];
+    const safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : 1;
+    const vHalf = clamp(fovDeg, 15, 90) * Math.PI / 360;
+    const hHalf = Math.atan(Math.tan(vHalf) * safeAspect);
+    const distanceV = projectedHalf(upN) / Math.tan(vHalf);
+    const distanceH = projectedHalf(right) / Math.tan(hHalf);
+    const distance = Math.max(distanceV, distanceH) + projectedHalf(forward);
+    return Math.max(0.0001, distance * padding);
+}
+
+function applySharedFitDistance() {
+    const camera = state.userCamera;
+    const min = camera.sceneExtents.min;
+    const max = camera.sceneExtents.max;
+    if (!min || !max) return;
+    const extent = [0, 1, 2].map((i) => max[i] - min[i]);
+    const position = camera.getPosition();
+    const look = camera.getLookDirection();
+    const current = camera.distance;
+    const target = [0, 1, 2].map((i) => position[i] + look[i] * current);
+    const azimuth = camera.rotAroundY * 180 / Math.PI;
+    const elevation = camera.rotAroundX * 180 / Math.PI;
+    const az = azimuth * Math.PI / 180;
+    const el = elevation * Math.PI / 180;
+    const toCamera = [
+        Math.sin(az) * Math.cos(el),
+        -Math.sin(el),
+        Math.cos(az) * Math.cos(el),
+    ];
+    const aspect = canvas.height > 0 ? canvas.width / canvas.height : 1;
+    const fovDeg = camera.perspective.yfov * 180 / Math.PI;
+    const distance = sharedFitDistance(extent, toCamera, aspect, fovDeg, FIT_PADDING);
+    if (!Number.isFinite(distance)) return;
+    camera.setDistanceFromTarget(distance, target);
+    camera.baseDistance = distance;
 }
 
 /**
@@ -625,6 +691,9 @@ window.__viewer = {
         let firstFrameMs = 0;
         if (live) {
             resize();
+            // Layout can change the aspect after the pre-resize fit; restate the shared rule.
+            applySharedFitDistance();
+            applyProjection();
             // `loadGltf` is CPU. The long blank after it is this first GPU frame (program link +
             // texture upload); doing it here keeps Swift's spinner up until it is done.
             firstFrameMs = Math.round(drawFrame());
