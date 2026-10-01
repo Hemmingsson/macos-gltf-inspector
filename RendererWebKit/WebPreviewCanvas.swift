@@ -33,11 +33,8 @@ private struct WebCanvasLoadingChrome: View {
     }
 }
 
-/// The document window's model canvas, rendered by the shared web renderer.
-///
-/// First step of the viewport migration: this replaces `PreviewScene`'s `RealityView` as the
-/// thing that draws the model. Sidebar, inspector and overlays still read the RealityKit
-/// document — decoupling those is `SceneModel from glTF JSON`, a separate task.
+/// The model canvas of a WebKit document window and Quick Look preview: the shared web page,
+/// mounted through an owner-held `WebCanvasController`.
 public struct WebPreviewCanvas: NSViewRepresentable {
     let url: URL
     var look = Look()
