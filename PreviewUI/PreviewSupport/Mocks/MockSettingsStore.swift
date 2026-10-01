@@ -31,11 +31,6 @@ public final class MockSettingsStore: SettingsStore {
         write(value, for: key, bool: &sessionBool, backdrop: &sessionBackdrop, projection: &sessionProjection, string: &sessionString)
     }
 
-    public func promoteToDefault<Value>(_ key: SettingKey<Value>) {
-        let value = sessionValue(for: key)
-        write(value, for: key, bool: &defaultsBool, backdrop: &defaultsBackdrop, projection: &defaultsProjection, string: &defaultsString)
-    }
-
     public func clearSession() {
         sessionBool.removeAll()
         sessionBackdrop.removeAll()

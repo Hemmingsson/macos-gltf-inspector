@@ -48,18 +48,6 @@ final class EngineSettingsStore: SettingsStore {
         writeSession(value, for: key)
     }
 
-    func promoteToDefault<Value>(_ key: SettingKey<Value>) {
-        if Self.isSessionOnly(key) {
-            return
-        }
-        let value = sessionValue(for: key)
-        if EngineAppLookRouting.isAppLookKey(key) {
-            EngineAppLookRouting.write(value, for: key, to: lookStore)
-            return
-        }
-        defaultsStore.set(value, for: key)
-    }
-
     func clearSession() {
         sessionBool.removeAll()
         sessionBackdrop.removeAll()
