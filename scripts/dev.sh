@@ -4,6 +4,7 @@
 #   ./scripts/dev.sh build
 #   ./scripts/dev.sh install              # → .build/glTF Inspector.app (+ /Applications on main)
 #   ./scripts/dev.sh test [-only-testing:…]  # xcodebuild test into this branch's DerivedData
+#   ./scripts/dev.sh uitest [-only-testing:…] # opt-in XCUITest flows (steals focus) → .build/uitest.xcresult
 #   ./scripts/dev.sh run [fixture]        # install + launch fixture (default: cube)
 #   ./scripts/dev.sh logs                 # tail .build/logs/debug.log (or unified log stream)
 #   ./scripts/dev.sh fixtures             # list fixture ids
@@ -17,7 +18,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
 DEFAULT_FIXTURE=cube
 
 usage() {
-  sed -n '2,12p' "$0"
+  sed -n '2,13p' "$0"
 }
 
 require_xcodegen() {
@@ -43,6 +44,19 @@ dev_test() {
   DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
     xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
     -derivedDataPath "$DERIVED_DATA" test "$@"
+}
+
+# Real-window XCUITest flows (separate scheme, never part of `test`). Takes focus while it runs.
+dev_uitest() {
+  require_xcodegen
+  cd "$ROOT"
+  xcodegen generate
+  local result="$ROOT/.build/uitest.xcresult"
+  mkdir -p "$ROOT/.build"
+  rm -rf "$result"
+  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+    xcodebuild -scheme GLTFInspectorUITests -destination 'platform=macOS' \
+    -derivedDataPath "$DERIVED_DATA" -resultBundlePath "$result" test "$@"
 }
 
 # Copy the built app as signed. After a `dev.sh test` the hosted GLTFInspectorTests.xctest is
@@ -145,6 +159,9 @@ case "$cmd" in
     ;;
   test)
     dev_test "$@"
+    ;;
+  uitest)
+    dev_uitest "$@"
     ;;
   run)
     dev_run "${1:-$DEFAULT_FIXTURE}"

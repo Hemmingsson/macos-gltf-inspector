@@ -20,6 +20,17 @@ schemes:
         targets:
           - GLTFInspectorTests
 
+    # Opt-in real-window XCUITest flows (`./scripts/dev.sh uitest`); not part of `dev.sh test`.
+    GLTFInspectorUITests:
+      build:
+        targets:
+          GLTFInspector: all
+          GLTFInspectorUITests: [test]
+      test:
+        config: Debug
+        targets:
+          - GLTFInspectorUITests
+
     PreviewUI:
       build:
         targets:
@@ -424,3 +435,18 @@ targets:
         embed: false
       - target: PreviewUI
         embed: false
+
+  # Real-window flows over accessibility only (open, view modes, outliner → inspector, Settings
+  # renderer switch, launch / open-to-content metrics). Imports no renderer and no app module.
+  GLTFInspectorUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - GLTFInspectorUITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: GLTFInspector
+    dependencies:
+      - target: GLTFInspector

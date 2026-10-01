@@ -41,3 +41,14 @@ line each: what, why.
 - Left the stale `PreviewUI.Theme` mentions in `DS+Color.swift:88, 126` for C9 (stale comments, wave 3).
 - Crossed into GLTFCore for one line: `AppGroupSettings.Key.showToolbar` went with `SettingKey.showPills` (only `AppGroupSettingsTests` compared them; no other reader).
 - Deleted the `promoteToDefault` tests (`environmentKeyPromoteWritesAppLook`, `canvasPromoteWritesUserDefaults`): the App Look / UserDefaults routing they covered is still covered through `EngineAppDefaultsBridgeTests.environmentKeysWriteAppLookNotUserDefaults`.
+
+## W0b uitest
+
+- Ready signal: host-only `canvasReadyMarker` (`GLTFInspector/CanvasReadyMarker.swift`) — a 1×1 clear AX element `canvas-ready`, label = renderer raw value, present only while the canvas has content (RK: convert landed and canvas mounted; WebKit: `WebCanvasController.phase == .ready`). No PreviewUI edit. Rejected: putting it on `CanvasStatusView` (PreviewUI, and its `.ready` case is the canvas region state, which for WebKit is `.ready` before the page draws).
+- RK "ready" is convert + mount, not a proven first Metal frame; good enough for open-to-content trend, not a first-pixel number.
+- `waitForExistence` re-polls about once a second, so open-to-content polls `exists` in a tight loop instead (no sleep); otherwise numbers round up by ~1 s.
+- Open-to-content includes process launch (XCTClockMetric from `launch()`), BoxAnimated.glb, 3 iterations. First run: RK ≈ 1.15 s, WebKit ≈ 1.9 s (first iteration 2.9 s — cold page; RSD 38 %). Launch (first frame responsive) ≈ 0.40 s.
+- Settings flow can only restore the App Group renderer through the UI (the test runner cannot write the host's group suite); `tearDown` re-selects the original if the test stopped midway. Stored value read from the picker, so it works whatever the user has set.
+- Doubt: the WebKit open screenshot shows the box very close (fills the canvas) vs RK's fitted framing — looks like the page's initial camera, not a test issue; not investigated here.
+- View-mode flow ~20–27 s per renderer, mostly XCUITest menu idling; acceptable for an opt-in suite.
+- Rejected: a test plan for opt-in (a separate scheme is simpler with xcodegen and keeps `dev.sh test` untouched).
