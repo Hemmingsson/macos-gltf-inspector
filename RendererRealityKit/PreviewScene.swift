@@ -37,7 +37,6 @@ struct PreviewScene: View {
     var document: GLTFSessionDocument = GLTFSessionDocument()
     var stats: PreviewStats?
     var debugModes: [PreviewDebugMode]
-    var studioIBLExponent: Float
     @Bindable var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)?
@@ -95,7 +94,6 @@ struct PreviewScene: View {
         self.document = document
         self.stats = stats
         self.debugModes = debugModes.isEmpty ? [.none] : debugModes
-        self.studioIBLExponent = studioIBLExponent
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
