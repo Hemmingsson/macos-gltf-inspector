@@ -7,23 +7,7 @@ import SwiftUI
 /// window's convert state. Quick Look has its own RealityKit root
 /// (`PreviewExtension/QuickLookRealityKit.swift`).
 struct PreviewView: View {
-    enum State {
-        case loading
-        case ready(EntityLoader.LoadedModel)
-        /// User-visible reason. Open never waits on IBL — lighting is applied later by `PreviewScene`.
-        case failed(String)
-
-        /// Model bytes → RealityKit only. No HDR / EnvironmentResource on this path. The window
-        /// logs the one "open failed".
-        static func loaded(from url: URL) async -> State {
-            do {
-                let model = try await EntityLoader.load(from: url)
-                return .ready(model)
-            } catch {
-                return .failed(error.localizedDescription)
-            }
-        }
-    }
+    typealias State = RealityLoadState
 
     let model: EntityLoader.LoadedModel
     var interaction: PreviewInteraction

@@ -48,14 +48,17 @@ final class RealityQuickLookController: NSViewController, QLPreviewingController
         loadTask?.cancel()
         loadTask = Task.detached { [weak self] in
             await Task.yield()
-            let state = await QuickLookRealityView.State.loaded(from: url)
+            let state = await RealityLoadState.loaded(from: url)
+            if case .failed(let message) = state {
+                AppLog.error(AppLog.preview, "open failed \(url.lastPathComponent): \(message)")
+            }
             guard !Task.isCancelled else { return }
             await self?.present(state, dark: dark)
         }
     }
 
     @MainActor
-    private func present(_ state: QuickLookRealityView.State, dark: Bool) {
+    private func present(_ state: RealityLoadState, dark: Bool) {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         hostingView.rootView = QuickLookRealityView(state: state, interaction: interaction, isDark: dark)
     }
@@ -63,22 +66,7 @@ final class RealityQuickLookController: NSViewController, QLPreviewingController
 
 /// Spinner, `RealityPreviewCanvas`, or the failure message.
 struct QuickLookRealityView: View {
-    enum State {
-        case loading
-        case ready(EntityLoader.LoadedModel)
-        case failed(String)
-
-        static func loaded(from url: URL) async -> State {
-            do {
-                return .ready(try await EntityLoader.load(from: url))
-            } catch {
-                AppLog.error(AppLog.preview, "open failed \(url.lastPathComponent): \(error.localizedDescription)")
-                return .failed(error.localizedDescription)
-            }
-        }
-    }
-
-    let state: State
+    let state: RealityLoadState
     var interaction: PreviewInteraction
     var isDark: Bool
 
