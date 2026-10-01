@@ -10,6 +10,9 @@ public struct NodeRow<Selection: SelectionModel>: View {
     public var isSelected: Bool
     public var selection: Selection
 
+    /// Hit box of the visibility eye.
+    private static var eyeSize: CGFloat { 18 }
+
     @State private var isHovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -69,10 +72,7 @@ public struct NodeRow<Selection: SelectionModel>: View {
             Image(systemName: isVisible ? "eye" : "eye.slash")
                 .font(DS.Font.caption)
                 .foregroundStyle(isVisible ? DS.Color.textSecondary : DS.Color.textTertiary)
-                .frame(
-                    width: OutlinerTreeMetrics.eyeSize,
-                    height: OutlinerTreeMetrics.eyeSize
-                )
+                .frame(width: Self.eyeSize, height: Self.eyeSize)
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
