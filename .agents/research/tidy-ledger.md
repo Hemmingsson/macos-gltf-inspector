@@ -142,3 +142,10 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - C2 leftover: `OutlinerTree.treeIdentity` still flattens folding roots once per `OutlinerList` body for `onChange`. `sections` is now computed once; dropping the flatten would need a cheaper identity.
 - C8b host `CanvasStatusView` / PreviewView loading branches: host lane, not this tree.
 - C7 mock store: `[String: any Sendable]` does not compile (`as? any Sendable` is a marker-protocol cast). Uses `[String: Any]` instead.
+
+## W4 host-ui
+
+- `LightingSettings` still defaults environment/tone to `.neutral` (memberwise + `.standard`). Reset View now seeds from `environmentCatalog` / `toneMapping` app defaults; other `LightingSettings(...)` call sites that omit those args still get Neutral. Left as the type default.
+- `ViewModeMenuChrome.interpolatesTitle` is a contract flag for the unit test, not a ViewInspector of the modifier. No XCUITest / settled screenshot (parent: no XCUITest, no focus steal). The real snap is `.contentTransition(.identity)` + `.transaction { $0.animation = nil }` on `DSGlassMenuButton` titled `Text` (also stops clip-name interpolation).
+- Emissive strength is JSON → `GLTFSessionDocument.Material` → `EngineSceneModel` → `MaterialInfo` only. RealityKit convert already reads GLTFKit2's `emissiveStrength`; not re-plumbed.
+- No real-window check for Reset View or the inspector row (no `/Applications`, no focus steal).
