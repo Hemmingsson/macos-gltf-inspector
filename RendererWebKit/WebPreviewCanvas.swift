@@ -2,36 +2,6 @@ import AppKit
 import GLTFCore
 import SwiftUI
 
-/// Centered spinner + honest file facts while the live web view stays hidden.
-private struct WebCanvasLoadingChrome: View {
-    var title: String
-    var detail: String?
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ProgressView()
-                .controlSize(.regular)
-                .progressViewStyle(.circular)
-                .accessibilityHidden(true)
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-            if let detail {
-                Text(detail)
-                    .font(.system(size: 11))
-                    .opacity(0.7)
-            }
-        }
-        .foregroundStyle(.primary)
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Cover the live view so a compiling/empty canvas cannot show through.
-        .background(Color(nsColor: .windowBackgroundColor))
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel([title, detail].compactMap { $0 }.joined(separator: ". "))
-    }
-}
-
 /// The model canvas of a WebKit document window and Quick Look preview: the shared web page,
 /// mounted through an owner-held `WebCanvasController`.
 public struct WebPreviewCanvas: NSViewRepresentable {

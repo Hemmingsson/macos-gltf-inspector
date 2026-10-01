@@ -1,5 +1,38 @@
-import Foundation
+import AppKit
 import GLTFCore
+import SwiftUI
+
+// First-paint status for the web canvas: the chrome, its copy, and the JSON counts behind it.
+
+/// Centered spinner + honest file facts while the live web view stays hidden.
+struct WebCanvasLoadingChrome: View {
+    var title: String
+    var detail: String?
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.regular)
+                .progressViewStyle(.circular)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+            if let detail {
+                Text(detail)
+                    .font(.system(size: 11))
+                    .opacity(0.7)
+            }
+        }
+        .foregroundStyle(.primary)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Cover the live view so a compiling/empty canvas cannot show through.
+        .background(Color(nsColor: .windowBackgroundColor))
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel([title, detail].compactMap { $0 }.joined(separator: ". "))
+    }
+}
 
 /// Counts from the glTF JSON header only — no BIN, no ImageIO.
 struct WebRendererAssetInventory: Equatable, Sendable {
