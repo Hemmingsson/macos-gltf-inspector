@@ -50,15 +50,15 @@ public struct WebPreviewCanvas: NSViewRepresentable {
     /// Live host already constructed (Quick Look `loadView` prestart). Nil in the document window.
     var host: WebRendererHost? = nil
     /// Owner-held controller: phase, camera commands, and a page that survives a remount of this
-    /// view. Nil gives the canvas a private controller that dies with the view.
-    var controller: WebCanvasController? = nil
+    /// view.
+    let controller: WebCanvasController
 
     public init(
         url: URL,
         look: Look = Look(),
         placeholderImage: NSImage? = nil,
         host: WebRendererHost? = nil,
-        controller: WebCanvasController? = nil
+        controller: WebCanvasController
     ) {
         self.url = url
         self.look = look
@@ -68,7 +68,7 @@ public struct WebPreviewCanvas: NSViewRepresentable {
     }
 
     public func makeCoordinator() -> WebCanvasController {
-        controller ?? WebCanvasController(outlivesMount: false)
+        controller
     }
 
     public func makeNSView(context: Context) -> NSView {
@@ -84,10 +84,6 @@ public struct WebPreviewCanvas: NSViewRepresentable {
         context.coordinator.reload(url: url, look: look)
     }
 
-    public static func dismantleNSView(_ nsView: NSView, coordinator: WebCanvasController) {
-        coordinator.detach(from: nsView)
-    }
-
     /// Plain container so the web view can be swapped without SwiftUI rebuilding the hierarchy.
     final class ContainerView: NSView {
         override var isFlipped: Bool { true }
@@ -96,7 +92,7 @@ public struct WebPreviewCanvas: NSViewRepresentable {
 
 /// Drives one live web canvas: load, look, camera commands, and the load phase its owner routes on.
 ///
-/// An owner that keeps the controller (document window, Quick Look) gets two things: `phase`
+/// The owner (document window, Quick Look) keeps the controller and gets two things: `phase`
 /// to end in its own `.failed(message)` state, and a page that survives a SwiftUI remount of
 /// `WebPreviewCanvas` — the next mount adopts the running `WKWebView` instead of starting a new one.
 @MainActor
@@ -112,9 +108,7 @@ public final class WebCanvasController {
 
     public private(set) var phase: Phase = .loading
 
-    @ObservationIgnored private let outlivesMount: Bool
     @ObservationIgnored private(set) var host: WebRendererHost?
-    @ObservationIgnored private weak var container: NSView?
     @ObservationIgnored private var loaded: URL?
     @ObservationIgnored private var appliedLook: WebPreviewCanvas.Look?
     @ObservationIgnored private var work: Task<Void, Never>?
@@ -126,13 +120,7 @@ public final class WebCanvasController {
     @ObservationIgnored private var restartedFor: URL?
 
     /// A controller the caller holds across mounts.
-    public convenience init() {
-        self.init(outlivesMount: true)
-    }
-
-    init(outlivesMount: Bool) {
-        self.outlivesMount = outlivesMount
-    }
+    public init() {}
 
     // MARK: - Camera commands (the mounted canvas's half of the host's canvas commands)
 
@@ -174,7 +162,6 @@ public final class WebCanvasController {
         placeholder: NSImage?,
         existing: WebRendererHost?
     ) {
-        self.container = container
         if let host {
             // Remount of an owner-held controller: move the running page into the new view.
             for view in [placeholderView, host.view, loadingHost].compactMap({ $0 }) {
@@ -218,26 +205,6 @@ public final class WebCanvasController {
         } catch {
             fail(error, loading: url)
         }
-    }
-
-    /// `dismantleNSView`. A controller its owner keeps stays running for the next mount; a
-    /// private one tears down with its view.
-    func detach(from container: NSView) {
-        guard !outlivesMount, self.container === container else { return }
-        if let host {
-            AppLog.info(
-                AppLog.webRenderer,
-                "viewport dismantle \(loaded?.lastPathComponent ?? "-") host=\(host.logID) revealed=\(didRevealLive) uptimeMs=\(WebRendererHost.uptimeMs())"
-            )
-        }
-        work?.cancel()
-        work = nil
-        host = nil
-        appliedLook = nil
-        placeholderView = nil
-        loadingHost?.removeFromSuperview()
-        loadingHost = nil
-        didRevealLive = false
     }
 
     /// `updateNSView` runs on every SwiftUI pass, so an unchanged model and look touch nothing.
