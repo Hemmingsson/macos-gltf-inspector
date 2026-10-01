@@ -38,16 +38,19 @@ struct RealityDocumentWindow: View {
             morphTargets: morphTargets,
             onSetMorphWeight: applyMorphWeight
         ) {
-            HostPreviewContainer(
-                state: convert,
-                interaction: interaction,
-                isDark: colorScheme == .dark,
-                sidebar: window.sidebar,
-                overlayRevision: window.sidebar?.overlayRevision ?? 0,
-                session: window.previewSession.bindings(debugModes: loadedModel?.debugModes ?? []),
-                commands: realityCommands,
-                registerCommands: { window.engineViewport.commands = $0 }
-            )
+            // Mounted by `CanvasRegion` only while `canvasState` is `.ready`, i.e. convert landed.
+            if let loadedModel {
+                HostPreviewContainer(
+                    model: loadedModel,
+                    interaction: interaction,
+                    isDark: colorScheme == .dark,
+                    sidebar: window.sidebar,
+                    overlayRevision: window.sidebar?.overlayRevision ?? 0,
+                    session: window.previewSession.bindings(debugModes: loadedModel.debugModes),
+                    commands: realityCommands,
+                    registerCommands: { window.engineViewport.commands = $0 }
+                )
+            }
         }
         .onAppear {
             if let documentURL {

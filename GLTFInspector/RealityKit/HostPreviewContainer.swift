@@ -4,7 +4,7 @@ import SwiftUI
 /// Hosts the RealityKit `PreviewView` in a `PreviewHostingView`, which forwards trackpad
 /// scroll / magnify and orbit drags into `PreviewInteraction`.
 struct HostPreviewContainer: NSViewRepresentable {
-    var state: PreviewView.State
+    var model: EntityLoader.LoadedModel
     var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: HostSidebarModel?
@@ -16,7 +16,7 @@ struct HostPreviewContainer: NSViewRepresentable {
 
     private var rootView: PreviewView {
         PreviewView(
-            state: state,
+            model: model,
             interaction: interaction,
             isDark: isDark,
             sidebar: sidebar,
