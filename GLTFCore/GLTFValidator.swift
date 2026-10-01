@@ -25,17 +25,6 @@ public struct GLTFValidationReport: Sendable, Equatable {
 
     /// Green badge when there are no errors or warnings (infos/hints OK).
     public var isClean: Bool { errorCount == 0 && warningCount == 0 }
-
-    /// Orange badge count — errors + warnings.
-    public var badgeCount: Int { errorCount + warningCount }
-
-    public var badgeTitle: String {
-        if isClean { return "Valid glTF 2.0" }
-        if errorCount > 0 {
-            return badgeCount == 1 ? "1 issue" : "\(badgeCount) issues"
-        }
-        return warningCount == 1 ? "1 warning" : "\(warningCount) warnings"
-    }
 }
 
 /// Host sidebar outcome — success report, soft failure, or intentional skip.
@@ -43,14 +32,6 @@ public enum GLTFValidationState: Sendable, Equatable {
     case success(GLTFValidationReport)
     case failed(String)
     case skipped(String)
-
-    public var badgeTitle: String {
-        switch self {
-        case .success(let report): report.badgeTitle
-        case .failed(let message): message
-        case .skipped(let message): message
-        }
-    }
 
     public var report: GLTFValidationReport? {
         if case .success(let report) = self { return report }
@@ -61,7 +42,6 @@ public enum GLTFValidationState: Sendable, Equatable {
 /// Runs the official Khronos `gltf-validator` (Dart→JS) inside `JavaScriptCore`.
 /// Does not block model open — call after first paint.
 public enum GLTFValidator {
-    private static let scriptName = "gltf_validator.dart.js"
     private static let queue = DispatchQueue(label: "lol.mattias.gltf-inspector.gltf-validator", qos: .utility)
 
     /// Raw file/byte ceiling before base64→JavaScriptCore.
@@ -216,22 +196,10 @@ public enum GLTFValidator {
 
     private static func loadScriptSource() throws -> String {
         // GLTFCore owns the script; `Bundle.main` is the host app or an appex, never this framework.
-        if let url = Bundle(for: BundleToken.self).url(forResource: "gltf_validator.dart", withExtension: "js") {
-            return try String(contentsOf: url, encoding: .utf8)
+        guard let url = Bundle(for: BundleToken.self).url(forResource: "gltf_validator.dart", withExtension: "js") else {
+            throw Error.scriptMissing
         }
-        // Worktree / test without copied resource: Vendor path next to sources.
-        let candidates = [
-            URL(fileURLWithPath: #filePath)
-                .deletingLastPathComponent()
-                .deletingLastPathComponent()
-                .appendingPathComponent("Vendor/gltf-validator/\(scriptName)"),
-            URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-                .appendingPathComponent("Vendor/gltf-validator/\(scriptName)"),
-        ]
-        for url in candidates where FileManager.default.fileExists(atPath: url.path) {
-            return try String(contentsOf: url, encoding: .utf8)
-        }
-        throw Error.scriptMissing
+        return try String(contentsOf: url, encoding: .utf8)
     }
 
     private static func parseReport(_ root: [String: Any]) throws -> GLTFValidationReport {

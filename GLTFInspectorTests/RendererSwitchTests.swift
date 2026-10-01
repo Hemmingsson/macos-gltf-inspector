@@ -21,11 +21,11 @@ struct RendererSwitchTests {
             #expect(AppGroupSettings.Key.renderer == "settings.preview.renderer")
             #expect(RendererKind.stored(in: defaults) == .realityKit)
 
-            RendererKind.store(.webKit, in: defaults)
+            defaults.set(RendererKind.webKit.rawValue, forKey: AppGroupSettings.Key.renderer)
             #expect(defaults.string(forKey: "settings.preview.renderer") == "webkit")
             #expect(RendererKind.stored(in: defaults) == .webKit)
 
-            RendererKind.store(.realityKit, in: defaults)
+            defaults.set(RendererKind.realityKit.rawValue, forKey: AppGroupSettings.Key.renderer)
             #expect(RendererKind.stored(in: defaults) == .realityKit)
 
             defaults.set("metal", forKey: AppGroupSettings.Key.renderer)

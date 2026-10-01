@@ -14,7 +14,6 @@ public enum AppLog {
     public static let load = Logger(subsystem: subsystem, category: "load")
     public static let preview = Logger(subsystem: subsystem, category: "preview")
     public static let thumbnail = Logger(subsystem: subsystem, category: "thumbnail")
-    public static let prepare = Logger(subsystem: subsystem, category: "prepare")
     public static let lighting = Logger(subsystem: subsystem, category: "lighting")
     public static let host = Logger(subsystem: subsystem, category: "host")
     /// Everything rendered through WebKit — host, bridge and resource serving.
