@@ -79,20 +79,6 @@ extension GLTFCore.CameraPreset {
     }
 }
 
-extension PreviewUI.CameraPreset {
-    init(_ preset: GLTFCore.CameraPreset) {
-        switch preset {
-        case .front: self = .front
-        case .back: self = .back
-        case .left: self = .left
-        case .right: self = .right
-        case .top: self = .top
-        case .bottom: self = .bottom
-        case .isometric: self = .isometric
-        }
-    }
-}
-
 extension RenderLook.ToneMapping {
     init(_ toneMapping: ToneMapping) {
         switch toneMapping {
