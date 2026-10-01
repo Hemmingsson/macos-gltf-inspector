@@ -55,10 +55,10 @@ public struct PreviewStats: Equatable {
     public var overlayFacts: [Row] {
         var lines: [Row] = []
         if triangleCount > 0 {
-            lines.append(Row(label: "triangles", value: compact(triangleCount)))
+            lines.append(Row(label: "triangles", value: Self.compactCount(triangleCount)))
         }
         if vertexCount > 0 {
-            lines.append(Row(label: "vertices", value: compact(vertexCount)))
+            lines.append(Row(label: "vertices", value: Self.compactCount(vertexCount)))
         }
         if textureCount > 0 {
             let value = maxTextureEdge.map { "\(textureCount) · max \($0)²" } ?? "\(textureCount)"
@@ -214,7 +214,8 @@ public struct PreviewStats: Equatable {
         return GLBBox.intValue(accessors[index]["count"]) ?? 0
     }
 
-    private func compact(_ value: Int) -> String {
+    /// `1234` → `1.2k`, `2_000_000` → `2M`; below 1000 the plain count.
+    public static func compactCount(_ value: Int) -> String {
         let magnitude = abs(value)
         if magnitude < 1000 {
             return "\(value)"
@@ -225,7 +226,7 @@ public struct PreviewStats: Equatable {
         return trimCompact(Double(value) / 1_000_000, suffix: "M")
     }
 
-    private func trimCompact(_ value: Double, suffix: String) -> String {
+    private static func trimCompact(_ value: Double, suffix: String) -> String {
         if abs(value.rounded() - value) < 0.05 {
             return String(format: "%.0f%@", value.rounded(), suffix)
         }

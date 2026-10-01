@@ -46,7 +46,7 @@ enum WebRendererLoadCopy {
             return "Loading \(inventory.meshCount) meshes…"
         }
         if inventory.triangleCount > 0 {
-            return "Loading \(compact(inventory.triangleCount)) triangles…"
+            return "Loading \(PreviewStats.compactCount(inventory.triangleCount)) triangles…"
         }
         if inventory.materialCount > 1 {
             return "Loading \(inventory.materialCount) materials…"
@@ -63,27 +63,9 @@ enum WebRendererLoadCopy {
                 parts.append(inventory.meshCount == 1 ? "1 mesh" : "\(inventory.meshCount) meshes")
             }
             if inventory.triangleCount > 0 {
-                parts.append("\(compact(inventory.triangleCount)) triangles")
+                parts.append("\(PreviewStats.compactCount(inventory.triangleCount)) triangles")
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
-    private static func compact(_ value: Int) -> String {
-        let magnitude = abs(value)
-        if magnitude < 1000 {
-            return "\(value)"
-        }
-        if magnitude < 1_000_000 {
-            return trimCompact(Double(value) / 1000, suffix: "k")
-        }
-        return trimCompact(Double(value) / 1_000_000, suffix: "M")
-    }
-
-    private static func trimCompact(_ value: Double, suffix: String) -> String {
-        if abs(value.rounded() - value) < 0.05 {
-            return String(format: "%.0f%@", value.rounded(), suffix)
-        }
-        return String(format: "%.1f%@", value, suffix)
     }
 }
