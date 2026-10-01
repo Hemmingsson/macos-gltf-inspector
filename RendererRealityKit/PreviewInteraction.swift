@@ -252,7 +252,6 @@ public enum PreviewOrbitDragMonitor {
     public static func install(
         on view: NSView,
         interaction: @escaping () -> PreviewInteraction?,
-        hitTestBounds: Bool,
         storage: inout Any?
     ) {
         if let storage {
@@ -265,18 +264,16 @@ public enum PreviewOrbitDragMonitor {
         ) { event in
             guard event.window === view.window else { return event }
             let panning = interaction()?.isPanning == true
-            if hitTestBounds {
-                // A full-bleed canvas sits *under* the sidebar / inspector / pills, so a bounds
-                // check alone would swallow e.g. a Shift-click on a sidebar row as a pan. Only
-                // take events whose topmost hit view is the canvas (or inside it); a pan that
-                // already started keeps its drags/up wherever the pointer goes.
-                let hitsCanvas = Self.topmostHit(for: event, in: view)
-                if !hitsCanvas, !(panning && event.type != .leftMouseDown) {
-                    if event.type == .leftMouseUp {
-                        interaction()?.notePointerUp()
-                    }
-                    return event
+            // A full-bleed canvas sits *under* the sidebar / inspector / pills, so a bounds
+            // check alone would swallow e.g. a Shift-click on a sidebar row as a pan. Only
+            // take events whose topmost hit view is the canvas (or inside it); a pan that
+            // already started keeps its drags/up wherever the pointer goes.
+            let hitsCanvas = Self.topmostHit(for: event, in: view)
+            if !hitsCanvas, !(panning && event.type != .leftMouseDown) {
+                if event.type == .leftMouseUp {
+                    interaction()?.notePointerUp()
                 }
+                return event
             }
             let shifting = event.modifierFlags.contains(.shift)
             switch event.type {

@@ -34,7 +34,6 @@ public final class PreviewHostingView<Content: View>: NSHostingView<Content> {
         PreviewOrbitDragMonitor.install(
             on: self,
             interaction: { [weak self] in self?.interaction },
-            hitTestBounds: true,
             storage: &mouseMonitor
         )
     }
