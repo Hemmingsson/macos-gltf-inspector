@@ -5,7 +5,7 @@ import Observation
 @MainActor
 @Observable
 public final class MockSettingsDefaultsStore: SettingsDefaultsStore {
-    private var values: [String: any Sendable] = [:]
+    private var values: [String: Any] = [:]
 
     public init() {}
 
@@ -14,7 +14,6 @@ public final class MockSettingsDefaultsStore: SettingsDefaultsStore {
     }
 
     public func set<Value>(_ value: Value, for key: SettingKey<Value>) {
-        guard let sendable = value as? any Sendable else { return }
-        values[key.name] = sendable
+        values[key.name] = value
     }
 }

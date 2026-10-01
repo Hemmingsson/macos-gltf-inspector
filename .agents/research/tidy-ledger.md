@@ -112,3 +112,4 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - C5 `MaterialInfo.emissiveStrength`: deleted as unread (host never set it). Restore from bug ticket `ijomk3wf` if the inspector should show KHR_materials_emissive_strength.
 - C2 leftover: `OutlinerTree.treeIdentity` still flattens folding roots once per `OutlinerList` body for `onChange`. `sections` is now computed once; dropping the flatten would need a cheaper identity.
 - C8b host `CanvasStatusView` / PreviewView loading branches: host lane, not this tree.
+- C7 mock store: `[String: any Sendable]` does not compile (`as? any Sendable` is a marker-protocol cast). Uses `[String: Any]` instead.
