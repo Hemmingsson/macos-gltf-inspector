@@ -24,37 +24,27 @@ extension EntityLoader.LoadedModel {
     }
 
     /// Same document, stats and reports on a newly converted scene (host scene switch).
-    @MainActor
-    public func replacingScene(_ scene: EntityLoader.ConvertedScene) -> EntityLoader.LoadedModel {
-        EntityLoader.LoadedModel(
-            entity: scene.entity,
+    public func switchingScene(
+        to index: Int,
+        from url: URL,
+        includeAnimations: Bool = true,
+        materialVariantIndex: Int? = nil
+    ) async throws -> EntityLoader.LoadedModel {
+        let build = try await EntityLoader.convertScene(
+            index: index,
+            from: url,
+            includeAnimations: includeAnimations,
+            materialVariantIndex: materialVariantIndex
+        )
+        return EntityLoader.LoadedModel(
+            entity: build.entity,
             stats: stats,
             document: document,
             debugModes: debugModes,
-            studioIBLExponent: RealityPolicy.studioIBLExponent(
-                punctualLightCount: EntityLoader.punctualLightCount(in: scene.entity)
-            ),
+            studioIBLExponent: build.studioIBLExponent,
             pipelineReport: pipelineReport,
             convertProblems: convertProblems,
             materialVariantNames: materialVariantNames
-        )
-    }
-}
-
-extension EntityLoader {
-    /// One converted scene, held opaquely until `LoadedModel.replacingScene` adopts it.
-    public struct ConvertedScene {
-        let entity: Entity
-    }
-
-    /// `convertScene` wrapped for the host scene switch.
-    public static func loadScene(
-        index: Int,
-        from url: URL,
-        materialVariantIndex: Int? = nil
-    ) async throws -> ConvertedScene {
-        ConvertedScene(
-            entity: try await convertScene(index: index, from: url, materialVariantIndex: materialVariantIndex)
         )
     }
 }

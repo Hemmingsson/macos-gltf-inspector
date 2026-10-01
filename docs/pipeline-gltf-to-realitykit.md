@@ -6,9 +6,10 @@ RealityKit pixel-diff goldens all go through it. With the WebKit renderer none o
 [`pipeline-web-renderer.md`](pipeline-web-renderer.md).
 
 Everything here lives in the `RendererRealityKit` framework, the only target that links GLTFKit2
-and DracoSwift. Entry points: `EntityLoader.load(from:)` / `loadThumbnail(from:)` /
-`convertScene(index:from:)` in `RendererRealityKit/EntityLoader.swift`. Convert core:
-`RealityKitConvert` in `RendererRealityKit/Convert/`.
+and DracoSwift. Entry points: `EntityLoader.load(from:)` / `loadThumbnail(from:)` in
+`RendererRealityKit/EntityLoader.swift`, and `LoadedModel.switchingScene(to:from:)` in
+`RendererRealityKit/LoadedModel+Host.swift`. Convert core: `RealityKitConvert` in
+`RendererRealityKit/Convert/`.
 
 The file is never rewritten. There is no temp GLB, no prepare pass and no retry layer: GLTFKit2
 parses the file as authored, one in-place asset edit (spec-gloss) runs, and convert maps the asset
@@ -31,7 +32,7 @@ flowchart LR
   N --> V{"Any ModelComponent?"}
   V -->|no| F(["1022"])
   V -->|yes| AN["Animations in their own GLBTry"]
-  AN --> R["BuildResult<br/>entity · problems · emissive drop"]
+  AN --> R["BuildResult<br/>entity · problems · emissive drop · studio IBL"]
   R --> LM["LoadedModel / ThumbnailModel"]
   IO -. "authored JSON" .-> LM
 ```
@@ -74,8 +75,9 @@ Then, still off the main actor:
 ## 3 Build (MainActor)
 
 `RealityKitConvert.build(scene:asset:maxTextureEdge:)` returns a `BuildResult { entity, problems,
-droppedBakedEmissive }` — no static state, so window, Quick Look and thumbnail loads in one process
-never see each other's problems.
+droppedBakedEmissive, studioIBLExponent }` — no static state, so window, Quick Look and thumbnail
+loads in one process never see each other's problems. Lights are counted while converting nodes;
+load and scene switch reuse that exponent instead of walking the entity.
 
 1. Nodes, meshes, materials, lights and cameras convert inside one `GLBTry` (an ObjC exception →
    **1023**). Zero `ModelComponent`s → **1022**.
@@ -170,7 +172,7 @@ The −2 EV dim was re-checked after the ×591 light fix: without it the file li
 | `entity` | `BuildResult.entity` |
 | `stats`, `debugModes` | authored JSON |
 | `document`, `materialVariantNames` | authored JSON (`GLTFDocumentJSON`) |
-| `studioIBLExponent` | `RealityPolicy.studioIBLExponent(punctualLightCount:)` |
+| `studioIBLExponent` | `BuildResult.studioIBLExponent` (counted while converting lights) |
 | `pipelineReport` | spec-gloss / Draco / emissive drop / studio dim + `extensionsUsed` |
 | `convertProblems` | `BuildResult.problems` + ignored extensions |
 
@@ -188,9 +190,10 @@ Three honesty voices:
 
 ## Scene switch and variants (host)
 
-`convertScene(index:from:materialVariantIndex:)` re-reads and re-parses from disk (no asset cache)
-and builds one scene. The host keeps the first load's document, stats and reports; the studio
-exponent is recomputed from the new entity. A variant change runs a full `load`.
+`LoadedModel.switchingScene(to:from:materialVariantIndex:)` re-reads and re-parses from disk (no
+asset cache) and builds one scene. The host keeps the first load's document, stats and reports;
+the studio exponent comes from convert (`BuildResult.studioIBLExponent`). A variant change runs a
+full `load`.
 
 ---
 

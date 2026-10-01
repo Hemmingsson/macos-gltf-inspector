@@ -32,18 +32,6 @@ public enum EntityLoader {
         var timings = ConvertTimings()
     }
 
-    @MainActor
-    static func punctualLightCount(in entity: Entity) -> Int {
-        var count = 0
-        if entity.components[PointLightComponent.self] != nil { count += 1 }
-        if entity.components[SpotLightComponent.self] != nil { count += 1 }
-        if entity.components[DirectionalLightComponent.self] != nil { count += 1 }
-        for child in entity.children {
-            count += punctualLightCount(in: child)
-        }
-        return count
-    }
-
     /// The file as authored: its JSON (sidebar document, overlay stats, debug modes, report) and
     /// the directory GLTFKit2 resolves sidecar buffers and images against.
     private struct Source {
@@ -112,13 +100,11 @@ public enum EntityLoader {
                 materialVariantIndex: nil,
                 maxTextureEdge: maxTextureEdge
             )
-            let entity = converted.entity
-            let exponent = await MainActor.run {
-                RealityPolicy.studioIBLExponent(
-                    punctualLightCount: punctualLightCount(in: entity)
-                )
-            }
-            return ThumbnailModel(entity: entity, studioIBLExponent: exponent, timings: converted.build.timings)
+            return ThumbnailModel(
+                entity: converted.entity,
+                studioIBLExponent: converted.build.studioIBLExponent,
+                timings: converted.build.timings
+            )
         }
     }
 
@@ -129,14 +115,14 @@ public enum EntityLoader {
         from url: URL,
         includeAnimations: Bool = true,
         materialVariantIndex: Int? = nil
-    ) async throws -> Entity {
+    ) async throws -> RealityKitConvert.BuildResult {
         try await withSource(url) { source in
             try await convertAsset(
                 source,
                 includeAnimations: includeAnimations,
                 sceneIndex: index,
                 materialVariantIndex: materialVariantIndex
-            ).entity
+            ).build
         }
     }
 
@@ -189,9 +175,7 @@ public enum EntityLoader {
     ) -> LoadedModel {
         let entity = build.entity
         var report = pipelineReport
-        let exponent = RealityPolicy.studioIBLExponent(
-            punctualLightCount: punctualLightCount(in: entity)
-        )
+        let exponent = build.studioIBLExponent
         report.dimmedStudioIBL = exponent < 0
         report.droppedBakedEmissive = build.droppedBakedEmissive
         let convertProblems = build.problems

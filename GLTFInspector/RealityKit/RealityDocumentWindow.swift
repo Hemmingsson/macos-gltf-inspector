@@ -248,16 +248,15 @@ struct RealityDocumentWindow: View {
         let variantIndex = sidebar.selectedMaterialVariantIndex
         Task {
             do {
-                let scene = try await EntityLoader.loadScene(
-                    index: index,
+                guard case .ready(let model) = convert else { return }
+                let reloaded = try await model.switchingScene(
+                    to: index,
                     from: url,
                     materialVariantIndex: variantIndex
                 )
                 guard window.isCurrent(generation) else { return }
-                guard case .ready(let model) = convert else { return }
                 sidebar.showAll()
                 interaction = PreviewInteraction()
-                let reloaded = model.replacingScene(scene)
                 applyReloaded(reloaded, fileName: url.lastPathComponent, sidebar: sidebar)
             } catch {
                 guard window.isCurrent(generation) else { return }

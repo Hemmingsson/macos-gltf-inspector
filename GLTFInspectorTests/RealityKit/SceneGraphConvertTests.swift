@@ -9,7 +9,7 @@ struct SceneGraphConvertTests {
     @MainActor
     @Test func punctualLightUsesEngineUnitsAndNonZeroRange() async throws {
         let model = try await loadModel(try punctualLightsGLB())
-        #expect(EntityLoader.punctualLightCount(in: model.entity) == 2)
+        #expect(model.studioIBLExponent == RealityPolicy.studioIBLExponent(punctualLightCount: 2))
 
         let point = try #require(firstComponent(PointLightComponent.self, in: model.entity))
         #expect(abs(point.intensity - 10 * 4 * .pi * RealityLook.punctualScale) < 1)
@@ -48,7 +48,7 @@ struct SceneGraphConvertTests {
         let material = try #require(pbrMaterials(in: model.entity).first)
         #expect(abs(material.metallic.scale - 1) < 0.001)
         #expect(abs(material.roughness.scale - 0.2) < 0.001)
-        #expect(EntityLoader.punctualLightCount(in: model.entity) == 1)
+        #expect(model.studioIBLExponent == RealityPolicy.studioIBLExponent(punctualLightCount: 1))
 
         let look = AppLook(useEnvironmentMap: true, catalogRaw: KhronosEnvironments.defaultLook.rawValue, customFileName: nil)
         await PreviewLighting.prefetchLook(look)

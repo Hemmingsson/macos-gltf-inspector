@@ -41,12 +41,13 @@ struct SessionDocumentConvertTests {
         let twoSceneURL = try writeTempTwoSceneGLB()
         defer { try? FileManager.default.removeItem(at: twoSceneURL) }
 
-        let other = try await EntityLoader.convertScene(
-            index: 1,
+        let model = try await EntityLoader.load(from: twoSceneURL, includeAnimations: false)
+        let other = try await model.switchingScene(
+            to: 1,
             from: twoSceneURL,
             includeAnimations: true
         )
-        #expect(stampedNodeIndices(in: other).contains(1))
+        #expect(stampedNodeIndices(in: other.entity).contains(1))
     }
 
     @MainActor
@@ -54,10 +55,10 @@ struct SessionDocumentConvertTests {
         let url = TestFixtures.multiScene
 
         let loaded = try await EntityLoader.load(from: url, includeAnimations: false, sceneIndex: 1)
-        let converted = try await EntityLoader.convertScene(index: 1, from: url, includeAnimations: false)
+        let converted = try await loaded.switchingScene(to: 1, from: url, includeAnimations: false)
 
         #expect(loaded.document.scenes.count == 2)
-        #expect(stampedNodeIndices(in: loaded.entity) == stampedNodeIndices(in: converted))
+        #expect(stampedNodeIndices(in: loaded.entity) == stampedNodeIndices(in: converted.entity))
         #expect(stampedNodeIndices(in: loaded.entity).contains(1))
     }
 
@@ -67,7 +68,8 @@ struct SessionDocumentConvertTests {
         defer { try? FileManager.default.removeItem(at: url) }
 
         do {
-            _ = try await EntityLoader.convertScene(index: 99, from: url, includeAnimations: false)
+            let model = try await EntityLoader.load(from: url, includeAnimations: false)
+            _ = try await model.switchingScene(to: 99, from: url, includeAnimations: false)
             Issue.record("expected GLTFInspectorError 1020")
         } catch {
             let nsError = error as NSError
