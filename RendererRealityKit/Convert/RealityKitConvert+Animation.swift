@@ -42,8 +42,8 @@ extension RealityKitConvert {
                                                         maximumSampleInterval: 1 / 30.0) // TODO: Make sample interval an option
             if targetNode.isJoint {
                 let jointName: String
-                if let index = Skin.jointIndex(of: targetNode, in: sourceAsset?.skins ?? []) {
-                    jointName = Skin.resolvedName(targetNode.name, index: index)
+                if let index = (sourceAsset?.skins ?? []).lazy.compactMap({ $0.joints.firstIndex(of: targetNode) }).first {
+                    jointName = JointNames.resolved(targetNode.name, index: index)
                 } else if let name = targetNode.name, !name.isEmpty {
                     jointName = name
                 } else {

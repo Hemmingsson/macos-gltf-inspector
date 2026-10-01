@@ -8,7 +8,7 @@ import Testing
 
 /// Inputs the old temp-GLB prepare pass used to rewrite (WebP → PNG, unnamed skin joints) must
 /// load and render straight from GLTFKit2: it decodes `EXT_texture_webp` with ImageIO, and convert
-/// resolves joint names itself (`Skin.resolvedName`).
+/// resolves joint names itself (`JointNames.resolved`).
 @MainActor
 struct PrepareFreeInputsTests {
     /// A quad whose only texture is WebP (no PNG fallback), unlit, solid (200, 40, 40).
@@ -39,8 +39,8 @@ struct PrepareFreeInputsTests {
     }
 
     @Test func unnamedJointsResolveBySkinIndex() {
-        #expect(Skin.resolvedName(nil, index: 4) == "joint-4")
-        #expect(Skin.resolvedName("Root", index: 4) == "Root")
+        #expect(JointNames.resolved(nil, index: 4) == "joint-4")
+        #expect(JointNames.resolved("Root", index: 4) == "Root")
     }
 
     static func render(_ root: Entity, eye: SIMD3<Float>) async throws -> CGImage {
