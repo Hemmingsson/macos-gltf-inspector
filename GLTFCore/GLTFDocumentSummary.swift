@@ -27,14 +27,15 @@ public struct GLTFDocumentSummary {
     }
 
     public init(json: [String: Any], fileURL: URL, fileSizeBytes: Int64?) {
-        let document = GLTFDocumentJSON.makeDocument(json: json, fileURL: fileURL)
+        let binary = GLTFBinaryStore(json: json, fileURL: fileURL)
+        let document = GLTFDocumentJSON.makeDocument(json: json, binary: binary)
         self.init(
             document: document,
             stats: PreviewStats.from(
                 json: json,
                 animationCount: document.animations.filter { $0.duration > 0 }.count,
                 fileSizeBytes: fileSizeBytes,
-                resourceURL: fileURL
+                binary: binary
             ),
             bounds: ModelBounds.from(json: json),
             materialVariantNames: GLTFDocumentJSON.materialVariantNames(json: json),

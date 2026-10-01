@@ -51,7 +51,7 @@ struct PreviewStatsTests {
         let url = try TestGLB.writeTemp(data, prefix: "stats-tex")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let stats = PreviewStats.from(json: json, animationCount: 0, resourceURL: url)
+        let stats = PreviewStats.from(json: json, resourceURL: url)
         #expect(stats.textureCount == 1)
         #expect(stats.maxTextureEdge == 1)
         #expect(stats.overlayFacts.contains {
@@ -72,11 +72,7 @@ struct PreviewStatsTests {
             "images": [["mimeType": "image/png", "bufferView": 0]],
             "textures": [["source": 0]],
         ]
-        let stats = PreviewStats.from(
-            json: json,
-            animationCount: 0,
-            resourceURL: folder.appendingPathComponent("model.gltf")
-        )
+        let stats = PreviewStats.from(json: json, resourceURL: folder.appendingPathComponent("model.gltf"))
         #expect(stats.maxTextureEdge == 1)
     }
 

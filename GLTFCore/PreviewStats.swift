@@ -1,7 +1,8 @@
 import Foundation
 
-/// Mesh / material / node / texture from the glTF JSON header. Animation count
-/// comes from converted usable clips, not `json["animations"]`.
+/// Mesh / material / node / texture counts from the glTF JSON header (image headers for
+/// `maxTextureEdge`). The caller supplies the animation count: playable clips on RealityKit,
+/// JSON clips with a duration on WebKit.
 public struct PreviewStats: Equatable {
     public struct Row: Equatable {
         public let label: String
@@ -36,21 +37,17 @@ public struct PreviewStats: Equatable {
         fileSizeBytes: nil
     )
 
-    public static func from(json: [String: Any], fileSizeBytes: Int64? = nil) -> PreviewStats {
-        fromJSONCounts(json, animationCount: 0, fileSizeBytes: fileSizeBytes, resourceURL: nil)
-    }
-
     public static func from(
         json: [String: Any],
-        animationCount: Int,
+        animationCount: Int = 0,
         fileSizeBytes: Int64? = nil,
         resourceURL: URL? = nil
     ) -> PreviewStats {
-        fromJSONCounts(
-            json,
+        from(
+            json: json,
             animationCount: animationCount,
             fileSizeBytes: fileSizeBytes,
-            resourceURL: resourceURL
+            binary: GLTFBinaryStore(json: json, fileURL: resourceURL)
         )
     }
 
@@ -101,11 +98,12 @@ public struct PreviewStats: Equatable {
         return lines
     }
 
-    private static func fromJSONCounts(
-        _ json: [String: Any],
+    /// `binary` resolves image bytes for `maxTextureEdge`; share one with the document parse.
+    static func from(
+        json: [String: Any],
         animationCount: Int,
         fileSizeBytes: Int64?,
-        resourceURL: URL?
+        binary: GLTFBinaryStore
     ) -> PreviewStats {
         let materials = json["materials"] as? [[String: Any]] ?? []
         let meshes = json["meshes"] as? [[String: Any]] ?? []
@@ -119,10 +117,7 @@ public struct PreviewStats: Equatable {
             pbrLabel: pbrLabel(materials),
             animationCount: animationCount,
             textureCount: (json["textures"] as? [Any])?.count ?? 0,
-            maxTextureEdge: maxTextureEdge(
-                json: json,
-                binary: GLTFBinaryStore(json: json, fileURL: resourceURL)
-            ),
+            maxTextureEdge: maxTextureEdge(json: json, binary: binary),
             hasVertexColors: geometry.hasColors,
             isRigged: !skins.isEmpty || geometry.hasJoints,
             morphGeometryCount: geometry.morphMeshes,
