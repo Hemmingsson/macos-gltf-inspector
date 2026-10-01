@@ -14,7 +14,7 @@ struct StillRenderProofTests {
 
         let model = try await EntityLoader.loadThumbnail(from: url)
         let assembled = PreviewCamera.makeTurntable(for: model.entity)
-        let still = try await StillRenderer(
+        let image = try await StillRenderer.render(
             root: assembled.pivot,
             bounds: assembled.bounds,
             width: 256,
@@ -23,7 +23,6 @@ struct StillRenderProofTests {
             padding: PreviewCamera.thumbnailFitPadding,
             intensityExponent: model.studioIBLExponent
         )
-        let image = try await still.capture()
         #expect(image.width == 256)
         #expect(image.height == 256)
 
@@ -49,7 +48,7 @@ struct StillRenderProofTests {
         #expect(EntityLoader.modelComponentCount(in: model.entity) > 0)
 
         let assembled = PreviewCamera.makeTurntable(for: model.entity)
-        let still = try await StillRenderer(
+        let image = try await StillRenderer.render(
             root: assembled.pivot,
             bounds: assembled.bounds,
             width: 256,
@@ -58,7 +57,6 @@ struct StillRenderProofTests {
             padding: PreviewCamera.thumbnailFitPadding,
             intensityExponent: model.studioIBLExponent
         )
-        let image = try await still.capture()
         #expect(image.width == 256)
         #expect(image.height == 256)
 
@@ -77,7 +75,7 @@ struct StillRenderProofTests {
     @Test func srgbBackdropRoundTrips() async throws {
         let model = try await EntityLoader.loadThumbnail(from: TestFixtures.tiny)
         let assembled = PreviewCamera.makeTurntable(for: model.entity)
-        let still = try await StillRenderer(
+        let image = try await StillRenderer.render(
             root: assembled.pivot,
             bounds: assembled.bounds,
             width: 64,
@@ -85,7 +83,7 @@ struct StillRenderProofTests {
             background: CGColor(srgbRed: 128 / 255, green: 128 / 255, blue: 128 / 255, alpha: 1),
             padding: PreviewCamera.thumbnailFitPadding
         )
-        let raster = try PixelDiff.raster(from: try await still.capture())
+        let raster = try PixelDiff.raster(from: image)
         for channel in 0..<3 {
             #expect(abs(Int(raster.bytes[channel]) - 128) <= 1, "corner channel \(channel) = \(raster.bytes[channel])")
         }

@@ -37,7 +37,7 @@ struct TextureTransformConvertTests {
     }
 
     static func render(_ root: Entity) async throws -> CGImage {
-        let still = try await StillRenderer(
+        return try await StillRenderer.render(
             root: root,
             cameraPose: StillCameraPose(
                 position: [0.5, 0.5, 1.1],
@@ -48,7 +48,6 @@ struct TextureTransformConvertTests {
             height: 64,
             background: CGColor(gray: 0.5, alpha: 1)
         )
-        return try await still.capture()
     }
 
     /// glTF `uv' = T · R · S · uv`, as the spec writes it.

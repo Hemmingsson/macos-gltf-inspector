@@ -83,7 +83,7 @@ struct StillCameraPoseTests {
             relativeTo: nil
         )
         let pose = try #require(StillCameraPose.capturing(from: fitCamera))
-        let still = try await StillRenderer(
+        let image = try await StillRenderer.render(
             root: assembled.pivot.clone(recursive: true),
             cameraPose: pose,
             width: 320,
@@ -91,7 +91,6 @@ struct StillCameraPoseTests {
             background: CGColor(gray: 0.94, alpha: 1),
             intensityExponent: model.studioIBLExponent
         )
-        let image = try await still.capture()
         #expect(image.width == 320)
         #expect(image.height == 180)
 

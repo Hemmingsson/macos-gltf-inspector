@@ -35,7 +35,7 @@ enum PixelDiffRealityKit {
     ) async throws -> CGImage {
         let camera = try PixelDiffRun.camera(of: entry)
         let model = try await EntityLoader.loadThumbnail(from: entry.modelURL)
-        let still = try await StillRenderer(
+        return try await StillRenderer.render(
             root: model.entity,
             cameraPose: stillPose(camera),
             width: look.canvasSize,
@@ -53,7 +53,6 @@ enum PixelDiffRealityKit {
             environmentYaw: lookYawRadians(look),
             look: AppLook(useEnvironmentMap: true, catalogRaw: look.environment, customFileName: nil)
         )
-        return try await still.capture()
     }
 
     /// The page's orbit camera, in RealityKit terms. Khronos `UserCamera.setRotation` builds

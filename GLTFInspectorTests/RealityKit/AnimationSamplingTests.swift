@@ -80,7 +80,7 @@ struct AnimationSamplingTests {
         let clip = try #require(model.entity.availableAnimations.first)
         let controller = model.entity.playAnimation(clip, startsPaused: true)
         controller.time = 0.5
-        let still = try await StillRenderer(
+        _ = try await StillRenderer.render(
             root: model.entity,
             cameraPose: StillCameraPose(position: [0, 0, 5], orientation: simd_quatf(angle: 0, axis: [0, 1, 0]),
                                         projection: .perspective(fieldOfViewDegrees: 45, near: 0.1, far: 100)),
@@ -88,7 +88,6 @@ struct AnimationSamplingTests {
             height: 16,
             background: CGColor(gray: 0.5, alpha: 1)
         )
-        _ = try await still.capture()
         for (axis, node) in nodes.enumerated() {
             #expect(abs(node.position[axis] - 0.5) < 0.05, "\(node.name) = \(node.position)")
         }

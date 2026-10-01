@@ -11,7 +11,7 @@ public enum RealityThumbnail {
     public static func render(url: URL, pixel: Int) async throws -> CGImage {
         let model = try await EntityLoader.loadThumbnail(from: url, maxTextureEdge: maxTextureEdge)
         let assembled = await PreviewCamera.makeTurntable(for: model.entity)
-        let still = try await StillRenderer(
+        return try await StillRenderer.render(
             root: assembled.pivot,
             bounds: assembled.bounds,
             width: pixel,
@@ -20,6 +20,5 @@ public enum RealityThumbnail {
             padding: PreviewCamera.thumbnailFitPadding,
             intensityExponent: model.studioIBLExponent
         )
-        return try await still.capture()
     }
 }
