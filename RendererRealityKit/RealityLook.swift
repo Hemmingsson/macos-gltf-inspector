@@ -49,19 +49,3 @@ enum RealityLook {
         2 * halfAngleRadians * 180 / .pi
     }
 }
-
-extension RenderLook {
-    /// IBL entity yaw for this look.
-    var realityKitIBLYaw: Float {
-        RealityLook.iblYaw(lookYawRadians: Float(environmentYawDegrees * .pi / 180))
-    }
-
-    /// IBL `intensityExponent` for this look, with the studio dim when the file brings lights.
-    func realityKitIBLExponent(fileHasLights: Bool) -> Float {
-        RealityLook.iblExponent(
-            exposureEV: Float(exposureEV),
-            environmentIntensity: Float(environmentIntensity),
-            dimEV: RealityPolicy.studioDimEV(fileHasLights: fileHasLights)
-        )
-    }
-}
