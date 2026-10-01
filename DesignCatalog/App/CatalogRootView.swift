@@ -6,7 +6,7 @@ import SwiftUI
 struct CatalogRootView: View {
     @State private var selection: CatalogPage? = CatalogLaunchOptions.page ?? .colors
     @State private var appearance: CatalogAppearance = CatalogLaunchOptions.appearance
-    @State private var backdropFilter: CatalogBackdropFilter = CatalogLaunchOptions.backdrop
+    @State private var backdrop: CatalogBackdrop = CatalogLaunchOptions.backdrop
     @State private var typeSize: DynamicTypeSize = .large
 
     var body: some View {
@@ -25,14 +25,14 @@ struct CatalogRootView: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
         } detail: {
             detail
-                .environment(\.catalogBackdrop, backdropFilter.backdrop)
+                .environment(\.catalogBackdrop, backdrop)
                 .dynamicTypeSize(typeSize)
                 .preferredColorScheme(appearance.colorScheme)
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Picker("Backdrop", selection: $backdropFilter) {
-                    ForEach(CatalogBackdropFilter.allCases) { Text($0.title).tag($0) }
+                Picker("Backdrop", selection: $backdrop) {
+                    ForEach(CatalogBackdrop.allCases) { Text($0.title).tag($0) }
                 }
                 .help("Backdrop")
 
