@@ -48,7 +48,14 @@ final class DocumentWindowModel {
         self.documentURL = documentURL
         self.canHideNodes = canHideNodes
         selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: canHideNodes)
-        engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
+        engineViewport = EngineViewportController(
+            sidebar: placeholderSidebar,
+            previewSession: previewSession,
+            settings: settings
+        )
+        engineViewport.saveScreenshot = { [weak self] image in
+            await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
+        }
     }
 
     var activeSidebar: HostSidebarModel { sidebar ?? placeholderSidebar }
@@ -73,19 +80,10 @@ final class DocumentWindowModel {
         (loadingURL ?? documentURL)?.deletingPathExtension().lastPathComponent ?? "export"
     }
 
-    /// Wires the viewport to this window's session, settings and save panel. Idempotent.
-    func wire() {
-        engineViewport.settings = settings
-        engineViewport.saveScreenshot = { [weak self] image in
-            await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
-        }
-    }
-
     /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
     func seedSession(settings: EngineSettingsStore) {
         engineViewport.sidebar = activeSidebar
-        wire()
-        engineViewport.applySession(from: settings)
+        engineViewport.applySession()
     }
 
     func failMissingURL() {
@@ -115,7 +113,7 @@ final class DocumentWindowModel {
         loadGeneration += 1
         // New document in this window: drop session overrides and re-track defaults.
         settings.clearSession()
-        engineViewport.applySession(from: settings)
+        engineViewport.applySession()
         AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(uptimeMs())")
         startValidation(of: url, generation: loadGeneration)
         return .started(generation: loadGeneration)
@@ -141,7 +139,6 @@ final class DocumentWindowModel {
         modelSidebar.materialVariantNames = materialVariantNames
         sidebar = modelSidebar
         engineViewport.sidebar = modelSidebar
-        wire()
         previewSession.viewModes = viewModes.isEmpty ? [.shaded] : viewModes
         engineViewport.applyConvertedLighting(
             dimStudioForFileLights: dimStudioForFileLights,

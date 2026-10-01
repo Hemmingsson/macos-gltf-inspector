@@ -170,7 +170,7 @@ struct EngineViewportControllerTests {
         let viewport = EngineViewportController(sidebar: sidebar, settings: settings)
 
         defaultsStore.set(.dark, for: .backdrop)
-        viewport.applySession(from: settings)
+        viewport.applySession()
         #expect(viewport.backdrop == .dark)
 
         defaultsStore.set(.white, for: .backdrop)
@@ -253,7 +253,7 @@ struct EngineViewportControllerTests {
         #expect(viewport.lighting.usesFileLights == true)
 
         // ShellRootView remount: applySession → syncFromSettings.
-        viewport.applySession(from: settings)
+        viewport.applySession()
         #expect(session.dimStudioForFileLights == true)
         #expect(viewport.lighting.usesFileLights == true)
         #expect(session.exposureEV == 0)

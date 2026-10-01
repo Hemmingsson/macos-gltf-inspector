@@ -35,7 +35,6 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
             .focusedSceneValue(\.shellPanelChrome, window.panels)
             .onAppear {
                 dismissWindow(id: WelcomeWindow.id)
-                window.wire()
             }
             .onChange(of: window.settings.defaultsStore.revision) { _, _ in
                 // Live-track canvas for keys that still have no session override.

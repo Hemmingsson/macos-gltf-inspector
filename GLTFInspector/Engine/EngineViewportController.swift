@@ -22,8 +22,8 @@ final class EngineViewportController: ViewportController {
     var sidebar: HostSidebarModel
     let lookStore: AppLookStore
 
-    /// Per-window lazy overlay. Weak to avoid a cycle with the store held by the window.
-    weak var settings: EngineSettingsStore?
+    /// Per-window lazy overlay (the window's `EngineSettingsStore`).
+    let settings: EngineSettingsStore
 
     /// Host-owned canvas session.
     let previewSession: PreviewSession
@@ -53,14 +53,13 @@ final class EngineViewportController: ViewportController {
         self.sidebar = sidebar
         self.lookStore = lookStore ?? .shared
         self.previewSession = previewSession ?? PreviewSession()
-        self.settings = settings
+        self.settings = settings ?? EngineSettingsStore()
         self.commands = commands
         self.saveScreenshot = saveScreenshot
     }
 
-    /// Bind the lazy overlay and push effective session values without pinning untouched keys.
-    func applySession(from settings: EngineSettingsStore) {
-        self.settings = settings
+    /// Push effective session values from the lazy overlay without pinning untouched keys.
+    func applySession() {
         // Environment and tone mapping have no session override yet: they are app defaults, and
         // the extensions read the same two keys so all three surfaces agree.
         environment = StudioEnvironment(rawValue: settings.default(for: .environmentCatalog)) ?? .neutral
@@ -70,7 +69,6 @@ final class EngineViewportController: ViewportController {
 
     /// Refresh settings-backed session fields when app defaults change (untouched keys only).
     func syncFromSettings() {
-        guard let settings else { return }
         previewSession.backdrop = settings.sessionValue(for: .backdrop)
         previewSession.showFloor = settings.sessionValue(for: .showFloor)
         previewSession.autoRotate = settings.sessionValue(for: .autoRotate)
@@ -79,35 +77,19 @@ final class EngineViewportController: ViewportController {
         previewSession.orthographic = projection == .orthographic
     }
 
-    var backdrop: BackdropStyle {
-        if let settings {
-            return settings.sessionValue(for: .backdrop)
-        }
-        return previewSession.backdrop
-    }
+    var backdrop: BackdropStyle { settings.sessionValue(for: .backdrop) }
 
-    var showsFloor: Bool {
-        settings?.sessionValue(for: .showFloor) ?? previewSession.showFloor
-    }
+    var showsFloor: Bool { settings.sessionValue(for: .showFloor) }
 
-    var autoRotates: Bool {
-        settings?.sessionValue(for: .autoRotate) ?? previewSession.autoRotate
-    }
+    var autoRotates: Bool { settings.sessionValue(for: .autoRotate) }
 
-    var isCentered: Bool {
-        settings?.sessionValue(for: .center) ?? previewSession.centerModel
-    }
+    var isCentered: Bool { settings.sessionValue(for: .center) }
 
     var viewMode: ViewMode {
         ViewMode(previewSession.viewMode)
     }
 
-    var projection: Projection {
-        if let settings {
-            return settings.sessionValue(for: .projection)
-        }
-        return previewSession.orthographic ? .orthographic : .perspective
-    }
+    var projection: Projection { settings.sessionValue(for: .projection) }
 
     var lighting: LightingSettings {
         LightingSettings(
@@ -131,22 +113,22 @@ final class EngineViewportController: ViewportController {
     }
 
     func setBackdrop(_ style: BackdropStyle) {
-        settings?.setSession(style, for: .backdrop)
+        settings.setSession(style, for: .backdrop)
         previewSession.backdrop = style
     }
 
     func setFloor(_ isOn: Bool) {
-        settings?.setSession(isOn, for: .showFloor)
+        settings.setSession(isOn, for: .showFloor)
         previewSession.showFloor = isOn
     }
 
     func setAutoRotate(_ isOn: Bool) {
-        settings?.setSession(isOn, for: .autoRotate)
+        settings.setSession(isOn, for: .autoRotate)
         previewSession.autoRotate = isOn
     }
 
     func setCenter(_ isOn: Bool) {
-        settings?.setSession(isOn, for: .center)
+        settings.setSession(isOn, for: .center)
         previewSession.centerModel = isOn
     }
 
@@ -157,7 +139,7 @@ final class EngineViewportController: ViewportController {
     }
 
     func setProjection(_ projection: Projection) {
-        settings?.setSession(projection, for: .projection)
+        settings.setSession(projection, for: .projection)
         previewSession.orthographic = projection == .orthographic
     }
 
@@ -192,9 +174,9 @@ final class EngineViewportController: ViewportController {
     }
 
     func reset() {
-        setBackdrop(settings?.default(for: .backdrop) ?? .window)
-        setFloor(settings?.default(for: .showFloor) ?? true)
-        setAutoRotate(settings?.default(for: .autoRotate) ?? true)
+        setBackdrop(settings.default(for: .backdrop))
+        setFloor(settings.default(for: .showFloor))
+        setAutoRotate(settings.default(for: .autoRotate))
         setCenter(true)
         setViewMode(.shaded)
         setProjection(.perspective)
