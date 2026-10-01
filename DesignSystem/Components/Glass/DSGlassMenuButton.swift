@@ -100,6 +100,9 @@ public struct DSGlassMenuButton<MenuContent: View>: View {
                             : AnyShapeStyle(DS.Color.textPrimary)
                     )
                     .lineLimit(1)
+                    // Ancestor glass `isEngaged` animation interpolates this string otherwise.
+                    .contentTransition(.identity)
+                    .transaction { $0.animation = nil }
                 DSGlassChevron()
             }
             .dsGlassControlLabel(.titled, isHighlighted: isEngaged)
