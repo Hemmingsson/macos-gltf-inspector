@@ -59,11 +59,10 @@ final class EngineSelectionModel: SelectionModel {
     func isolate(_ id: NodeID?) {
         let target = Self.meshNodeIndex(id)
         let current = sidebar.soloRoot
-        if target == current { return }
+        guard target != current else { return }
+        // `isolate` toggles: a new target solos it, nil un-solos the current root.
         if let target {
-            if current != target {
-                sidebar.isolate(target)
-            }
+            sidebar.isolate(target)
         } else if let current {
             sidebar.isolate(current)
         }
@@ -147,17 +146,14 @@ final class EngineSelectionModel: SelectionModel {
         document: GLTFSessionDocument
     ) -> NodeDetail {
         let id = NodeID(kind: EngineSceneModel.nodeKind(node.kind), index: node.index)
+        let euler = eulerDegrees(from: node.rotation)
         let transform = TransformInfo(
             position: Vector3(
                 x: Double(node.translation.x),
                 y: Double(node.translation.y),
                 z: Double(node.translation.z)
             ),
-            rotationDegrees: Vector3(
-                x: Double(eulerDegrees(from: node.rotation).x),
-                y: Double(eulerDegrees(from: node.rotation).y),
-                z: Double(eulerDegrees(from: node.rotation).z)
-            ),
+            rotationDegrees: Vector3(x: Double(euler.x), y: Double(euler.y), z: Double(euler.z)),
             scale: Vector3(
                 x: Double(node.scale.x),
                 y: Double(node.scale.y),
