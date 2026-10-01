@@ -78,10 +78,7 @@ public struct RightInspector<Selection: SelectionModel>: View {
         }
         if detail.kind == .scene, let roots = detail.sceneRootCount {
             VStack(alignment: .leading, spacing: 0) {
-                DSSectionHeader("Scene")
-                    .padding(.top, DS.Spacing.xl)
-                    .padding(.horizontal, DS.Spacing.l)
-                    .padding(.bottom, DS.Spacing.xs)
+                InspectorSectionHeader("Scene")
                 DSFactRow("Roots", value: "\(roots)")
                     .padding(.horizontal, DS.Spacing.l)
                     .padding(.bottom, DS.Spacing.m)

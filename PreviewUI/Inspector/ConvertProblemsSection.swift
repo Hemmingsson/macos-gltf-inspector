@@ -14,10 +14,7 @@ public struct ConvertProblemsSection: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Not rendered as authored")
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.top, DS.Spacing.m)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Not rendered as authored", top: DS.Spacing.m)
 
             DSDisclosureCard(
                 summaryTitle,

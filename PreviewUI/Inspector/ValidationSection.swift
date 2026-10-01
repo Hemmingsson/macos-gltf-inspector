@@ -9,10 +9,7 @@ public struct ValidationSection: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if validation.status != .ready || !validation.isClean {
-                DSSectionHeader("Validation")
-                    .padding(.horizontal, DS.Spacing.l)
-                    .padding(.top, DS.Spacing.m)
-                    .padding(.bottom, DS.Spacing.xs)
+                InspectorSectionHeader("Validation", top: DS.Spacing.m)
             }
 
             Group {

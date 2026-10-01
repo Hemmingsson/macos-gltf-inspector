@@ -20,10 +20,7 @@ public struct MaterialSection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Material")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Material")
 
             Group {
                 switch density {

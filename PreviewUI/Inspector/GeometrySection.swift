@@ -7,10 +7,7 @@ public struct GeometrySection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Geometry")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Geometry")
 
             FlexibleChipRow(items: chips)
                 .padding(.horizontal, DS.Spacing.l)

@@ -8,10 +8,7 @@ public struct TransformSection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader(isAuthored ? "Transform · authored" : "Transform · fitted")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader(isAuthored ? "Transform · authored" : "Transform · fitted")
 
             Grid(alignment: .leading, horizontalSpacing: DS.Spacing.s, verticalSpacing: DS.Spacing.s) {
                 GridRow {
