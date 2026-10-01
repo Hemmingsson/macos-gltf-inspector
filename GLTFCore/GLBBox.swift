@@ -14,19 +14,13 @@ public struct GLBBox {
 
     public enum Error: Swift.Error, LocalizedError, Equatable {
         case invalidGLB
-        case missingBuffer
 
         public var errorDescription: String? {
-            switch self {
-            case .invalidGLB:
-                return "The file isn't a valid glTF binary. It may be damaged or truncated."
-            case .missingBuffer:
-                return "The file's binary buffer is missing."
-            }
+            "The file isn't a valid glTF binary. It may be damaged or truncated."
         }
     }
 
-    public static func aligned(_ value: Int, to align: Int) -> Int {
+    private static func aligned(_ value: Int, to align: Int) -> Int {
         (value + align - 1) / align * align
     }
 
@@ -65,7 +59,7 @@ public struct GLBBox {
         return GLBBox(json: json, bin: bin)
     }
 
-    /// JSON chunk only — skips the BIN so prepares can bail without copying textures.
+    /// JSON chunk only — never reads the BIN, so textures are not copied.
     public static func peekJSON(from url: URL) throws -> [String: Any] {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
@@ -92,15 +86,7 @@ public struct GLBBox {
         return try peekJSON(from: url)
     }
 
-    public static func readUInt16(_ data: Data, _ offset: Int) -> UInt16 {
-        var value: UInt16 = 0
-        _ = withUnsafeMutableBytes(of: &value) { dest in
-            data.copyBytes(to: dest, from: offset..<(offset + 2))
-        }
-        return UInt16(littleEndian: value)
-    }
-
-    public static func readUInt32(_ data: Data, _ offset: Int) -> UInt32 {
+    static func readUInt32(_ data: Data, _ offset: Int) -> UInt32 {
         var value: UInt32 = 0
         _ = withUnsafeMutableBytes(of: &value) { dest in
             data.copyBytes(to: dest, from: offset..<(offset + 4))
@@ -109,7 +95,7 @@ public struct GLBBox {
     }
 
     /// Also used by `GLTFBinaryStore` when a sidecar buffer or image is inlined.
-    public static func decodeDataURI(_ uri: String) -> Data? {
+    static func decodeDataURI(_ uri: String) -> Data? {
         guard uri.hasPrefix("data:"), let comma = uri.firstIndex(of: ",") else { return nil }
         let meta = uri[uri.index(uri.startIndex, offsetBy: 5)..<comma]
         let payload = String(uri[uri.index(after: comma)...])
