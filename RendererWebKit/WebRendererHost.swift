@@ -44,6 +44,11 @@ public final class WebRendererHost {
         var meshes: Int
         /// Computed page background, e.g. `rgba(0, 0, 0, 0)`.
         var background: String
+        /// Frames drawn since the previous `stats()` and their CPU ms (Khronos frame + overlays,
+        /// not GPU time); the page drains its buffer on every call.
+        var frameCount: Int
+        var frameP50Ms: Double
+        var frameP95Ms: Double
     }
 
     fileprivate static let messageName = "viewer"
