@@ -147,13 +147,6 @@ public struct CanvasRegion<
 
 // MARK: - Previews
 
-/// Stand-in for the host-injected `RealityView` — flat gray viewport only.
-private struct CanvasPlaceholder: View {
-    var body: some View {
-        DS.Color.Canvas.gradient
-    }
-}
-
 private struct CanvasRegionPreviewHost: View {
     enum Mode {
         case ready
@@ -236,7 +229,7 @@ private struct CanvasRegionPreviewHost: View {
                 documentState: documentState,
                 isSidebarVisible: mode != .collapsedChrome,
                 isInspectorVisible: mode != .collapsedChrome,
-                content: { CanvasPlaceholder() }
+                content: { PreviewCanvasPlaceholder() }
             )
         }
     }

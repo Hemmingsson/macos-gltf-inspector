@@ -100,13 +100,6 @@ public struct RightInspector<Selection: SelectionModel>: View {
 
 // MARK: - Previews
 
-private struct PreviewOpenInItems: View {
-    var body: some View {
-        Button("Finder") {}
-        Button("Blender") {}
-    }
-}
-
 private struct RightInspectorPreviewHost: View {
     enum Mode {
         case mesh
