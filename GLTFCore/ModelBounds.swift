@@ -32,11 +32,11 @@ public struct ModelBounds: Sendable, Equatable {
         let scenes = json["scenes"] as? [[String: Any]] ?? []
 
         let roots: [Int]
-        let sceneIndex = GLBBox.intValue(json["scene"]) ?? 0
+        let sceneIndex = GLTFJSON.int(json["scene"]) ?? 0
         if scenes.indices.contains(sceneIndex) {
-            roots = intArray(scenes[sceneIndex]["nodes"])
+            roots = GLTFJSON.ints(scenes[sceneIndex]["nodes"])
         } else {
-            let children = Set(nodes.flatMap { intArray($0["children"]) })
+            let children = Set(nodes.flatMap { GLTFJSON.ints($0["children"]) })
             roots = nodes.indices.filter { !children.contains($0) }
         }
 
@@ -46,11 +46,11 @@ public struct ModelBounds: Sendable, Equatable {
             guard nodes.indices.contains(index), visited.insert(index).inserted else { return }
             let node = nodes[index]
             let world = parent * localMatrix(node)
-            if let meshIndex = GLBBox.intValue(node["mesh"]), meshes.indices.contains(meshIndex),
+            if let meshIndex = GLTFJSON.int(node["mesh"]), meshes.indices.contains(meshIndex),
                let local = meshBounds(meshes[meshIndex], accessors: accessors) {
                 boxes.append(local.transformed(by: world))
             }
-            for child in intArray(node["children"]) {
+            for child in GLTFJSON.ints(node["children"]) {
                 walk(child, parent: world)
             }
         }
@@ -122,7 +122,7 @@ public struct ModelBounds: Sendable, Equatable {
         var result: ModelBounds?
         for primitive in mesh["primitives"] as? [[String: Any]] ?? [] {
             let attributes = primitive["attributes"] as? [String: Any] ?? [:]
-            guard let index = GLBBox.intValue(attributes["POSITION"]), accessors.indices.contains(index),
+            guard let index = GLTFJSON.int(attributes["POSITION"]), accessors.indices.contains(index),
                   let box = accessorBounds(accessors[index])
             else { continue }
             result = result.map { ModelBounds(min: simd_min($0.min, box.min), max: simd_max($0.max, box.max)) } ?? box
@@ -132,14 +132,14 @@ public struct ModelBounds: Sendable, Equatable {
 
     /// `min`/`max` of a `VEC3` accessor, dequantized when `normalized` (KHR_mesh_quantization).
     private static func accessorBounds(_ accessor: [String: Any]) -> ModelBounds? {
-        guard let lo = GLBBox.doubleArray(accessor["min"]), lo.count >= 3,
-              let hi = GLBBox.doubleArray(accessor["max"]), hi.count >= 3
+        guard let lo = GLTFJSON.doubles(accessor["min"]), lo.count >= 3,
+              let hi = GLTFJSON.doubles(accessor["max"]), hi.count >= 3
         else { return nil }
         // Normalized integers map to [0, 1] / [-1, 1]; signed ones clamp at -1 (glTF spec).
         var scale = 1.0
         var floor = -Double.infinity
         if accessor["normalized"] as? Bool == true {
-            switch GLBBox.intValue(accessor["componentType"]) {
+            switch GLTFJSON.int(accessor["componentType"]) {
             case 5120: (scale, floor) = (1.0 / 127, -1)
             case 5121: scale = 1.0 / 255
             case 5122: (scale, floor) = (1.0 / 32767, -1)
@@ -154,7 +154,7 @@ public struct ModelBounds: Sendable, Equatable {
     }
 
     private static func localMatrix(_ node: [String: Any]) -> simd_double4x4 {
-        if let m = GLBBox.doubleArray(node["matrix"]), m.count == 16 {
+        if let m = GLTFJSON.doubles(node["matrix"]), m.count == 16 {
             return simd_double4x4(columns: (
                 SIMD4(m[0], m[1], m[2], m[3]),
                 SIMD4(m[4], m[5], m[6], m[7]),
@@ -162,18 +162,14 @@ public struct ModelBounds: Sendable, Equatable {
                 SIMD4(m[12], m[13], m[14], m[15])
             ))
         }
-        let t = GLBBox.doubleArray(node["translation"]) ?? [0, 0, 0]
-        let r = GLBBox.doubleArray(node["rotation"]) ?? [0, 0, 0, 1]
-        let s = GLBBox.doubleArray(node["scale"]) ?? [1, 1, 1]
+        let t = GLTFJSON.doubles(node["translation"]) ?? [0, 0, 0]
+        let r = GLTFJSON.doubles(node["rotation"]) ?? [0, 0, 0, 1]
+        let s = GLTFJSON.doubles(node["scale"]) ?? [1, 1, 1]
         guard t.count == 3, r.count == 4, s.count == 3 else { return matrix_identity_double4x4 }
         var translation = matrix_identity_double4x4
         translation.columns.3 = SIMD4(t[0], t[1], t[2], 1)
         let rotation = simd_double4x4(simd_quatd(ix: r[0], iy: r[1], iz: r[2], r: r[3]).normalized)
         let scale = simd_double4x4(diagonal: SIMD4(s[0], s[1], s[2], 1))
         return translation * rotation * scale
-    }
-
-    private static func intArray(_ value: Any?) -> [Int] {
-        (value as? [Any])?.compactMap { GLBBox.intValue($0) } ?? []
     }
 }

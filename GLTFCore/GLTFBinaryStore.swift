@@ -25,14 +25,14 @@ final class GLTFBinaryStore {
     /// Float `SCALAR` accessor values — animation sampler inputs whose `min`/`max` are missing.
     /// Sparse accessors are not resolved; they never carry keyframe times in practice.
     func scalarFloats(accessor: [String: Any]) -> [Float]? {
-        guard GLBBox.intValue(accessor["componentType"]) == 5126,
+        guard GLTFJSON.int(accessor["componentType"]) == 5126,
               (accessor["type"] as? String) == "SCALAR",
-              let count = GLBBox.intValue(accessor["count"]), count > 0,
-              let viewIndex = GLBBox.intValue(accessor["bufferView"]),
+              let count = GLTFJSON.int(accessor["count"]), count > 0,
+              let viewIndex = GLTFJSON.int(accessor["bufferView"]),
               let bytes = bufferViewBytes(viewIndex)
         else { return nil }
         let stride = bufferViewStride(viewIndex) ?? 4
-        let base = GLBBox.intValue(accessor["byteOffset"]) ?? 0
+        let base = GLTFJSON.int(accessor["byteOffset"]) ?? 0
         var values: [Float] = []
         values.reserveCapacity(count)
         for index in 0..<count {
@@ -45,7 +45,7 @@ final class GLTFBinaryStore {
 
     /// Encoded bytes for one `images[…]` entry (`bufferView` or `uri`).
     func imageBytes(_ image: [String: Any]) -> Data? {
-        if let viewIndex = GLBBox.intValue(image["bufferView"]) {
+        if let viewIndex = GLTFJSON.int(image["bufferView"]) {
             return bufferViewBytes(viewIndex)
         }
         guard let uri = image["uri"] as? String, !uri.isEmpty else { return nil }
@@ -58,9 +58,9 @@ final class GLTFBinaryStore {
         let views = json["bufferViews"] as? [[String: Any]] ?? []
         guard views.indices.contains(index) else { return nil }
         let view = views[index]
-        guard let data = buffer(GLBBox.intValue(view["buffer"]) ?? 0) else { return nil }
-        let offset = GLBBox.intValue(view["byteOffset"]) ?? 0
-        let length = GLBBox.intValue(view["byteLength"]) ?? 0
+        guard let data = buffer(GLTFJSON.int(view["buffer"]) ?? 0) else { return nil }
+        let offset = GLTFJSON.int(view["byteOffset"]) ?? 0
+        let length = GLTFJSON.int(view["byteLength"]) ?? 0
         guard offset >= 0, length > 0, offset + length <= data.count else { return nil }
         return data.subdata(in: offset..<(offset + length))
     }
@@ -68,7 +68,7 @@ final class GLTFBinaryStore {
     private func bufferViewStride(_ index: Int) -> Int? {
         let views = json["bufferViews"] as? [[String: Any]] ?? []
         guard views.indices.contains(index) else { return nil }
-        guard let stride = GLBBox.intValue(views[index]["byteStride"]), stride > 0 else { return nil }
+        guard let stride = GLTFJSON.int(views[index]["byteStride"]), stride > 0 else { return nil }
         return stride
     }
 

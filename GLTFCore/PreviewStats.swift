@@ -186,7 +186,7 @@ public struct PreviewStats: Equatable {
                     meshHasMorph = true
                 }
                 out.vertices += accessorCount(attributes["POSITION"], accessors: accessors)
-                let mode = GLBBox.intValue(primitive["mode"]) ?? 4
+                let mode = GLTFJSON.int(primitive["mode"]) ?? 4
                 let count: Int
                 if let indices = primitive["indices"] {
                     count = accessorCount(indices, accessors: accessors)
@@ -210,8 +210,8 @@ public struct PreviewStats: Equatable {
     }
 
     private static func accessorCount(_ value: Any?, accessors: [[String: Any]]) -> Int {
-        guard let index = GLBBox.intValue(value), accessors.indices.contains(index) else { return 0 }
-        return GLBBox.intValue(accessors[index]["count"]) ?? 0
+        guard let index = GLTFJSON.int(value), accessors.indices.contains(index) else { return 0 }
+        return GLTFJSON.int(accessors[index]["count"]) ?? 0
     }
 
     /// `1234` → `1.2k`, `2_000_000` → `2M`; below 1000 the plain count.

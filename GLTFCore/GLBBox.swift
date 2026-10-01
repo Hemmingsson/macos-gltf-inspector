@@ -92,27 +92,6 @@ public struct GLBBox {
         return try peekJSON(from: url)
     }
 
-    public static func intValue(_ value: Any?) -> Int? {
-        switch value {
-        case let n as Int: return n
-        case let n as NSNumber: return n.intValue
-        default: return nil
-        }
-    }
-
-    public static func doubleValue(_ value: Any?) -> Double? {
-        switch value {
-        case let n as Double: return n
-        case let n as Int: return Double(n)
-        case let n as NSNumber: return n.doubleValue
-        default: return nil
-        }
-    }
-
-    public static func doubleArray(_ value: Any?) -> [Double]? {
-        (value as? [Any])?.map { doubleValue($0) ?? 0 }
-    }
-
     public static func readUInt16(_ data: Data, _ offset: Int) -> UInt16 {
         var value: UInt16 = 0
         _ = withUnsafeMutableBytes(of: &value) { dest in
