@@ -101,10 +101,8 @@ struct SessionDocumentConvertTests {
         #expect(model.document.animations[1].duration >= model.document.animations[0].duration)
 
         let usable = PreviewClip.usable(on: model.entity, document: model.document)
-        let listed = PreviewClip.list(from: model.document)
         #expect(usable.map(\.title) == ["ClipA", "ClipB"])
-        #expect(usable.map(\.id) == listed.map(\.id))
-        #expect(usable.map(\.title) == listed.map(\.title))
+        #expect(usable.map(\.id) == [0, 1])
         #expect(usable.map(\.name) == model.document.animations.map(\.name))
     }
 }

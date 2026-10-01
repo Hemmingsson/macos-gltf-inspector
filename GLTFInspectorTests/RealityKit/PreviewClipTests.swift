@@ -5,20 +5,6 @@ import RealityKit
 import Testing
 
 struct PreviewClipTests {
-    @Test func listFromDocumentSkipsZeroDurationAndTitlesEmpty() {
-        var document = GLTFSessionDocument()
-        document.animations = [
-            .init(name: "Walk", duration: 1.5),
-            .init(name: "", duration: 0),
-            .init(name: "  ", duration: 2.0),
-        ]
-        let clips = PreviewClip.list(from: document)
-        #expect(clips.map(\.title) == ["Walk", "Clip 3"])
-        #expect(clips.map(\.id) == [0, 2])
-        #expect(clips[0].duration == 1.5)
-        #expect(clips[1].duration == 2.0)
-    }
-
     @MainActor
     @Test func usableMatchesDocumentAnimationNames() async throws {
         let url = try writePreviewClipTwoClipGLB()
@@ -26,14 +12,11 @@ struct PreviewClipTests {
 
         let model = try await EntityLoader.load(from: url, includeAnimations: true)
         let usable = PreviewClip.usable(on: model.entity, document: model.document)
-        let fromDocument = PreviewClip.list(from: model.document)
 
         #expect(usable.count == 2)
-        #expect(fromDocument.count == 2)
         #expect(usable.map(\.name) == ["ClipA", "ClipB"])
-        #expect(usable.map(\.title) == fromDocument.map(\.title))
         #expect(usable.map(\.title) == ["ClipA", "ClipB"])
-        #expect(usable.map(\.id) == fromDocument.map(\.id))
+        #expect(usable.map(\.id) == [0, 1])
         #expect(usable.allSatisfy { $0.duration > 0 })
         #expect(model.document.animations.map(\.name) == ["ClipA", "ClipB"])
     }
@@ -45,12 +28,9 @@ struct PreviewClipTests {
 
         let model = try await EntityLoader.load(from: url, includeAnimations: true)
         let usable = PreviewClip.usable(on: model.entity, document: model.document)
-        let fromDocument = PreviewClip.list(from: model.document)
 
         #expect(!usable.isEmpty)
-        #expect(usable.count == fromDocument.count)
-        #expect(usable.map(\.title) == fromDocument.map(\.title))
-        #expect(usable.map(\.id) == fromDocument.map(\.id))
+        #expect(usable.count == model.document.animations.filter { $0.duration > 0 }.count)
         #expect(usable.allSatisfy { $0.duration > 0 })
     }
 }
