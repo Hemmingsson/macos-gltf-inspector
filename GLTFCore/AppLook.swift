@@ -45,11 +45,6 @@ public struct AppLook: Codable, Equatable, Sendable {
         KhronosEnvironments(rawValue: catalogRaw) ?? .studioNeutral
     }
 
-    /// App Group container — the same directory in the host and both extensions.
-    public static func supportDirectory() -> URL {
-        AppGroupSettings.containerURL
-    }
-
     public static func lookURL(in directory: URL) -> URL {
         directory.appendingPathComponent("look.json")
     }
@@ -82,12 +77,13 @@ public struct AppLook: Codable, Equatable, Sendable {
         }
     }
 
+    /// The look in the App Group container (the RealityKit lighting and still paths read it).
     public static var current: AppLook {
-        load(from: supportDirectory())
+        load(from: AppGroupSettings.containerURL)
     }
 
     public func resolvedHDRURL() -> URL? {
-        resolvedHDRURL(in: Self.supportDirectory())
+        resolvedHDRURL(in: AppGroupSettings.containerURL)
     }
 
     public func resolvedHDRURL(in directory: URL) -> URL? {
@@ -104,7 +100,7 @@ public struct AppLook: Codable, Equatable, Sendable {
 @MainActor
 @Observable
 public final class AppLookStore {
-    public static let shared = AppLookStore(directory: AppLook.supportDirectory())
+    public static let shared = AppLookStore(directory: AppGroupSettings.containerURL)
 
     /// App Group container (or test) directory that holds `look.json` + `ibl/`.
     public let directory: URL

@@ -69,7 +69,6 @@ struct AppGroupSettingsTests {
         )
         #expect(url != nil)
         #expect(AppGroupSettings.containerURL.path.contains("Group Containers/\(AppGroupSettings.groupID)"))
-        #expect(AppLook.supportDirectory() == AppGroupSettings.containerURL)
         #expect(AppGroupSettings.defaults !== UserDefaults.standard)
     }
 
