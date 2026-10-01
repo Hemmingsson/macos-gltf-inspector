@@ -10,12 +10,6 @@ public enum PreviewCamera {
     static let pitchDegrees: Float = 18
     static let previewFitPadding: Float = 1.02
     static let thumbnailFitPadding: Float = 1.08
-    /// Standing planes (doors, decals): X or Z vs longest. 0.08 catches architectural
-    /// doors; snowdrop packs (0.11/1.83 ≈ 0.06) stay below and keep 3/4 framing.
-    private static let standingThinRatio: Float = 0.08
-    /// Flat ground tiles: Y vs longest.
-    private static let groundThinRatio: Float = 0.02
-
     static let autoRotateSpinName = "autoRotateSpin"
     /// RGB axis triad at the authored glTF origin when Center is off.
     static let worldOriginGizmoName = "worldOriginGizmo"
@@ -175,64 +169,6 @@ public enum PreviewCamera {
         camera.components.set(perspective)
     }
 
-    /// Vertical world height that fills the view for an orthographic fit of `bounds`
-    /// under the default front-three-quarter look (same basis as `fitDistance`).
-    static func orthographicScale(
-        bounds: BoundingBox,
-        aspect: Float = 1,
-        padding: Float = previewFitPadding
-    ) -> Float {
-        let extent = bounds.max - bounds.min
-        return orthographicScale(
-            extent: extent,
-            toCamera: lookDirection(
-                extent: extent,
-                yaw: yawDegrees,
-                pitch: pitchDegrees,
-                applyThinAxisOverride: true
-            ),
-            aspect: aspect,
-            padding: padding
-        )
-    }
-
-    /// Vertical world height framing `bounds` for a camera at `eye` looking at `target`.
-    static func orthographicScale(
-        bounds: BoundingBox,
-        eye: SIMD3<Float>,
-        target: SIMD3<Float>,
-        aspect: Float = 1,
-        padding: Float = previewFitPadding
-    ) -> Float {
-        let offset = eye - target
-        let radius = length(offset)
-        guard radius > 1e-4 else {
-            return orthographicScale(bounds: bounds, aspect: aspect, padding: padding)
-        }
-        return orthographicScale(
-            extent: bounds.max - bounds.min,
-            toCamera: offset / radius,
-            aspect: aspect,
-            padding: padding
-        )
-    }
-
-    /// `OrthographicCameraComponent.scale` is vertical world height; horizontal span is
-    /// `scale * aspect`. Pick the larger of height-needed and width-needed/`aspect`.
-    private static func orthographicScale(
-        extent: SIMD3<Float>,
-        toCamera: SIMD3<Float>,
-        aspect: Float,
-        padding: Float
-    ) -> Float {
-        let axes = framingAxes(toCamera: toCamera)
-        let half = extent * 0.5
-        let safeAspect = clampedAspect(aspect)
-        let height = 2 * projectedHalf(axes.up, halfExtent: half)
-        let width = 2 * projectedHalf(axes.right, halfExtent: half)
-        return max(0.0001, max(height, width / safeAspect) * padding)
-    }
-
     /// Keep pose; swap to ortho and set `scale` / near / far from bounds + look.
     @MainActor
     static func applyOrthographicProjection(
@@ -315,13 +251,6 @@ public enum PreviewCamera {
         return entity.visualBounds(relativeTo: reference)
     }
 
-    /// Keep the cluster of typical mesh sizes; drop a single km-scale leftover
-    /// (the JSON-bounds rule, `ModelBounds.union`).
-    static func unionModelBoxes(_ boxes: [BoundingBox]) -> BoundingBox? {
-        ModelBounds.union(boxes.map { ModelBounds(min: $0.min, max: $0.max) })
-            .map { BoundingBox(min: $0.min, max: $0.max) }
-    }
-
     /// Removes live camera components so RealityKit uses the preview camera.
     /// Mesh-bearing camera nodes stay visible and keep their transforms.
     @MainActor
@@ -334,122 +263,6 @@ public enum PreviewCamera {
             }
         }
         walk(root)
-    }
-
-    /// `nil` = not a decal. 0/1/2 = thin X/Y/Z.
-    static func thinAxis(_ extent: SIMD3<Float>) -> Int? {
-        let longest = max(extent.x, max(extent.y, extent.z))
-        guard longest > 0 else { return nil }
-        if extent.x / longest < standingThinRatio { return 0 }
-        if extent.y / longest < groundThinRatio { return 1 }
-        if extent.z / longest < standingThinRatio { return 2 }
-        return nil
-    }
-
-    /// Standing planes (thin X or Z): Fit orbit would spin the face away.
-    static func disablesAutoRotate(_ extent: SIMD3<Float>) -> Bool {
-        guard let axis = thinAxis(extent) else { return false }
-        return axis == 0 || axis == 2
-    }
-
-    /// Front 3/4, Y-up. glTF +Z is forward, so the camera stands on +Z.
-    /// Standing decals (thin X or Z) look along the thin axis so the face is visible
-    /// when `applyThinAxisOverride` is true (default Fit). Presets pass `false`.
-    ///
-    /// `yaw` / `pitch` are degrees (defaults = `yawDegrees` / `pitchDegrees`).
-    static func cameraPosition(
-        minBound: SIMD3<Float>,
-        maxBound: SIMD3<Float>,
-        padding: Float,
-        aspect: Float = 1,
-        yaw: Float = yawDegrees,
-        pitch: Float = pitchDegrees,
-        applyThinAxisOverride: Bool = true,
-        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
-    ) -> SIMD3<Float> {
-        let center = (minBound + maxBound) * 0.5
-        let extent = maxBound - minBound
-        let toCamera = lookDirection(
-            extent: extent,
-            yaw: yaw,
-            pitch: pitch,
-            applyThinAxisOverride: applyThinAxisOverride
-        )
-        let distance = fitDistance(
-            extent: extent,
-            toCamera: toCamera,
-            aspect: aspect,
-            padding: padding,
-            fieldOfViewInDegrees: fieldOfViewInDegrees
-        )
-        return center + distance * toCamera
-    }
-
-    /// Distance that frames the model's *projected bounding box* — not its bounding
-    /// sphere — so irregular shapes (a tree, a car) fill the viewport instead of
-    /// floating inside the sphere's slack. Fits both the horizontal and vertical FOV.
-    private static func fitDistance(
-        extent: SIMD3<Float>,
-        toCamera: SIMD3<Float>,
-        aspect: Float,
-        padding: Float,
-        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
-    ) -> Float {
-        let axes = framingAxes(toCamera: toCamera)
-        let half = extent * 0.5
-        // RealityView.make often runs before layout; a ~0 aspect used to push the
-        // camera tens of kilometers away so the first frames looked empty.
-        let safeAspect = clampedAspect(aspect)
-        let vHalfFOV = RenderCamera.clampedFieldOfView(fieldOfViewInDegrees) * .pi / 360
-        let hHalfFOV = atan(tan(vHalfFOV) * safeAspect)
-        let distanceV = projectedHalf(axes.up, halfExtent: half) / tan(vHalfFOV)
-        let distanceH = projectedHalf(axes.right, halfExtent: half) / tan(hHalfFOV)
-        // + depth so the near face of the box still fits, not just the center slice.
-        let distance = max(distanceV, distanceH) + projectedHalf(axes.forward, halfExtent: half)
-        return max(0.0001, distance * padding)
-    }
-
-    /// Unit vector from model center toward the camera for yaw/pitch (degrees).
-    private static func lookDirection(
-        extent: SIMD3<Float>,
-        yaw: Float,
-        pitch: Float,
-        applyThinAxisOverride: Bool
-    ) -> SIMD3<Float> {
-        var yawRad = yaw * .pi / 180
-        let pitchRad = pitch * .pi / 180
-        if applyThinAxisOverride, let axis = thinAxis(extent) {
-            if axis == 0 { yawRad = .pi / 2 }
-            if axis == 2 { yawRad = 0 }
-        }
-        return SIMD3(
-            sin(yawRad) * cos(pitchRad),
-            sin(pitchRad),
-            cos(yawRad) * cos(pitchRad)
-        )
-    }
-
-    /// Camera-space basis for projected AABB framing. When look ‖ world +Y, pick +X as right.
-    private static func framingAxes(toCamera: SIMD3<Float>) -> (
-        forward: SIMD3<Float>,
-        right: SIMD3<Float>,
-        up: SIMD3<Float>
-    ) {
-        let forward = -toCamera
-        var right = cross(forward, SIMD3<Float>(0, 1, 0))
-        right = length(right) < 1e-4 ? SIMD3<Float>(1, 0, 0) : normalize(right)
-        let up = normalize(cross(right, forward))
-        return (forward, right, up)
-    }
-
-    /// Half-extent of an axis-aligned box projected onto a unit axis (closed form).
-    private static func projectedHalf(_ axis: SIMD3<Float>, halfExtent: SIMD3<Float>) -> Float {
-        abs(axis.x) * halfExtent.x + abs(axis.y) * halfExtent.y + abs(axis.z) * halfExtent.z
-    }
-
-    /// Layout can report ~0 before the first frame; clamp so Fit does not explode.
-    private static func clampedAspect(_ aspect: Float) -> Float {
-        (aspect > 0.05 && aspect < 20) ? aspect : 1
     }
 
     @MainActor
@@ -483,24 +296,6 @@ public enum PreviewCamera {
         applyView(to: camera, eye: position, target: center)
         applyFitClip(to: &camera.camera, eye: position, target: center)
         return camera
-    }
-
-    /// Default RealityKit far/near clips a 3 km tile or a 12 cm ashtray.
-    static func applyFitClip(to camera: inout PerspectiveCameraComponent, eye: SIMD3<Float>, target: SIMD3<Float>) {
-        let clip = fitClipDistances(eye: eye, target: target)
-        camera.near = clip.near
-        camera.far = clip.far
-    }
-
-    static func applyFitClip(to camera: inout OrthographicCameraComponent, eye: SIMD3<Float>, target: SIMD3<Float>) {
-        let clip = fitClipDistances(eye: eye, target: target)
-        camera.near = clip.near
-        camera.far = clip.far
-    }
-
-    private static func fitClipDistances(eye: SIMD3<Float>, target: SIMD3<Float>) -> (near: Float, far: Float) {
-        let distance = max(length(eye - target), 0.001)
-        return (max(0.0005, distance * 0.0008), max(200, distance * 40))
     }
 
     /// World pose from the glTF camera node plus projection from the session document.
@@ -580,30 +375,5 @@ public enum PreviewCamera {
         }
         camera.setPosition(eye, relativeTo: nil)
         camera.orientation = simd_quatf(simd_float3x3(columns: (right, up, -look)))
-    }
-}
-
-/// Preset orbit angles in degrees for `PreviewCamera.cameraPosition`.
-/// Thin-axis override is off when applying a preset so faces stay square-on.
-extension CameraPreset {
-    /// Yaw degrees: 0 = +Z (front), +90 = +X (right), ±180 = −Z (back), −90 = −X (left).
-    var yawDegrees: Float {
-        switch self {
-        case .front, .top, .bottom: return 0
-        case .back: return 180
-        case .right: return 90
-        case .left: return -90
-        case .isometric: return PreviewCamera.yawDegrees
-        }
-    }
-
-    /// Pitch degrees: 0 = horizon, +90 = top-down, −90 = bottom-up.
-    var pitchDegrees: Float {
-        switch self {
-        case .front, .back, .left, .right: return 0
-        case .top: return 90
-        case .bottom: return -90
-        case .isometric: return PreviewCamera.pitchDegrees
-        }
     }
 }
