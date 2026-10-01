@@ -239,6 +239,53 @@ struct EngineViewportControllerTests {
         #expect(session.exposureEV == 0)
     }
 
+    /// Reset View is "back to this app's defaults", not a hard-coded Neutral IBL / tone curve.
+    @Test func resetRestoresAppDefaultEnvironmentAndToneMapping() throws {
+        let suite = "engine.viewport.reset-look.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let lookDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("engine-viewport-reset-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: lookDir) }
+
+        let defaultsStore = AppDefaultsStore(defaults: defaults)
+        let lookStore = AppLookStore(directory: lookDir)
+        let settings = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
+        let session = PreviewSession(settings: settings)
+        let sidebar = HostSidebarModel(document: GLTFSessionDocument())
+        let viewport = EngineViewportController(
+            sidebar: sidebar,
+            lookStore: lookStore,
+            previewSession: session
+        )
+
+        settings.appDefaults.set(StudioEnvironment.field.rawValue, for: .environmentCatalog)
+        settings.appDefaults.set(ToneMapping.acesHill.khronosName, for: .toneMapping)
+
+        viewport.setLighting(
+            LightingSettings(
+                exposure: 1,
+                environmentRotationDegrees: 45,
+                usesFileLights: true,
+                usesStudioEnvironment: true,
+                environment: .colorfulStudio,
+                toneMapping: .linear
+            )
+        )
+        #expect(viewport.lighting.environment == .colorfulStudio)
+        #expect(viewport.lighting.toneMapping == .linear)
+
+        viewport.reset()
+
+        #expect(viewport.lighting.environment == .field)
+        #expect(viewport.lighting.toneMapping == .acesHill)
+        #expect(viewport.lighting.exposure == 0)
+        #expect(abs(viewport.lighting.environmentRotationDegrees) < 0.0001)
+    }
+
     @Test func applySessionRemountDoesNotClobberFileLightDim() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let session = PreviewSession()

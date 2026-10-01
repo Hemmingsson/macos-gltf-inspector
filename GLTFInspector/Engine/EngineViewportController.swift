@@ -59,8 +59,18 @@ final class EngineViewportController: ViewportController {
     func applySession() {
         // Environment and tone mapping have no session override yet: they are app defaults, and
         // the extensions read the same two keys so all three surfaces agree.
-        environment = StudioEnvironment(rawValue: settings.default(for: .environmentCatalog)) ?? .neutral
-        toneMapping = ToneMapping.fromKhronosName(settings.default(for: .toneMapping))
+        environment = defaultEnvironment
+        toneMapping = defaultToneMapping
+    }
+
+    /// Settings default for the bundled IBL, or Neutral when the stored name is unknown.
+    private var defaultEnvironment: StudioEnvironment {
+        StudioEnvironment(rawValue: settings.default(for: .environmentCatalog)) ?? .neutral
+    }
+
+    /// Settings default for the tone curve (`ToneMapping.khronosName`).
+    private var defaultToneMapping: ToneMapping {
+        ToneMapping.fromKhronosName(settings.default(for: .toneMapping))
     }
 
     var backdrop: BackdropStyle { previewSession.backdrop }
@@ -166,7 +176,9 @@ final class EngineViewportController: ViewportController {
                 exposure: 0,
                 environmentRotationDegrees: 0,
                 usesFileLights: false,
-                usesStudioEnvironment: lookStore.look.useEnvironmentMap
+                usesStudioEnvironment: lookStore.look.useEnvironmentMap,
+                environment: defaultEnvironment,
+                toneMapping: defaultToneMapping
             )
         )
         setDoubleSided(false)
