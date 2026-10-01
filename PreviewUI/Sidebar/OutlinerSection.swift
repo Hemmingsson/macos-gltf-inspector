@@ -14,17 +14,14 @@ public struct OutlinerItem: Identifiable, Hashable, Sendable {
     /// cannot collide.
     public var id: NodeID
     public var name: String
-    /// Nesting depth inside the mesh-visible tree. 0 sits flush; deeper levels step the gutter.
-    public var depth: Int
     /// Scene-graph descendants.
     public var children: [OutlinerItem]
 
     public var hasChildren: Bool { !children.isEmpty }
 
-    public init(id: NodeID, name: String, depth: Int = 0, children: [OutlinerItem] = []) {
+    public init(id: NodeID, name: String, children: [OutlinerItem] = []) {
         self.id = id
         self.name = name
-        self.depth = depth
         self.children = children
     }
 }
@@ -36,7 +33,7 @@ public struct OutlinerSection: Identifiable, Hashable, Sendable {
     public var id: String { title }
     public var title: String
     public var items: [OutlinerItem]
-    /// When true, rows use disclosure chevrons and per-depth indent.
+    /// When true, rows nest in disclosure groups.
     /// Only the Scene graph section sets this — other sections stay flat leaf lists.
     public var folds: Bool
 

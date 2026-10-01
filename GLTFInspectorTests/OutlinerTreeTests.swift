@@ -6,17 +6,14 @@ struct OutlinerTreeTests {
     private let root = OutlinerItem(
         id: NodeID(kind: .empty, index: 0),
         name: "Root",
-        depth: 0,
         children: [
             OutlinerItem(
                 id: NodeID(kind: .mesh, index: 0),
                 name: "Mesh",
-                depth: 1,
                 children: [
                     OutlinerItem(
                         id: NodeID(kind: .mesh, index: 1),
-                        name: "Child",
-                        depth: 2
+                        name: "Child"
                     )
                 ]
             )

@@ -6,9 +6,8 @@ public enum OutlinerFixtures {
     OutlinerItem(
       id: NodeID(kind: .empty, index: 0),
       name: "Root",
-      depth: 0,
       children: [
-        OutlinerItem(id: NodeID(kind: .mesh, index: 0), name: "Cube", depth: 1)
+        OutlinerItem(id: NodeID(kind: .mesh, index: 0), name: "Cube")
       ]
     )
   ]

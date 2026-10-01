@@ -4,14 +4,9 @@ import Foundation
 /// can be proved without driving a window.
 public enum OutlinerTree {
     /// Full scene-graph tree preserving hierarchy for all authored node kinds.
-    public static func fullRoots(_ nodes: [SceneNode], depth: Int = 0) -> [OutlinerItem] {
+    public static func fullRoots(_ nodes: [SceneNode]) -> [OutlinerItem] {
         nodes.map { node in
-            OutlinerItem(
-                id: node.id,
-                name: node.name,
-                depth: depth,
-                children: fullRoots(node.children, depth: depth + 1)
-            )
+            OutlinerItem(id: node.id, name: node.name, children: fullRoots(node.children))
         }
     }
 
