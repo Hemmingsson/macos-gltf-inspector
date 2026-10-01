@@ -30,6 +30,8 @@ final class DocumentWindowModel {
     let placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
     /// From the mounted renderer's `RendererFeature.nodeVisibility`.
     let canHideNodes: Bool
+    /// Mounted renderer's capabilities. The View menu and `RendererAvailability` both read this.
+    let features: Set<RendererFeature>
     /// Window-owned selection adapter over `activeSidebar`, rebuilt only when the sidebar is
     /// replaced (open / adopt / failure) — never in a view body, so `ShellRootView` keeps it.
     /// The viewport follows the same sidebar.
@@ -48,12 +50,21 @@ final class DocumentWindowModel {
     /// `sceneModel`.
     private var loadedSceneModel: EngineSceneModel?
 
-    init(documentURL: URL?, canHideNodes: Bool = true) {
+    init(
+        documentURL: URL?,
+        canHideNodes: Bool? = nil,
+        features: Set<RendererFeature> = Set(RendererFeature.allCases)
+    ) {
         self.documentURL = documentURL
-        self.canHideNodes = canHideNodes
-        selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: canHideNodes)
+        self.features = features
+        self.canHideNodes = canHideNodes ?? features.contains(.nodeVisibility)
+        selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: self.canHideNodes)
         previewSession = PreviewSession(settings: settings)
-        engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
+        engineViewport = EngineViewportController(
+            sidebar: placeholderSidebar,
+            previewSession: previewSession,
+            features: features
+        )
         engineViewport.saveScreenshot = { [weak self] image in
             await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
         }

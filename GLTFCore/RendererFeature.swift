@@ -11,6 +11,8 @@ public enum RendererFeature: String, Sendable, Hashable, Codable, CaseIterable {
     case animationPlayback
     case morphTargets
     case skeletonOverlay
+    /// Force `faceCulling = .none` on the live preview (RealityKit debug path).
+    case doubleSided
     case materialVariants
     case nodeSelection
     /// Hide / solo individual nodes.

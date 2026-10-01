@@ -31,6 +31,9 @@ final class EngineViewportController: ViewportController {
     /// Host save panel + PNG write for `screenshot()`. Tests inject a recorder.
     var saveScreenshot: ((CGImage) async -> Void)?
 
+    /// Mounted renderer's `RendererFeature` set. The View menu hides what this lacks.
+    let features: Set<RendererFeature>
+
     private(set) var activeCameraPreset: PreviewUI.CameraPreset?
 
     /// Per-window environment and tone mapping (not on `PreviewSession`, which cannot see PreviewUI
@@ -43,13 +46,15 @@ final class EngineViewportController: ViewportController {
         lookStore: AppLookStore? = nil,
         previewSession: PreviewSession? = nil,
         commands: FocusedPreviewCommands? = nil,
-        saveScreenshot: ((CGImage) async -> Void)? = nil
+        saveScreenshot: ((CGImage) async -> Void)? = nil,
+        features: Set<RendererFeature> = Set(RendererFeature.allCases)
     ) {
         self.sidebar = sidebar
         self.lookStore = lookStore ?? .shared
         self.previewSession = previewSession ?? PreviewSession()
         self.commands = commands
         self.saveScreenshot = saveScreenshot
+        self.features = features
     }
 
     /// Per-window lazy overlay (the session's `EngineSettingsStore`).
