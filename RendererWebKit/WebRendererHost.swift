@@ -17,32 +17,6 @@ import WebKit
 /// `error`) with no replies.
 @MainActor
 public final class WebRendererHost {
-    /// Model and stats reported by the page after a load.
-    public struct LoadInfo: Equatable, Decodable {
-        public var triangles: Int
-        var meshes: Int
-        /// Drawing-buffer size the page ended up with. Zero-ish values mean the view was never
-        /// laid out, which renders blank rather than failing.
-        var width: Int
-        var height: Int
-        /// Page-side `loadGltf` wall time in ms.
-        var parseMs: Int
-        /// Page-side `fitCamera` wall time in ms.
-        var fitMs: Int
-        /// Live only: first GPU `renderFrame` after parse. Zero in still mode.
-        var firstFrameMs: Int
-    }
-
-    /// `stats()`: what the page is drawing right now. Diagnostics and tests.
-    struct Stats: Decodable, Equatable {
-        var width: Int
-        var height: Int
-        var triangles: Int
-        var meshes: Int
-        /// Computed page background, e.g. `rgba(0, 0, 0, 0)`.
-        var background: String
-    }
-
     fileprivate static let messageName = "viewer"
     /// Calls `window.__viewer[fn]` with one JSON argument and hands back its result as JSON text
     /// — a `String` is the one result type that crosses the bridge without guessing.

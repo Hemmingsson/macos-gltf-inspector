@@ -12,6 +12,34 @@ public enum WebRendererMode: String {
     case live
 }
 
+extension WebRendererHost {
+    /// Model and stats reported by the page after a load.
+    public struct LoadInfo: Equatable, Decodable {
+        public var triangles: Int
+        var meshes: Int
+        /// Drawing-buffer size the page ended up with. Zero-ish values mean the view was never
+        /// laid out, which renders blank rather than failing.
+        var width: Int
+        var height: Int
+        /// Page-side `loadGltf` wall time in ms.
+        var parseMs: Int
+        /// Page-side `fitCamera` wall time in ms.
+        var fitMs: Int
+        /// Live only: first GPU `renderFrame` after parse. Zero in still mode.
+        var firstFrameMs: Int
+    }
+
+    /// `stats()`: what the page is drawing right now. Diagnostics and tests.
+    struct Stats: Decodable, Equatable {
+        var width: Int
+        var height: Int
+        var triangles: Int
+        var meshes: Int
+        /// Computed page background, e.g. `rgba(0, 0, 0, 0)`.
+        var background: String
+    }
+}
+
 /// A camera stated completely: where it looks, from how far, at what angles, through which
 /// projection. Every field the renderer reads is here, so replaying a pose does not depend on
 /// scene extents or on `UserCamera.fitViewToScene`.
