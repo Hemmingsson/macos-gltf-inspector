@@ -11,7 +11,7 @@ public enum PreviewLighting {
     }
 
     @MainActor
-    static func prefetchLook(_ look: AppLook) async {
+    public static func prefetchLook(_ look: AppLook) async {
         let interval = AppLog.signposter.beginInterval("ibl")
         defer { AppLog.signposter.endInterval("ibl", interval) }
         if look.useEnvironmentMap, let url = look.resolvedHDRURL() {
@@ -143,9 +143,16 @@ public enum PreviewLighting {
         }
     }
 
+    /// ImageIO float decode — safe off the main actor. `EnvironmentResource` stays `@MainActor`.
+    nonisolated static func decodeHDROffMain(from url: URL) async -> CGImage? {
+        await Task.detached(priority: .userInitiated) {
+            EquirectangularImage.load(from: url)
+        }.value
+    }
+
     @MainActor
     static func loadEnvironmentResource(from url: URL) async -> EnvironmentResource? {
-        guard let image = loadEquirectangular(from: url) else {
+        guard let image = await decodeHDROffMain(from: url) else {
             AppLog.error(AppLog.lighting, "HDR decode failed \(url.lastPathComponent)")
             return nil
         }
@@ -161,7 +168,7 @@ public enum PreviewLighting {
         KhronosEnvironments.defaultLook.bundledURL
     }
 
-    static func loadEquirectangular(from url: URL) -> CGImage? {
+    nonisolated static func loadEquirectangular(from url: URL) -> CGImage? {
         EquirectangularImage.load(from: url)
     }
 

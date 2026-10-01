@@ -54,6 +54,7 @@ struct RealityDocumentWindow: View {
                     registerCommands: { window.engineViewport.commands = $0 }
                 )
                 .canvasReadyMarker(renderer: .realityKit, isReady: true)
+                .onAppear { window.noteCanvasReady() }
             } else if let firstPixelImage {
                 Image(nsImage: firstPixelImage)
                     .resizable()
@@ -160,6 +161,7 @@ struct RealityDocumentWindow: View {
             generation = started
         }
         firstPixelImage = firstPixelNSImage(for: url, renderer: .realityKit)
+        Task { await PreviewLighting.prefetchLook(AppLook.current) }
         convert = .loading
         morphTargets = []
         playbackController = EngineAnimationPlaybackController()

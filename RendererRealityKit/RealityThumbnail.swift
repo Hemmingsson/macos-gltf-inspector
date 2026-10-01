@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import GLTFCore
 
 /// Finder icon through RealityKit: convert without clips, front-¾ turntable framing, one offscreen
 /// `StillRenderer` frame on the light-grey thumbnail backdrop.
@@ -9,8 +10,11 @@ public enum RealityThumbnail {
     static let maxTextureEdge = 1024
 
     public static func render(url: URL, pixel: Int) async throws -> CGImage {
+        let look = AppLook.current
+        async let ibl: Void = PreviewLighting.prefetchLook(look)
         let model = try await EntityLoader.loadThumbnail(from: url, maxTextureEdge: maxTextureEdge)
         let assembled = await PreviewCamera.makeTurntable(for: model.entity)
+        await ibl
         return try await StillRenderer.render(
             root: assembled.pivot,
             bounds: assembled.bounds,

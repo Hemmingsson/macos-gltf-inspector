@@ -96,8 +96,8 @@ final class DocumentWindowModel {
         phase = .failed("The document URL is missing.")
     }
 
-    /// Resets the window for `url` and starts validation. The caller loads its renderer's chrome
-    /// and ends with `finishOpen`.
+    /// Resets the window for `url`. The caller loads its renderer's chrome and ends with
+    /// `finishOpen`. Validation starts from `noteCanvasReady` after first paint — not here.
     func beginOpen(_ url: URL) -> OpenStart {
         guard DocumentOpening.isGLTFFile(url) else {
             AppLog.error(AppLog.host, "open rejected \(url.lastPathComponent)")
@@ -121,8 +121,15 @@ final class DocumentWindowModel {
         settings.clearSession()
         engineViewport.applySession()
         AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(uptimeMs())")
-        startValidation(of: url, generation: loadGeneration)
+        validationTask?.cancel()
         return .started(generation: loadGeneration)
+    }
+
+    /// Khronos validation is CPU-heavy (new JSContext + whole-file base64). Call once the
+    /// canvas has painted — WebKit `.ready`, RealityKit canvas mount — not beside convert.
+    func noteCanvasReady() {
+        guard let url = loadingURL, validation == nil else { return }
+        startValidation(of: url, generation: loadGeneration)
     }
 
     func isCurrent(_ generation: Int) -> Bool { generation == loadGeneration }
@@ -206,13 +213,20 @@ final class DocumentWindowModel {
         }
     }
 
+    /// Tests replace this so scheduling can be asserted without running JavaScriptCore.
+    @ObservationIgnored
+    var validateFile: @Sendable (URL) async throws -> GLTFValidationReport = {
+        try await GLTFValidator.validate(fileAt: $0)
+    }
+
     private func startValidation(of url: URL, generation: Int) {
+        if validationTask != nil, validationGeneration == generation { return }
         validationTask?.cancel()
-        validationGeneration += 1
+        validationGeneration = generation
         let validationGen = validationGeneration
         validationTask = Task {
             do {
-                let report = try await GLTFValidator.validate(fileAt: url)
+                let report = try await validateFile(url)
                 try Task.checkCancellation()
                 guard generation == loadGeneration, validationGen == validationGeneration else { return }
                 validation = .success(report)

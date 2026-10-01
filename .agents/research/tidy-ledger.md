@@ -158,6 +158,8 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - Finder `CachedQuickLookThumbnail` is unused by QL now (cache hit or bbox proxy). Left in place; the EXP-008 tests still cover it.
 - RK window treats a poster as canvas-ready so PreviewUI does not keep the spinner-only status view. Chrome pills appear over the still. Not a first Metal frame.
 - `finishOpen(.ready)` is panels-ready on WebKit — validation must not hook it (or7a0dm7).
+- HDR decode is `Task.detached`; `EnvironmentResource(equirectangular:)` stays `@MainActor`. Thumbnail `prefetchLook` starts beside `loadThumbnail`. No lighting-result or golden change.
+- Validation is `noteCanvasReady` after WebKit `.ready` / RK canvas `onAppear`. `beginOpen` only cancels the previous task.
 
 ## W4 realitykit
 
