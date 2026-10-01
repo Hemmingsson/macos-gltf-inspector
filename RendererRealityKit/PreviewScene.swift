@@ -122,7 +122,7 @@ struct PreviewScene: View {
         _localEnvironmentYaw = State(initialValue: 0)
         _localDoubleSided = State(initialValue: false)
         _localShowSkeleton = State(initialValue: false)
-        _localFieldOfViewDegrees = State(initialValue: PreviewCamera.defaultFieldOfViewDegrees)
+        _localFieldOfViewDegrees = State(initialValue: RenderCamera.defaultFieldOfViewDegrees)
     }
 
     /// Host window supplies PreviewUI overlays; Quick Look (`sidebar == nil`) keeps inlined chrome.
@@ -194,7 +194,7 @@ struct PreviewScene: View {
     private var doubleSidedValue: Bool { doubleSidedBinding.wrappedValue }
     private var showSkeletonValue: Bool { showSkeletonBinding.wrappedValue }
     private var fieldOfViewValue: Float {
-        PreviewCamera.clampedFieldOfView(fieldOfViewBinding.wrappedValue)
+        RenderCamera.clampedFieldOfView(fieldOfViewBinding.wrappedValue)
     }
     private var documentSkins: [GLTFSessionDocument.Skin] {
         let fromSidebar = sidebar?.document.skins ?? []

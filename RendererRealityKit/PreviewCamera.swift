@@ -4,9 +4,6 @@ import RealityKit
 import simd
 
 public enum PreviewCamera {
-    public static let defaultFieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
-    /// Session FOV slider range (degrees). Fit distance uses the live value.
-    static let fieldOfViewRange = RenderCamera.fieldOfViewRange
     /// Default front-three-quarter yaw (degrees). Iso preset uses the same value.
     static let yawDegrees: Float = 35
     /// Default front-three-quarter pitch (degrees). Iso preset uses the same value.
@@ -108,13 +105,13 @@ public enum PreviewCamera {
         yaw: Float = yawDegrees,
         pitch: Float = pitchDegrees,
         applyThinAxisOverride: Bool = true,
-        fieldOfViewInDegrees: Float = defaultFieldOfViewDegrees
+        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) {
         guard !bounds.isEmpty else { return }
         let center = (bounds.min + bounds.max) * 0.5
         // Pivot stays at the visual center (usually world origin after turntable).
         orbitFocus?.setPosition(.zero, relativeTo: nil)
-        let fov = clampedFieldOfView(fieldOfViewInDegrees)
+        let fov = RenderCamera.clampedFieldOfView(fieldOfViewInDegrees)
         let fitted = makeFrontThreeQuarter(
             minBound: bounds.min,
             maxBound: bounds.max,
@@ -155,7 +152,7 @@ public enum PreviewCamera {
         orbitFocus: Entity? = nil,
         orthographic: Bool = false,
         preset: CameraPreset,
-        fieldOfViewInDegrees: Float = defaultFieldOfViewDegrees
+        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) {
         applyFit(
             to: camera,
@@ -176,12 +173,8 @@ public enum PreviewCamera {
     static func applyFieldOfView(to camera: Entity, degrees: Float) {
         guard camera.components[OrthographicCameraComponent.self] == nil else { return }
         guard var perspective = camera.components[PerspectiveCameraComponent.self] else { return }
-        perspective.fieldOfViewInDegrees = clampedFieldOfView(degrees)
+        perspective.fieldOfViewInDegrees = RenderCamera.clampedFieldOfView(degrees)
         camera.components.set(perspective)
-    }
-
-    public static func clampedFieldOfView(_ degrees: Float) -> Float {
-        RenderCamera.clampedFieldOfView(degrees)
     }
 
     /// Vertical world height that fills the view for an orthographic fit of `bounds`
@@ -439,7 +432,7 @@ public enum PreviewCamera {
         yaw: Float = yawDegrees,
         pitch: Float = pitchDegrees,
         applyThinAxisOverride: Bool = true,
-        fieldOfViewInDegrees: Float = defaultFieldOfViewDegrees
+        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) -> SIMD3<Float> {
         let center = (minBound + maxBound) * 0.5
         let extent = maxBound - minBound
@@ -467,14 +460,14 @@ public enum PreviewCamera {
         toCamera: SIMD3<Float>,
         aspect: Float,
         padding: Float,
-        fieldOfViewInDegrees: Float = defaultFieldOfViewDegrees
+        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) -> Float {
         let axes = framingAxes(toCamera: toCamera)
         let half = extent * 0.5
         // RealityView.make often runs before layout; a ~0 aspect used to push the
         // camera tens of kilometers away so the first frames looked empty.
         let safeAspect = clampedAspect(aspect)
-        let vHalfFOV = clampedFieldOfView(fieldOfViewInDegrees) * .pi / 360
+        let vHalfFOV = RenderCamera.clampedFieldOfView(fieldOfViewInDegrees) * .pi / 360
         let hHalfFOV = atan(tan(vHalfFOV) * safeAspect)
         let distanceV = projectedHalf(axes.up, halfExtent: half) / tan(vHalfFOV)
         let distanceH = projectedHalf(axes.right, halfExtent: half) / tan(hHalfFOV)
@@ -535,10 +528,10 @@ public enum PreviewCamera {
         yaw: Float = yawDegrees,
         pitch: Float = pitchDegrees,
         applyThinAxisOverride: Bool = true,
-        fieldOfViewInDegrees: Float = defaultFieldOfViewDegrees
+        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) -> PerspectiveCamera {
         let center = (minBound + maxBound) * 0.5
-        let fov = clampedFieldOfView(fieldOfViewInDegrees)
+        let fov = RenderCamera.clampedFieldOfView(fieldOfViewInDegrees)
         let position = cameraPosition(
             minBound: minBound,
             maxBound: maxBound,
@@ -613,11 +606,11 @@ public enum PreviewCamera {
     @MainActor
     static func restoreFitPerspective(
         on preview: Entity,
-        fieldOfViewInDegrees: Float = defaultFieldOfViewDegrees
+        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) {
         preview.components.remove(OrthographicCameraComponent.self)
         var camera = preview.components[PerspectiveCameraComponent.self] ?? PerspectiveCameraComponent()
-        camera.fieldOfViewInDegrees = clampedFieldOfView(fieldOfViewInDegrees)
+        camera.fieldOfViewInDegrees = RenderCamera.clampedFieldOfView(fieldOfViewInDegrees)
         camera.fieldOfViewOrientation = .vertical
         preview.components.set(camera)
     }

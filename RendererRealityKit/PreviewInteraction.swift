@@ -173,7 +173,7 @@ public final class PreviewInteraction {
     @MainActor
     private func resetFOV() {
         guard let camera else { return }
-        PreviewCamera.applyFieldOfView(to: camera, degrees: PreviewCamera.defaultFieldOfViewDegrees)
+        PreviewCamera.applyFieldOfView(to: camera, degrees: RenderCamera.defaultFieldOfViewDegrees)
     }
 
     /// Dolly along the camera look axis (not eye→target). Factor &lt; 1 advances;

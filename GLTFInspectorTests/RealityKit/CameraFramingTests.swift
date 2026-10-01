@@ -219,7 +219,7 @@ struct FileCameraViewTests {
     @MainActor
     @Test func applyFieldOfViewUpdatesPerspectiveOnly() throws {
         let preview = PerspectiveCamera()
-        preview.camera.fieldOfViewInDegrees = PreviewCamera.defaultFieldOfViewDegrees
+        preview.camera.fieldOfViewInDegrees = RenderCamera.defaultFieldOfViewDegrees
         PreviewCamera.applyFieldOfView(to: preview, degrees: 60)
         #expect(abs(preview.camera.fieldOfViewInDegrees - 60) < 0.001)
 
@@ -253,9 +253,9 @@ struct FileCameraViewTests {
     }
 
     @Test func fieldOfViewClampsToSessionRange() {
-        #expect(PreviewCamera.clampedFieldOfView(5) == PreviewCamera.fieldOfViewRange.lowerBound)
-        #expect(PreviewCamera.clampedFieldOfView(120) == PreviewCamera.fieldOfViewRange.upperBound)
-        #expect(abs(PreviewCamera.clampedFieldOfView(35) - 35) < 0.001)
+        #expect(RenderCamera.clampedFieldOfView(5) == RenderCamera.fieldOfViewRange.lowerBound)
+        #expect(RenderCamera.clampedFieldOfView(120) == RenderCamera.fieldOfViewRange.upperBound)
+        #expect(abs(RenderCamera.clampedFieldOfView(35) - 35) < 0.001)
     }
 }
 
