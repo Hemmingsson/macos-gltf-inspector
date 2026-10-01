@@ -91,7 +91,7 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var outerCone: Float?
     }
 
-    /// Authored texture slot on a material. Pixel size / thumb filled after convert.
+    /// Authored texture slot on a material. Pixel size / thumb stamped from the file bytes.
     public struct TextureSlot: Sendable, Equatable {
         public enum Kind: String, Sendable, Equatable {
             case baseColor
@@ -139,11 +139,11 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var emissiveFactor: SIMD3<Float>?
         public var normalScale: Float?
         public var occlusionStrength: Float?
-        /// Present map bindings; thumbs stamped after convert.
+        /// Present map bindings; thumbs stamped from the file bytes.
         public var textures: [TextureSlot] = []
     }
 
-    /// Skin joint list stamped at convert. `jointParentIndices` indexes this
+    /// Skin joint list from the JSON. `jointParentIndices` indexes this
     /// skin’s joint array (`nil` = root). Overlay looks up entities via `jointNodeIndices`.
     public struct Skin: Sendable, Equatable {
         public var name: String
@@ -152,7 +152,7 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var jointParentIndices: [Int?]
     }
 
-    /// Morph targets for one mesh. Names match RealityKit blend-shape offsets.
+    /// Morph targets for one mesh (`extras.targetNames`, else by index).
     public struct Morph: Sendable, Equatable {
         public var meshIndex: Int
         public var meshName: String
