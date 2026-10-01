@@ -231,14 +231,9 @@ public final class WebCanvasController {
                         }
                     }
                     try await host.start()
+                    // The peek task above shows its copy; keep it for the "Drawing…" detail.
                     inventory = await peek.value
                     try Task.checkCancellation()
-                    if !didRevealLive {
-                        showLoading(
-                            title: WebRendererLoadCopy.message(for: inventory),
-                            detail: WebRendererLoadCopy.detail(for: inventory)
-                        )
-                    }
                 } else {
                     try await host.start()
                 }
