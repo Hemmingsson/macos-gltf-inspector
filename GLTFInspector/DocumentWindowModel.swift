@@ -39,7 +39,7 @@ final class DocumentWindowModel {
     let panels = ShellPanelChrome()
     /// Per-window lazy overlay — not seed-once `@State` from UserDefaults.
     let settings = EngineSettingsStore()
-    let previewSession = PreviewSession()
+    let previewSession: PreviewSession
     let engineViewport: EngineViewportController
     private(set) var validation: GLTFValidationState?
     @ObservationIgnored private var validationGeneration = 0
@@ -52,11 +52,8 @@ final class DocumentWindowModel {
         self.documentURL = documentURL
         self.canHideNodes = canHideNodes
         selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: canHideNodes)
-        engineViewport = EngineViewportController(
-            sidebar: placeholderSidebar,
-            previewSession: previewSession,
-            settings: settings
-        )
+        previewSession = PreviewSession(settings: settings)
+        engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
         engineViewport.saveScreenshot = { [weak self] image in
             await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
         }
