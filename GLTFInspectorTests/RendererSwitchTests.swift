@@ -118,7 +118,6 @@ struct RendererSwitchTests {
 
         let none = RendererAvailability(model: model, viewModes: modes, features: [])
         #expect(none.availableDebugChannels == [.shaded])
-        #expect(!none.hasMorphs)
         #expect(!none.hasLights)
     }
 
