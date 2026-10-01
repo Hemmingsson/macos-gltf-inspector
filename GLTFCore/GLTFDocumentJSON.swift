@@ -364,7 +364,7 @@ public enum GLTFDocumentJSON {
         )
     }
 
-    /// Authored map bindings in inspector order. Mirrors `MaterialMapPresence.from(json:)`.
+    /// Authored map bindings in inspector order.
     private static func textureSlots(_ material: [String: Any]) -> [GLTFSessionDocument.TextureSlot] {
         textureRefs(material).map { ref in
             GLTFSessionDocument.TextureSlot(
@@ -375,7 +375,8 @@ public enum GLTFDocumentJSON {
     }
 
     /// Every authored texture binding on a material, in the order the inspector lists them.
-    private static func textureRefs(
+    /// The one binding table: `MaterialMapPresence.from(json:)` reads it too.
+    static func textureRefs(
         _ material: [String: Any]
     ) -> [(kind: GLTFSessionDocument.TextureSlot.Kind, params: [String: Any])] {
         let extensions = material["extensions"] as? [String: Any] ?? [:]
