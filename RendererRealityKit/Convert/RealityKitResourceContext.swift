@@ -88,6 +88,9 @@ class RealityKitResourceContext {
     private var convertedMaterialsForIdentifiers = [ObjectIdentifier: any Material]()
 
     var problems = ConvertProblemReport()
+    /// Image decode and `TextureResource` upload time so far (non-KTX images), for `ConvertTimings`.
+    private(set) var textureDecodeTime: Duration = .zero
+    private(set) var textureUploadTime: Duration = .zero
     /// Longest texture edge to upload; larger rasters are downscaled after decode. Finder icons
     /// only (`RealityThumbnail`): a 512 px icon cannot show 4K texels, and `TextureResource`
     /// generation on large rasters is the measured residual load cost.
@@ -208,9 +211,11 @@ class RealityKitResourceContext {
 
         guard let image = cachedCGImage(for: gltfImage) else { return nil }
         let options = TextureResource.CreateOptions(semantic: semantic)
+        let uploadStart = ContinuousClock.now
         let upload = AppLog.signposter.withIntervalSignpost("texture.upload") {
             try? TextureResource(image: image, withName: nil, options: options)
         }
+        textureUploadTime += .now - uploadStart
         guard let resource = upload else { return nil }
         storeTextureResource(resource, for: gltfImage, semantic: semantic)
         return resource
@@ -224,9 +229,11 @@ class RealityKitResourceContext {
         if let existing = cgImagesForImageIdentifiers[gltfImage.identifier] {
             return existing
         }
+        let decodeStart = ContinuousClock.now
         let cgImage = AppLog.signposter.withIntervalSignpost("texture.decode") {
             (gltfImage.newCGImage()?.takeRetainedValue()).map(capped)
         }
+        textureDecodeTime += .now - decodeStart
         if let cgImage {
             cgImagesForImageIdentifiers[gltfImage.identifier] = cgImage
         }

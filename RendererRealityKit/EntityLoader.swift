@@ -21,12 +21,15 @@ public enum EntityLoader {
         public let convertProblems: ConvertProblemReport
         /// `KHR_materials_variants` names from GLTFKit2 (`materialVariants`). Empty when absent.
         public let materialVariantNames: [String]
+        /// Convert stage times of this load (bench only; a scene switch keeps the zero default).
+        var timings = ConvertTimings()
     }
 
     /// Finder thumbnails only need a mesh + IBL exponent — no session document / overlay stats.
     struct ThumbnailModel {
         let entity: Entity
         let studioIBLExponent: Float
+        var timings = ConvertTimings()
     }
 
     @MainActor
@@ -102,19 +105,20 @@ public enum EntityLoader {
     /// caps uploaded texture size (Finder icons).
     static func loadThumbnail(from url: URL, maxTextureEdge: Int? = nil) async throws -> ThumbnailModel {
         try await withSource(url) { source in
-            let entity = try await convertAsset(
+            let converted = try await convertAsset(
                 source,
                 includeAnimations: false,
                 sceneIndex: nil,
                 materialVariantIndex: nil,
                 maxTextureEdge: maxTextureEdge
-            ).entity
+            )
+            let entity = converted.entity
             let exponent = await MainActor.run {
                 RealityPolicy.studioIBLExponent(
                     punctualLightCount: punctualLightCount(in: entity)
                 )
             }
-            return ThumbnailModel(entity: entity, studioIBLExponent: exponent)
+            return ThumbnailModel(entity: entity, studioIBLExponent: exponent, timings: converted.build.timings)
         }
     }
 
@@ -205,7 +209,8 @@ public enum EntityLoader {
             studioIBLExponent: exponent,
             pipelineReport: report,
             convertProblems: convertProblems,
-            materialVariantNames: materialVariantNames
+            materialVariantNames: materialVariantNames,
+            timings: build.timings
         )
     }
 
@@ -217,6 +222,7 @@ public enum EntityLoader {
         maxTextureEdge: Int? = nil
     ) async throws -> Converted {
         let name = source.url.lastPathComponent
+        let parseStart = ContinuousClock.now
         let asset = try AppLog.signposter.withIntervalSignpost("parse") {
             try GLTFAsset(
                 url: source.url,
@@ -247,7 +253,8 @@ public enum EntityLoader {
             AppLog.error(AppLog.load, "no default scene for \(name)")
             throw GLTFInspectorError.make(1020, "The glTF asset did not specify a default scene")
         }
-        let build = try await MainActor.run {
+        let parse = ContinuousClock.now - parseStart
+        var build = try await MainActor.run {
             do {
                 return try RealityKitConvert.build(scene: scene, asset: asset, maxTextureEdge: maxTextureEdge)
             } catch {
@@ -255,6 +262,7 @@ public enum EntityLoader {
                 throw convertFailure(from: error)
             }
         }
+        build.timings.parse = parse
         return Converted(build: build, specGloss: specGloss)
     }
 
