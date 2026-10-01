@@ -106,7 +106,7 @@ extension RealityKitConvert {
             } else {
                 material.emissiveColor = .init(
                     color: platformColor(for: simd_make_float4(emissive.emissiveFactor, 1)),
-                    texture: emissive.emissiveTexture.map { tex($0, .all, .color) }
+                    texture: emissive.emissiveTexture.flatMap { tex($0, .all, .color) }
                 )
                 material.emissiveIntensity = emissive.emissiveStrength
             }

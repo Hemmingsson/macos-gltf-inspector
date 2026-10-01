@@ -179,14 +179,16 @@ enum StillRenderer {
             environmentYaw: environmentYaw,
             look: look
         )
-        let output = try RealityRenderer.CameraOutput(.singleProjection(colorTexture: built.texture))
+        let renderer = built.renderer
+        let texture = built.texture
+        let output = try RealityRenderer.CameraOutput(.singleProjection(colorTexture: texture))
         let interval = AppLog.signposter.beginInterval("still.capture")
         defer { AppLog.signposter.endInterval("still.capture", interval) }
         return try await withCheckedThrowingContinuation { continuation in
             do {
-                try built.renderer.updateAndRender(deltaTime: 0, cameraOutput: output, onComplete: { _ in
+                try renderer.updateAndRender(deltaTime: 0, cameraOutput: output, onComplete: { [texture, width, height] _ in
                     do {
-                        continuation.resume(returning: try image(from: built.texture, width: width, height: height))
+                        continuation.resume(returning: try image(from: texture, width: width, height: height))
                     } catch {
                         continuation.resume(throwing: error)
                     }
