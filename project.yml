@@ -134,7 +134,7 @@ targets:
         DEFINES_MODULE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
 
-  # RealityKit renderer: glTF → GLTFKit2 → prepare → convert → RealityKit entities, the
+  # RealityKit renderer: glTF → GLTFKit2 → convert → RealityKit entities, the
   # RealityView canvas, look / camera / floor, and offscreen stills. Extension-safe (no NSApp;
   # the host owns the PNG save panel). The only target that links GLTFKit2 and DracoSwift.
   # GLBTry.h is public because framework targets cannot use a bridging header.
@@ -369,7 +369,8 @@ targets:
         # user opens from, so the sandboxed extensions need read access beyond the opened file.
         com.apple.security.temporary-exception.files.home-relative-path.read-only:
           - /
-        # SPIKE: WKWebView spawns Networking/GPU XPC services even with no network use.
+        # WKWebView spawns a Networking XPC service even with no network use; without this the
+        # extension is denied the mach extension WebContent needs and WebContent dies on launch.
         com.apple.security.network.client: true
     info:
       path: ThumbnailExtension/Info.plist
