@@ -14,15 +14,6 @@ public struct PreparePipelineReport: Equatable, Sendable {
 
     public init() {}
 
-    var isEmpty: Bool {
-        !(specGlossToMetalRough
-            || bakedSpecGlossTextures || droppedBakedEmissive || dimmedStudioIBL
-            || decompressedDraco)
-    }
-
-    /// Host sidebar shows transform honesty and/or source extensions.
-    var showsInSidebar: Bool { !entries.isEmpty || !extensionEntries.isEmpty }
-
     /// Sidebar / Inspect-mock style lines.
     public var entries: [String] {
         var lines: [String] = []
