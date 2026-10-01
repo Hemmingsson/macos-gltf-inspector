@@ -20,7 +20,7 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
     }
 
     /// The file currently under inspection. Swapping it is how a new model is loaded; the page
-    /// always fetches the same `/model` URL.
+    /// fetches it as `/model/<name>`.
     func setModel(_ url: URL?) {
         model = url
     }
@@ -31,7 +31,7 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
         let payload: Data?
         let mimeType: String
 
-        if url.path == "/model" || url.path.hasPrefix("/model/") {
+        if url.path.hasPrefix("/model/") {
             mimeType = Self.modelMimeType(url.path)
             payload = resolveModel(url.path)
         } else if let file = Self.resolveEnvironment(url.path) {
@@ -69,17 +69,10 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
 
     /// Serves the inspected file and its sidecars from the security-scoped folder.
-    /// `/model` and `/model/<basename>` are the primary file; `/model/<relative>` is a sibling.
+    /// `/model/<basename>` is the primary file; `/model/<relative>` is a sibling.
     private func resolveModel(_ path: String) -> Data? {
-        guard let model else { return nil }
-        let remainder: String
-        if path == "/model" {
-            remainder = ""
-        } else if path.hasPrefix("/model/") {
-            remainder = String(path.dropFirst("/model/".count))
-        } else {
-            return nil
-        }
+        guard let model, path.hasPrefix("/model/") else { return nil }
+        let remainder = String(path.dropFirst("/model/".count))
 
         let decoded = remainder.removingPercentEncoding ?? remainder
         guard !decoded.contains("..") else { return nil }
@@ -144,7 +137,6 @@ final class WebRendererResourceHandler: NSObject, WKURLSchemeHandler {
         case "json": "application/json"
         case "wasm": "application/wasm"
         case "png": "image/png"
-        case "hdr": "image/vnd.radiance"
         default: "application/octet-stream"
         }
     }

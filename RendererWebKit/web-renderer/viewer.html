@@ -63,7 +63,7 @@ canvas.addEventListener("webglcontextlost", (e) => {
 // (a thumbnail host may be read again without a new frame); live mode lets WebKit discard it.
 const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: !live, alpha: true });
 if (!gl) {
-    send({ event: "error", stage: "context", message: "WebGL 2 unavailable" });
+    send({ event: "error", message: "WebGL 2 unavailable" });
     throw new Error("WebGL 2 unavailable");
 }
 
@@ -674,9 +674,9 @@ if (live) {
 
 // Anything that escapes a call still has to produce a message, or Swift only sees a timeout.
 window.addEventListener("error", (e) =>
-    send({ event: "error", stage: "runtime", message: String(e.error?.message ?? e.message) }));
+    send({ event: "error", message: String(e.error?.message ?? e.message) }));
 window.addEventListener("unhandledrejection", (e) =>
-    send({ event: "error", stage: "runtime", message: String(e.reason?.message ?? e.reason) }));
+    send({ event: "error", message: String(e.reason?.message ?? e.reason) }));
 
 send({ event: "ready" });
 </script>
