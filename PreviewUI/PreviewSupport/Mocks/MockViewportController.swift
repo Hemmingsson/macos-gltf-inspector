@@ -17,11 +17,6 @@ public final class MockViewportController: ViewportController {
     public private(set) var activeSceneID: NodeID?
     public private(set) var selectedMaterialVariantIndex: Int?
 
-    /// Optional hooks so previews can assert menu / pill wiring.
-    public var onFit: (() -> Void)?
-    public var onReset: (() -> Void)?
-    public var onScreenshot: (() -> Void)?
-
     public init(
         backdrop: BackdropStyle = .window,
         showsFloor: Bool = true,
@@ -57,10 +52,10 @@ public final class MockViewportController: ViewportController {
     public func setLighting(_ lighting: LightingSettings) { self.lighting = lighting }
     public func setFieldOfViewDegrees(_ degrees: Float) { fieldOfViewDegrees = degrees }
 
-    public func fit() { onFit?() }
-    public func reset() { onReset?() }
+    public func fit() {}
+    public func reset() {}
     public func applyCameraPreset(_ preset: CameraPreset) { activeCameraPreset = preset }
-    public func screenshot() { onScreenshot?() }
+    public func screenshot() {}
     public func setScene(_ id: NodeID) { activeSceneID = id }
     public func setMaterialVariant(_ index: Int?) { selectedMaterialVariantIndex = index }
     public func setFileCamera(_ id: NodeID?) {
