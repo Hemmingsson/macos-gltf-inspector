@@ -15,14 +15,9 @@ public enum KhronosEnvironments: String, CaseIterable, Sendable, Codable {
         }
     }
 
-    /// The bundled `khronos/` HDR folder. It ships once, inside GLTFCore.framework; the host and
-    /// both extensions resolve it here. `Bundle.main` is the appex in an extension, so never
-    /// look there.
-    public static var bundledDirectory: URL? {
-        Bundle(for: CoreBundleToken.self).url(forResource: "khronos", withExtension: nil)
-    }
-
-    /// This environment's bundled `.hdr`; nil when it is missing from the bundle.
+    /// This environment's bundled `.hdr`; nil when it is missing from the bundle. The `khronos/`
+    /// folder ships once, inside GLTFCore.framework; `Bundle.main` is the appex in an extension,
+    /// so never look there.
     public var bundledURL: URL? {
         Bundle(for: CoreBundleToken.self).url(forResource: rawValue, withExtension: "hdr", subdirectory: "khronos")
     }

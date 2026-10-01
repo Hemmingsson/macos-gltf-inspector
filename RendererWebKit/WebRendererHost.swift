@@ -63,10 +63,7 @@ public final class WebRendererHost {
         self.mode = mode
         self.size = size
         self.timeout = timeout
-        resources = WebRendererResourceHandler(
-            rendererRoot: rendererRoot,
-            environmentRoot: KhronosEnvironments.bundledDirectory
-        )
+        resources = WebRendererResourceHandler(rendererRoot: rendererRoot)
         delegate = Delegate()
 
         let configuration = WKWebViewConfiguration()

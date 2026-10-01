@@ -4,7 +4,7 @@ How a file becomes pixels on the WebKit renderer. Every surface uses the same pa
 (`RendererWebKit/web-renderer/viewer.html`) inside a `WKWebView` owned by `WebRendererHost`.
 All of it lives in the extension-safe `RendererWebKit` framework; the page ships once, inside
 `RendererWebKit.framework`, and is found with `Bundle(for:)`. The HDRs come from `GLTFCore`
-(`KhronosEnvironments.bundledDirectory`).
+(`KhronosEnvironments.bundledURL`, served by name at `/environments/<stem>.hdr`).
 
 This is **not** the RealityKit convert path: in WebKit mode no convert runs. The window's panels
 read the file's JSON (`GLTFDocumentSummary`) — see
