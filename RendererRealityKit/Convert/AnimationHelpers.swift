@@ -95,15 +95,12 @@ func glbCubicInterp(
 }
 
 protocol AnimatedValue {
-    var sampleCount: Int { get }
     var minimumTime: Float { get }
     var maximumTime: Float { get }
-    var interpolation: GLTFInterpolationMode { get }
     var keyTimes: [Float] { get }
 }
 
 extension AnimatedValue {
-    var sampleCount: Int { keyTimes.count }
     var minimumTime: Float { keyTimes.first ?? 0 }
     var maximumTime: Float { keyTimes.last ?? 0 }
 
