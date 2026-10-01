@@ -5,11 +5,7 @@ import SwiftUI
 ///
 /// Node sections bind to `selection.detail` and omit fields the node type does not have.
 /// `openInMenu` is menu items (Finder, Blender, …); the header wraps them in `DSGlassMenuButton`.
-public struct RightInspector<
-    Model: SceneModel,
-    Selection: SelectionModel
->: View {
-    public var model: Model
+public struct RightInspector<Selection: SelectionModel>: View {
     public var selection: Selection
     public var documentState: ShellDocumentState = .ready
     public var openInMenu: AnyView
@@ -18,14 +14,12 @@ public struct RightInspector<
     public var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
 
     public init(
-        model: Model,
         selection: Selection,
         documentState: ShellDocumentState = .ready,
         openInMenu: AnyView,
         morphTargets: [MorphTargetControl] = [],
         onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in }
     ) {
-        self.model = model
         self.selection = selection
         self.documentState = documentState
         self.openInMenu = openInMenu
@@ -173,7 +167,6 @@ private struct RightInspectorPreviewHost: View {
     var body: some View {
         PreviewCanvas(width: DS.Metrics.inspectorWidth, height: height) {
             RightInspector(
-                model: FixtureSceneModel.cube,
                 selection: selection,
                 documentState: documentState,
                 openInMenu: AnyView(PreviewOpenInItems()),

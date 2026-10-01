@@ -89,7 +89,6 @@ public struct ShellRootView<
             canvasColumn
                 .inspector(isPresented: inspectorPresented) {
                     RightInspector(
-                        model: model,
                         selection: selection,
                         documentState: documentState,
                         openInMenu: openInMenu,
