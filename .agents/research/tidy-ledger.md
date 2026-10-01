@@ -142,3 +142,10 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - C2 leftover: `OutlinerTree.treeIdentity` still flattens folding roots once per `OutlinerList` body for `onChange`. `sections` is now computed once; dropping the flatten would need a cheaper identity.
 - C8b host `CanvasStatusView` / PreviewView loading branches: host lane, not this tree.
 - C7 mock store: `[String: any Sendable]` does not compile (`as? any Sendable` is a marker-protocol cast). Uses `[String: Any]` instead.
+
+## W4 realitykit
+
+- Extra attributes scatter through a temp packed copy into buffer 1; positions stay tight memcpy. A fully interleaved single buffer was not measured (`dev.sh bench` out of scope).
+- `MeshBuffers.positions` is populated even for `MeshResource(from: LowLevelMesh)`, so empty MeshBuffers is not a LowLevelMesh vs MeshDescriptor oracle.
+- PreviewScene `@State playback` is now Quick Look only; host first-frame pose is `RealityClipPlayer.init`. The unused host-side `@State` can drop later with the W1 C1 leftover.
+- No real-window Fit / clip-play check (no XCUITest, no `/Applications`).

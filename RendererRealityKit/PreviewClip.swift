@@ -63,10 +63,16 @@ public final class RealityClipPlayer {
         clips = []
     }
 
-    /// Usable clips of `model`, named from its document.
+    /// Usable clips of `model`, named from its document. Takes over playback on the
+    /// entity (stops a PreviewScene first-frame pose) and holds clip 0 paused.
     public init(model: EntityLoader.LoadedModel) {
         entity = model.entity
         clips = PreviewClip.usable(on: model.entity, document: model.document)
+        if let first = clips.first {
+            entity.stopAllAnimations()
+            playback = entity.playAnimation(first.resource.repeat())
+            playback?.pause()
+        }
     }
 
     public var isStarted: Bool { playback != nil }
@@ -85,11 +91,11 @@ public final class RealityClipPlayer {
     @discardableResult
     public func start(clipID id: Int?, playing: Bool) -> Bool {
         guard let id, let clip = clips.first(where: { $0.id == id }) else {
-            playback?.stop()
+            entity.stopAllAnimations()
             playback = nil
             return false
         }
-        playback?.stop()
+        entity.stopAllAnimations()
         playback = entity.playAnimation(clip.resource.repeat())
         if playing {
             playback?.resume()

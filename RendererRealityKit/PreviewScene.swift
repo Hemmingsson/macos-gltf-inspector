@@ -283,10 +283,13 @@ struct PreviewScene: View {
                     interaction.bind(camera: camera, orbitFocus: assembled.pivot)
                     appliedLook = look
                     if let first = usable.first {
-                        // Pose the model on clip 0's first frame (paused at t = 0).
-                        playback?.stop()
-                        playback = entity.playAnimation(first.resource.repeat())
-                        playback?.pause()
+                        // Quick Look has no host player — pose clip 0 paused. The host
+                        // `RealityClipPlayer` takes over playback and must be the only controller.
+                        if showsInlineChrome {
+                            playback?.stop()
+                            playback = entity.playAnimation(first.resource.repeat())
+                            playback?.pause()
+                        }
                         let summary = usable
                             .map { "\($0.title) (\((($0.duration * 100).rounded() / 100))s)" }
                             .joined(separator: ", ")
