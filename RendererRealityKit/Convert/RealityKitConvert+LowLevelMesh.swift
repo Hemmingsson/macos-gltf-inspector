@@ -165,7 +165,7 @@ extension RealityKitConvert {
 
     /// Declared `min`/`max` for float positions; computed from the copied floats otherwise
     /// (quantized bounds are in integer units, and `min`/`max` may be missing).
-    private func positionBounds(_ accessor: GLTFAccessor, _ positions: VertexFloats) -> BoundingBox? {
+    private func positionBounds(_ accessor: GLTFAccessor) -> BoundingBox? {
         if accessor.componentType == .float, let declared = boundingBox(for: accessor) {
             return declared
         }
@@ -322,7 +322,7 @@ extension RealityKitConvert {
         let vertexCount = positionAttr.accessor.count
         guard vertexCount > 0,
               let positions = VertexFloats(positionAttr.accessor, dimension: .vector3, elementFloats: 3, count: vertexCount),
-              let bounds = positionBounds(positionAttr.accessor, positions),
+              let bounds = positionBounds(positionAttr.accessor),
               // glTF tangents are VEC4 (xyz + handedness); kept as float4.
               let normals = optionalVertexFloats(primitive, "NORMAL", dimension: .vector3, elementFloats: 3, count: vertexCount),
               let tangents = optionalVertexFloats(primitive, "TANGENT", dimension: .vector4, elementFloats: 4, count: vertexCount)
