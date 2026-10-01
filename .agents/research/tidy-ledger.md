@@ -52,3 +52,21 @@ line each: what, why.
 - Doubt: the WebKit open screenshot shows the box very close (fills the canvas) vs RK's fitted framing — looks like the page's initial camera, not a test issue; not investigated here.
 - View-mode flow ~20–27 s per renderer, mostly XCUITest menu idling; acceptable for an opt-in suite.
 - Rejected: a test plan for opt-in (a separate scheme is simpler with xcodegen and keeps `dev.sh test` untouched).
+
+## W2 core-webkit
+
+- C1 behaviour delta (flagged in the commit): `PreviewStats.maxTextureEdge` now reads images through `GLTFBinaryStore`, so percent-encoded sidecar URIs and image bufferViews in external `.bin` buffers resolve (test added). Also a single-axis-zero image header no longer counts (`GLTFImageDecode.pixelSize` needs both > 0).
+- Kept `GLTFDocumentJSON.makeDocument(json:binary:)`: `GLTFDocumentSummary` now shares one store between the document and the stats (C1).
+- Kept the two node-matrix readers (`GLTFDocumentJSON.decomposedTransform`, Float → TRS for the inspector; `ModelBounds.localMatrix`, Double TRS → matrix for bounds): opposite directions and precisions, not a clone.
+- Research C2 was stale on `minimumClipDuration`: `AnimationSampling.minimumDuration` exists (`RendererRealityKit/Convert/AnimationHelpers.swift:11`), the "Twin of" comment is true; left as is. The min/max/sampleCount loop dup with `AnimationSampling.hasPositiveDuration` stays deferred: RK reads GLTFKit2 accessors, core reads JSON — a shared helper would need a neutral range type for one 10-line loop.
+- Research E was stale on `AppLook.current`: RealityKit uses it as a default argument (`look: AppLook = .current` in `PreviewLighting.swift`, `StillRenderer.swift`), so it stays; only `supportDirectory()` was inlined.
+- Deferred (host lane): `AppGroupSettings.Key.appearance` is read only by `GLTFInspector/GLTFInspectorApp.swift:18` (+ tests); dropping it from core means the host reads `SettingKey<String>.appearance.name`. Same for the stale "registered in `GLTFInspectorApp.init`" comments in `PreviewUI/Seam/SettingsStore.swift`.
+- Deferred (host lane): `GLTFInspector/DocumentWindowModel.swift:240` free `uptimeMs()` (also called from `GLTFInspector/RealityKit/RealityDocumentWindow.swift:201`) should become `AppLog.uptimeMs()`, which now exists in GLTFCore and is what RendererWebKit uses.
+- Kept `LoadInfo.parseMs` / `fitMs`: no reader on next-main, but the perf-bench lane is restoring the opt-in bench that logs them.
+- K stale: `WebDocumentWindow.canvas` no longer repeats `CanvasStatusView(...)` (CanvasRegion draws status), nothing to dedupe.
+- Not done: `WebRendererAssetInventory.from(json:)` builds a whole `PreviewStats` for three counts, which ImageIO-reads every `data:` URI image on the first-paint path (pre-existing; its "no ImageIO" comment is false for embedded-URI `.gltf`). A perf tidy for wave P: count from the JSON directly.
+- Optional M (`viewer.html` overlays → `overlays.js`) not done: readability only, page-load-order risk.
+
+### Bugs seen
+
+- `WebCanvasController.reload`: the first-paint peek `Task` guards on `!didRevealLive && phase == .loading` but not on the URL, so a slow peek for model A can show A's "Loading N textures…" copy during model B's load. Cosmetic; same shape as u3kwzlt1's cancellation path, left for that fix.
