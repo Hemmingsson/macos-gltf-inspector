@@ -25,8 +25,8 @@ final class EngineViewportController: ViewportController {
     /// Per-window lazy overlay. Weak to avoid a cycle with the store held by the window.
     weak var settings: EngineSettingsStore?
 
-    /// Host-owned canvas session. Nil only in isolated unit tests.
-    var previewSession: PreviewSession?
+    /// Host-owned canvas session.
+    let previewSession: PreviewSession
 
     /// Commands of the mounted canvas (the renderer window registers them). Nil while no canvas can
     /// take them, and in unit tests that only exercise setters.
@@ -70,7 +70,7 @@ final class EngineViewportController: ViewportController {
 
     /// Refresh settings-backed session fields when app defaults change (untouched keys only).
     func syncFromSettings() {
-        guard let settings, let previewSession else { return }
+        guard let settings else { return }
         previewSession.backdrop = settings.sessionValue(for: .backdrop)
         previewSession.showFloor = settings.sessionValue(for: .showFloor)
         previewSession.autoRotate = settings.sessionValue(for: .autoRotate)
@@ -83,37 +83,37 @@ final class EngineViewportController: ViewportController {
         if let settings {
             return settings.sessionValue(for: .backdrop)
         }
-        return previewSession?.backdrop ?? .window
+        return previewSession.backdrop
     }
 
     var showsFloor: Bool {
-        settings?.sessionValue(for: .showFloor) ?? previewSession?.showFloor ?? true
+        settings?.sessionValue(for: .showFloor) ?? previewSession.showFloor
     }
 
     var autoRotates: Bool {
-        settings?.sessionValue(for: .autoRotate) ?? previewSession?.autoRotate ?? true
+        settings?.sessionValue(for: .autoRotate) ?? previewSession.autoRotate
     }
 
     var isCentered: Bool {
-        settings?.sessionValue(for: .center) ?? previewSession?.centerModel ?? true
+        settings?.sessionValue(for: .center) ?? previewSession.centerModel
     }
 
     var viewMode: ViewMode {
-        ViewMode(previewSession?.viewMode ?? .shaded)
+        ViewMode(previewSession.viewMode)
     }
 
     var projection: Projection {
         if let settings {
             return settings.sessionValue(for: .projection)
         }
-        return previewSession?.orthographic == true ? .orthographic : .perspective
+        return previewSession.orthographic ? .orthographic : .perspective
     }
 
     var lighting: LightingSettings {
         LightingSettings(
-            exposure: Double(previewSession?.exposureEV ?? 0),
-            environmentRotationDegrees: Double(previewSession?.environmentYaw ?? 0) * 180 / .pi,
-            usesFileLights: previewSession?.dimStudioForFileLights ?? false,
+            exposure: Double(previewSession.exposureEV),
+            environmentRotationDegrees: Double(previewSession.environmentYaw) * 180 / .pi,
+            usesFileLights: previewSession.dimStudioForFileLights,
             usesStudioEnvironment: lookStore.look.useEnvironmentMap,
             environment: environment,
             toneMapping: toneMapping
@@ -132,26 +132,25 @@ final class EngineViewportController: ViewportController {
 
     func setBackdrop(_ style: BackdropStyle) {
         settings?.setSession(style, for: .backdrop)
-        previewSession?.backdrop = style
+        previewSession.backdrop = style
     }
 
     func setFloor(_ isOn: Bool) {
         settings?.setSession(isOn, for: .showFloor)
-        previewSession?.showFloor = isOn
+        previewSession.showFloor = isOn
     }
 
     func setAutoRotate(_ isOn: Bool) {
         settings?.setSession(isOn, for: .autoRotate)
-        previewSession?.autoRotate = isOn
+        previewSession.autoRotate = isOn
     }
 
     func setCenter(_ isOn: Bool) {
         settings?.setSession(isOn, for: .center)
-        previewSession?.centerModel = isOn
+        previewSession.centerModel = isOn
     }
 
     func setViewMode(_ mode: ViewMode) {
-        guard let previewSession else { return }
         // A mode the file does not offer falls back to shaded, as the menu never lists it.
         let wanted = RenderViewMode(mode)
         previewSession.viewMode = previewSession.viewModes.contains(wanted) ? wanted : .shaded
@@ -159,14 +158,13 @@ final class EngineViewportController: ViewportController {
 
     func setProjection(_ projection: Projection) {
         settings?.setSession(projection, for: .projection)
-        previewSession?.orthographic = projection == .orthographic
+        previewSession.orthographic = projection == .orthographic
     }
 
     func setLighting(_ lighting: LightingSettings) {
         // Per-window override; deliberately does not write the app default back.
         environment = lighting.environment
         toneMapping = lighting.toneMapping
-        guard let previewSession else { return }
         previewSession.exposureEV = Float(lighting.exposure)
         previewSession.environmentYaw = Float(lighting.environmentRotationDegrees * .pi / 180)
         previewSession.dimStudioForFileLights = lighting.usesFileLights
@@ -258,24 +256,22 @@ final class EngineViewportController: ViewportController {
         activeCameraPreset = nil
     }
 
-    var doubleSided: Bool { previewSession?.doubleSided ?? false }
+    var doubleSided: Bool { previewSession.doubleSided }
 
-    var showSkeleton: Bool { previewSession?.showSkeleton ?? false }
+    var showSkeleton: Bool { previewSession.showSkeleton }
 
-    var fieldOfViewDegrees: Float {
-        previewSession?.fieldOfViewDegrees ?? RenderCamera.defaultFieldOfViewDegrees
-    }
+    var fieldOfViewDegrees: Float { previewSession.fieldOfViewDegrees }
 
     func setDoubleSided(_ isOn: Bool) {
-        previewSession?.doubleSided = isOn
+        previewSession.doubleSided = isOn
     }
 
     func setShowSkeleton(_ isOn: Bool) {
-        previewSession?.showSkeleton = isOn
+        previewSession.showSkeleton = isOn
     }
 
     func setFieldOfViewDegrees(_ degrees: Float) {
-        previewSession?.fieldOfViewDegrees = RenderCamera.clampedFieldOfView(degrees)
+        previewSession.fieldOfViewDegrees = RenderCamera.clampedFieldOfView(degrees)
     }
 }
 

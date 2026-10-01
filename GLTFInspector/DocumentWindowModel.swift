@@ -75,7 +75,6 @@ final class DocumentWindowModel {
 
     /// Wires the viewport to this window's session, settings and save panel. Idempotent.
     func wire() {
-        engineViewport.previewSession = previewSession
         engineViewport.settings = settings
         engineViewport.saveScreenshot = { [weak self] image in
             await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
