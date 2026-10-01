@@ -63,7 +63,7 @@ final class RealityKitConvert {
         if ignoreBakedEmissive {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
-        let context = RealityKitResourceContext()
+        let context = try RealityKitResourceContext()
         context.maxImageEdge = maxTextureEdge
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
