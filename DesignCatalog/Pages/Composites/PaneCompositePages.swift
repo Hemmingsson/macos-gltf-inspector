@@ -68,7 +68,7 @@ struct InspectorPage: View {
                         CatalogComposites.inspector(
                             selection: $selection.wrappedValue,
                             documentState: .ready,
-                            openInMenu: catalogOpenInMenu()
+                            openInMenu: AnyView(PreviewOpenInItems())
                         )
                     }
                 }
@@ -82,7 +82,7 @@ struct InspectorPage: View {
                         CatalogComposites.inspector(
                             selection: $selection.wrappedValue,
                             documentState: .ready,
-                            openInMenu: catalogOpenInMenu()
+                            openInMenu: AnyView(PreviewOpenInItems())
                         )
                     }
                 }
@@ -96,7 +96,7 @@ struct InspectorPage: View {
                         CatalogComposites.inspector(
                             selection: $selection.wrappedValue,
                             documentState: .ready,
-                            openInMenu: catalogOpenInMenu(),
+                            openInMenu: AnyView(PreviewOpenInItems()),
                             morphTargets: MorphFixtures.faceControls
                         )
                     }
@@ -109,7 +109,7 @@ struct InspectorPage: View {
                         CatalogComposites.inspector(
                             selection: $selection.wrappedValue,
                             documentState: .empty,
-                            openInMenu: catalogOpenInMenu()
+                            openInMenu: AnyView(PreviewOpenInItems())
                         )
                     }
                 }
@@ -118,7 +118,7 @@ struct InspectorPage: View {
                         CatalogComposites.inspector(
                             selection: $selection.wrappedValue,
                             documentState: .loading,
-                            openInMenu: catalogOpenInMenu()
+                            openInMenu: AnyView(PreviewOpenInItems())
                         )
                     }
                 }
@@ -127,20 +127,11 @@ struct InspectorPage: View {
                         CatalogComposites.inspector(
                             selection: $selection.wrappedValue,
                             documentState: .failed("The file is not valid glTF 2.0."),
-                            openInMenu: catalogOpenInMenu()
+                            openInMenu: AnyView(PreviewOpenInItems())
                         )
                     }
                 }
             }
         }
     }
-}
-
-private func catalogOpenInMenu() -> AnyView {
-    AnyView(
-        Group {
-            Button("Finder") {}
-            Button("Blender") {}
-        }
-    )
 }
