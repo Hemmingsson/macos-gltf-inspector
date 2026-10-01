@@ -404,7 +404,7 @@ struct PreviewScene: View {
             }
 
             if showsInlineChrome, let facts = stats?.overlayFacts, !facts.isEmpty {
-                PreviewOverlayFacts(facts: facts, tint: chromeTint(active: true))
+                PreviewOverlayFacts(facts: facts, tint: chromeTint)
                     .allowsHitTesting(false)
                     .padding(.leading, 14)
                     .padding(.bottom, 14)
@@ -539,8 +539,8 @@ struct PreviewScene: View {
         frame.appliedFieldOfViewDegrees = want
     }
 
-    private func chromeTint(active: Bool) -> Color {
-        PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: active)
+    private var chromeTint: Color {
+        PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: true)
     }
 
     private func applyDebugIfNeeded(to root: Entity) {
