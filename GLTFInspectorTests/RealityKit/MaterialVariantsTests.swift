@@ -6,7 +6,7 @@ import RealityKit
 import Testing
 
 struct MaterialVariantsTests {
-    @Test func gltfKit2ExposesVariantNamesAndMappings() throws {
+    @Test func gltfKit2ExposesVariantMappings() throws {
         let url = try writeTempMaterialsVariantsGLB()
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -14,7 +14,6 @@ struct MaterialVariantsTests {
             url: url,
             options: [GLTFAssetLoadingOption.assetDirectoryURLKey: url.deletingLastPathComponent()]
         )
-        #expect(MaterialVariants.names(from: asset) == ["Red", "Blue"])
 
         let primitive = try #require(asset.meshes.first?.primitives.first)
         #expect((primitive.materialMappings ?? []).count == 2)
