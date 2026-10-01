@@ -395,8 +395,8 @@ struct PreviewScene: View {
                 )
             }
 
-            if showsInlineChrome, let facts = stats.overlayFacts, !facts.isEmpty {
-                PreviewOverlayFacts(facts: facts, tint: chromeTint)
+            if showsInlineChrome, !stats.overlayFacts.isEmpty {
+                PreviewOverlayFacts(facts: stats.overlayFacts, tint: chromeTint)
                     .allowsHitTesting(false)
                     .padding(.leading, 14)
                     .padding(.bottom, 14)
