@@ -41,8 +41,7 @@ layout spec (code wins on what ships where).
 | `ThumbnailExtension/` | `ThumbnailProvider` is the router; `ThumbnailRealityKit.swift` (`RealityThumbnail` → `StillRenderer`, as `main`) and `ThumbnailWebKit.swift` (warm `WebRendererHost(.still)`). Links `GLTFCore` + both renderers. |
 | `GLTFInspectorTests/` (root) | Renderer-neutral tests: import `GLTFCore` / the host / `PreviewUI`, **never a renderer**. Includes the pixel-diff core (`PixelDiff` comparator, `PixelDiffManifest`, `PixelDiffRun` loops), GLB byte builders (`TestGLBFixtures.swift`, `TestGLB` writer) and document / bounds / stats tests that read the JSON directly. One test target for everything. |
 | `GLTFInspectorTests/RealityKit/` | Tests of the RK renderer and RK-backed host code (`@testable import RendererRealityKit`): convert, entity helpers (`RealityTestHelpers.swift`), overlay / selection, `PixelDiffRealityKitTests` (+ its generator). |
-| `GLTFInspectorTests/WebKit/` | Tests of the web renderer (`@testable import RendererWebKit`): `PixelDiffWebKitTests` (+ the generator that records the manifest poses), `RendererTimingBenchTests`. |
-| `GLTFInspectorTests/CrossRenderer/` | Tests that drive both renderers (`LookProbeTests`); each file is wrapped in `#if canImport(RendererRealityKit) && canImport(RendererWebKit)`. |
+| `GLTFInspectorTests/WebKit/` | Tests of the web renderer (`@testable import RendererWebKit`): `PixelDiffWebKitTests` (+ the generator that records the manifest poses). |
 | `TestModels/References/` | Pinned sample manifest + per-renderer pixel-diff goldens (`webkit/`, `realitykit/`). |
 
 **Removing a renderer** (e.g. once one ships): delete its framework dir + target in `project.yml`
@@ -65,7 +64,7 @@ this worktree is throwaway until merged.
 ## Commands & build
 
 ```bash
-./scripts/dev.sh install          # worktree-aware → .build/ (+ /Applications on main); no open
+./scripts/dev.sh install          # worktree-aware → .build/ (+ /Applications on main); no open; keeps the signed test bundle in PlugIns/ after a test run
 ./scripts/dev.sh test             # xcodegen + xcodebuild test into this branch's DerivedData (args → xcodebuild)
 ./scripts/dev.sh run cube         # install + launch fixture; logs → .build/logs/debug.log
 ./scripts/dev.sh logs             # tail debug log (agents: read .build/logs/debug.log)

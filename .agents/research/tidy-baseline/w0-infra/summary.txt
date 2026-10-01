@@ -1,1 +1,0 @@
-loc=41508 periphery=384 swiftlint=35 jscpd_clones=11 tests=337
