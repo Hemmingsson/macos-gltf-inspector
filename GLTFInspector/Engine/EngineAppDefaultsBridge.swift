@@ -74,7 +74,7 @@ extension EngineAppDefaultsBridge: SettingsDefaultsStore {}
 
 extension AppDefaultsStore {
     /// The host's app-defaults store, backed by the App Group suite so the Quick Look and
-    /// thumbnail extensions read what Settings writes. Use this, not `.shared` (`.standard`).
+    /// thumbnail extensions read what Settings writes.
     static let appGroup = AppDefaultsStore(defaults: AppGroupSettings.defaults)
 }
 
