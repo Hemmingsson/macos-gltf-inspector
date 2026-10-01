@@ -309,23 +309,10 @@ struct PreviewScene: View {
                     content.cameraTarget = pivot
                 }
                 if frame.needsLayoutFit, let camera = frame.camera, let pivot = frame.pivot {
-                    // Undo any Shift-pan offset so Fit framing is around the model center.
-                    pivot.setPosition(.zero, relativeTo: nil)
-                    PreviewCamera.applyFit(
-                        to: camera,
-                        bounds: frame.bounds,
-                        aspect: aspect(of: viewport),
-                        orbitFocus: pivot,
-                        orthographic: useSystemOrbit && orthographicValue,
-                        fieldOfViewInDegrees: fieldOfViewValue
-                    )
+                    applyOpeningFit(to: camera, pivot: pivot)
                     frame.needsLayoutFit = false
                     frame.needsOrthoScale = false
                     frame.didLayoutFit = true
-                    if useSystemOrbit {
-                        frame.appliedSessionOrthographic = orthographicValue
-                        frame.appliedFieldOfViewDegrees = fieldOfViewValue
-                    }
                     Task { @MainActor in interaction.markFitted() }
                 } else if frame.needsOrthoScale, useSystemOrbit, orthographicValue,
                           let camera = frame.camera
@@ -489,15 +476,21 @@ struct PreviewScene: View {
         frame.pivot?.setPosition(.zero, relativeTo: nil)
         frame.autoRotateYaw = 0
         frame.spin?.orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
-        guard let camera = frame.camera else {
-            interaction.markFitted()
-            return
+        if let camera = frame.camera {
+            applyOpeningFit(to: camera, pivot: frame.pivot)
         }
+        interaction.markFitted()
+    }
+
+    /// Front-3/4 fit of the turntable bounds with the session projection and FOV. Undoes any
+    /// Shift-pan offset first so framing is around the model center.
+    private func applyOpeningFit(to camera: Entity, pivot: Entity?) {
+        pivot?.setPosition(.zero, relativeTo: nil)
         PreviewCamera.applyFit(
             to: camera,
             bounds: frame.bounds,
             aspect: aspect(of: viewport),
-            orbitFocus: frame.pivot,
+            orbitFocus: pivot,
             orthographic: useSystemOrbit && orthographicValue,
             fieldOfViewInDegrees: fieldOfViewValue
         )
@@ -505,7 +498,6 @@ struct PreviewScene: View {
             frame.appliedSessionOrthographic = orthographicValue
             frame.appliedFieldOfViewDegrees = fieldOfViewValue
         }
-        interaction.markFitted()
     }
 
     private func applyFileCamera() {
