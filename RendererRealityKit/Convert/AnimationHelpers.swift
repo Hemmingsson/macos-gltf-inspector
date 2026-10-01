@@ -69,16 +69,16 @@ private extension Array {
     }
 }
 
-func glbLerp(_ a: simd_float3, _ b: simd_float3, _ t: Float) -> simd_float3 {
+fileprivate func glbLerp(_ a: simd_float3, _ b: simd_float3, _ t: Float) -> simd_float3 {
     a + t * (b - a)
 }
 
-func glbUnlerp(_ a: Float, _ b: Float, _ t: Float) -> Float {
+fileprivate func glbUnlerp(_ a: Float, _ b: Float, _ t: Float) -> Float {
     if a == b { return 0 }
     return (t - a) / (b - a)
 }
 
-func glbCubicInterp(
+fileprivate func glbCubicInterp(
     _ a: SIMD3<Float>,
     _ b: SIMD3<Float>,
     _ inTangent: SIMD3<Float>,
@@ -127,7 +127,7 @@ extension AnimatedValue {
     }
 }
 
-final class AnimatedVector3: AnimatedValue {
+struct AnimatedVector3: AnimatedValue {
     let keyTimes: [Float]
     let values: [SIMD3<Float>]
     let interpolation: GLTFInterpolationMode
@@ -162,7 +162,7 @@ final class AnimatedVector3: AnimatedValue {
     }
 }
 
-final class AnimatedQuaternion: AnimatedValue {
+struct AnimatedQuaternion: AnimatedValue {
     let keyTimes: [Float]
     let values: [simd_quatf]
     let interpolation: GLTFInterpolationMode
@@ -196,7 +196,7 @@ final class AnimatedQuaternion: AnimatedValue {
     }
 }
 
-final class AnimatedWeights: AnimatedValue {
+struct AnimatedWeights: AnimatedValue {
     let keyTimes: [Float]
     let values: [Float]
     let targetCount: Int
@@ -242,7 +242,28 @@ final class AnimatedWeights: AnimatedValue {
     }
 }
 
-final class TransformSampler {
+private struct PackedChannel<T> {
+    var times: [Float]
+    var values: [T]
+    var interpolation: GLTFInterpolationMode
+}
+
+private func packedChannel<T>(
+    _ channel: GLTFAnimationChannel?,
+    defaultValue: T,
+    seedTime: Float,
+    values packed: (GLTFAccessor) -> [T]?
+) -> PackedChannel<T> {
+    guard let sampler = channel?.sampler,
+          let times = Packed.floatArray(for: sampler.input),
+          let values = packed(sampler.output)
+    else {
+        return PackedChannel(times: [seedTime], values: [defaultValue], interpolation: .linear)
+    }
+    return PackedChannel(times: times, values: values, interpolation: sampler.interpolationMode)
+}
+
+struct TransformSampler {
     let startTime: Float
     let endTime: Float
     let recommendedSampleInterval: Float
@@ -266,45 +287,25 @@ final class TransformSampler {
             if range.maxTime.isFinite { maxTime = max(maxTime, range.maxTime) }
         }
         let seedTime = minTime.isFinite ? minTime : 0
-
-        var translationTimes = [seedTime]
-        var translationValues = [target.translation]
-        var translationInterp = GLTFInterpolationMode.linear
-        if let sampler = translationChannel?.sampler,
-           let times = Packed.floatArray(for: sampler.input),
-           let values = Packed.float3Array(for: sampler.output)
-        {
-            translationTimes = times
-            translationValues = values
-            translationInterp = sampler.interpolationMode
-            if let first = times.first { minTime = min(minTime, first) }
-            if let last = times.last { maxTime = max(maxTime, last) }
-        }
-
-        var rotationTimes = [seedTime]
-        var rotationValues = [target.rotation]
-        var rotationInterp = GLTFInterpolationMode.linear
-        if let sampler = rotationChannel?.sampler,
-           let times = Packed.floatArray(for: sampler.input),
-           let values = Packed.quatfArray(for: sampler.output)
-        {
-            rotationTimes = times
-            rotationValues = values
-            rotationInterp = sampler.interpolationMode
-            if let first = times.first { minTime = min(minTime, first) }
-            if let last = times.last { maxTime = max(maxTime, last) }
-        }
-
-        var scaleTimes = [seedTime]
-        var scaleValues = [target.scale]
-        var scaleInterp = GLTFInterpolationMode.linear
-        if let sampler = scaleChannel?.sampler,
-           let times = Packed.floatArray(for: sampler.input),
-           let values = Packed.float3Array(for: sampler.output)
-        {
-            scaleTimes = times
-            scaleValues = values
-            scaleInterp = sampler.interpolationMode
+        let translationPacked = packedChannel(
+            translationChannel,
+            defaultValue: target.translation,
+            seedTime: seedTime,
+            values: Packed.float3Array
+        )
+        let rotationPacked = packedChannel(
+            rotationChannel,
+            defaultValue: target.rotation,
+            seedTime: seedTime,
+            values: Packed.quatfArray
+        )
+        let scalePacked = packedChannel(
+            scaleChannel,
+            defaultValue: target.scale,
+            seedTime: seedTime,
+            values: Packed.float3Array
+        )
+        for times in [translationPacked.times, rotationPacked.times, scalePacked.times] {
             if let first = times.first { minTime = min(minTime, first) }
             if let last = times.last { maxTime = max(maxTime, last) }
         }
@@ -315,24 +316,26 @@ final class TransformSampler {
 
         startTime = minTime
         endTime = maxTime
-        hasStepChannel = translationInterp == .step || rotationInterp == .step || scaleInterp == .step
+        hasStepChannel = translationPacked.interpolation == .step
+            || rotationPacked.interpolation == .step
+            || scalePacked.interpolation == .step
         translation = AnimatedVector3(
-            keyTimes: translationTimes,
-            values: translationValues,
-            interpolation: translationInterp
+            keyTimes: translationPacked.times,
+            values: translationPacked.values,
+            interpolation: translationPacked.interpolation
         )
         rotation = AnimatedQuaternion(
-            keyTimes: rotationTimes,
-            values: rotationValues,
-            interpolation: rotationInterp
+            keyTimes: rotationPacked.times,
+            values: rotationPacked.values,
+            interpolation: rotationPacked.interpolation
         )
         scale = AnimatedVector3(
-            keyTimes: scaleTimes,
-            values: scaleValues,
-            interpolation: scaleInterp
+            keyTimes: scalePacked.times,
+            values: scalePacked.values,
+            interpolation: scalePacked.interpolation
         )
         let duration = max(maxTime - minTime, 0)
-        let keyCount = max(translationTimes.count, max(rotationTimes.count, scaleTimes.count))
+        let keyCount = max(translationPacked.times.count, max(rotationPacked.times.count, scalePacked.times.count))
         let averageKeyDuration = duration / Float(max(keyCount, 1))
         recommendedSampleInterval = AnimationSampling.sampleInterval(
             averageKeyDuration: averageKeyDuration,
