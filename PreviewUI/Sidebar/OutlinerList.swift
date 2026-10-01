@@ -33,28 +33,10 @@ public struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
         expanded ?? $ownedExpanded
     }
 
-    private var sections: [OutlinerSection] {
-        OutlinerSection.sections(of: model)
-    }
-
-    private var foldingRoots: [OutlinerItem] {
-        sections.filter(\.folds).flatMap(\.items)
-    }
-
-    private var listSelection: Binding<NodeID?> {
-        Binding(
-            get: { selection.selected },
-            set: { newID in
-                selection.select(newID)
-                if let newID, let item = Self.item(id: newID, in: sections) {
-                    onActivate?(item)
-                }
-            }
-        )
-    }
-
     public var body: some View {
-        List(selection: listSelection) {
+        let sections = OutlinerSection.sections(of: model)
+        let foldingRoots = sections.filter(\.folds).flatMap(\.items)
+        List(selection: listSelection(in: sections)) {
             ForEach(sections) { section in
                 Section {
                     if section.folds {
@@ -86,17 +68,29 @@ public struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
         }
         .onAppear {
             guard expanded == nil else { return }
-            seedExpansionIfNeeded()
+            seedExpansionIfNeeded(roots: foldingRoots)
         }
         .onChange(of: OutlinerTree.treeIdentity(foldingRoots)) { _, _ in
             expandedBinding.wrappedValue = OutlinerTree.defaultExpandedIDs(roots: foldingRoots)
         }
     }
 
+    private func listSelection(in sections: [OutlinerSection]) -> Binding<NodeID?> {
+        Binding(
+            get: { selection.selected },
+            set: { newID in
+                selection.select(newID)
+                if let newID, let item = Self.item(id: newID, in: sections) {
+                    onActivate?(item)
+                }
+            }
+        )
+    }
+
     /// Seed once from `onAppear` — never from `View.init` (AGENTS.md pitfall #1).
-    private func seedExpansionIfNeeded() {
+    private func seedExpansionIfNeeded(roots: [OutlinerItem]) {
         guard ownedExpanded.isEmpty else { return }
-        ownedExpanded = OutlinerTree.defaultExpandedIDs(roots: foldingRoots)
+        ownedExpanded = OutlinerTree.defaultExpandedIDs(roots: roots)
     }
 
     private static func item(id: NodeID, in sections: [OutlinerSection]) -> OutlinerItem? {
