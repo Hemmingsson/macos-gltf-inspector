@@ -16,8 +16,6 @@ public struct PreviewSessionBindings {
     var fieldOfViewDegrees: Binding<Float>
     /// Look / view-mode cycle index into `PreviewScene.debugModes` (host pills).
     var debugModeIndex: Binding<Int>
-    /// Host ViewMode ↔ index map. Quick Look leaves `session` nil.
-    public var debugModes: [PreviewDebugMode] = [.none]
 
     public init(
         autoRotate: Binding<Bool>,
@@ -31,8 +29,7 @@ public struct PreviewSessionBindings {
         doubleSided: Binding<Bool>,
         showSkeleton: Binding<Bool>,
         fieldOfViewDegrees: Binding<Float>,
-        debugModeIndex: Binding<Int>,
-        debugModes: [PreviewDebugMode] = [.none]
+        debugModeIndex: Binding<Int>
     ) {
         self.autoRotate = autoRotate
         self.showFloor = showFloor
@@ -46,6 +43,5 @@ public struct PreviewSessionBindings {
         self.showSkeleton = showSkeleton
         self.fieldOfViewDegrees = fieldOfViewDegrees
         self.debugModeIndex = debugModeIndex
-        self.debugModes = debugModes
     }
 }
