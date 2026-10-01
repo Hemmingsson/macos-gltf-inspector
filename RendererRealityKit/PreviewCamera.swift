@@ -18,7 +18,6 @@ public enum PreviewCamera {
 
     static let autoRotateSpinName = "autoRotateSpin"
     /// RGB axis triad at the authored glTF origin when Center is off.
-    /// Lives on PreviewCamera (not PreviewFloor) so ThumbnailExtension can compile.
     static let worldOriginGizmoName = "worldOriginGizmo"
     private static let axisGizmoLength: Float = 0.2
     private static let axisGizmoThickness: Float = 0.008
@@ -316,16 +315,9 @@ public enum PreviewCamera {
     static func modelBounds(of entity: Entity, relativeTo reference: Entity? = nil) -> BoundingBox {
         var boxes: [BoundingBox] = []
         func walk(_ node: Entity) {
-            // Floor / selection / origin-gizmo helpers carry ModelComponents; skip
-            // their subtrees so Fit framing stays on the glTF mesh only.
-            // Inline names — ThumbnailExtension excludes PreviewFloor.swift.
-            if node.name == "previewFloor"
-                || node.name == "selectionBox"
-                || node.name == worldOriginGizmoName
-                || node.name == "skeletonOverlay"
-                || node.name.hasPrefix("skeletonJoint")
-                || node.name.hasPrefix("skeletonBone")
-            {
+            // Floor / selection / origin-gizmo / skeleton helpers carry ModelComponents;
+            // skip their subtrees so Fit framing stays on the glTF mesh only.
+            if PreviewFloor.isHelperName(node.name) {
                 return
             }
             if node.components[ModelComponent.self] != nil {

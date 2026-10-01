@@ -6,7 +6,7 @@ import simd
 /// Joint spheres + bone segments for skinned models. Markers parent under
 /// joint entities so they follow animation; bones update in pivot space.
 enum PreviewSkeletonOverlay {
-    /// Fit / selection skip-list (also inlined in `PreviewCamera.modelBounds`).
+    /// Fit / selection skip-list (`PreviewFloor.isHelperName`).
     static let overlayRootName = "skeletonOverlay"
     static let jointMarkerPrefix = "skeletonJoint"
     static let bonePrefix = "skeletonBone"
