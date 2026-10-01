@@ -3,19 +3,6 @@ import Testing
 @testable import GLTFInspector
 
 struct UpdateConfigTests {
-    @Test func feedURLUsesGitHubLatestAppcast() {
-        #expect(
-            UpdateConfig.feedURL.absoluteString
-                == "https://github.com/\(UpdateConfig.githubRepo)/releases/latest/download/appcast.xml"
-        )
-        #expect(UpdateConfig.githubURL.absoluteString == "https://github.com/\(UpdateConfig.githubRepo)")
-        #expect(UpdateConfig.feedURL.scheme == "https")
-    }
-
-    @Test func publicEdKeyLooksLikeEd25519Base64() throws {
-        let keyData = try #require(Data(base64Encoded: UpdateConfig.publicEdKey))
-        #expect(keyData.count == 32)
-    }
 
     @Test func updaterStartFlagMatchesBuildConfiguration() {
 #if DEBUG
@@ -25,12 +12,20 @@ struct UpdateConfigTests {
 #endif
     }
 
-    @Test func hostInfoPlistMatchesUpdateConfig() throws {
+    /// The `SU*` keys are the only copy of the Sparkle config (`project.yml`).
+    @Test func hostInfoPlistCarriesTheSparkleConfig() throws {
         let host = try #require(Bundle(identifier: "lol.mattias.gltf-inspector"))
         #expect(host.bundleURL.pathExtension == "app")
         let info = try #require(host.infoDictionary)
-        #expect(info["SUFeedURL"] as? String == UpdateConfig.feedURL.absoluteString)
-        #expect(info["SUPublicEDKey"] as? String == UpdateConfig.publicEdKey)
+        let feed = try #require((info["SUFeedURL"] as? String).flatMap(URL.init(string:)))
+        #expect(feed.scheme == "https")
+        #expect(
+            feed.absoluteString
+                == "https://github.com/Hemmingsson/macos-gltf-inspector/releases/latest/download/appcast.xml"
+        )
+        // Ed25519 public key from `generate_keys`: 32 bytes, base64.
+        let key = try #require((info["SUPublicEDKey"] as? String).flatMap { Data(base64Encoded: $0) })
+        #expect(key.count == 32)
         #expect(info["SUAutomaticallyUpdate"] as? Bool == false)
         #expect(info["SUEnableAutomaticChecks"] as? Bool == true)
         #expect(info["CFBundleName"] as? String == "glTF Inspector")
