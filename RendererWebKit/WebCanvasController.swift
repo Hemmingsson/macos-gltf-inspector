@@ -79,7 +79,7 @@ public final class WebCanvasController {
             }
             AppLog.info(
                 AppLog.webRenderer,
-                "viewport adopt \(url.lastPathComponent) host=\(host.logID) uptimeMs=\(WebRendererHost.uptimeMs())"
+                "viewport adopt \(url.lastPathComponent) host=\(host.logID) uptimeMs=\(AppLog.uptimeMs())"
             )
             reload(url: url, look: look)
             return
@@ -96,7 +96,7 @@ public final class WebCanvasController {
             host.onFailure = { [weak self] error in self?.pageDied(error) }
             AppLog.info(
                 AppLog.webRenderer,
-                "viewport attach \(url.lastPathComponent) host=\(host.logID) reused=\(existing != nil) uptimeMs=\(WebRendererHost.uptimeMs())"
+                "viewport attach \(url.lastPathComponent) host=\(host.logID) reused=\(existing != nil) uptimeMs=\(AppLog.uptimeMs())"
             )
 
             let view = host.view
@@ -172,7 +172,7 @@ public final class WebCanvasController {
                     revealLive(host: host)
                     AppLog.info(
                         AppLog.webRenderer,
-                        "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height) firstFrameMs=\(info.firstFrameMs) uptimeMs=\(WebRendererHost.uptimeMs())"
+                        "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height) firstFrameMs=\(info.firstFrameMs) uptimeMs=\(AppLog.uptimeMs())"
                     )
                 }
             } catch is CancellationError {

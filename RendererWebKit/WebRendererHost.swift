@@ -56,9 +56,6 @@ public final class WebRendererHost {
     /// Short per-instance tag so the log shows whether a page start came from a new web view.
     var logID: String { String(UInt(bitPattern: ObjectIdentifier(self).hashValue), radix: 36) }
 
-    /// Process uptime in ms — the debug log's wall stamps are whole seconds.
-    static func uptimeMs() -> Int { Int(ProcessInfo.processInfo.systemUptime * 1000) }
-
     public init(mode: WebRendererMode, size: Int = 512, timeout: Duration = .seconds(15)) throws {
         guard let rendererRoot = Bundle(for: WebRendererHost.self).url(forResource: "web-renderer", withExtension: nil)
         else { throw WebRendererError.missingRendererBundle }
@@ -100,7 +97,7 @@ public final class WebRendererHost {
             let began = ContinuousClock.now
             AppLog.info(
                 AppLog.webRenderer,
-                "page start begin host=\(logID) mode=\(mode.rawValue) retry=\(brokenBy != nil) uptimeMs=\(Self.uptimeMs())"
+                "page start begin host=\(logID) mode=\(mode.rawValue) retry=\(brokenBy != nil) uptimeMs=\(AppLog.uptimeMs())"
             )
             brokenBy = nil
             do {
@@ -113,7 +110,7 @@ public final class WebRendererHost {
             }
             AppLog.info(
                 AppLog.webRenderer,
-                "page start ready host=\(logID) mode=\(mode.rawValue) pageMs=\(Self.ms(since: began)) uptimeMs=\(Self.uptimeMs())"
+                "page start ready host=\(logID) mode=\(mode.rawValue) pageMs=\(Self.ms(since: began)) uptimeMs=\(AppLog.uptimeMs())"
             )
         }
         startTask = task

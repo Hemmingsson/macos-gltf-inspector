@@ -19,6 +19,11 @@ public enum AppLog {
     /// Everything rendered through WebKit — host, bridge and resource serving.
     public static let webRenderer = Logger(subsystem: subsystem, category: "webrenderer")
 
+    /// Process uptime in ms, for ordering host and canvas log lines (the log stamps are seconds).
+    public static func uptimeMs() -> Int {
+        Int(ProcessInfo.processInfo.systemUptime * 1000)
+    }
+
     private static let fileLock = NSLock()
     private static var logFilePath: String?
 
