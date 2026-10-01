@@ -112,7 +112,7 @@ public enum PreviewCamera {
         // Pivot stays at the visual center (usually world origin after turntable).
         orbitFocus?.setPosition(.zero, relativeTo: nil)
         let fov = RenderCamera.clampedFieldOfView(fieldOfViewInDegrees)
-        let fitted = makeFrontThreeQuarter(
+        let eye = cameraPosition(
             minBound: bounds.min,
             maxBound: bounds.max,
             padding: padding,
@@ -122,7 +122,6 @@ public enum PreviewCamera {
             applyThinAxisOverride: applyThinAxisOverride,
             fieldOfViewInDegrees: fov
         )
-        let eye = fitted.position(relativeTo: nil)
         applyView(to: camera, eye: eye, target: center)
         if orthographic {
             applyOrthographicProjection(
