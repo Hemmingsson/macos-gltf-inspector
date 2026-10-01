@@ -279,6 +279,7 @@ extension EngineSceneModel {
             emissiveFactor: material.emissiveFactor.map {
                 RGBColor(red: Double($0.x), green: Double($0.y), blue: Double($0.z))
             },
+            emissiveStrength: material.emissiveStrength.map(Double.init),
             normalScale: material.normalScale.map(Double.init),
             occlusionStrength: material.occlusionStrength.map(Double.init),
             alphaCutoff: material.alphaCutoff.map(Double.init),

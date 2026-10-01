@@ -31,6 +31,7 @@ extension GLTFDocumentJSON {
             ?? GLTFJSON.float4(pbr["baseColorFactor"])
             ?? SIMD4<Float>(1, 1, 1, 1)
         let isSpecGloss = workflow == .specularGlossiness
+        let emissiveStrengthExt = extensions["KHR_materials_emissive_strength"] as? [String: Any]
 
         return GLTFSessionDocument.Material(
             name: material["name"] as? String ?? "",
@@ -43,6 +44,9 @@ extension GLTFDocumentJSON {
             alphaCutoff: alphaMode == .mask ? (GLTFJSON.float(material["alphaCutoff"]) ?? 0.5) : nil,
             baseColorFactor: baseColor,
             emissiveFactor: GLTFJSON.float3(material["emissiveFactor"]),
+            emissiveStrength: emissiveStrengthExt.map {
+                GLTFJSON.float($0["emissiveStrength"]) ?? 1
+            },
             // Scale/strength only mean something on top of their map.
             normalScale: (material["normalTexture"] as? [String: Any]).map {
                 GLTFJSON.float($0["scale"]) ?? 1

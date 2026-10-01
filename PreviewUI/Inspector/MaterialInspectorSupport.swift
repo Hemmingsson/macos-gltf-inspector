@@ -84,6 +84,12 @@ public enum MaterialInspectorSupport {
         guard let value = material.occlusionStrength else { return false }
         return abs(value - 1) > 0.004
     }
+
+    /// `KHR_materials_emissive_strength` only when it is not the spec default of 1.
+    public static func showsEmissiveStrength(_ material: MaterialInfo) -> Bool {
+        guard let value = material.emissiveStrength else { return false }
+        return abs(value - 1) > 0.004
+    }
 }
 
 public extension Color {

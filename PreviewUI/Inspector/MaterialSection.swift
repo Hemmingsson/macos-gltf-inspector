@@ -83,6 +83,10 @@ public struct MaterialSection: View {
                 if MaterialInspectorSupport.showsEmissive(material) {
                     emissiveRow
                 }
+                if MaterialInspectorSupport.showsEmissiveStrength(material),
+                   let value = material.emissiveStrength {
+                    DSFactRow("Emissive strength", value: MaterialInspectorSupport.scalarLabel(value))
+                }
                 if MaterialInspectorSupport.showsNormalScale(material),
                    let value = material.normalScale {
                     DSFactRow("Normal scale", value: MaterialInspectorSupport.scalarLabel(value))

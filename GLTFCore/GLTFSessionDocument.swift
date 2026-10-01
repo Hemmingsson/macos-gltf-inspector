@@ -137,6 +137,8 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var alphaCutoff: Float?
         public var baseColorFactor: SIMD4<Float>?
         public var emissiveFactor: SIMD3<Float>?
+        /// `KHR_materials_emissive_strength`. Nil when the extension is absent (spec default 1).
+        public var emissiveStrength: Float?
         public var normalScale: Float?
         public var occlusionStrength: Float?
         /// Present map bindings; thumbs stamped from the file bytes.

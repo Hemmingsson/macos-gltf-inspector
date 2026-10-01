@@ -110,6 +110,8 @@ public struct MaterialInfo: Sendable, Hashable, Identifiable {
     public var metallicFactor: Double?
     public var roughnessFactor: Double?
     public var emissiveFactor: RGBColor?
+    /// `KHR_materials_emissive_strength`. Nil when the extension is absent (spec default 1).
+    public var emissiveStrength: Double?
     public var normalScale: Double?
     public var occlusionStrength: Double?
     /// Meaningful when `alphaMode == .mask`.
@@ -129,6 +131,7 @@ public struct MaterialInfo: Sendable, Hashable, Identifiable {
         metallicFactor: Double? = nil,
         roughnessFactor: Double? = nil,
         emissiveFactor: RGBColor? = nil,
+        emissiveStrength: Double? = nil,
         normalScale: Double? = nil,
         occlusionStrength: Double? = nil,
         alphaCutoff: Double? = nil,
@@ -144,6 +147,7 @@ public struct MaterialInfo: Sendable, Hashable, Identifiable {
         self.metallicFactor = metallicFactor
         self.roughnessFactor = roughnessFactor
         self.emissiveFactor = emissiveFactor
+        self.emissiveStrength = emissiveStrength
         self.normalScale = normalScale
         self.occlusionStrength = occlusionStrength
         self.alphaCutoff = alphaCutoff
