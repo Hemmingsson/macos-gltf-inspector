@@ -8,14 +8,10 @@ import SwiftUI
 /// `SidebarCommands()` (⌃⌘S), kept in sync by `ShellPanelChrome.columnVisibility`.
 struct HostViewMenuCommands: View {
     @FocusedValue(\.engineViewport) private var viewport
-    @FocusedValue(\.previewCommands) private var previewCommands
 
     var body: some View {
         if let viewport {
-            HostViewMenuBody(
-                viewport: viewport,
-                previewCommands: previewCommands
-            )
+            HostViewMenuBody(viewport: viewport)
         } else {
             Text("No focused window")
                 .disabled(true)
@@ -24,8 +20,7 @@ struct HostViewMenuCommands: View {
 }
 
 private struct HostViewMenuBody: View {
-    @Bindable var viewport: EngineViewportController
-    var previewCommands: FocusedPreviewCommands?
+    let viewport: EngineViewportController
 
     var body: some View {
         Picker("View Mode", selection: viewMode) {
@@ -70,7 +65,7 @@ private struct HostViewMenuBody: View {
             viewport.fit()
         }
         .keyboardShortcut(DS.Shortcuts.action(.fit))
-        .disabled(previewCommands == nil)
+        .disabled(viewport.commands == nil)
 
         Button("Reset View", systemImage: "arrow.counterclockwise") {
             viewport.reset()
@@ -87,7 +82,7 @@ private struct HostViewMenuBody: View {
                 viewport.applyCameraPreset(preset)
             }
             .keyboardShortcutIfAvailable(cameraPresetShortcut(for: preset))
-            .disabled(previewCommands == nil)
+            .disabled(viewport.commands == nil)
         }
     }
 

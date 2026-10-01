@@ -26,7 +26,6 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
     var body: some View {
         let viewport = window.engineViewport
         shellRoot
-            .focusedSceneValue(\.previewCommands, viewport.commands)
             // A canvas can take View-menu commands before (or without) the panels' document.
             .focusedSceneValue(
                 \.engineViewport,
