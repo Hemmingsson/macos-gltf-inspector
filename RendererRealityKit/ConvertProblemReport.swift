@@ -5,7 +5,6 @@ import GLTFCore
 public struct ConvertProblem: Equatable, Sendable {
     public enum Code: String, Equatable, Sendable {
         case missingTexture
-        case defaultMaterial
         case droppedPrimitive
         case missingTexCoord
         case ignoredExtension

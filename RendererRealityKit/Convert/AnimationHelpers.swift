@@ -61,15 +61,6 @@ enum AnimationSampling {
         guard minTime.isFinite, maxTime.isFinite else { return false }
         return sampleCount > 1 && maxTime - minTime > minimumDuration
     }
-
-    static func documentedDuration(_ animation: GLTFAnimation) -> Double {
-        var maxTime: Float = 0
-        for sampler in animation.samplers {
-            let hi = inputRange(of: sampler).maxTime
-            if hi.isFinite { maxTime = max(maxTime, hi) }
-        }
-        return Double(max(maxTime, 0))
-    }
 }
 
 private extension Array {
