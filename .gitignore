@@ -15,17 +15,10 @@ build/
 # Project MCP lives at /.mcp.json (shared by Claude + Cursor via symlink)
 .xcodebuildmcp/
 .conductor/
-!.docs/
-!.docs/**
 .dex/
 .superpowers/
 plans/
-test-models/
-Fixtures/
-!PreviewUI/PreviewSupport/Fixtures/
 TestModels/Khronos samples/
-.readme-preview.html
-scripts/.cache/
 
 # Sparkle release artifacts and local CLI cache
 dist/
