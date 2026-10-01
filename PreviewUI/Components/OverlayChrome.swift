@@ -14,12 +14,6 @@ public enum OverlayMetrics {
     public static let scrubWidth: CGFloat = 250
     /// Orientation gizmo box (`width: 66; height: 66`).
     public static let orientationSize: CGFloat = 66
-    /// X axis — `DS.Color.Axis.x`.
-    public static let axisX = DS.Color.Axis.x
-    /// Y axis — `DS.Color.Axis.y`.
-    public static let axisY = DS.Color.Axis.y
-    /// Z axis — `DS.Color.Axis.z`.
-    public static let axisZ = DS.Color.Axis.z
 
     public static func strokeAxis(
         _ context: GraphicsContext,
