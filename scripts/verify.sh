@@ -3,7 +3,7 @@
 #
 #   ./scripts/verify.sh
 #   ./scripts/build.sh             # rebuild + install, then this check
-#   ./scripts/proof.sh             # still-renderer PNG + timed qlmanage
+#   ./scripts/proof.sh             # still-renderer PNG (--qlmanage: + timed qlmanage)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

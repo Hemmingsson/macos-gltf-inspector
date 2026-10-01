@@ -69,10 +69,11 @@ this worktree is throwaway until merged.
 ./scripts/dev.sh test             # xcodegen + xcodebuild test into this branch's DerivedData (args → xcodebuild)
 ./scripts/dev.sh run cube         # install + launch fixture; logs → .build/logs/debug.log
 ./scripts/dev.sh logs             # tail debug log (agents: read .build/logs/debug.log)
-./scripts/build.sh                # install + open /Applications + verify (explicit ship check)
+./scripts/build.sh                # install + open /Applications + verify (ship check; main checkout only)
 ./scripts/build.sh --install-only # same as dev.sh install (VS Code Build task)
 ./scripts/verify.sh               # installed app + pluginkit
-./scripts/proof.sh                # StillRenderProofTests (RK convert still) + optional qlmanage
+./scripts/proof.sh                # StillRenderProofTests (RK convert still); --qlmanage adds a timed qlmanage
+./scripts/tidy-metrics.sh [label] [tests]  # periphery + swiftlint + jscpd + LOC → .agents/research/tidy-baseline/<label>/, delta vs summary-0
 ./scripts/release.sh              # Developer ID + notary + Sparkle + gh release
 ./scripts/vendor-khronos-environments.sh
 ./scripts/fetch-test-models.sh    # pinned Khronos samples (manifest.json) → TestModels/Khronos samples (gitignored)

@@ -1,1 +1,1 @@
-../../.cursor/agents/glb-load-integrator.md
+../../.agents/agents/glb-load-integrator.md

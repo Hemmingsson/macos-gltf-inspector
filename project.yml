@@ -58,7 +58,6 @@ targets:
   DesignSystem:
     type: framework
     platform: macOS
-    deploymentTarget: "26.0"
     sources:
       - DesignSystem
     settings:
@@ -67,12 +66,7 @@ targets:
         PRODUCT_MODULE_NAME: DesignSystem
         GENERATE_INFOPLIST_FILE: YES
         DEFINES_MODULE: YES
-        SWIFT_OBJC_BRIDGING_HEADER: ""
         APPLICATION_EXTENSION_API_ONLY: YES
-      configs:
-        Release:
-          ARCHS: arm64 x86_64
-          ONLY_ACTIVE_ARCH: NO
 
   PreviewUI:
     type: framework
@@ -85,13 +79,9 @@ targets:
         PRODUCT_MODULE_NAME: PreviewUI
         GENERATE_INFOPLIST_FILE: YES
         DEFINES_MODULE: YES
-        SWIFT_OBJC_BRIDGING_HEADER: ""
       configs:
         Debug:
           ENABLE_DEBUG_DYLIB: YES
-        Release:
-          ARCHS: arm64 x86_64
-          ONLY_ACTIVE_ARCH: NO
     dependencies:
       - target: DesignSystem
         embed: false
@@ -113,7 +103,6 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Design Catalog
         INFOPLIST_KEY_NSPrincipalClass: NSApplication
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-        SWIFT_OBJC_BRIDGING_HEADER: ""
     dependencies:
       - target: DesignSystem
         embed: true
@@ -143,16 +132,9 @@ targets:
         PRODUCT_MODULE_NAME: GLTFCore
         GENERATE_INFOPLIST_FILE: YES
         DEFINES_MODULE: YES
-        SWIFT_OBJC_BRIDGING_HEADER: ""
         APPLICATION_EXTENSION_API_ONLY: YES
-      configs:
-        Debug:
-          ENABLE_TESTABILITY: YES
-        Release:
-          ARCHS: arm64 x86_64
-          ONLY_ACTIVE_ARCH: NO
 
-  # RealityKit renderer: glTF → GLTFKit2 → prepare → convert → RealityKit entities, the
+  # RealityKit renderer: glTF → GLTFKit2 → convert → RealityKit entities, the
   # RealityView canvas, look / camera / floor, and offscreen stills. Extension-safe (no NSApp;
   # the host owns the PNG save panel). The only target that links GLTFKit2 and DracoSwift.
   # GLBTry.h is public because framework targets cannot use a bridging header.
@@ -177,14 +159,7 @@ targets:
         PRODUCT_MODULE_NAME: RendererRealityKit
         GENERATE_INFOPLIST_FILE: YES
         DEFINES_MODULE: YES
-        SWIFT_OBJC_BRIDGING_HEADER: ""
         APPLICATION_EXTENSION_API_ONLY: YES
-      configs:
-        Debug:
-          ENABLE_TESTABILITY: YES
-        Release:
-          ARCHS: arm64 x86_64
-          ONLY_ACTIVE_ARCH: NO
     dependencies:
       - target: GLTFCore
         embed: false
@@ -214,14 +189,7 @@ targets:
         PRODUCT_MODULE_NAME: RendererWebKit
         GENERATE_INFOPLIST_FILE: YES
         DEFINES_MODULE: YES
-        SWIFT_OBJC_BRIDGING_HEADER: ""
         APPLICATION_EXTENSION_API_ONLY: YES
-      configs:
-        Debug:
-          ENABLE_TESTABILITY: YES
-        Release:
-          ARCHS: arm64 x86_64
-          ONLY_ACTIVE_ARCH: NO
     dependencies:
       - target: GLTFCore
         embed: false
@@ -309,13 +277,9 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: ICON
       configs:
         Debug:
-          ENABLE_TESTABILITY: YES
           ENABLE_DEBUG_DYLIB: YES
         Release:
-          ARCHS: arm64 x86_64
-          ONLY_ACTIVE_ARCH: NO
           CODE_SIGN_IDENTITY: "Developer ID Application"
-          ENABLE_TESTABILITY: NO
     dependencies:
       - target: DesignSystem
         embed: true
@@ -405,7 +369,8 @@ targets:
         # user opens from, so the sandboxed extensions need read access beyond the opened file.
         com.apple.security.temporary-exception.files.home-relative-path.read-only:
           - /
-        # SPIKE: WKWebView spawns Networking/GPU XPC services even with no network use.
+        # WKWebView spawns a Networking XPC service even with no network use; without this the
+        # extension is denied the mach extension WebContent needs and WebContent dies on launch.
         com.apple.security.network.client: true
     info:
       path: ThumbnailExtension/Info.plist
@@ -456,4 +421,6 @@ targets:
       - target: RendererWebKit
         embed: false
       - target: DesignSystem
+        embed: false
       - target: PreviewUI
+        embed: false

@@ -1,0 +1,451 @@
+{
+  "duplicates": [
+    {
+      "firstFile": {
+        "end": 235,
+        "endLoc": {
+          "column": 29,
+          "line": 235,
+          "position": 9620
+        },
+        "name": "Pages/Content/ContentPages.swift",
+        "start": 224,
+        "startLoc": {
+          "column": 24,
+          "line": 224,
+          "position": 8953
+        }
+      },
+      "format": "swift",
+      "fragment": "                        List(selection: $selection) {\n                            Section {\n                                DSListRow(\"Cube\", role: .mesh).tag(\"Cube\")\n                                DSListRow(\"Camera\", role: .camera).tag(\"Camera\")\n                                DSListRow(\"Hidden light\", role: .light, isMuted: true) {\n                                    Image(systemName: \"eye.slash\")\n                                        .foregroundStyle(DS.Color.textSecondary)\n                                }\n                                .tag(\"Light\")\n                            } header: {\n                                DSSectionHeader(\"Scene\")\n                            }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 12,
+      "secondFile": {
+        "end": 139,
+        "endLoc": {
+          "column": 9,
+          "line": 139,
+          "position": 4755
+        },
+        "name": "Components/Content/DSListRow.swift",
+        "start": 129,
+        "startLoc": {
+          "column": 4,
+          "line": 129,
+          "position": 4329
+        }
+      },
+      "tokens": 82
+    },
+    {
+      "firstFile": {
+        "end": 140,
+        "endLoc": {
+          "column": 21,
+          "line": 140,
+          "position": 5448
+        },
+        "name": "Pages/Content/StatusValuePages.swift",
+        "start": 134,
+        "startLoc": {
+          "column": 55,
+          "line": 134,
+          "position": 5032
+        }
+      },
+      "format": "swift",
+      "fragment": "                StateRow(\"Transform\", alignment: .top) {\n                    VStack(alignment: .leading, spacing: DS.Spacing.s) {\n                        DSVectorRow(\"Position\", shortTitle: \"P\", x: \"0.00\", y: \"0.50\", z: \"0.00\")\n                        DSVectorRow(\"Rotation\", shortTitle: \"R\", x: \"0.00°\", y: \"90.00°\", z: \"0.00°\")\n                        DSVectorRow(\"Scale\", shortTitle: \"S\", x: \"1.00\", y: \"1.00\", z: \"1.00\")\n                    }\n                    .frame(maxWidth: 320)",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 62,
+        "endLoc": {
+          "column": 5,
+          "line": 62,
+          "position": 2288
+        },
+        "name": "Components/Content/DSVectorRow.swift",
+        "start": 56,
+        "startLoc": {
+          "column": 26,
+          "line": 56,
+          "position": 1948
+        }
+      },
+      "tokens": 78
+    },
+    {
+      "firstFile": {
+        "end": 43,
+        "endLoc": {
+          "column": 20,
+          "line": 43,
+          "position": 1731
+        },
+        "name": "Components/Controls/DSMenuPicker.swift",
+        "start": 22,
+        "startLoc": {
+          "column": 4,
+          "line": 22,
+          "position": 1064
+        }
+      },
+      "format": "swift",
+      "fragment": "    public init(\n        _ title: String,\n        selection: Binding<SelectionValue>,\n        options: [SelectionValue],\n        labelVisibility: Visibility = .visible,\n        optionTitle: @escaping (SelectionValue) -> String\n    ) {\n        self.title = title\n        self._selection = selection\n        self.options = options\n        self.optionTitle = optionTitle\n        self.labelVisibility = labelVisibility\n    }\n\n    public var body: some View {\n        DSPickerRow(\n            title: title,\n            selection: $selection,\n            options: options,\n            optionTitle: optionTitle,\n            labelVisibility: labelVisibility,\n            style: .menu",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 22,
+      "secondFile": {
+        "end": 44,
+        "endLoc": {
+          "column": 20,
+          "line": 44,
+          "position": 1811
+        },
+        "name": "Components/Controls/DSSegmentedPicker.swift",
+        "start": 23,
+        "startLoc": {
+          "column": 4,
+          "line": 23,
+          "position": 1144
+        }
+      },
+      "tokens": 99
+    },
+    {
+      "firstFile": {
+        "end": 51,
+        "endLoc": {
+          "column": 21,
+          "line": 51,
+          "position": 2087
+        },
+        "name": "Components/Controls/DSPopoverPanel.swift",
+        "start": 45,
+        "startLoc": {
+          "column": 31,
+          "line": 45,
+          "position": 1662
+        }
+      },
+      "format": "swift",
+      "fragment": "                DSPopoverPanel {\n                    DSSlider(\"Exposure\", value: $exposure, in: -3...3, step: 0.1, neutralValue: 0) {\n                        $0.formatted(.number.precision(.fractionLength(1)).sign(strategy: .always())) + \" EV\"\n                    }\n                    DSSlider(\"Environment\", value: $rotation, in: 0...360, step: 1) {\n                        $0.formatted(.number.precision(.fractionLength(0))) + \"°\"\n                    }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 101,
+        "endLoc": {
+          "column": 9,
+          "line": 101,
+          "position": 3778
+        },
+        "name": "Components/Controls/DSSlider.swift",
+        "start": 95,
+        "startLoc": {
+          "column": 26,
+          "line": 95,
+          "position": 3425
+        }
+      },
+      "tokens": 90
+    },
+    {
+      "firstFile": {
+        "end": 16,
+        "endLoc": {
+          "column": 13,
+          "line": 16,
+          "position": 817
+        },
+        "name": "GLTFImageDecode.swift",
+        "start": 10,
+        "startLoc": {
+          "column": 69,
+          "line": 10,
+          "position": 428
+        }
+      },
+      "format": "swift",
+      "fragment": "    static func pixelSize(of data: Data) -> (width: Int, height: Int)? {\n        guard let source = CGImageSourceCreateWithData(data as CFData, nil),\n              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]\n        else { return nil }\n        let width = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue ?? 0\n        let height = (props[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue ?? 0\n        guard width > 0, height > 0 else { return nil }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 7,
+      "secondFile": {
+        "end": 189,
+        "endLoc": {
+          "column": 11,
+          "line": 189,
+          "position": 7368
+        },
+        "name": "PreviewStats.swift",
+        "start": 183,
+        "startLoc": {
+          "column": 57,
+          "line": 183,
+          "position": 6981
+        }
+      },
+      "tokens": 74
+    },
+    {
+      "firstFile": {
+        "end": 172,
+        "endLoc": {
+          "column": 9,
+          "line": 172,
+          "position": 6872
+        },
+        "name": "DocumentShell.swift",
+        "start": 161,
+        "startLoc": {
+          "column": 16,
+          "line": 161,
+          "position": 6371
+        }
+      },
+      "format": "swift",
+      "fragment": "                VStack(spacing: 8) {\n                    Text(\"Failed to load model\")\n                        .font(.system(size: 13, weight: .semibold))\n                    Text(message)\n                        .font(.system(size: 12))\n                        .multilineTextAlignment(.center)\n                        .opacity(0.7)\n                }\n                .foregroundStyle(isDark ? Color.white : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255))\n                .padding()\n            }\n        }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 12,
+      "secondFile": {
+        "end": 142,
+        "endLoc": {
+          "column": 1,
+          "line": 142,
+          "position": 5001
+        },
+        "name": "QuickLookWebKit.swift",
+        "start": 131,
+        "startLoc": {
+          "column": 8,
+          "line": 131,
+          "position": 4588
+        }
+      },
+      "tokens": 90
+    },
+    {
+      "firstFile": {
+        "end": 48,
+        "endLoc": {
+          "column": 9,
+          "line": 48,
+          "position": 1475
+        },
+        "name": "Engine/EngineCoreMapping.swift",
+        "start": 29,
+        "startLoc": {
+          "column": 32,
+          "line": 29,
+          "position": 817
+        }
+      },
+      "format": "swift",
+      "fragment": "    init(_ channel: DebugChannel) {\n        switch channel {\n        case .baseColor: self = .baseColor\n        case .metallic: self = .metallic\n        case .roughness: self = .roughness\n        case .normals: self = .normals\n        case .tangents: self = .tangents\n        case .textureCoordinates: self = .textureCoordinates\n        case .ambientOcclusion: self = .ambientOcclusion\n        case .emissive: self = .emissive\n        case .alpha: self = .alpha\n        case .specular: self = .specular\n        case .clearcoat: self = .clearcoat\n        case .clearcoatRoughness: self = .clearcoatRoughness\n        case .clearcoatNormal: self = .clearcoatNormal\n        }\n    }\n}\n\nextension DebugChannel {",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 20,
+      "secondFile": {
+        "end": 68,
+        "endLoc": {
+          "column": 9,
+          "line": 68,
+          "position": 2191
+        },
+        "name": "Engine/EngineCoreMapping.swift",
+        "start": 49,
+        "startLoc": {
+          "column": 42,
+          "line": 49,
+          "position": 1533
+        }
+      },
+      "tokens": 113
+    },
+    {
+      "firstFile": {
+        "end": 301,
+        "endLoc": {
+          "column": 31,
+          "line": 301,
+          "position": 10967
+        },
+        "name": "Engine/EngineSelectionModel.swift",
+        "start": 278,
+        "startLoc": {
+          "column": 0,
+          "line": 278,
+          "position": 10352
+        }
+      },
+      "format": "swift",
+      "fragment": "}\n\n/// Intrinsic XYZ Euler degrees from a unit quaternion (matches glTF TRS authoring).\nprivate func eulerDegrees(from q: simd_quatf) -> SIMD3<Float> {\n    let x = q.imag.x\n    let y = q.imag.y\n    let z = q.imag.z\n    let w = q.real\n\n    let sinr = 2 * (w * x + y * z)\n    let cosr = 1 - 2 * (x * x + y * y)\n    let roll = atan2(sinr, cosr)\n\n    let sinp = 2 * (w * y - z * x)\n    let pitch: Float\n    if abs(sinp) >= 1 {\n        pitch = copysign(.pi / 2, sinp)\n    } else {\n        pitch = asin(sinp)\n    }\n\n    let siny = 2 * (w * z + x * y)\n    let cosy = 1 - 2 * (y * y + z * z)\n    let yaw = atan2(siny, cosy)",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 24,
+      "secondFile": {
+        "end": 168,
+        "endLoc": {
+          "column": 31,
+          "line": 168,
+          "position": 5415
+        },
+        "name": "SelectionDetail.swift",
+        "start": 145,
+        "startLoc": {
+          "column": 0,
+          "line": 145,
+          "position": 4800
+        }
+      },
+      "tokens": 174
+    },
+    {
+      "firstFile": {
+        "end": 147,
+        "endLoc": {
+          "column": 5,
+          "line": 147,
+          "position": 4473
+        },
+        "name": "HostViewMenuCommands.swift",
+        "start": 131,
+        "startLoc": {
+          "column": 44,
+          "line": 131,
+          "position": 4076
+        }
+      },
+      "format": "swift",
+      "fragment": "            set: { viewport.setAutoRotate($0) }\n        )\n    }\n\n    private var center: Binding<Bool> {\n        Binding(\n            get: { viewport.isCentered },\n            set: { viewport.setCenter($0) }\n        )\n    }\n\n    private var orthographic: Binding<Bool> {\n        Binding(\n            get: { viewport.projection == .orthographic },\n            set: { viewport.setProjection($0 ? .orthographic : .perspective) }\n        )\n    }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 17,
+      "secondFile": {
+        "end": 58,
+        "endLoc": {
+          "column": 5,
+          "line": 58,
+          "position": 1873
+        },
+        "name": "Toolbar/CameraPill.swift",
+        "start": 41,
+        "startLoc": {
+          "column": 47,
+          "line": 41,
+          "position": 1464
+        }
+      },
+      "tokens": 78
+    },
+    {
+      "firstFile": {
+        "end": 88,
+        "endLoc": {
+          "column": 5,
+          "line": 88,
+          "position": 3488
+        },
+        "name": "RealityKit/PreviewView.swift",
+        "start": 75,
+        "startLoc": {
+          "column": 12,
+          "line": 75,
+          "position": 3015
+        }
+      },
+      "format": "swift",
+      "fragment": "            VStack(spacing: 8) {\n                Text(\"Failed to load model\")\n                    .font(.system(size: 13, weight: .semibold))\n                Text(message)\n                    .font(.system(size: 12))\n                    .multilineTextAlignment(.center)\n                    .opacity(0.7)\n            }\n            .foregroundStyle(\n                PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)\n            )\n            .padding()\n        }\n    }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 14,
+      "secondFile": {
+        "end": 106,
+        "endLoc": {
+          "column": 9,
+          "line": 106,
+          "position": 3959
+        },
+        "name": "QuickLookRealityKit.swift",
+        "start": 95,
+        "startLoc": {
+          "column": 16,
+          "line": 95,
+          "position": 3472
+        }
+      },
+      "tokens": 80
+    },
+    {
+      "firstFile": {
+        "end": 79,
+        "endLoc": {
+          "column": 13,
+          "line": 79,
+          "position": 2895
+        },
+        "name": "Sidebar/OutlinerList.swift",
+        "start": 61,
+        "startLoc": {
+          "column": 16,
+          "line": 61,
+          "position": 2116
+        }
+      },
+      "format": "swift",
+      "fragment": "                Section {\n                    if section.folds {\n                        ForEach(section.items) { item in\n                            OutlinerDisclosure(\n                                item: item,\n                                expanded: expandedBinding,\n                                selection: selection\n                            )\n                        }\n                    } else {\n                        ForEach(section.items) { item in\n                            NodeRow(item: item, isSelected: selection.selected == item.id, selection: selection)\n                                .tag(Optional(item.id))\n                        }\n                    }\n                } header: {\n                    DSSectionHeader(section.title)\n                }\n            }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 19,
+      "secondFile": {
+        "end": 141,
+        "endLoc": {
+          "column": 9,
+          "line": 141,
+          "position": 5496
+        },
+        "name": "Sidebar/OutlinerSection.swift",
+        "start": 119,
+        "startLoc": {
+          "column": 12,
+          "line": 119,
+          "position": 4683
+        }
+      },
+      "tokens": 88
+    }
+  ],
+  "statistics": {
+    "detectionDate": "2026-10-01T11:19:14.760Z",
+    "formats": {
+      "swift": {
+        "clones": 11,
+        "duplicatedLines": 161,
+        "duplicatedTokens": 1046,
+        "lines": 29030,
+        "newClones": 0,
+        "newDuplicatedLines": 0,
+        "percentage": 0.5545986910093007,
+        "percentageTokens": 0.6606955620965399,
+        "sources": 228,
+        "tokens": 158318
+      }
+    },
+    "total": {
+      "clones": 11,
+      "duplicatedLines": 161,
+      "duplicatedTokens": 1046,
+      "lines": 29030,
+      "newClones": 0,
+      "newDuplicatedLines": 0,
+      "percentage": 0.5545986910093007,
+      "percentageTokens": 0.6606955620965399,
+      "sources": 228,
+      "tokens": 158318
+    }
+  }
+}

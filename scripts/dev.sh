@@ -45,17 +45,25 @@ dev_test() {
     -derivedDataPath "$DERIVED_DATA" test "$@"
 }
 
+# Copy the built app as signed. After a `dev.sh test` the hosted GLTFInspectorTests.xctest is
+# inside the app's seal, so it stays: deleting it breaks `codesign --verify`.
+install_app() {
+  local dst="$1"
+  rm -rf "$dst"
+  cp -R "$BUILD_PRODUCT" "$dst"
+  codesign --verify --deep --strict "$dst" || {
+    echo "codesign verify failed: $dst" >&2
+    exit 1
+  }
+}
+
 dev_install() {
   dev_build
   mkdir -p "$ROOT/.build"
-  rm -rf "$LOCAL_APP"
-  cp -R "$BUILD_PRODUCT" "$LOCAL_APP"
-  rm -rf "$LOCAL_APP/Contents/PlugIns/GLTFInspectorTests.xctest"
+  install_app "$LOCAL_APP"
 
   if [[ "$INSTALL_KIND" == "main" ]]; then
-    rm -rf "$SYSTEM_APP"
-    cp -R "$BUILD_PRODUCT" "$SYSTEM_APP"
-    rm -rf "$SYSTEM_APP/Contents/PlugIns/GLTFInspectorTests.xctest"
+    install_app "$SYSTEM_APP"
     qlmanage -r
   fi
 

@@ -1,1 +1,1 @@
-../../.cursor/agents/glb-load-researcher.md
+../../.agents/agents/glb-load-researcher.md

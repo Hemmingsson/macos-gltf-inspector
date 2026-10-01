@@ -69,7 +69,7 @@ print_pipeline() {
   echo "     derivedData: $DD"
   echo "     archive: $ARCHIVE_DIR/GLTFInspector.xcarchive"
   echo "  4. xcodebuild -exportArchive ($EXPORT_OPTIONS) -> $EXPORT_DIR"
-  echo "  5. strip GLTFInspectorTests.xctest if present"
+  echo "  5. assert no GLTFInspectorTests.xctest (archive never builds tests)"
   echo "  6. codesign --deep --verify --strict"
   echo "  7. assert PreviewExtension.appex, ThumbnailExtension.appex, Sparkle.framework"
   echo "  8. ditto -c -k --keepParent -> $ZIP"
@@ -156,7 +156,8 @@ xcodebuild -exportArchive \
 APP="$EXPORT_DIR/glTF Inspector.app"
 [[ -d "$APP" ]] || { echo "missing exported $APP" >&2; exit 1; }
 
-rm -rf "$APP/Contents/PlugIns/GLTFInspectorTests.xctest"
+# Archive builds no test target; a test bundle here would be inside the seal, so fail, never strip.
+[[ ! -e "$APP/Contents/PlugIns/GLTFInspectorTests.xctest" ]] || { echo "test bundle in exported $APP" >&2; exit 1; }
 
 codesign --deep --verify --strict "$APP"
 test -d "$APP/Contents/PlugIns/PreviewExtension.appex"

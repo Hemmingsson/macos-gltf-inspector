@@ -1,1 +1,1 @@
-../../.cursor/agents/glb-load-benchmarker.md
+../../.agents/agents/glb-load-benchmarker.md
