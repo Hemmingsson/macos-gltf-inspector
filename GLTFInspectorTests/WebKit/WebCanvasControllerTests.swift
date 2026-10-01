@@ -117,6 +117,36 @@ struct WebCanvasControllerTests {
     private static let loseContext =
         "document.getElementById('stage').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext()"
 
+    /// A look change during page start used to cancel the load task. The replacement saw
+    /// `modelChanged == false` and only applied the look, so the window never loaded or revealed
+    /// — the KHR_lights_punctual path (`usesFileLights`) spins forever.
+    @Test
+    func lookChangeDuringPageStartStillReachesReady() async throws {
+        let canvas = WebCanvasController()
+        let url = TestFixtures.cube
+        _ = try mount(canvas, url: url)
+        #expect(canvas.phase == .loading, "look change must land before the first reveal")
+
+        var look = WebPreviewCanvas.Look()
+        look.render.usesFileLights = true
+        canvas.reload(url: url, look: look)
+
+        #expect(try await settledPhase(of: canvas) == .ready)
+    }
+
+    /// Same cancellation path on a punctual-lights file: `applyConvertedLighting` flips
+    /// `usesFileLights` while the page is still starting.
+    @Test
+    func punctualLightsLookChangeDuringLoadReachesReady() async throws {
+        let canvas = WebCanvasController()
+        let url = TestFixtures.lights
+        _ = try mount(canvas, url: url)
+        var look = WebPreviewCanvas.Look()
+        look.render.usesFileLights = true
+        canvas.reload(url: url, look: look)
+        #expect(try await settledPhase(of: canvas) == .ready)
+    }
+
     @Test
     func timedOutHostFailsFastAfterwards() async throws {
         let host = try WebRendererHost(mode: .still, size: 64, timeout: .milliseconds(1))
