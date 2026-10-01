@@ -164,3 +164,5 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - `PreviewDebugMode` uniques originals with a texture-id + scalar fingerprint (`MaterialKey`): RealityKit materials are not `Equatable`. Two convert-shared materials match; two untextured PBRs with the same tint/factors also share a wire copy (same visual).
 - Channel↔channel skip-restore is store-stateful (`lastMutatedMaterials`). A new store always restores nothing on the first apply.
 - No `dev.sh bench` / Warrior_Girl_2 numbers in this lane (parent benches). Target remains < 50 ms channel↔channel on the node-heavy corpus.
+- Skeleton `updateBones` is O(J) transform sets on cached joint refs; PreviewScene ticks it at 16 ms while the overlay is on (animation + auto-rotate). Not hooked to `SceneEvents.Update`.
+- No Emma Frost bench / real-window check here. Target remains < 2 ms per update.

@@ -76,6 +76,79 @@ struct MorphSkeletonTests {
     }
 
     @MainActor
+    @Test func skeletonUpdateReusesBoneMeshes() async throws {
+        let url = try writeTempTwoJointSkinGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await EntityLoader.load(from: url, includeAnimations: false)
+        let pivot = Entity()
+        pivot.name = "turntable"
+        pivot.addChild(model.entity)
+
+        PreviewSkeletonOverlay.apply(
+            show: true,
+            skins: model.document.skins,
+            to: model.entity,
+            relativeTo: pivot
+        )
+        let overlay = try #require(
+            pivot.children.first { $0.name == PreviewSkeletonOverlay.overlayRootName }
+        )
+        let bones = overlay.children.filter { $0.name.hasPrefix(PreviewSkeletonOverlay.bonePrefix) }
+        #expect(bones.count == 1)
+        let bone = try #require(bones.first)
+        let mesh = try #require(bone.components[ModelComponent.self]?.mesh)
+        let childCount = overlay.children.count
+
+        PreviewSkeletonOverlay.updateBones(
+            skins: model.document.skins,
+            root: model.entity,
+            pivot: pivot
+        )
+        #expect(overlay.children.count == childCount)
+        let updated = try #require(
+            overlay.children.first { $0.name.hasPrefix(PreviewSkeletonOverlay.bonePrefix) }
+        )
+        #expect(updated === bone)
+        #expect(updated.components[ModelComponent.self]?.mesh === mesh)
+    }
+
+    @MainActor
+    @Test func posedJointMovesExistingBone() async throws {
+        let url = try writeTempTwoJointSkinGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let model = try await EntityLoader.load(from: url, includeAnimations: false)
+        let pivot = Entity()
+        pivot.name = "turntable"
+        pivot.addChild(model.entity)
+
+        PreviewSkeletonOverlay.apply(
+            show: true,
+            skins: model.document.skins,
+            to: model.entity,
+            relativeTo: pivot
+        )
+        let overlay = try #require(
+            pivot.children.first { $0.name == PreviewSkeletonOverlay.overlayRootName }
+        )
+        let bone = try #require(
+            overlay.children.first { $0.name.hasPrefix(PreviewSkeletonOverlay.bonePrefix) }
+        )
+        let before = bone.position
+        let knee = try #require(GLTFNodeLookup.entity(nodeIndex: 2, in: model.entity))
+        knee.position = [0, 2, 0]
+
+        PreviewSkeletonOverlay.updateBones(
+            skins: model.document.skins,
+            root: model.entity,
+            pivot: pivot
+        )
+        #expect(bone === overlay.children.first { $0.name.hasPrefix(PreviewSkeletonOverlay.bonePrefix) })
+        #expect(simd_distance(bone.position, before) > 0.1)
+    }
+
+    @MainActor
     @Test func plainMeshHidesMorphAndSkinDocumentEntries() async throws {
         let url = try writeTempOneNodeMeshGLB(nodeName: "Box")
         defer { try? FileManager.default.removeItem(at: url) }

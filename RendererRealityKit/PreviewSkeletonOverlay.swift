@@ -29,35 +29,29 @@ enum PreviewSkeletonOverlay {
         guard show, !skins.isEmpty else { return }
 
         let jointRadius = jointRadius(for: root, relativeTo: pivot)
+        let thickness = jointRadius * 0.45
+        let joints = indexNodes(root)
+        let overlay = overlayRoot(in: pivot)
+        let sphere = MeshResource.generateSphere(radius: jointRadius)
+        let unitBox = MeshResource.generateBox(size: SIMD3<Float>(repeating: 1))
+        var jointMaterial = UnlitMaterial(color: NSColor.systemOrange.withAlphaComponent(0.95))
+        jointMaterial.faceCulling = .none
+        var boneMaterial = UnlitMaterial(color: NSColor.systemTeal.withAlphaComponent(0.85))
+        boneMaterial.faceCulling = .none
+
+        var bones: [SkeletonBoneLink] = []
         for (skinIndex, skin) in skins.enumerated() {
             for (jointIndex, nodeIndex) in skin.jointNodeIndices.enumerated() {
-                guard let joint = GLTFNodeLookup.entity(nodeIndex: nodeIndex, in: root) else {
-                    continue
-                }
-                joint.addChild(makeJointMarker(skinIndex: skinIndex, jointIndex: jointIndex, radius: jointRadius))
+                guard let joint = joints[nodeIndex] else { continue }
+                joint.addChild(
+                    makeJointMarker(
+                        skinIndex: skinIndex,
+                        jointIndex: jointIndex,
+                        mesh: sphere,
+                        material: jointMaterial
+                    )
+                )
             }
-        }
-        updateBones(skins: skins, root: root, pivot: pivot, thickness: jointRadius * 0.45)
-    }
-
-    /// Reposition bone segments after animation / auto-rotate (call from RealityView update).
-    @MainActor
-    static func updateBones(
-        skins: [GLTFSessionDocument.Skin],
-        root: Entity,
-        pivot: Entity,
-        thickness: Float? = nil
-    ) {
-        let overlay = overlayRoot(in: pivot)
-        for child in overlay.children where child.name.hasPrefix(bonePrefix) {
-            child.removeFromParent()
-        }
-
-        let boneThickness = thickness ?? jointRadius(for: root, relativeTo: pivot) * 0.45
-        var material = UnlitMaterial(color: NSColor.systemTeal.withAlphaComponent(0.85))
-        material.faceCulling = .none
-
-        for (skinIndex, skin) in skins.enumerated() {
             for (jointIndex, parentIndex) in skin.jointParentIndices.enumerated() {
                 guard let parentIndex,
                       skin.jointNodeIndices.indices.contains(jointIndex),
@@ -65,21 +59,42 @@ enum PreviewSkeletonOverlay {
                 else { continue }
                 let childNode = skin.jointNodeIndices[jointIndex]
                 let parentNode = skin.jointNodeIndices[parentIndex]
-                guard let child = GLTFNodeLookup.entity(nodeIndex: childNode, in: root),
-                      let parent = GLTFNodeLookup.entity(nodeIndex: parentNode, in: root)
-                else { continue }
-                let a = parent.position(relativeTo: pivot)
-                let b = child.position(relativeTo: pivot)
-                overlay.addChild(
-                    makeBone(
-                        from: a,
-                        to: b,
-                        thickness: boneThickness,
-                        material: material,
-                        name: "\(bonePrefix)-\(skinIndex)-\(jointIndex)"
-                    )
-                )
+                guard joints[childNode] != nil, joints[parentNode] != nil else { continue }
+                let bone = ModelEntity(mesh: unitBox, materials: [boneMaterial])
+                bone.name = "\(bonePrefix)-\(skinIndex)-\(jointIndex)"
+                overlay.addChild(bone)
+                bones.append(SkeletonBoneLink(entity: bone, parentNode: parentNode, childNode: childNode))
             }
+        }
+
+        overlay.components.set(
+            SkeletonOverlayState(joints: joints, bones: bones, thickness: thickness)
+        )
+        updateBones(skins: skins, root: root, pivot: pivot, thickness: thickness)
+    }
+
+    /// Reposition existing bone segments after animation / auto-rotate.
+    @MainActor
+    static func updateBones(
+        skins: [GLTFSessionDocument.Skin],
+        root: Entity,
+        pivot: Entity,
+        thickness: Float? = nil
+    ) {
+        guard let overlay = pivot.children.first(where: { $0.name == overlayRootName }),
+              let state = overlay.components[SkeletonOverlayState.self]
+        else { return }
+        let boneThickness = thickness ?? state.thickness
+        for bone in state.bones {
+            guard let parent = state.joints[bone.parentNode],
+                  let child = state.joints[bone.childNode]
+            else { continue }
+            pose(
+                bone.entity,
+                from: parent.position(relativeTo: pivot),
+                to: child.position(relativeTo: pivot),
+                thickness: boneThickness
+            )
         }
     }
 
@@ -109,33 +124,28 @@ enum PreviewSkeletonOverlay {
     }
 
     @MainActor
-    private static func makeJointMarker(skinIndex: Int, jointIndex: Int, radius: Float) -> ModelEntity {
-        var material = UnlitMaterial(color: NSColor.systemOrange.withAlphaComponent(0.95))
-        material.faceCulling = .none
-        let entity = ModelEntity(
-            mesh: .generateSphere(radius: radius),
-            materials: [material]
-        )
+    private static func makeJointMarker(
+        skinIndex: Int,
+        jointIndex: Int,
+        mesh: MeshResource,
+        material: UnlitMaterial
+    ) -> ModelEntity {
+        let entity = ModelEntity(mesh: mesh, materials: [material])
         entity.name = "\(jointMarkerPrefix)-\(skinIndex)-\(jointIndex)"
         return entity
     }
 
     @MainActor
-    private static func makeBone(
+    private static func pose(
+        _ entity: Entity,
         from: SIMD3<Float>,
         to: SIMD3<Float>,
-        thickness: Float,
-        material: UnlitMaterial,
-        name: String
-    ) -> ModelEntity {
+        thickness: Float
+    ) {
         let delta = to - from
         let length = max(simd_length(delta), 1e-5)
-        let entity = ModelEntity(
-            mesh: .generateBox(size: SIMD3(thickness, thickness, length)),
-            materials: [material]
-        )
-        entity.name = name
         entity.position = (from + to) * 0.5
+        entity.scale = SIMD3(thickness, thickness, length)
         let direction = delta / length
         // Default box Z aligns with bone; rotate from (0,0,1) to direction.
         let z = SIMD3<Float>(0, 0, 1)
@@ -143,8 +153,24 @@ enum PreviewSkeletonOverlay {
             entity.orientation = simd_quatf(from: z, to: direction)
         } else if simd_dot(z, direction) < 0 {
             entity.orientation = simd_quatf(angle: .pi, axis: SIMD3(0, 1, 0))
+        } else {
+            entity.orientation = .init(angle: 0, axis: SIMD3(0, 1, 0))
         }
-        return entity
+    }
+
+    @MainActor
+    private static func indexNodes(_ root: Entity) -> [Int: Entity] {
+        var joints: [Int: Entity] = [:]
+        func walk(_ entity: Entity) {
+            if let index = entity.components[GLTFNodeIDComponent.self]?.nodeIndex {
+                joints[index] = entity
+            }
+            for child in entity.children {
+                walk(child)
+            }
+        }
+        walk(root)
+        return joints
     }
 
     @MainActor
@@ -154,4 +180,16 @@ enum PreviewSkeletonOverlay {
         let longest = max(extent.x, max(extent.y, extent.z))
         return min(max(longest * 0.012, 0.004), 0.04)
     }
+}
+
+private struct SkeletonBoneLink {
+    var entity: Entity
+    var parentNode: Int
+    var childNode: Int
+}
+
+private struct SkeletonOverlayState: Component {
+    var joints: [Int: Entity]
+    var bones: [SkeletonBoneLink]
+    var thickness: Float
 }

@@ -202,6 +202,10 @@ struct PreviewScene: View {
         autoRotateIntent && !reduceMotion && !geometryDisablesAutoRotate
     }
 
+    private var skeletonTickActive: Bool {
+        showSkeletonValue && !documentSkins.isEmpty
+    }
+
     private var useSystemOrbit: Bool {
         sidebar?.selectedCameraIndex == nil
     }
@@ -459,6 +463,19 @@ struct PreviewScene: View {
                 try? await Task.sleep(for: .milliseconds(16))
             }
         }
+        .task(id: skeletonTickActive) {
+            guard skeletonTickActive else { return }
+            while !Task.isCancelled {
+                if let pivot = frame.pivot, frame.appliedShowSkeleton == true {
+                    PreviewSkeletonOverlay.updateBones(
+                        skins: documentSkins,
+                        root: entity,
+                        pivot: pivot
+                    )
+                }
+                try? await Task.sleep(for: .milliseconds(16))
+            }
+        }
     }
 
     /// Undo Shift-pan, clear auto-rotate yaw, re-apply opening front-3/4 fit.
@@ -555,21 +572,14 @@ struct PreviewScene: View {
 
     private func applySkeletonOverlayIfNeeded(to pivot: Entity) {
         let want = showSkeletonValue && !documentSkins.isEmpty
-        if frame.appliedShowSkeleton != want {
-            PreviewSkeletonOverlay.apply(
-                show: want,
-                skins: documentSkins,
-                to: entity,
-                relativeTo: pivot
-            )
-            frame.appliedShowSkeleton = want
-        } else if want {
-            PreviewSkeletonOverlay.updateBones(
-                skins: documentSkins,
-                root: entity,
-                pivot: pivot
-            )
-        }
+        guard frame.appliedShowSkeleton != want else { return }
+        PreviewSkeletonOverlay.apply(
+            show: want,
+            skins: documentSkins,
+            to: entity,
+            relativeTo: pivot
+        )
+        frame.appliedShowSkeleton = want
     }
 
     private func applyViewport(_ size: CGSize) {
