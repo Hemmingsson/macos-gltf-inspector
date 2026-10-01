@@ -1,4 +1,5 @@
 import GLTFCore
+import os
 import RealityKit
 import SwiftUI
 
@@ -29,6 +30,8 @@ private final class PreviewFrame {
     var appliedFieldOfViewDegrees: Float?
     let debugStore = DebugMaterialStore()
     let debugApplied = DebugAppliedIndex()
+    /// First scene update after `make` — the `rk first frame` marker; cancelled once it fires.
+    var firstFrame: EventSubscription?
 }
 
 struct PreviewScene: View {
@@ -264,6 +267,17 @@ struct PreviewScene: View {
                 content.add(assembled.pivot)
                 content.add(camera)
                 content.add(lookRoot)
+                // `open ready` logs before RealityKit has drawn anything; this is the first
+                // update after the scene is in, the closest RealityKit hook to a rendered frame.
+                frame.firstFrame = content.subscribe(to: SceneEvents.Update.self) { [frame] _ in
+                    frame.firstFrame?.cancel()
+                    frame.firstFrame = nil
+                    AppLog.signposter.emitEvent("first frame")
+                    AppLog.info(
+                        AppLog.preview,
+                        "rk first frame uptimeMs=\(Int(ProcessInfo.processInfo.systemUptime * 1000))"
+                    )
+                }
                 let intensity = effectiveIBLExponent
                 let yaw = environmentYawValue
                 PreviewLighting.applyLook(
