@@ -16,8 +16,9 @@ struct RealityDocumentWindow: View {
     @State private var interaction = PreviewInteraction()
     /// Inspector morph sliders — mirrored from `PreviewMorph` on the loaded entity.
     @State private var morphTargets: [MorphTargetControl] = []
-    /// Built once per loaded model: rebuilding it re-touches the live entity's animations.
-    @State private var playbackController: EngineAnimationPlaybackController?
+    /// Built once per loaded model: rebuilding it re-touches the live entity's animations. An empty
+    /// controller (no clips) while nothing is loaded.
+    @State private var playbackController = EngineAnimationPlaybackController()
 
     init(documentURL: URL?) {
         self.documentURL = documentURL
@@ -34,7 +35,7 @@ struct RealityDocumentWindow: View {
             window: window,
             canvasState: canvasState,
             features: RealityPreviewCanvas.features,
-            playback: playbackController ?? EngineAnimationPlaybackController(),
+            playback: playbackController,
             morphTargets: morphTargets,
             onSetMorphWeight: applyMorphWeight
         ) {
@@ -145,14 +146,14 @@ struct RealityDocumentWindow: View {
         case .rejected:
             convert = .failed("Not a .glb / .gltf file")
             morphTargets = []
-            playbackController = nil
+            playbackController = EngineAnimationPlaybackController()
             return
         case .started(let started):
             generation = started
         }
         convert = .loading
         morphTargets = []
-        playbackController = nil
+        playbackController = EngineAnimationPlaybackController()
         interaction = PreviewInteraction()
         Task {
             let state = await PreviewView.State.loaded(from: url)
@@ -178,7 +179,7 @@ struct RealityDocumentWindow: View {
                 window.finishOpen(.ready)
             case .failed(let message):
                 morphTargets = []
-                playbackController = nil
+                playbackController = EngineAnimationPlaybackController()
                 AppLog.error(AppLog.host, "open failed \(url.lastPathComponent): \(message)")
                 window.finishOpen(.failed(message))
             case .loading:
