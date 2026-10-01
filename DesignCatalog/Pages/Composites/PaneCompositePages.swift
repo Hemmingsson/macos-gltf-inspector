@@ -94,7 +94,7 @@ private struct CatalogDocumentState {
     static let notReady = [
         CatalogDocumentState(title: "Empty", state: .empty),
         CatalogDocumentState(title: "Loading", state: .loading),
-        CatalogDocumentState(title: "Failed", state: .failed("The file is not valid glTF 2.0."))
+        CatalogDocumentState(title: "Failed", state: .failed(ShellStatusCopy.invalidFileDetail))
     ]
     static let all = [CatalogDocumentState(title: "Ready", state: .ready)] + notReady
 
