@@ -32,6 +32,18 @@ line each: what, why.
 - `AnimationSampling.hasPositiveDuration` (RealityKit) and `GLTFDocumentJSON` animation duration (GLTFCore, around line 530) repeat the same min/max/sampleCount loop. Merging them crosses the core lane, so deferred.
 - Bugs seen: `[load] tight float mesh convert failed: ResourceError(... invalid(vertexBufferCount: 5))`. `TightLowLevelLayout.make` (`Convert/RealityKitConvert+Mesh.swift` around line 535) gives every attribute its own vertex buffer: position, normal, tangent, uv0, uv1, color. That is up to 6 buffers. `LowLevelMesh.Descriptor` rejects 5 (the limit seems to be 4), so a mesh with position + normal + tangent + uv0 + (uv1 or color) fails the fast path. It then falls back to the `MeshDescriptor` path, which is slower and logs an error. A fix would interleave attributes into at most 4 buffers.
 
+## W2 realitykit
+
+- `RealityLoadStateView` not extracted: PreviewView no longer draws loading/failed chrome (host C8b); only Quick Look would consume it.
+- `resetPreviewView`'s `Task { @MainActor in }` left: still no proof it is (or is not) guarding a view-update write.
+- `StillRenderer` enum rebuilds a `RealityRenderer` per `render`; bench `viewModes` used to capture twice on one instance — skipped in `dev.sh test`, numbers would include setup if re-run.
+- `cachedConvertedMaterial` / `storeConvertedMaterial` kept: inlining would expose the identity cache dictionary for one-line wrappers.
+- `positionBounds` still re-packs from the accessor (unused `VertexFloats` param dropped); computing bounds from the already-packed copy is a later save, not a rename.
+- `AnimatedVector3` / `AnimatedQuaternion` `value(at:)` still share structure; TransformSampler's `packedChannel` was the channel helper. Full interpolate merge deferred.
+- `LowLevelLayout` (was `TightLowLevelLayout`) still one buffer per attribute — `i0akcece` not fixed; the type now lives in `Convert/RealityKitConvert+LowLevelMesh.swift`.
+- `PreparePipelineReport.extensionEntries` alias deleted in this wave (W1 deferral): host maps `extensionsUsed` + typed `lightingEntry` / `conversionEntries`.
+- C2 `LocalPreviewSession` skipped (not in ck7smry3). H / I / J not in this wave.
+
 ## W1 ui
 
 - Deferred C2's `OutlinerList` perf tidy (`sections` rebuilt 3–4× per body, `treeIdentity` flatten per render): not a deletion; wave 2.
