@@ -38,14 +38,11 @@ extension EngineSceneModel {
     }
 
     static func mapPipelineReport(_ report: PreparePipelineReport) -> PipelineReport {
-        var entries: [PipelineReport.Entry] = report.entries.map { line in
-            let kind: PipelineReport.Entry.Kind =
-                line.contains("File lights") || line.contains("Studio IBL")
-                ? .lighting
-                : .conversion
-            return PipelineReport.Entry(kind: kind, title: line)
+        var entries: [PipelineReport.Entry] = report.conversionEntries.map {
+            PipelineReport.Entry(kind: .conversion, title: $0)
         }
-        for name in report.extensionEntries {
+        entries.append(PipelineReport.Entry(kind: .lighting, title: report.lightingEntry))
+        for name in report.extensionsUsed {
             entries.append(
                 PipelineReport.Entry(kind: .conversion, title: name)
             )

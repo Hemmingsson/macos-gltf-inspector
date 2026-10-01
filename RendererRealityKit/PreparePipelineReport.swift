@@ -14,8 +14,8 @@ public struct PreparePipelineReport: Equatable, Sendable {
 
     public init() {}
 
-    /// Sidebar / Inspect-mock style lines.
-    public var entries: [String] {
+    /// Spec-gloss, Draco, and the baked-emissive drop — everything except the studio-IBL line.
+    public var conversionEntries: [String] {
         var lines: [String] = []
         if specGlossToMetalRough {
             lines.append(
@@ -26,16 +26,20 @@ public struct PreparePipelineReport: Equatable, Sendable {
         }
         if decompressedDraco { lines.append("Decompressed Draco meshes") }
         if droppedBakedEmissive { lines.append("Dropped baked / boost emissive") }
-        lines.append(
-            dimmedStudioIBL
-                ? "File lights: on · Studio IBL: dimmed"
-                : "File lights: off · Studio IBL: on"
-        )
         return lines
     }
 
-    /// "What is in this file" list, from the authored `extensionsUsed`.
-    public var extensionEntries: [String] { extensionsUsed }
+    /// Studio dim vs full IBL. Always present so the host can tag it `.lighting`.
+    public var lightingEntry: String {
+        dimmedStudioIBL
+            ? "File lights: on · Studio IBL: dimmed"
+            : "File lights: off · Studio IBL: on"
+    }
+
+    /// Sidebar / Inspect-mock style lines.
+    public var entries: [String] {
+        conversionEntries + [lightingEntry]
+    }
 
     static func captureExtensions(from json: [String: Any]) -> [String] {
         Array(Set(stringArray(json, key: "extensionsUsed"))).sorted()
