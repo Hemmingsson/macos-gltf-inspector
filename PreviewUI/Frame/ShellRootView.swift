@@ -84,7 +84,11 @@ public struct ShellRootView<
                 isSidebarVisible: panels.isSidebarVisible,
                 onToggleSidebar: { panels.toggleSidebar() }
             )
-            .navigationSplitViewColumnWidth(min: 220, ideal: DS.Metrics.sidebarWidth, max: 520)
+            .navigationSplitViewColumnWidth(
+                min: DS.Metrics.sidebarWidthRange.lowerBound,
+                ideal: DS.Metrics.sidebarWidth,
+                max: DS.Metrics.sidebarWidthRange.upperBound
+            )
         } detail: {
             canvasColumn
                 .inspector(isPresented: inspectorPresented) {
@@ -95,7 +99,11 @@ public struct ShellRootView<
                         morphTargets: morphTargets,
                         onSetMorphWeight: onSetMorphWeight
                     )
-                    .inspectorColumnWidth(min: 260, ideal: DS.Metrics.inspectorWidth, max: 560)
+                    .inspectorColumnWidth(
+                        min: DS.Metrics.inspectorWidthRange.lowerBound,
+                        ideal: DS.Metrics.inspectorWidth,
+                        max: DS.Metrics.inspectorWidthRange.upperBound
+                    )
                 }
         }
         .frame(minWidth: 900, minHeight: 600)
