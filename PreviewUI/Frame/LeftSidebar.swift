@@ -41,7 +41,7 @@ public struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport
                 VStack(alignment: .leading, spacing: 0) {
                     sidebarChrome
                     documentCard
-                    SidebarStatusView(state: documentState)
+                    ShellStatusView(state: documentState, placement: .sidebar)
                 }
             }
         }

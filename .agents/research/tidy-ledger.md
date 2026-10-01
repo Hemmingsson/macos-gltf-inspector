@@ -123,3 +123,10 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 ### Bugs seen
 
 - `WebCanvasController.reload`: the first-paint peek `Task` guards on `!didRevealLive && phase == .loading` but not on the URL, so a slow peek for model A can show A's "Loading N textures…" copy during model B's load. Cosmetic; same shape as u3kwzlt1's cancellation path, left for that fix.
+## W2 ui
+
+- C5 `Dimensions.unit`: left. Every caller uses the default `"m"`; inlining it in `DimensionsReadout` is optional and not a dead field.
+- C5 `MaterialInfo.emissiveStrength`: deleted as unread (host never set it). Restore from bug ticket `ijomk3wf` if the inspector should show KHR_materials_emissive_strength.
+- C2 leftover: `OutlinerTree.treeIdentity` still flattens folding roots once per `OutlinerList` body for `onChange`. `sections` is now computed once; dropping the flatten would need a cheaper identity.
+- C8b host `CanvasStatusView` / PreviewView loading branches: host lane, not this tree.
+- C7 mock store: `[String: any Sendable]` does not compile (`as? any Sendable` is a marker-protocol cast). Uses `[String: Any]` instead.

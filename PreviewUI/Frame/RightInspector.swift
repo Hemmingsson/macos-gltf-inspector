@@ -45,7 +45,7 @@ public struct RightInspector<Selection: SelectionModel>: View {
                 }
                 .focusSection()
             } else {
-                InspectorStatusView(state: documentState)
+                ShellStatusView(state: documentState, placement: .inspector)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -78,10 +78,7 @@ public struct RightInspector<Selection: SelectionModel>: View {
         }
         if detail.kind == .scene, let roots = detail.sceneRootCount {
             VStack(alignment: .leading, spacing: 0) {
-                DSSectionHeader("Scene")
-                    .padding(.top, DS.Spacing.xl)
-                    .padding(.horizontal, DS.Spacing.l)
-                    .padding(.bottom, DS.Spacing.xs)
+                InspectorSectionHeader("Scene")
                 DSFactRow("Roots", value: "\(roots)")
                     .padding(.horizontal, DS.Spacing.l)
                     .padding(.bottom, DS.Spacing.m)
@@ -102,13 +99,6 @@ public struct RightInspector<Selection: SelectionModel>: View {
 }
 
 // MARK: - Previews
-
-private struct PreviewOpenInItems: View {
-    var body: some View {
-        Button("Finder") {}
-        Button("Blender") {}
-    }
-}
 
 private struct RightInspectorPreviewHost: View {
     enum Mode {

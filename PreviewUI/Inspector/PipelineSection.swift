@@ -11,10 +11,7 @@ public struct PipelineSection: View {
                 .padding(.horizontal, DS.Spacing.l)
                 .padding(.top, DS.Spacing.m)
 
-            DSSectionHeader("This model, our pipeline")
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.top, DS.Spacing.m)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("This model, our pipeline", top: DS.Spacing.m)
 
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 ForEach(report.entries) { entry in

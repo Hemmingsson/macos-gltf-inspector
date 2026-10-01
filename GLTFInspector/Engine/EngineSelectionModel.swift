@@ -166,7 +166,6 @@ final class EngineSelectionModel: SelectionModel {
                 triangleCount: node.triangleCount,
                 vertexCount: node.vertexCount,
                 uvSetCount: node.uvSetCount,
-                hasNormals: node.hasNormals,
                 hasTangents: node.hasTangents,
                 hasVertexColors: node.hasVertexColors
             )

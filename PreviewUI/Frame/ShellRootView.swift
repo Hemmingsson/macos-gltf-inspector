@@ -160,20 +160,6 @@ public struct ShellRootView<
 
 // MARK: - Previews
 
-/// Stand-in for the host-injected `RealityView` — flat gray viewport only.
-private struct ShellCanvasPlaceholder: View {
-    var body: some View {
-        DS.Color.Canvas.gradient
-    }
-}
-
-private struct PreviewOpenInItems: View {
-    var body: some View {
-        Button("Finder") {}
-        Button("Blender") {}
-    }
-}
-
 @MainActor
 private struct ShellRootViewPreviewHost: View {
     enum Mode {
@@ -207,7 +193,7 @@ private struct ShellRootViewPreviewHost: View {
             panels: panels,
             openInMenu: AnyView(PreviewOpenInItems())
         ) {
-            ShellCanvasPlaceholder()
+            PreviewCanvasPlaceholder()
         }
     }
 }

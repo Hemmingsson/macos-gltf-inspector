@@ -1,35 +1,5 @@
-import AppKit
 import DesignSystem
 import SwiftUI
-import UniformTypeIdentifiers
-
-public enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
-    case system
-    case light
-    case dark
-
-    public var id: Self { self }
-
-    public var title: String {
-        switch self {
-        case .system: "System"
-        case .light: "Light"
-        case .dark: "Dark"
-        }
-    }
-
-    public var nsAppearance: NSAppearance? {
-        switch self {
-        case .system: nil
-        case .light: NSAppearance(named: .aqua)
-        case .dark: NSAppearance(named: .darkAqua)
-        }
-    }
-
-    public static func apply(_ raw: String) {
-        NSApp.appearance = (AppAppearance(rawValue: raw) ?? .system).nsAppearance
-    }
-}
 
 /// Three-tab Settings. Writes app defaults only — never a window session.
 public struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
@@ -79,297 +49,14 @@ public extension View {
     }
 }
 
-private struct GeneralSettingsPane<Store: SettingsDefaultsStore>: View {
-    var store: Store
-    @State private var isDefaultApplication = false
-    @State private var defaultAppName: String?
-    @State private var defaultAppError: String?
-
-    private var showsDefaultApp: Bool {
-        Bundle.main.bundleIdentifier == "lol.mattias.gltf-inspector"
-    }
+struct SettingsFooter<Content: View>: View {
+    @ViewBuilder var content: Content
 
     var body: some View {
-        Form {
-            Section("Appearance") {
-                DSMenuPicker(
-                    "Appearance",
-                    selection: appearanceBinding,
-                    options: AppAppearance.allCases.map(\.rawValue)
-                ) { raw in
-                    AppAppearance(rawValue: raw)?.title ?? raw
-                }
-            }
-
-            if showsDefaultApp {
-                Section {
-                    LabeledContent("Default app") {
-                        Button("Set as Default Application") {
-                            setAsDefaultApplication()
-                        }
-                        .disabled(isDefaultApplication)
-                    }
-                    if let defaultAppName {
-                        LabeledContent("Current default") {
-                            Text(defaultAppName)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } footer: {
-                    Text("macOS may still confirm the change. Finder and Quick Look can keep their own handlers.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-
-            if let defaultAppError {
-                Section {
-                    Text(defaultAppError)
-                        .foregroundStyle(.red)
-                }
-            }
-        }
-        .settingsFormChrome()
-        .onAppear {
-            AppAppearance.apply(store.value(for: .appearance))
-            refreshDefaultApp()
-        }
-    }
-
-    private var appearanceBinding: Binding<String> {
-        Binding(
-            get: { store.value(for: .appearance) },
-            set: { raw in
-                store.set(raw, for: .appearance)
-                AppAppearance.apply(raw)
-            }
-        )
-    }
-
-    private var glTFTypes: [UTType] {
-        [UTType(filenameExtension: "glb"), UTType(filenameExtension: "gltf")].compactMap { $0 }
-    }
-
-    private func refreshDefaultApp() {
-        let appURL = Bundle.main.bundleURL.resolvingSymlinksInPath()
-        let handlers = glTFTypes.map { type -> URL? in
-            NSWorkspace.shared.urlForApplication(toOpen: type)?.resolvingSymlinksInPath()
-        }
-        isDefaultApplication = !handlers.isEmpty && handlers.allSatisfy { $0 == appURL }
-        defaultAppName = handlers.compactMap { url in
-            url.map { FileManager.default.displayName(atPath: $0.path) }
-        }.first
-    }
-
-    private func setAsDefaultApplication() {
-        defaultAppError = nil
-        let appURL = Bundle.main.bundleURL
-        Task {
-            do {
-                for type in glTFTypes {
-                    try await NSWorkspace.shared.setDefaultApplication(at: appURL, toOpen: type)
-                }
-                await MainActor.run { refreshDefaultApp() }
-            } catch {
-                await MainActor.run {
-                    defaultAppError = error.localizedDescription
-                }
-            }
-        }
-    }
-}
-
-private struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
-    var store: Store
-    var importCustomEnvironment: ((URL) throws -> String)?
-    var renderers: [(raw: String, title: String)] = []
-    @State private var importError: String?
-
-    private let catalog: [(raw: String, title: String)] = [
-        ("neutral", "Studio Neutral"),
-        ("field", "Field"),
-        ("Colorful_Studio", "Colorful Studio"),
-    ]
-
-    var body: some View {
-        Form {
-            if renderers.count > 1 {
-                Section {
-                    DSMenuPicker(
-                        "Renderer",
-                        selection: rendererBinding,
-                        options: renderers.map(\.raw)
-                    ) { raw in
-                        renderers.first { $0.raw == raw }?.title ?? raw
-                    }
-                } footer: {
-                    Text("Applies to new windows, Quick Look previews and Finder thumbnails. Open windows keep their renderer.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-
-            Section("Motion") {
-                Toggle("Auto-rotate", isOn: boolBinding(for: .autoRotate))
-                Toggle("Polar floor", isOn: boolBinding(for: .showFloor))
-            }
-
-            Section("Appearance") {
-                DSMenuPicker(
-                    "Background",
-                    selection: backdropBinding,
-                    options: Array(BackdropStyle.allCases)
-                ) { $0.title }
-            }
-
-            Section {
-                Toggle("Use environment map", isOn: boolBinding(for: .useEnvironmentMap))
-                DSMenuPicker(
-                    "Environment",
-                    selection: catalogBinding,
-                    options: catalog.map(\.raw)
-                ) { raw in
-                    catalog.first { $0.raw == raw }?.title ?? raw
-                }
-                // App default, not per-window: this is what thumbnails and Quick Look read,
-                // so a file's Finder icon matches how it opens.
-                DSMenuPicker(
-                    "Tone mapping",
-                    selection: toneMappingBinding,
-                    options: ToneMapping.allCases
-                ) { $0.title }
-                Button("Add your own…") {
-                    addCustomHDR()
-                }
-                if !store.value(for: .customEnvironmentFile).isEmpty {
-                    Text(store.value(for: .customEnvironmentFile))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } footer: {
-                Group {
-                    if let importError {
-                        Text(importError)
-                            .foregroundStyle(.red)
-                    } else {
-                        Text("Custom HDR and EXR files are remembered for the host lighting path.")
-                    }
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .settingsFormChrome()
-    }
-
-    private func boolBinding(for key: SettingKey<Bool>) -> Binding<Bool> {
-        Binding(
-            get: { store.value(for: key) },
-            set: { store.set($0, for: key) }
-        )
-    }
-
-    private var backdropBinding: Binding<BackdropStyle> {
-        Binding(
-            get: { store.value(for: .backdrop) },
-            set: { store.set($0, for: .backdrop) }
-        )
-    }
-
-    private var rendererBinding: Binding<String> {
-        Binding(
-            get: { store.value(for: .renderer) },
-            set: { store.set($0, for: .renderer) }
-        )
-    }
-
-    private var catalogBinding: Binding<String> {
-        Binding(
-            get: { store.value(for: .environmentCatalog) },
-            set: { raw in
-                store.set(raw, for: .environmentCatalog)
-                store.set("", for: .customEnvironmentFile)
-            }
-        )
-    }
-
-    /// Stored as the Khronos tone-map name so the sandboxed extensions can read the raw value
-    /// without linking this framework.
-    private var toneMappingBinding: Binding<ToneMapping> {
-        Binding(
-            get: { ToneMapping.fromKhronosName(store.value(for: .toneMapping)) },
-            set: { store.set($0.khronosName, for: .toneMapping) }
-        )
-    }
-
-    private func addCustomHDR() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [
-            UTType(filenameExtension: "hdr"),
-            UTType(filenameExtension: "exr"),
-        ].compactMap { $0 }
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-
-        if let importCustomEnvironment {
-            do {
-                let fileName = try importCustomEnvironment(url)
-                store.set(fileName, for: .customEnvironmentFile)
-                store.set(true, for: .useEnvironmentMap)
-                importError = nil
-            } catch {
-                importError = error.localizedDescription
-            }
-            return
-        }
-
-        store.set(url.lastPathComponent, for: .customEnvironmentFile)
-        store.set(true, for: .useEnvironmentMap)
-        importError = nil
-    }
-}
-
-private struct AboutSettingsPane: View {
-    var body: some View {
-        Form {
-            Section {
-                LabeledContent {
-                    Link(
-                        "github.com/Hemmingsson/macos-gltf-inspector",
-                        destination: URL(string: "https://github.com/Hemmingsson/macos-gltf-inspector")!
-                    )
-                } label: {
-                    HStack(spacing: 16) {
-                        Image(nsImage: NSApp.applicationIconImage)
-                            .resizable()
-                            .interpolation(.high)
-                            .frame(width: 64, height: 64)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(appName)
-                                .font(.title2)
-                            Text(versionLine)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-        }
-        .settingsFormChrome()
-    }
-
-    private var appName: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "glTF Inspector"
-    }
-
-    private var versionLine: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
-        return "Version \(version) (\(build))"
+        content
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -405,68 +92,55 @@ private enum SettingsPreviewFixtures {
 }
 
 @MainActor
-private struct PreviewSettingsRootPreviewHost: View {
+private struct SettingsStorePreviewHost<Content: View>: View {
     @State private var store: MockSettingsDefaultsStore
+    private let content: (MockSettingsDefaultsStore) -> Content
 
-    init(store: MockSettingsDefaultsStore) {
+    init(
+        store: MockSettingsDefaultsStore,
+        @ViewBuilder content: @escaping (MockSettingsDefaultsStore) -> Content
+    ) {
         _store = State(initialValue: store)
+        self.content = content
     }
 
     var body: some View {
-        PreviewSettingsRoot(store: store) { url in
-            url.lastPathComponent
-        }
+        content(store)
     }
 }
 
-@MainActor
-private struct GeneralSettingsPanePreviewHost: View {
-    @State private var store: MockSettingsDefaultsStore
-
-    init(store: MockSettingsDefaultsStore) {
-        _store = State(initialValue: store)
+#Preview("settings root", traits: .fixedLayout(width: 520, height: 380)) {
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.store) { store in
+        PreviewSettingsRoot(store: store) { $0.lastPathComponent }
     }
+}
 
-    var body: some View {
+#Preview("general", traits: .fixedLayout(width: 520, height: 220)) {
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.store) { store in
         GeneralSettingsPane(store: store)
             .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.generalHeight)
     }
 }
 
-@MainActor
-private struct PreviewDefaultsPanePreviewHost: View {
-    @State private var store: MockSettingsDefaultsStore
-
-    init(store: MockSettingsDefaultsStore) {
-        _store = State(initialValue: store)
-    }
-
-    var body: some View {
-        PreviewDefaultsPane(store: store) { url in
-            url.lastPathComponent
-        }
-        .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.previewDefaultsHeight)
-    }
-}
-
-#Preview("settings root", traits: .fixedLayout(width: 520, height: 380)) {
-    PreviewSettingsRootPreviewHost(store: SettingsPreviewFixtures.store)
-}
-
-#Preview("general", traits: .fixedLayout(width: 520, height: 220)) {
-    GeneralSettingsPanePreviewHost(store: SettingsPreviewFixtures.store)
-}
-
 #Preview("general dark", traits: .fixedLayout(width: 520, height: 220)) {
-    GeneralSettingsPanePreviewHost(store: SettingsPreviewFixtures.darkAppearanceStore)
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.darkAppearanceStore) { store in
+        GeneralSettingsPane(store: store)
+            .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.generalHeight)
+    }
 }
 
 #Preview("preview defaults", traits: .fixedLayout(width: 520, height: 420)) {
-    PreviewDefaultsPanePreviewHost(store: SettingsPreviewFixtures.store)
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.store) { store in
+        PreviewDefaultsPane(store: store) { $0.lastPathComponent }
+            .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.previewDefaultsHeight)
+    }
 }
 
 #Preview("preview defaults custom HDR", traits: .fixedLayout(width: 520, height: 420)) {
-    PreviewDefaultsPanePreviewHost(store: SettingsPreviewFixtures.customHDRStore)
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.customHDRStore) { store in
+        PreviewDefaultsPane(store: store) { $0.lastPathComponent }
+            .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.previewDefaultsHeight)
+    }
 }
 
 #Preview("about", traits: .fixedLayout(width: 520, height: 200)) {

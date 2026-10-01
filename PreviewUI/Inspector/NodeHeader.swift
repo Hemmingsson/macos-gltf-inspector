@@ -23,13 +23,6 @@ public struct NodeHeader: View {
 
 // MARK: - Previews
 
-private struct PreviewOpenInItems: View {
-    var body: some View {
-        Button("Finder") {}
-        Button("Blender") {}
-    }
-}
-
 #Preview("mesh") {
     PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let detail = NodeDetailFixtures.mesh

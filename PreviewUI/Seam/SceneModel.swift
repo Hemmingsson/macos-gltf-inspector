@@ -41,16 +41,4 @@ public extension SceneModel {
     var defaultSceneID: NodeID? { scenes.first?.id }
     var materialVariantNames: [String] { [] }
     var convertProblems: ConvertProblemList { ConvertProblemList() }
-
-    /// Depth-first lookup without allocating a full flatten.
-    func node(_ id: NodeID) -> SceneNode? {
-        func walk(_ nodes: [SceneNode]) -> SceneNode? {
-            for node in nodes {
-                if node.id == id { return node }
-                if let found = walk(node.children) { return found }
-            }
-            return nil
-        }
-        return walk(nodeTree)
-    }
 }

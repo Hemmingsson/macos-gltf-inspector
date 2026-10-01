@@ -11,10 +11,7 @@ public struct MorphWeightsSection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Morphs")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Morphs")
 
             VStack(alignment: .leading, spacing: DS.Spacing.m) {
                 ForEach(targets) { target in

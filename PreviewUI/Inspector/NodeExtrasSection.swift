@@ -27,10 +27,7 @@ public struct NodeExtrasSection: View {
 
     private func cameraBlock(_ camera: CameraInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Camera")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Camera")
             VStack(spacing: 0) {
                 DSFactRow("Projection", value: camera.projection.title)
                 if let fov = camera.fieldOfViewDegrees {
@@ -54,10 +51,7 @@ public struct NodeExtrasSection: View {
 
     private func lightBlock(_ light: LightInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Light")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Light")
             VStack(spacing: 0) {
                 DSFactRow("Kind", value: light.kind.rawValue.capitalized)
                 DSFactRow("Intensity", value: light.intensity.formatted())
@@ -78,10 +72,7 @@ public struct NodeExtrasSection: View {
 
     private func animationBlock(_ animation: AnimationInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Animation")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Animation")
             VStack(spacing: 0) {
                 DSFactRow("Duration", value: formatDuration(animation.duration))
             }
@@ -92,10 +83,7 @@ public struct NodeExtrasSection: View {
 
     private func skinBlock(_ skin: SkinInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Skin")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Skin")
             VStack(alignment: .leading, spacing: 0) {
                 DSFactRow("Joints", value: "\(skin.jointCount)")
                 if !skin.jointNames.isEmpty {
@@ -112,10 +100,7 @@ public struct NodeExtrasSection: View {
 
     private func morphBlock(_ morph: MorphInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Morph")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Morph")
             VStack(alignment: .leading, spacing: 0) {
                 DSFactRow("Mesh", value: morph.meshName)
                 DSFactRow("Targets", value: "\(morph.targetNames.count)")

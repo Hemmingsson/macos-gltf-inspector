@@ -24,7 +24,8 @@ enum CatalogAppearance: String, CaseIterable, Identifiable {
     }
 }
 
-/// One of the three grounds glass must stay legible on.
+/// One of the three grounds glass must stay legible on; the toolbar "Backdrop" filter shows one
+/// at a time so glass can be judged at real size.
 enum CatalogBackdrop: String, CaseIterable, Identifiable {
     case lightCanvas, darkCanvas, checkerboard
 
@@ -50,21 +51,6 @@ enum CatalogBackdrop: String, CaseIterable, Identifiable {
         case .checkerboard:
             DSCheckerboard(cell: 8)
         }
-    }
-}
-
-/// Toolbar "Backdrop" filter — one ground at a time so glass can be judged at real size.
-enum CatalogBackdropFilter: String, CaseIterable, Identifiable {
-    case lightCanvas, darkCanvas, checkerboard
-
-    var id: Self { self }
-
-    var title: String {
-        CatalogBackdrop(rawValue: rawValue)?.title ?? rawValue
-    }
-
-    var backdrop: CatalogBackdrop {
-        CatalogBackdrop(rawValue: rawValue) ?? .lightCanvas
     }
 }
 
@@ -105,8 +91,8 @@ enum CatalogLaunchOptions {
             ?? .system
     }
 
-    static var backdrop: CatalogBackdropFilter {
-        UserDefaults.standard.string(forKey: "backdrop").flatMap(CatalogBackdropFilter.init(rawValue:))
+    static var backdrop: CatalogBackdrop {
+        UserDefaults.standard.string(forKey: "backdrop").flatMap(CatalogBackdrop.init(rawValue:))
             ?? .lightCanvas
     }
 }

@@ -12,17 +12,14 @@ public enum MaterialFixtures {
       MaterialTextureInfo(
         map: .baseColor,
         width: 256,
-        height: 256,
-        previewColor: RGBColor(red: 0.82, green: 0.18, blue: 0.12)
+        height: 256
       ),
       MaterialTextureInfo(map: .metallicRoughness, width: 256, height: 256)
     ],
     baseColorFactor: RGBColor(red: 1, green: 1, blue: 1),
     metallicFactor: 0,
     roughnessFactor: 0.72,
-    usedByMeshNames: ["Cube"],
-    usedByTriangleCount: 12,
-    uniqueTextureCount: 2
+    usedByMeshNames: ["Cube"]
   )
 
   public static let fullPBR = MaterialInfo(
@@ -33,22 +30,19 @@ public enum MaterialFixtures {
     isDoubleSided: true,
     maps: [.baseColor, .normal, .metallicRoughness, .occlusion, .emissive],
     textures: [
-      MaterialTextureInfo(map: .baseColor, width: 2048, height: 2048, previewColor: RGBColor(red: 0.9, green: 0.9, blue: 0.92)),
+      MaterialTextureInfo(map: .baseColor, width: 2048, height: 2048),
       MaterialTextureInfo(map: .normal, width: 2048, height: 2048),
       MaterialTextureInfo(map: .metallicRoughness, width: 2048, height: 2048),
       MaterialTextureInfo(map: .occlusion, width: 1024, height: 1024),
-      MaterialTextureInfo(map: .emissive, width: 512, height: 512, previewColor: RGBColor(red: 1, green: 0.45, blue: 0.1))
+      MaterialTextureInfo(map: .emissive, width: 512, height: 512)
     ],
     baseColorFactor: RGBColor(red: 1, green: 1, blue: 1),
     metallicFactor: 1,
     roughnessFactor: 0.35,
     emissiveFactor: RGBColor(red: 1, green: 0.4, blue: 0.05),
-    emissiveStrength: 2,
     normalScale: 1,
     occlusionStrength: 1,
-    usedByMeshNames: ["Body", "Trim"],
-    usedByTriangleCount: 48_320,
-    uniqueTextureCount: 5
+    usedByMeshNames: ["Body", "Trim"]
   )
 
   public static let baseColorOnly = MaterialInfo(
@@ -57,7 +51,7 @@ public enum MaterialFixtures {
     workflow: .metallicRoughness,
     maps: [.baseColor],
     textures: [
-      MaterialTextureInfo(map: .baseColor, width: 128, height: 128, previewColor: RGBColor(red: 0.55, green: 0.55, blue: 0.58))
+      MaterialTextureInfo(map: .baseColor, width: 128, height: 128)
     ],
     baseColorFactor: RGBColor(red: 0.8, green: 0.8, blue: 0.82),
     metallicFactor: 0,

@@ -37,13 +37,6 @@ public struct ActionRow: View {
 
 // MARK: - Previews
 
-private struct PreviewOpenInItems: View {
-    var body: some View {
-        Button("Finder") {}
-        Button("Blender") {}
-    }
-}
-
 #Preview("with menu") {
     PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         ActionRow(openInMenu: AnyView(PreviewOpenInItems()), alignsToChromeBand: false)

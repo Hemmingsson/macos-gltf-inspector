@@ -7,10 +7,7 @@ public struct GeometrySection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Geometry")
-                .padding(.top, DS.Spacing.xl)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Geometry")
 
             FlexibleChipRow(items: chips)
                 .padding(.horizontal, DS.Spacing.l)
@@ -53,7 +50,6 @@ public struct GeometrySection: View {
                 triangleCount: 18_240,
                 vertexCount: 21_600,
                 uvSetCount: 2,
-                hasNormals: true,
                 hasTangents: true,
                 hasVertexColors: true
             )
@@ -68,7 +64,6 @@ public struct GeometrySection: View {
                 triangleCount: 18_240,
                 vertexCount: 21_600,
                 uvSetCount: 2,
-                hasNormals: true,
                 hasTangents: true,
                 hasVertexColors: true
             )

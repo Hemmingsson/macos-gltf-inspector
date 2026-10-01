@@ -14,13 +14,10 @@ public struct ConvertProblemsSection: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DSSectionHeader("Not rendered as authored")
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.top, DS.Spacing.m)
-                .padding(.bottom, DS.Spacing.xs)
+            InspectorSectionHeader("Not rendered as authored", top: DS.Spacing.m)
 
             DSDisclosureCard(
-                summaryTitle,
+                issueSummary(errors: problems.errorCount, warnings: problems.warningCount),
                 status: problems.errorCount > 0 ? .error : .warning,
                 isExpanded: $isExpanded,
                 messages: problems.entries.map {
@@ -34,18 +31,6 @@ public struct ConvertProblemsSection: View {
         .onAppear {
             if problems.errorCount > 0 { isExpanded = true }
         }
-    }
-
-    private var summaryTitle: String {
-        let errors = problems.errorCount
-        let warnings = problems.warningCount
-        if errors > 0 && warnings > 0 {
-            return "\(errors) errors · \(warnings) warnings"
-        }
-        if errors > 0 {
-            return errors == 1 ? "1 error" : "\(errors) errors"
-        }
-        return warnings == 1 ? "1 warning" : "\(warnings) warnings"
     }
 }
 
