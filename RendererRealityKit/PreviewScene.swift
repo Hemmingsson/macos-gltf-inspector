@@ -69,11 +69,6 @@ struct PreviewScene: View {
     private let geometryDisablesAutoRotate: Bool
     @State private var playback: RealityKit.AnimationPlaybackController?
     @State private var clips: [PreviewClip] = []
-    @State private var clipIndex = 0
-    @State private var clipDuration: TimeInterval = 0
-    @State private var currentTime: TimeInterval = 0
-    @State private var isPlaying = false
-    @State private var isSeeking = false
     @State private var viewport = CGSize(width: 810, height: 600)
     @State private var debugModeIndex = 0
     @State private var pendingReady: AppLook?
@@ -224,7 +219,7 @@ struct PreviewScene: View {
     }
 
     private var tickWhileActive: Bool {
-        autoRotateActive || (isPlaying && playback != nil)
+        autoRotateActive
     }
 
     var body: some View {
@@ -290,8 +285,6 @@ struct PreviewScene: View {
                     appliedLook = look
                     clips = usable
                     if !usable.isEmpty {
-                        clipIndex = 0
-                        isPlaying = false
                         startClip(at: 0, playing: false)
                     }
                     if !usable.isEmpty {
@@ -433,25 +426,6 @@ struct PreviewScene: View {
         .onChange(of: isDark) { _, _ in
             appliedFloorLineIndex = -1
         }
-        .onChange(of: isPlaying) { _, playing in
-            guard let playback else { return }
-            if playing {
-                playback.resume()
-            } else {
-                playback.pause()
-            }
-        }
-        .onChange(of: isSeeking) { _, seeking in
-            guard let playback else { return }
-            if seeking {
-                playback.pause()
-            } else if isPlaying {
-                playback.resume()
-            }
-        }
-        .onChange(of: clipIndex) { _, index in
-            startClip(at: index, playing: isPlaying)
-        }
         .onChange(of: lookStore.look) { _, look in
             prefetchLook(look)
         }
@@ -490,10 +464,6 @@ struct PreviewScene: View {
                             axis: [0, 1, 0]
                         )
                     }
-                }
-                if !isSeeking, isPlaying, let playback, clipDuration > 0 {
-                    currentTime = playback.time.truncatingRemainder(dividingBy: clipDuration)
-                    if currentTime < 0 { currentTime += clipDuration }
                 }
                 try? await Task.sleep(for: .milliseconds(16))
             }
@@ -590,8 +560,6 @@ struct PreviewScene: View {
         guard clips.indices.contains(index) else { return }
         let clip = clips[index]
         playback?.stop()
-        clipDuration = clip.duration
-        currentTime = 0
         playback = entity.playAnimation(clip.resource.repeat())
         if playing {
             playback?.resume()
