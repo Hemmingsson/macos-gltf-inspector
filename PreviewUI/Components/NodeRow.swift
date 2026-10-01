@@ -4,17 +4,11 @@ import SwiftUI
 /// One outliner row: type icon, name, and a visibility eye that fades in on hover.
 ///
 /// Built for a native `List(selection:)` — the row draws **no** selection of its own. Hidden
-/// nodes use `.tertiary` (`isMuted`), not opacity. Pass `paintsSelection: true` only for the
-/// S1f custom-row fallback (accent wash + `.onMoveCommand` on the list).
+/// nodes use `.tertiary` (`isMuted`), not opacity.
 public struct NodeRow<Selection: SelectionModel>: View {
     public var item: OutlinerItem
     public var isSelected: Bool
     public var selection: Selection
-    /// When true, paint `DS.Color.selectionFill` — native `List` selection must leave this false.
-    public var paintsSelection: Bool = false
-    public var treeFolding: Bool = false
-    public var isExpanded: Bool = false
-    public var onToggleExpand: ((_ recursive: Bool) -> Void)? = nil
 
     @State private var isHovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -34,13 +28,8 @@ public struct NodeRow<Selection: SelectionModel>: View {
 
     public var body: some View {
         HStack(spacing: DS.Spacing.xs) {
-            if treeFolding {
-                treeGutter
-            }
-
             DSListRow(
                 item.name,
-                isSelected: paintsSelection && isSelected,
                 isMuted: !isVisible,
                 icon: { iconSlot },
                 accessory: {
@@ -60,48 +49,10 @@ public struct NodeRow<Selection: SelectionModel>: View {
     @ViewBuilder
     private var iconSlot: some View {
         if showsNodeIcon {
-            DSTypeIcon(role, isSelected: paintsSelection && isSelected)
+            DSTypeIcon(role)
         } else {
             Color.clear
                 .frame(width: DS.Metrics.typeIcon, height: DS.Metrics.typeIcon)
-                .accessibilityHidden(true)
-        }
-    }
-
-    /// Depth indent + disclosure column — only the custom-row fallback uses this. Native
-    /// `DisclosureGroup` in `OutlinerList` owns the chevron and indent.
-    private var treeGutter: some View {
-        HStack(spacing: OutlinerTreeMetrics.disclosureGap) {
-            Color.clear
-                .frame(width: CGFloat(item.depth) * OutlinerTreeMetrics.indentPerLevel)
-                .accessibilityHidden(true)
-            disclosure
-        }
-    }
-
-    @ViewBuilder
-    private var disclosure: some View {
-        let size = OutlinerTreeMetrics.disclosureSize
-        if item.hasChildren {
-            Button {
-                onToggleExpand?(OutlinerOptionKey.isDown)
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(DS.Font.micro.weight(.semibold))
-                    .rotationEffect(.degrees(isExpanded ? 0 : -90))
-                    .foregroundStyle(DS.Color.textTertiary)
-                    .frame(width: size, height: size)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .focusable(false)
-            .animation(DS.Motion.hoverFade(reduceMotion: reduceMotion), value: isExpanded)
-            .help("Click to expand or collapse. Option-click to expand or collapse all nested nodes.")
-            .accessibilityLabel(isExpanded ? "Collapse \(item.name)" : "Expand \(item.name)")
-            .accessibilityHint("Option-click to expand or collapse the whole subtree")
-        } else {
-            Color.clear
-                .frame(width: size, height: size)
                 .accessibilityHidden(true)
         }
     }
@@ -146,25 +97,14 @@ public struct NodeRow<Selection: SelectionModel>: View {
 // MARK: - Previews
 
 private enum NodeRowPreviewFixtures {
-    static let meshID = NodeID(kind: .mesh, index: 0)
     static let materialID = NodeID(kind: .material, index: 0)
 
     static let flatItem = OutlinerItem(id: materialID, name: "DefaultMaterial")
-    static let meshItem = OutlinerItem(id: meshID, name: "Cube")
-
-    static let treeParent = OutlinerItem(
-        id: NodeID(kind: .empty, index: 0),
-        name: "Scene",
-        depth: 0,
-        children: [meshItem]
-    )
 }
 
 private struct NodeRowPreviewHost: View {
     enum Mode {
         case flat
-        case tree
-        case selected
         case hidden
     }
 
@@ -173,13 +113,10 @@ private struct NodeRowPreviewHost: View {
 
     init(mode: Mode) {
         self.mode = mode
-        let meshID = NodeRowPreviewFixtures.meshID
         let materialID = NodeRowPreviewFixtures.materialID
         switch mode {
-        case .flat, .tree:
+        case .flat:
             _selection = State(initialValue: MockSelectionModel(selected: nil))
-        case .selected:
-            _selection = State(initialValue: MockSelectionModel(selected: meshID))
         case .hidden:
             _selection = State(
                 initialValue: MockSelectionModel(
@@ -199,22 +136,6 @@ private struct NodeRowPreviewHost: View {
                     isSelected: false,
                     selection: selection
                 )
-            case .tree:
-                NodeRow(
-                    item: NodeRowPreviewFixtures.treeParent,
-                    isSelected: false,
-                    selection: selection,
-                    treeFolding: true,
-                    isExpanded: true,
-                    onToggleExpand: { _ in }
-                )
-            case .selected:
-                NodeRow(
-                    item: NodeRowPreviewFixtures.meshItem,
-                    isSelected: true,
-                    selection: selection,
-                    paintsSelection: true
-                )
             case .hidden:
                 NodeRow(
                     item: NodeRowPreviewFixtures.flatItem,
@@ -228,14 +149,6 @@ private struct NodeRowPreviewHost: View {
 
 #Preview("flat", traits: .fixedLayout(width: 248, height: 44)) {
     NodeRowPreviewHost(mode: .flat)
-}
-
-#Preview("tree", traits: .fixedLayout(width: 248, height: 44)) {
-    NodeRowPreviewHost(mode: .tree)
-}
-
-#Preview("selected", traits: .fixedLayout(width: 248, height: 44)) {
-    NodeRowPreviewHost(mode: .selected)
 }
 
 #Preview("hidden", traits: .fixedLayout(width: 248, height: 44)) {
