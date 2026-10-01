@@ -1,7 +1,6 @@
 import GLTFCore
 import RealityKit
 import GLTFKit2
-import Metal
 import simd
 
 extension RealityKitConvert {
@@ -86,8 +85,7 @@ extension RealityKitConvert {
 
         let parts = partsAndMaterials.map { $0.0 }
         let materials = partsAndMaterials.map { $0.1 }
-        
-        // TODO: This only ensures uniqueness for unnamed meshes; the asset could still contain duplicate names.
+
         let modelName = gltfMesh.name ?? nextUniqueName(prefix: "Mesh")
         let model = MeshResource.Model(id: modelName, parts: parts)
 
@@ -194,24 +192,15 @@ extension RealityKitConvert {
            let jointsArray = Packed.ushort4Array(for: joints0Attribute.accessor),
            let weightsArray = Packed.float4Array(for: weights0Attribute.accessor)
         {
-            let weightsPerVertex = 4
-            func jointInfluences(forJoints joints: [SIMD4<UInt16>], weights: [SIMD4<Float>]) -> [MeshJointInfluence] {
-                return zip(joints, weights).reduce(into: [MeshJointInfluence]()) { partialResult, jointsAndWeights in
-                    let joints = jointsAndWeights.0; let weights = jointsAndWeights.1
-                    partialResult.append(MeshJointInfluence(jointIndex: Int(joints[0]), weight: weights[0]))
-                    partialResult.append(MeshJointInfluence(jointIndex: Int(joints[1]), weight: weights[1]))
-                    partialResult.append(MeshJointInfluence(jointIndex: Int(joints[2]), weight: weights[2]))
-                    partialResult.append(MeshJointInfluence(jointIndex: Int(joints[3]), weight: weights[3]))
-                }
+            let influences = zip(jointsArray, weightsArray).flatMap { joints, weights in
+                (0..<4).map { MeshJointInfluence(jointIndex: Int(joints[$0]), weight: weights[$0]) }
             }
-
-            let influences = jointInfluences(forJoints: jointsArray, weights: weightsArray)
-            part.jointInfluences = MeshResource.JointInfluences(influences: MeshBuffers.JointInfluences(influences),
-                                                                influencesPerVertex: weightsPerVertex)
+            part.jointInfluences = MeshResource.JointInfluences(
+                influences: MeshBuffers.JointInfluences(influences),
+                influencesPerVertex: 4
+            )
             part.skeletonID = skeletonID
         }
-
-        // TODO: Support explicit bitangents and other user attributes?
 
         let vertexCount = gltfPrimitive.attribute(forName: "POSITION")?.accessor.count ?? 0
         if let indices = triangleIndices(for: gltfPrimitive, vertexCount: vertexCount) {
