@@ -52,3 +52,40 @@ line each: what, why.
 - Doubt: the WebKit open screenshot shows the box very close (fills the canvas) vs RK's fitted framing — looks like the page's initial camera, not a test issue; not investigated here.
 - View-mode flow ~20–27 s per renderer, mostly XCUITest menu idling; acceptable for an opt-in suite.
 - Rejected: a test plan for opt-in (a separate scheme is simpler with xcodegen and keeps `dev.sh test` untouched).
+## Perf bench
+
+Opt-in bench (dex xlrxlm4o): `./scripts/dev.sh bench` → `.build/bench/<stamp>.txt`. First
+baseline was taken with other lanes building (load average 6–10), so treat it as a shape, not a gate.
+
+- Gating: `.enabled(if: GLTF_BENCH=1)` alone still counts the skipped suite (328 vs 324), so
+  `dev.sh test` also passes `-skip-testing:GLTFInspectorTests/PerfBench`. A raw `xcodebuild test`
+  reports the bench as skipped.
+- `tex cgimage` is about 1 ms on 2K–4K textures: GLTFKit2's `newCGImage` is lazy, so the pixel
+  decode runs inside `TextureResource(image:)` and lands in `tex decode+upload`. Splitting decode
+  from upload would need a forced decode (not done: it would change the product path).
+- KTX2 textures (`LowLevelTexture` blit path) are not timed in `ConvertTimings`; none in the corpus.
+- **Finding:** `GLTFDocumentJSON.makeDocument(json:fileURL:)` (sidebar document, built inside
+  `EntityLoader.load`) is about half of RealityKit window load on the texture-heavy samples
+  (~113–178 of ~230–300 ms BoomBox) and ~6.3 s on Warrior_Girl_2, where `load rest` is ~16 s
+  (document + stats + whatever else `load` does outside convert — not yet attributed). Thumbnails skip it. Candidate for wave P:
+  build it off the convert path / after first frame, or find what in it is slow (it is given
+  `fileURL`, so likely reads the binary or image headers).
+- **Finding:** web channel modes cost a one-off shader compile on first visit: in bench run 1,
+  ~0.3 s on Corset, 0.5–2 s on Flame Knight / Emma Frost, 2.4–4.6 s on Porsche (41 materials).
+  In run 2 (minutes later, new WebContent processes) the same first stills were 25–85 ms, so a
+  compiled-shader cache survives across pages/processes (likely the system Metal/ANGLE cache;
+  unverified what evicts it — run 1 followed a rebuild). F5 is real but mostly a cold-cache cost;
+  measure it from a cold cache before fixing. Steady stills are 10–20 ms.
+- **Finding:** web wireframe CPU per frame is 200 ms on MetalRoughSpheres (1 M tris) and ~400 ms on
+  Flame Knight vs ~1–5 ms shaded (F1).
+- RK `PreviewDebugMode.apply` is ~1 ms on Porsche and Emma Frost (F3 expected worse); the walks
+  only hurt on node-heavy files: 350–735 ms per switch on Warrior_Girl_2 (972 k nodes). RK skeleton `updateBones` is ~90 ms per
+  call on Emma Frost (F2 pass bar is 2 ms).
+- Web frame times are page CPU ms (`performance.now` around `renderFrame` + overlays, 1 ms
+  resolution in WKWebView), not GPU time. The bench drives frames with `still()` because an
+  offscreen live page gets no rAF; real rAF pacing needs a window (XCUITest lane).
+- RK first frame is an offscreen `StillRenderer` proxy (new `RealityRenderer` + IBL + one
+  `updateAndRender`). The live app now logs `rk first frame uptimeMs=` from the first
+  `SceneEvents.Update` after make; whether that update is the first presented frame is unverified.
+- Warrior_Girl_2 is RealityKit-only (the web page would OOM on wireframe) and dominates runtime
+  (~1 min per window open); `GLTF_BENCH_RUNS=1` for a quick pass.

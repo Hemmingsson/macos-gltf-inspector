@@ -1,6 +1,7 @@
 import AppKit
 import GLTFCore
 import Observation
+import os
 import SwiftUI
 
 /// Centered spinner + honest file facts while the live web view stays hidden.
@@ -262,6 +263,7 @@ public final class WebCanvasController {
                     let info = try await host.load(model: url)
                     try Task.checkCancellation()
                     revealLive(host: host)
+                    AppLog.signposter.emitEvent("first frame")
                     AppLog.info(
                         AppLog.webRenderer,
                         "viewport ready \(url.lastPathComponent) tris=\(info.triangles) canvas=\(info.width)x\(info.height) firstFrameMs=\(info.firstFrameMs) uptimeMs=\(WebRendererHost.uptimeMs())"

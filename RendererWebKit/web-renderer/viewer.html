@@ -88,6 +88,26 @@ let centerModel = true;
 let showWireframe = false;
 let selectedNodeIndex = null;
 
+/** CPU ms of each drawn frame (Khronos frame + overlays) since the last `stats()`, newest last.
+ *  Capped so an idle live page does not grow it; read by the opt-in bench. */
+const frameTimes = [];
+const frameTimeLimit = 600;
+
+function drawFrame() {
+    const t0 = performance.now();
+    view.renderFrame(state, canvas.width, canvas.height);
+    drawOverlays();
+    const ms = performance.now() - t0;
+    if (frameTimes.length >= frameTimeLimit) frameTimes.shift();
+    frameTimes.push(ms);
+    return ms;
+}
+
+function percentile(sorted, p) {
+    if (!sorted.length) return 0;
+    return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+}
+
 /** Continuous rendering for the document window and Quick Look. */
 function tick() {
     if (!live) return;
@@ -96,10 +116,7 @@ function tick() {
     // never misrepresented — an inspector must not move geometry the file did not move.
     if (autoRotate && state.gltf) state.userCamera.orbit(1.2, 0);
     // `renderFrame` clears the drawing buffer even when there is no gltf — skip until load.
-    if (state.gltf) {
-        view.renderFrame(state, canvas.width, canvas.height);
-        drawOverlays();
-    }
+    if (state.gltf) drawFrame();
     requestAnimationFrame(tick);
 }
 
@@ -556,10 +573,7 @@ window.__viewer = {
             resize();
             // `loadGltf` is CPU. The long blank after it is this first GPU frame (program link +
             // texture upload); doing it here keeps Swift's spinner up until it is done.
-            const tFrame = performance.now();
-            view.renderFrame(state, canvas.width, canvas.height);
-            drawOverlays();
-            firstFrameMs = Math.round(performance.now() - tFrame);
+            firstFrameMs = Math.round(drawFrame());
         }
         // IBL after the model: the first frame is key+fill; the probe lands a frame or two later.
         loadEnvironment().catch((error) => console.error("environment", error));
@@ -649,14 +663,18 @@ window.__viewer = {
             canvas.width = canvas.height = size;
         }
         await loadEnvironment();
-        view.renderFrame(state, canvas.width, canvas.height);
-        drawOverlays();
+        drawFrame();
         return { png: canvas.toDataURL("image/png") };
     },
 
+    /** Also drains the frame-time buffer: `frames` covers the frames drawn since the last call. */
     stats() {
         const stats = state.gltf ? view.gatherStatistics(state) ?? {} : {};
+        const frames = frameTimes.splice(0).sort((a, b) => a - b);
         return {
+            frameCount: frames.length,
+            frameP50Ms: percentile(frames, 0.5),
+            frameP95Ms: percentile(frames, 0.95),
             width: canvas.width,
             height: canvas.height,
             triangles: stats.faceCount ?? 0,

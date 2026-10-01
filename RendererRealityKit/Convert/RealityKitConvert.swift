@@ -3,9 +3,20 @@
 
 import AppKit
 import GLTFCore
+import os
 import RealityKit
 import GLTFKit2
 import simd
+
+/// Wall time per convert stage, read by the opt-in bench (`PerfBench`); the same stages are
+/// `AppLog.signposter` intervals for Instruments. `nodes` includes the texture time.
+struct ConvertTimings {
+    var parse: Duration = .zero
+    var nodes: Duration = .zero
+    var textureDecode: Duration = .zero
+    var textureUpload: Duration = .zero
+    var clips: Duration = .zero
+}
 
 final class RealityKitConvert {
 
@@ -32,6 +43,8 @@ final class RealityKitConvert {
         let problems: ConvertProblemReport
         /// The baked-emissive policy dropped emissive on this file.
         let droppedBakedEmissive: Bool
+        /// Where the time went (`parse` is filled in by `EntityLoader`).
+        var timings: ConvertTimings
     }
 
     @MainActor static func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
@@ -52,33 +65,49 @@ final class RealityKitConvert {
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
 
-        try GLBTry.run {
-            do {
-                for node in scene.nodes {
-                    rootEntity.addChild(try self.convert(node: node, context: context))
+        var timings = ConvertTimings()
+        let nodesStart = ContinuousClock.now
+        try AppLog.signposter.withIntervalSignpost("convert.nodes") {
+            try GLBTry.run {
+                do {
+                    for node in scene.nodes {
+                        rootEntity.addChild(try self.convert(node: node, context: context))
+                    }
+                } catch {
+                    AppLog.error(AppLog.load, "Error when converting scene: \(error)")
                 }
-            } catch {
-                AppLog.error(AppLog.load, "Error when converting scene: \(error)")
             }
         }
+        timings.nodes = .now - nodesStart
+        timings.textureDecode = context.textureDecodeTime
+        timings.textureUpload = context.textureUploadTime
         guard EntityLoader.modelComponentCount(in: rootEntity) > 0 else {
             throw GLTFInspectorError.make(1022, "The glTF asset has no visible mesh")
         }
 
+        let clipsStart = ContinuousClock.now
         do {
-            try GLBTry.run {
-                for animation in asset.animations {
-                    do {
-                        try self.convert(animation: animation, skins: asset.skins).store(in: rootEntity)
-                    } catch {
-                        AppLog.error(AppLog.load, "animation convert failed: \(error)")
+            try AppLog.signposter.withIntervalSignpost("convert.clips") {
+                try GLBTry.run {
+                    for animation in asset.animations {
+                        do {
+                            try self.convert(animation: animation, skins: asset.skins).store(in: rootEntity)
+                        } catch {
+                            AppLog.error(AppLog.load, "animation convert failed: \(error)")
+                        }
                     }
                 }
             }
         } catch {
             context.record(.droppedAnimations, severity: .warning, message: "Animations dropped: \(error.localizedDescription)")
         }
-        return BuildResult(entity: rootEntity, problems: context.problems, droppedBakedEmissive: ignoreBakedEmissive)
+        timings.clips = .now - clipsStart
+        return BuildResult(
+            entity: rootEntity,
+            problems: context.problems,
+            droppedBakedEmissive: ignoreBakedEmissive,
+            timings: timings
+        )
     }
 
     @MainActor func convert(node gltfNode: GLTFNode, context: RealityKitResourceContext) throws -> RealityKit.Entity {

@@ -1,6 +1,7 @@
 import CoreGraphics
 import GLTFCore
 import ImageIO
+import os
 import RealityKit
 import SwiftUI
 
@@ -11,6 +12,8 @@ public enum PreviewLighting {
 
     @MainActor
     static func prefetchLook(_ look: AppLook) async {
+        let interval = AppLog.signposter.beginInterval("ibl")
+        defer { AppLog.signposter.endInterval("ibl", interval) }
         if look.useEnvironmentMap, let url = look.resolvedHDRURL() {
             _ = await resource(for: url)
         } else {
