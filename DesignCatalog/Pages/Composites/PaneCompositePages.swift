@@ -6,51 +6,17 @@ struct SidebarPage: View {
     var body: some View {
         CatalogPageView(page: .sidebar) {
             StateGroup(title: "Document states") {
-                StateRow("Ready", alignment: .top, minHeight: 420) {
-                    Live(MockSelectionModel()) { $selection in
-                        Live(MockViewportController()) { $viewport in
-                            CatalogComposites.sidebar(
-                                model: FixtureSceneModel.cube,
-                                selection: $selection.wrappedValue,
-                                viewport: $viewport.wrappedValue,
-                                documentState: .ready
-                            )
-                        }
-                    }
-                }
-                StateRow("Empty", alignment: .top, minHeight: 280) {
-                    Live(MockSelectionModel(selected: nil, details: [])) { $selection in
-                        Live(MockViewportController()) { $viewport in
-                            CatalogComposites.sidebar(
-                                model: FixtureSceneModel.cube,
-                                selection: $selection.wrappedValue,
-                                viewport: $viewport.wrappedValue,
-                                documentState: .empty
-                            )
-                        }
-                    }
-                }
-                StateRow("Loading", alignment: .top, minHeight: 280) {
-                    Live(MockSelectionModel(selected: nil, details: [])) { $selection in
-                        Live(MockViewportController()) { $viewport in
-                            CatalogComposites.sidebar(
-                                model: FixtureSceneModel.cube,
-                                selection: $selection.wrappedValue,
-                                viewport: $viewport.wrappedValue,
-                                documentState: .loading
-                            )
-                        }
-                    }
-                }
-                StateRow("Failed", alignment: .top, minHeight: 280) {
-                    Live(MockSelectionModel(selected: nil, details: [])) { $selection in
-                        Live(MockViewportController()) { $viewport in
-                            CatalogComposites.sidebar(
-                                model: FixtureSceneModel.cube,
-                                selection: $selection.wrappedValue,
-                                viewport: $viewport.wrappedValue,
-                                documentState: .failed("The file is not valid glTF 2.0.")
-                            )
+                ForEach(CatalogDocumentState.all, id: \.title) { row in
+                    StateRow(row.title, alignment: .top, minHeight: row.minHeight) {
+                        Live(row.selection) { $selection in
+                            Live(MockViewportController()) { $viewport in
+                                CatalogComposites.sidebar(
+                                    model: FixtureSceneModel.cube,
+                                    selection: $selection.wrappedValue,
+                                    viewport: $viewport.wrappedValue,
+                                    documentState: row.state
+                                )
+                            }
                         }
                     }
                 }
@@ -104,34 +70,38 @@ struct InspectorPage: View {
             }
 
             StateGroup(title: "Document states") {
-                StateRow("Empty", alignment: .top, minHeight: 280) {
-                    Live(MockSelectionModel(selected: nil, details: [])) { $selection in
-                        CatalogComposites.inspector(
-                            selection: $selection.wrappedValue,
-                            documentState: .empty,
-                            openInMenu: AnyView(PreviewOpenInItems())
-                        )
-                    }
-                }
-                StateRow("Loading", alignment: .top, minHeight: 280) {
-                    Live(MockSelectionModel(selected: nil, details: [])) { $selection in
-                        CatalogComposites.inspector(
-                            selection: $selection.wrappedValue,
-                            documentState: .loading,
-                            openInMenu: AnyView(PreviewOpenInItems())
-                        )
-                    }
-                }
-                StateRow("Failed", alignment: .top, minHeight: 280) {
-                    Live(MockSelectionModel(selected: nil, details: [])) { $selection in
-                        CatalogComposites.inspector(
-                            selection: $selection.wrappedValue,
-                            documentState: .failed("The file is not valid glTF 2.0."),
-                            openInMenu: AnyView(PreviewOpenInItems())
-                        )
+                ForEach(CatalogDocumentState.notReady, id: \.title) { row in
+                    StateRow(row.title, alignment: .top, minHeight: row.minHeight) {
+                        Live(row.selection) { $selection in
+                            CatalogComposites.inspector(
+                                selection: $selection.wrappedValue,
+                                documentState: row.state,
+                                openInMenu: AnyView(PreviewOpenInItems())
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/// One document-state row: ready shows the cube mesh selection, the others select nothing.
+private struct CatalogDocumentState {
+    let title: String
+    let state: ShellDocumentState
+
+    static let notReady = [
+        CatalogDocumentState(title: "Empty", state: .empty),
+        CatalogDocumentState(title: "Loading", state: .loading),
+        CatalogDocumentState(title: "Failed", state: .failed("The file is not valid glTF 2.0."))
+    ]
+    static let all = [CatalogDocumentState(title: "Ready", state: .ready)] + notReady
+
+    var minHeight: CGFloat { state.isReady ? 420 : 280 }
+
+    @MainActor
+    var selection: MockSelectionModel {
+        state.isReady ? MockSelectionModel() : MockSelectionModel(selected: nil, details: [])
     }
 }
