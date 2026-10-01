@@ -42,6 +42,10 @@ extension WebRendererHost {
         var frameCount: Int
         var frameP50Ms: Double
         var frameP95Ms: Double
+        /// `polygonMode`, `cachedLines`, `perFrameCPU`, or `none`.
+        var wireframePath: String
+        /// Times `collectWireframe` ran. Must not grow on every still once the GPU/cached path is on.
+        var wireframeCollects: Int
     }
 }
 
