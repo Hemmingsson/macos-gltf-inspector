@@ -64,12 +64,7 @@ extension RealityKitConvert {
                 plans: plans,
                 bytesPerVertex: 12,
                 write: { plan, dest in
-                    let nbytes = plan.vertexCount * 12
-                    if let normals = plan.normals {
-                        normals.copy(elementFloats: 3, count: plan.vertexCount, to: dest)
-                    } else {
-                        memset(dest, 0, nbytes)
-                    }
+                    copy(plan.normals, elementFloats: 3, count: plan.vertexCount, to: dest)
                 }
             )
         }
@@ -81,12 +76,7 @@ extension RealityKitConvert {
                 plans: plans,
                 bytesPerVertex: 16,
                 write: { plan, dest in
-                    let nbytes = plan.vertexCount * 16
-                    if let tangents = plan.tangents {
-                        tangents.copy(elementFloats: 4, count: plan.vertexCount, to: dest)
-                    } else {
-                        memset(dest, 0, nbytes)
-                    }
+                    copy(plan.tangents, elementFloats: 4, count: plan.vertexCount, to: dest)
                 }
             )
         }
@@ -100,14 +90,7 @@ extension RealityKitConvert {
                 bytesPerVertex: 8,
                 write: { plan, dest in
                     let nbytes = plan.vertexCount * 8
-                    if let uvs = plan.uvs[set] {
-                        uvs.withUnsafeBytes { src in
-                            guard let base = src.baseAddress else { return }
-                            memcpy(dest, base, min(nbytes, src.count))
-                        }
-                    } else {
-                        memset(dest, 0, nbytes)
-                    }
+                    copy(plan.uvs[set], count: nbytes, to: dest, or: { memset(dest, 0, nbytes) })
                 }
             )
         }
@@ -120,19 +103,13 @@ extension RealityKitConvert {
                 bytesPerVertex: 16,
                 write: { plan, dest in
                     let nbytes = plan.vertexCount * 16
-                    if let colors = plan.colors {
-                        colors.withUnsafeBytes { src in
-                            guard let base = src.baseAddress else { return }
-                            memcpy(dest, base, min(nbytes, src.count))
-                        }
-                    } else {
+                    copy(plan.colors, count: nbytes, to: dest, or: {
                         // Missing COLOR on a sibling primitive → opaque white.
-                        let white = SIMD4<Float>(1, 1, 1, 1)
                         let out = dest.assumingMemoryBound(to: SIMD4<Float>.self)
                         for i in 0..<plan.vertexCount {
-                            out[i] = white
+                            out[i] = SIMD4<Float>(1, 1, 1, 1)
                         }
-                    }
+                    })
                 }
             )
         }
@@ -398,6 +375,28 @@ extension RealityKitConvert {
                 byteOffset += indexBytes
                 vertexBase &+= UInt32(plan.vertexCount)
             }
+        }
+    }
+
+    private func copy(_ source: VertexFloats?, elementFloats: Int, count: Int, to dest: UnsafeMutableRawPointer) {
+        if let source {
+            source.copy(elementFloats: elementFloats, count: count, to: dest)
+        } else {
+            memset(dest, 0, count * elementFloats * MemoryLayout<Float>.size)
+        }
+    }
+
+    private func copy<T>(_ values: [T]?, count: Int, to dest: UnsafeMutableRawPointer, or fill: () -> Void) {
+        if let values {
+            values.withUnsafeBytes { bytes in
+                guard let base = bytes.baseAddress else {
+                    fill()
+                    return
+                }
+                memcpy(dest, base, min(count, bytes.count))
+            }
+        } else {
+            fill()
         }
     }
 }
