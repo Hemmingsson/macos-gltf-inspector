@@ -13,7 +13,7 @@ enum DocumentOpening {
     @discardableResult
     static func handleDrop(
         _ providers: [NSItemProvider],
-        open: @escaping @MainActor (URL) async throws -> Void
+        openDocument: OpenDocumentAction
     ) -> Bool {
         guard let provider = providers.first(where: {
             $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
@@ -27,23 +27,13 @@ enum DocumentOpening {
             guard let url, isGLTFFile(url) else { return }
             Task { @MainActor in
                 do {
-                    try await open(url)
+                    try await openDocument(at: url)
                 } catch {
                     AppLog.error(AppLog.host, "openDocument failed \(error.localizedDescription)")
                 }
             }
         }
         return true
-    }
-
-    @discardableResult
-    static func handleDrop(
-        _ providers: [NSItemProvider],
-        openDocument: OpenDocumentAction
-    ) -> Bool {
-        handleDrop(providers) { url in
-            try await openDocument(at: url)
-        }
     }
 
     static func closeWelcomeWindows() {
