@@ -22,13 +22,17 @@ final class DocumentWindowModel {
     /// Panel state (sidebar / inspector); the renderer root decides the canvas region's.
     private(set) var phase: ShellDocumentState = .loading
     private(set) var sidebar: HostSidebarModel? {
-        didSet { selection = EngineSelectionModel(sidebar: activeSidebar, canHideNodes: canHideNodes) }
+        didSet {
+            selection = EngineSelectionModel(sidebar: activeSidebar, canHideNodes: canHideNodes)
+            engineViewport.sidebar = activeSidebar
+        }
     }
     let placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
     /// From the mounted renderer's `RendererFeature.nodeVisibility`.
     let canHideNodes: Bool
     /// Window-owned selection adapter over `activeSidebar`, rebuilt only when the sidebar is
     /// replaced (open / adopt / failure) — never in a view body, so `ShellRootView` keeps it.
+    /// The viewport follows the same sidebar.
     private(set) var selection: EngineSelectionModel
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
@@ -78,12 +82,6 @@ final class DocumentWindowModel {
 
     var exportName: String {
         (loadingURL ?? documentURL)?.deletingPathExtension().lastPathComponent ?? "export"
-    }
-
-    /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
-    func seedSession(settings: EngineSettingsStore) {
-        engineViewport.sidebar = activeSidebar
-        engineViewport.applySession()
     }
 
     func failMissingURL() {
@@ -138,7 +136,6 @@ final class DocumentWindowModel {
         let modelSidebar = HostSidebarModel(document: document)
         modelSidebar.materialVariantNames = materialVariantNames
         sidebar = modelSidebar
-        engineViewport.sidebar = modelSidebar
         previewSession.viewModes = viewModes.isEmpty ? [.shaded] : viewModes
         engineViewport.applyConvertedLighting(
             dimStudioForFileLights: dimStudioForFileLights,

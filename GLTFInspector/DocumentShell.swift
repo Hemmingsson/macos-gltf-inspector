@@ -40,12 +40,6 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
                 // Live-track canvas for keys that still have no session override.
                 viewport.syncFromSettings()
             }
-            // The shell is not remounted per load (`NavigationSplitView` keeps its columns), so
-            // its one-shot `seedSession` runs once; re-seed each time a document lands.
-            .onChange(of: window.phase.isReady) { _, ready in
-                guard ready else { return }
-                window.seedSession(settings: window.settings)
-            }
             .onDrop(of: [.fileURL], isTargeted: nil) {
                 DocumentOpening.handleDrop($0, openDocument: openDocument)
             }
@@ -70,7 +64,6 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
             panels: window.panels,
             morphTargets: morphTargets,
             onSetMorphWeight: onSetMorphWeight,
-            seedSession: { window.seedSession(settings: $0) },
             openInMenu: AnyView(OpenInMenuItems(documentURL: window.loadingURL ?? window.documentURL))
         ) {
             // A new document (or a RealityKit scene / variant reload) remounts the canvas only;
