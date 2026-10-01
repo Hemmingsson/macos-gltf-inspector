@@ -15,10 +15,7 @@ struct WebCanvasControllerTests {
         of canvas: WebCanvasController,
         within limit: Duration = WebKitTest.timeout
     ) async throws -> WebCanvasController.Phase {
-        let deadline = ContinuousClock.now + limit
-        while canvas.phase == .loading, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(20))
-        }
+        _ = try await WebKitTest.waitUntil(within: limit) { canvas.phase != .loading }
         return canvas.phase
     }
 
@@ -98,15 +95,20 @@ struct WebCanvasControllerTests {
         #expect(try await settledPhase(of: canvas) == .ready)
         let host = try #require(canvas.host)
 
+        // The `contextlost` event arrives asynchronously: wait for the restart to leave `.ready`
+        // (a page start is far longer than one poll), then for the redraw.
         try await host.evaluate(Self.loseContext)
-        try await Task.sleep(for: .milliseconds(100))
+        let restarted = try await WebKitTest.waitUntil { canvas.phase != .ready }
+        try #require(restarted, "first context loss did not restart the page")
         #expect(try await settledPhase(of: canvas) == .ready)
         let frame = try await canvas.snapshot()
         #expect(frame.width > 1)
 
         try await host.evaluate(Self.loseContext)
-        try await Task.sleep(for: .milliseconds(100))
-        guard case .failed(let message) = try await settledPhase(of: canvas) else {
+        let failed = try await WebKitTest.waitUntil {
+            if case .failed = canvas.phase { true } else { false }
+        }
+        guard failed, case .failed(let message) = canvas.phase else {
             Issue.record("expected .failed after a second context loss, got \(canvas.phase)")
             return
         }

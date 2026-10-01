@@ -24,4 +24,18 @@ enum WebKitTest {
         try await host.apply(WebPreviewCanvas.Look())
         return host
     }
+
+    /// Polls `condition` until it holds or `limit` passes; returns whether it held. Wait on the
+    /// state a test needs, never on a fixed sleep.
+    static func waitUntil(
+        within limit: Duration = timeout,
+        _ condition: () -> Bool
+    ) async throws -> Bool {
+        let deadline = ContinuousClock.now + limit
+        while !condition() {
+            guard ContinuousClock.now < deadline else { return false }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        return true
+    }
 }
