@@ -36,13 +36,15 @@ dev_build() {
     -derivedDataPath "$DERIVED_DATA" build
 }
 
+# The opt-in perf bench (`dev.sh bench`) is left out entirely, not just skipped, so the test
+# count stays the suite's own.
 dev_test() {
   require_xcodegen
   cd "$ROOT"
   xcodegen generate
   DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
     xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
-    -derivedDataPath "$DERIVED_DATA" test "$@"
+    -derivedDataPath "$DERIVED_DATA" test -skip-testing:GLTFInspectorTests/PerfBench "$@"
 }
 
 # Copy the built app as signed. After a `dev.sh test` the hosted GLTFInspectorTests.xctest is
@@ -167,6 +169,37 @@ case "$cmd" in
     ;;
   catalog)
     dev_catalog "$@"
+    ;;
+  bench)
+    # Opt-in perf bench (`PerfBench` suites, GLTF_BENCH=1): a table on stdout and in
+    # .build/bench/<stamp>.txt (raw xcodebuild log beside it). GLTF_BENCH_RUNS=N (default 3).
+    # Wall-clock numbers — run on an idle machine, never alongside another build.
+    require_xcodegen
+    cd "$ROOT"
+    xcodegen generate
+    mkdir -p "$ROOT/.build/bench"
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    raw="$ROOT/.build/bench/$stamp.log"
+    table="$ROOT/.build/bench/$stamp.txt"
+    status=0
+    TEST_RUNNER_GLTF_BENCH=1 TEST_RUNNER_GLTF_BENCH_RUNS="${GLTF_BENCH_RUNS:-3}" \
+      DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+      xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
+      -derivedDataPath "$DERIVED_DATA" test -only-testing:GLTFInspectorTests/PerfBench "$@" \
+      >"$raw" 2>&1 || status=$?
+    {
+      echo "# bench $stamp $(git rev-parse --short HEAD) runs=${GLTF_BENCH_RUNS:-3} load=$(sysctl -n vm.loadavg)"
+      grep -E '^bench[|]' "$raw" | awk -F'|' '
+        BEGIN { printf "%-13s %-14s %-24s %9s %13s %4s\n", "section", "file", "metric (ms)", "median", "spread", "n" }
+        { printf "%-13s %-14s %-24s %9s %13s %4s\n", $2, $3, $4, $5, $6, $7 }'
+      grep -E '^bench SKIP' "$raw" | sort -u || true
+    } | tee "$table"
+    if [[ $status -ne 0 ]]; then
+      grep -E "error|failed|Issue recorded" "$raw" | tail -20 >&2
+      echo "bench failed ($status): $raw" >&2
+      exit "$status"
+    fi
+    echo "wrote $table"
     ;;
   *)
     echo "unknown command: $cmd" >&2
