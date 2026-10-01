@@ -35,7 +35,7 @@ public struct MaterialMapPresence: Sendable, Equatable {
         self.clearcoatNormal = clearcoatNormal
     }
 
-    /// JSON twin of `from(gltf:)` for `PreviewDebugMode` (load path has the header before convert).
+    /// JSON material → map presence for `PreviewDebugMode` (load path has the header before convert).
     public static func from(json material: [String: Any]) -> MaterialMapPresence {
         var maps = MaterialMapPresence()
         let extensions = material["extensions"] as? [String: Any] ?? [:]

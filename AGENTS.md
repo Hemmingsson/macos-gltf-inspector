@@ -48,13 +48,13 @@ layout spec (code wins on what ships where).
 (and its lines in the host / extension / test `dependencies:`), its adapter files
 (`GLTFInspector/<Renderer>/`, `PreviewExtension/QuickLook<Renderer>.swift`,
 `ThumbnailExtension/Thumbnail<Renderer>.swift`) and `GLTFInspectorTests/<Renderer>/`. Nothing
-else needs an edit: the router files and `GLTFInspectorTests/CrossRenderer/` are
+else needs an edit: the router files are
 `#if canImport(Renderer…)`, and root tests import no renderer. Optionally drop
 `TestModels/References/<renderer>/` and its manifest tolerance (nothing checks them any more).
 Build clean (a fresh DerivedData): a stale framework module in `Build/Products` would keep
 `canImport` true. Proven on this branch: no-RealityKit and no-WebKit silos both pass
 `dev.sh test`. **Adding** code: only the adapter folders,
-the router files, `GLTFInspectorTests/<Renderer>/` and (gated) `GLTFInspectorTests/CrossRenderer/`
+the router files, `GLTFInspectorTests/<Renderer>/` (and any test file gated on both `canImport`s)
 may `import RendererRealityKit` / `RendererWebKit`; each framework exposes `static let features: Set<RendererFeature>` on its canvas,
 and host chrome it cannot drive is hidden through `RendererAvailability` / `canHideNodes`, not `if`s.
 

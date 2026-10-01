@@ -39,7 +39,6 @@ struct PreviewInteractionTests {
         #expect(interaction.isCameraGesturing)
         interaction.markFitted()
         #expect(!interaction.isCameraGesturing)
-        #expect(!interaction.isCameraGesturing)
     }
 
     @Test func pointerUpResumesImmediately() {
@@ -47,7 +46,6 @@ struct PreviewInteractionTests {
         interaction.noteOrbitDrag()
         #expect(interaction.isCameraGesturing)
         interaction.notePointerUp()
-        #expect(!interaction.isCameraGesturing)
         #expect(!interaction.isCameraGesturing)
     }
 
