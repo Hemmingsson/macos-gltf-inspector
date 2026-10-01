@@ -179,6 +179,60 @@ struct PreviewDebugModeTests {
         #expect(restored.triangleFillMode == .fill)
     }
 
+    @MainActor
+    @Test func channelSwitchDoesNotRestoreMaterials() throws {
+        var material = PhysicallyBasedMaterial()
+        material.baseColor = .init(tint: .red)
+        let entity = ModelEntity(mesh: .generateBox(size: 0.2), materials: [material])
+        let store = DebugMaterialStore()
+
+        PreviewDebugMode.apply(.wire, doubleSided: false, to: entity, store: store)
+        PreviewDebugMode.apply(.visualization(.normal), doubleSided: false, to: entity, store: store)
+        let afterUndo = store.restoreCount
+        #expect(afterUndo >= 1)
+
+        PreviewDebugMode.apply(
+            .visualization(.textureCoordinates),
+            doubleSided: false,
+            to: entity,
+            store: store
+        )
+        #expect(store.restoreCount == afterUndo)
+        #expect(
+            entity.components[ModelDebugOptionsComponent.self]?.visualizationMode
+                == .textureCoordinates
+        )
+        let restored = try #require(
+            entity.components[ModelComponent.self]?.materials.first as? PhysicallyBasedMaterial
+        )
+        #expect(restored.triangleFillMode == .fill)
+    }
+
+    @MainActor
+    @Test func sharedMaterialIsTransformedOnce() throws {
+        var material = PhysicallyBasedMaterial()
+        material.baseColor = .init(tint: .red)
+        let mesh = MeshResource.generateBox(size: 0.2)
+        let first = ModelEntity(mesh: mesh, materials: [material])
+        let second = ModelEntity(mesh: mesh, materials: [material])
+        let root = Entity()
+        root.addChild(first)
+        root.addChild(second)
+        let store = DebugMaterialStore()
+
+        PreviewDebugMode.apply(.wire, doubleSided: false, to: root, store: store)
+        #expect(store.lastUniqueTransformedCount == 1)
+
+        let wiredFirst = try #require(
+            first.components[ModelComponent.self]?.materials.first as? PhysicallyBasedMaterial
+        )
+        let wiredSecond = try #require(
+            second.components[ModelComponent.self]?.materials.first as? PhysicallyBasedMaterial
+        )
+        #expect(wiredFirst.triangleFillMode == .lines)
+        #expect(wiredSecond.triangleFillMode == .lines)
+    }
+
     @Test func availableModesRichVersusSparse() {
         let rich: [String: Any] = [
             "meshes": [[

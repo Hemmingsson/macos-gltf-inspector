@@ -86,98 +86,270 @@ public enum PreviewDebugMode: Equatable, Hashable {
         to root: Entity,
         store: DebugMaterialStore
     ) {
-        store.restore(root)
-        clearDebug(root)
-
-        switch mode {
-        case .none:
-            break
-        case .wire:
-            store.snapshotIfNeeded(root)
-            applyWire(root)
-        case .vertexColors:
-            store.snapshotIfNeeded(root)
-            applyVertexColors(root)
-        case .visualization(let visualization):
-            applyVisualization(root, visualization)
+        let models = store.models(in: root)
+        if store.lastMutatedMaterials {
+            store.restore(models)
         }
 
-        if doubleSided {
-            store.snapshotIfNeeded(root)
-            applyDoubleSided(root)
+        let visualization: ModelDebugOptionsComponent.VisualizationMode?
+        if case .visualization(let next) = mode {
+            visualization = next
+        } else {
+            visualization = nil
+        }
+        applyDebugComponents(models, visualization: visualization)
+
+        let mutates = mutatesMaterials(mode, doubleSided: doubleSided)
+        if mutates {
+            store.snapshotIfNeeded(models)
+            switch mode {
+            case .vertexColors:
+                var shared: any RealityKit.Material = store.sharedVertexColorMaterial
+                if doubleSided {
+                    shared = withDoubleSided(shared)
+                }
+                store.lastUniqueTransformedCount = assignSharedMaterial(models, shared)
+            case .wire, .none, .visualization:
+                store.lastUniqueTransformedCount = mapModelMaterials(models, store: store) { material in
+                    var next = material
+                    if case .wire = mode {
+                        next = withWireframe(next)
+                    }
+                    if doubleSided {
+                        next = withDoubleSided(next)
+                    }
+                    return next
+                }
+            }
+        } else {
+            store.lastUniqueTransformedCount = 0
+        }
+        store.lastMutatedMaterials = mutates
+    }
+
+    private static func mutatesMaterials(_ mode: PreviewDebugMode, doubleSided: Bool) -> Bool {
+        switch mode {
+        case .wire, .vertexColors: true
+        case .none, .visualization: doubleSided
         }
     }
 }
 
-/// Original materials so wireframe can be undone.
+/// Original materials so wireframe can be undone. Collects the model list once.
 final class DebugMaterialStore {
     private var snapshots: [ObjectIdentifier: [any RealityKit.Material]] = [:]
+    private var snapshotIDs: [ObjectIdentifier: [Int]] = [:]
+    private var uniqueKeys: [MaterialKey] = []
+    private var cachedModels: [Entity] = []
+    private var didCollect = false
+    /// How many times `restore` ran. Channel↔channel must not increment this.
+    private(set) var restoreCount = 0
+    /// Distinct transformed materials produced by the last material-mutating apply.
+    var lastUniqueTransformedCount = 0
+    var lastMutatedMaterials = false
+    let sharedVertexColorMaterial = UnlitMaterial(color: NSColor.white)
 
-    func snapshotIfNeeded(_ root: Entity) {
-        visit(root) { entity in
-            guard let model = entity.components[ModelComponent.self] else { return }
+    func models(in root: Entity) -> [Entity] {
+        if !didCollect {
+            cachedModels = []
+            collectModels(root, into: &cachedModels)
+            didCollect = true
+        }
+        return cachedModels
+    }
+
+    func snapshotIfNeeded(_ models: [Entity]) {
+        for entity in models {
             let id = ObjectIdentifier(entity)
-            if snapshots[id] == nil {
-                snapshots[id] = model.materials
+            guard snapshots[id] == nil, let model = entity.components[ModelComponent.self] else {
+                continue
             }
+            snapshots[id] = model.materials
+            snapshotIDs[id] = model.materials.map { uniqueID(for: $0) }
         }
     }
 
-    func restore(_ root: Entity) {
-        visit(root) { entity in
+    func restore(_ models: [Entity]) {
+        restoreCount += 1
+        for entity in models {
             let id = ObjectIdentifier(entity)
             guard var model = entity.components[ModelComponent.self],
                   let materials = snapshots[id]
-            else { return }
+            else { continue }
             model.materials = materials
             entity.components.set(model)
         }
     }
 
-    private func visit(_ entity: Entity, _ body: (Entity) -> Void) {
-        body(entity)
-        for child in entity.children {
-            visit(child, body)
+    func originalMaterials(for entity: Entity) -> [any RealityKit.Material]? {
+        snapshots[ObjectIdentifier(entity)]
+    }
+
+    func materialIDs(for entity: Entity) -> [Int]? {
+        snapshotIDs[ObjectIdentifier(entity)]
+    }
+
+    func uniqueID(for material: any RealityKit.Material) -> Int {
+        let key = MaterialKey(material)
+        if let index = uniqueKeys.firstIndex(of: key) {
+            return index
+        }
+        uniqueKeys.append(key)
+        return uniqueKeys.count - 1
+    }
+}
+
+private func collectModels(_ entity: Entity, into models: inout [Entity]) {
+    if entity.components[ModelComponent.self] != nil {
+        models.append(entity)
+    }
+    for child in entity.children {
+        collectModels(child, into: &models)
+    }
+}
+
+private func applyDebugComponents(
+    _ models: [Entity],
+    visualization: ModelDebugOptionsComponent.VisualizationMode?
+) {
+    for entity in models {
+        if let visualization {
+            entity.components.set(ModelDebugOptionsComponent(visualizationMode: visualization))
+        } else {
+            entity.components.remove(ModelDebugOptionsComponent.self)
         }
     }
 }
 
-private func applyWire(_ root: Entity) {
-    mapModelMaterials(root) { withWireframe($0) }
-}
-
-/// White unlit so authored mesh colors (when converted) show without textures/lighting.
-private func applyVertexColors(_ root: Entity) {
-    mapModelMaterials(root) { _ in UnlitMaterial(color: NSColor.white) }
-}
-
-private func applyDoubleSided(_ root: Entity) {
-    mapModelMaterials(root) { withDoubleSided($0) }
-}
-
-private func applyVisualization(
-    _ root: Entity,
-    _ mode: ModelDebugOptionsComponent.VisualizationMode
-) {
-    visitModels(root) { entity, _ in
-        entity.components.set(ModelDebugOptionsComponent(visualizationMode: mode))
+@discardableResult
+private func assignSharedMaterial(
+    _ models: [Entity],
+    _ material: any RealityKit.Material
+) -> Int {
+    for entity in models {
+        guard var model = entity.components[ModelComponent.self] else { continue }
+        model.materials = Array(repeating: material, count: model.materials.count)
+        entity.components.set(model)
     }
+    return 1
 }
 
-private func clearDebug(_ root: Entity) {
-    visitModels(root) { entity, _ in
-        entity.components.remove(ModelDebugOptionsComponent.self)
-    }
-}
-
+@discardableResult
 private func mapModelMaterials(
-    _ root: Entity,
-    _ transform: (any RealityKit.Material) -> any RealityKit.Material
-) {
-    visitModels(root) { entity, model in
-        var next = model
-        next.materials = model.materials.map(transform)
-        entity.components.set(next)
+    _ models: [Entity],
+    store: DebugMaterialStore,
+    transform: (any RealityKit.Material) -> any RealityKit.Material
+) -> Int {
+    var cache: [Int: any RealityKit.Material] = [:]
+    for entity in models {
+        guard var model = entity.components[ModelComponent.self] else { continue }
+        let source = store.originalMaterials(for: entity) ?? model.materials
+        let ids = store.materialIDs(for: entity) ?? source.map { store.uniqueID(for: $0) }
+        model.materials = zip(source, ids).map { material, id in
+            if let cached = cache[id] { return cached }
+            let mapped = transform(material)
+            cache[id] = mapped
+            return mapped
+        }
+        entity.components.set(model)
+    }
+    return cache.count
+}
+
+/// Identity for convert-shared materials (value types). Textures are class
+/// instances; scalars + resource ids distinguish glTF materials without Equatable.
+private struct MaterialKey: Hashable {
+    var kind: UInt8
+    var fill: Int
+    var cull: Int
+    var floats: [Float]
+    var textures: [ObjectIdentifier]
+
+    init(_ material: any RealityKit.Material) {
+        if let pbr = material as? PhysicallyBasedMaterial {
+            kind = 1
+            fill = fillCode(pbr.triangleFillMode)
+            cull = cullCode(pbr.faceCulling)
+            let tint = pbr.baseColor.tint
+            floats = [
+                Float(tint.redComponent),
+                Float(tint.greenComponent),
+                Float(tint.blueComponent),
+                Float(tint.alphaComponent),
+                pbr.metallic.scale,
+                pbr.roughness.scale,
+                pbr.emissiveIntensity,
+                pbr.clearcoat.scale,
+                pbr.clearcoatRoughness.scale,
+                pbr.specular.scale,
+                pbr.opacityThreshold ?? -1,
+            ]
+            textures = [
+                textureID(pbr.baseColor.texture),
+                textureID(pbr.metallic.texture),
+                textureID(pbr.roughness.texture),
+                textureID(pbr.normal.texture),
+                textureID(pbr.emissiveColor.texture),
+                textureID(pbr.ambientOcclusion.texture),
+                textureID(pbr.clearcoat.texture),
+                textureID(pbr.clearcoatRoughness.texture),
+                textureID(pbr.specular.texture),
+            ].compactMap { $0 }
+            return
+        }
+        if let unlit = material as? UnlitMaterial {
+            kind = 2
+            fill = fillCode(unlit.triangleFillMode)
+            cull = cullCode(unlit.faceCulling)
+            let tint = unlit.color.tint
+            floats = [
+                Float(tint.redComponent),
+                Float(tint.greenComponent),
+                Float(tint.blueComponent),
+                Float(tint.alphaComponent),
+                unlit.opacityThreshold ?? -1,
+            ]
+            textures = [textureID(unlit.color.texture)].compactMap { $0 }
+            return
+        }
+        if let simple = material as? SimpleMaterial {
+            kind = 3
+            fill = fillCode(simple.triangleFillMode)
+            cull = cullCode(simple.faceCulling)
+            let tint = simple.color.tint
+            floats = [
+                Float(tint.redComponent),
+                Float(tint.greenComponent),
+                Float(tint.blueComponent),
+                Float(tint.alphaComponent),
+            ]
+            textures = [textureID(simple.color.texture)].compactMap { $0 }
+            return
+        }
+        kind = 0
+        fill = 0
+        cull = 0
+        floats = []
+        textures = []
+    }
+}
+
+private func textureID(_ texture: PhysicallyBasedMaterial.Texture?) -> ObjectIdentifier? {
+    texture.map { ObjectIdentifier($0.resource) }
+}
+
+private func fillCode(_ fill: MaterialParameterTypes.TriangleFillMode) -> Int {
+    switch fill {
+    case .lines: 1
+    default: 0
+    }
+}
+
+private func cullCode(_ cull: MaterialParameterTypes.FaceCulling) -> Int {
+    switch cull {
+    case .front: 1
+    case .none: 2
+    default: 0
     }
 }
 
@@ -211,13 +383,4 @@ private func withDoubleSided(_ material: any RealityKit.Material) -> any Reality
         return simple
     }
     return material
-}
-
-private func visitModels(_ entity: Entity, _ body: (Entity, ModelComponent) -> Void) {
-    if let model = entity.components[ModelComponent.self] {
-        body(entity, model)
-    }
-    for child in entity.children {
-        visitModels(child, body)
-    }
 }
