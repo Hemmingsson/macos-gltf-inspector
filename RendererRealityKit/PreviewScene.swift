@@ -29,7 +29,9 @@ private final class PreviewFrame {
     /// Last session FOV applied to the preview camera (nil after file camera).
     var appliedFieldOfViewDegrees: Float?
     let debugStore = DebugMaterialStore()
-    let debugApplied = DebugAppliedIndex()
+    /// Last debug mode index / double-sided flag applied to the pivot.
+    var appliedDebugIndex: Int?
+    var appliedDoubleSided: Bool?
     /// First scene update after `make` — the `rk first frame` marker; cancelled once it fires.
     var firstFrame: EventSubscription?
 }
@@ -542,7 +544,7 @@ struct PreviewScene: View {
     private func applyDebugIfNeeded(to root: Entity) {
         let index = debugModes.indices.contains(debugModeIndexValue) ? debugModeIndexValue : 0
         let doubleSided = doubleSidedValue
-        guard frame.debugApplied.index != index || frame.debugApplied.doubleSided != doubleSided
+        guard frame.appliedDebugIndex != index || frame.appliedDoubleSided != doubleSided
         else { return }
         PreviewDebugMode.apply(
             debugModes[index],
@@ -550,8 +552,8 @@ struct PreviewScene: View {
             to: root,
             store: frame.debugStore
         )
-        frame.debugApplied.index = index
-        frame.debugApplied.doubleSided = doubleSided
+        frame.appliedDebugIndex = index
+        frame.appliedDoubleSided = doubleSided
     }
 
     private func applySkeletonOverlayIfNeeded(to pivot: Entity) {
@@ -593,11 +595,6 @@ struct PreviewScene: View {
     private func aspect(of size: CGSize) -> Float {
         Float(size.width / max(size.height, 1))
     }
-}
-
-private final class DebugAppliedIndex {
-    var index: Int?
-    var doubleSided: Bool?
 }
 
 /// The RealityKit canvas for one loaded model. Remounts when the model's entity changes or the
