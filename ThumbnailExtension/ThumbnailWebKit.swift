@@ -47,8 +47,7 @@ enum WebThumbnail {
             throw error
         }
 
-        let fileURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("glb-thumb-\(UUID().uuidString).png")
+        let fileURL = ThumbnailProvider.outputURL()
         // The page's PNG as is (sRGB-tagged by WebKit): no decode and re-encode.
         try png.write(to: fileURL)
 
