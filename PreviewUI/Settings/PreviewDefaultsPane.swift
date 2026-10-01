@@ -9,11 +9,19 @@ struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
     var renderers: [(raw: String, title: String)] = []
     @State private var importError: String?
 
-    private let catalog: [(raw: String, title: String)] = [
-        ("neutral", "Studio Neutral"),
-        ("field", "Field"),
-        ("Colorful_Studio", "Colorful Studio"),
-    ]
+    private var catalog: [(raw: String, title: String)] {
+        StudioEnvironment.allCases.map { environment in
+            (environment.rawValue, settingsTitle(for: environment))
+        }
+    }
+
+    private func settingsTitle(for environment: StudioEnvironment) -> String {
+        switch environment {
+        case .neutral: "Studio Neutral"
+        case .field: "Field"
+        case .colorfulStudio: "Colorful Studio"
+        }
+    }
 
     var body: some View {
         Form {
@@ -27,10 +35,9 @@ struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
                         renderers.first { $0.raw == raw }?.title ?? raw
                     }
                 } footer: {
-                    Text("Applies to new windows, Quick Look previews and Finder thumbnails. Open windows keep their renderer.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    SettingsFooter {
+                        Text("Applies to new windows, Quick Look previews and Finder thumbnails. Open windows keep their renderer.")
+                    }
                 }
             }
 
@@ -72,17 +79,14 @@ struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
                         .foregroundStyle(.secondary)
                 }
             } footer: {
-                Group {
+                SettingsFooter {
                     if let importError {
                         Text(importError)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(DS.Color.error)
                     } else {
                         Text("Custom HDR and EXR files are remembered for the host lighting path.")
                     }
                 }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .settingsFormChrome()

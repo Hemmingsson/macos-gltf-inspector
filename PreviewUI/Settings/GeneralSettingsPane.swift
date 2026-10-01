@@ -40,23 +40,21 @@ struct GeneralSettingsPane<Store: SettingsDefaultsStore>: View {
                         }
                     }
                 } footer: {
-                    Text("macOS may still confirm the change. Finder and Quick Look can keep their own handlers.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    SettingsFooter {
+                        Text("macOS may still confirm the change. Finder and Quick Look can keep their own handlers.")
+                    }
                 }
             }
 
             if let defaultAppError {
                 Section {
                     Text(defaultAppError)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DS.Color.error)
                 }
             }
         }
         .settingsFormChrome()
         .onAppear {
-            AppAppearance.apply(store.value(for: .appearance))
             refreshDefaultApp()
         }
     }
@@ -94,11 +92,9 @@ struct GeneralSettingsPane<Store: SettingsDefaultsStore>: View {
                 for type in glTFTypes {
                     try await NSWorkspace.shared.setDefaultApplication(at: appURL, toOpen: type)
                 }
-                await MainActor.run { refreshDefaultApp() }
+                refreshDefaultApp()
             } catch {
-                await MainActor.run {
-                    defaultAppError = error.localizedDescription
-                }
+                defaultAppError = error.localizedDescription
             }
         }
     }

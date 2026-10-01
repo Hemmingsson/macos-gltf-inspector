@@ -49,6 +49,17 @@ public extension View {
     }
 }
 
+struct SettingsFooter<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 // MARK: - Previews
 
 private enum SettingsPreviewMetrics {
@@ -81,68 +92,55 @@ private enum SettingsPreviewFixtures {
 }
 
 @MainActor
-private struct PreviewSettingsRootPreviewHost: View {
+private struct SettingsStorePreviewHost<Content: View>: View {
     @State private var store: MockSettingsDefaultsStore
+    private let content: (MockSettingsDefaultsStore) -> Content
 
-    init(store: MockSettingsDefaultsStore) {
+    init(
+        store: MockSettingsDefaultsStore,
+        @ViewBuilder content: @escaping (MockSettingsDefaultsStore) -> Content
+    ) {
         _store = State(initialValue: store)
+        self.content = content
     }
 
     var body: some View {
-        PreviewSettingsRoot(store: store) { url in
-            url.lastPathComponent
-        }
+        content(store)
     }
 }
 
-@MainActor
-private struct GeneralSettingsPanePreviewHost: View {
-    @State private var store: MockSettingsDefaultsStore
-
-    init(store: MockSettingsDefaultsStore) {
-        _store = State(initialValue: store)
+#Preview("settings root", traits: .fixedLayout(width: 520, height: 380)) {
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.store) { store in
+        PreviewSettingsRoot(store: store) { $0.lastPathComponent }
     }
+}
 
-    var body: some View {
+#Preview("general", traits: .fixedLayout(width: 520, height: 220)) {
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.store) { store in
         GeneralSettingsPane(store: store)
             .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.generalHeight)
     }
 }
 
-@MainActor
-private struct PreviewDefaultsPanePreviewHost: View {
-    @State private var store: MockSettingsDefaultsStore
-
-    init(store: MockSettingsDefaultsStore) {
-        _store = State(initialValue: store)
-    }
-
-    var body: some View {
-        PreviewDefaultsPane(store: store) { url in
-            url.lastPathComponent
-        }
-        .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.previewDefaultsHeight)
-    }
-}
-
-#Preview("settings root", traits: .fixedLayout(width: 520, height: 380)) {
-    PreviewSettingsRootPreviewHost(store: SettingsPreviewFixtures.store)
-}
-
-#Preview("general", traits: .fixedLayout(width: 520, height: 220)) {
-    GeneralSettingsPanePreviewHost(store: SettingsPreviewFixtures.store)
-}
-
 #Preview("general dark", traits: .fixedLayout(width: 520, height: 220)) {
-    GeneralSettingsPanePreviewHost(store: SettingsPreviewFixtures.darkAppearanceStore)
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.darkAppearanceStore) { store in
+        GeneralSettingsPane(store: store)
+            .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.generalHeight)
+    }
 }
 
 #Preview("preview defaults", traits: .fixedLayout(width: 520, height: 420)) {
-    PreviewDefaultsPanePreviewHost(store: SettingsPreviewFixtures.store)
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.store) { store in
+        PreviewDefaultsPane(store: store) { $0.lastPathComponent }
+            .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.previewDefaultsHeight)
+    }
 }
 
 #Preview("preview defaults custom HDR", traits: .fixedLayout(width: 520, height: 420)) {
-    PreviewDefaultsPanePreviewHost(store: SettingsPreviewFixtures.customHDRStore)
+    SettingsStorePreviewHost(store: SettingsPreviewFixtures.customHDRStore) { store in
+        PreviewDefaultsPane(store: store) { $0.lastPathComponent }
+            .frame(maxWidth: SettingsPreviewMetrics.width, minHeight: SettingsPreviewMetrics.previewDefaultsHeight)
+    }
 }
 
 #Preview("about", traits: .fixedLayout(width: 520, height: 200)) {
