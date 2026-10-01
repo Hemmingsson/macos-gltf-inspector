@@ -14,34 +14,6 @@ public enum ValidationFixtures {
     status: .pending
   )
 
-  public static let unavailable = ValidationResult(
-    issues: [
-      ValidationResult.Issue(
-        severity: .warning,
-        message: "Validation unavailable: offline preview fixture"
-      )
-    ],
-    formatLabel: "glTF 2.0",
-    status: .unavailable
-  )
-
-  public static let withWarnings = ValidationResult(
-    issues: [
-      ValidationResult.Issue(
-        severity: .warning,
-        message: "Material base color factor is out of recommended range",
-        pointer: "/materials/0/pbrMetallicRoughness/baseColorFactor"
-      ),
-      ValidationResult.Issue(
-        severity: .info,
-        message: "Unused accessor",
-        pointer: "/accessors/3"
-      )
-    ],
-    formatLabel: "glTF 2.0",
-    status: .ready
-  )
-
   public static let withErrors = ValidationResult(
     issues: [
       ValidationResult.Issue(

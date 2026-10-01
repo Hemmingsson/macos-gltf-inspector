@@ -51,22 +51,6 @@ public enum MaterialFixtures {
     uniqueTextureCount: 5
   )
 
-  public static let unlit = MaterialInfo(
-    index: 2,
-    name: "Unlit",
-    workflow: .unlit,
-    alphaMode: .mask,
-    isDoubleSided: false,
-    maps: [.baseColor],
-    textures: [
-      MaterialTextureInfo(map: .baseColor, width: 512, height: 512, previewColor: RGBColor(red: 0.2, green: 0.75, blue: 0.95))
-    ],
-    baseColorFactor: RGBColor(red: 1, green: 1, blue: 1),
-    alphaCutoff: 0.5,
-    usedByMeshNames: ["Sign"],
-    usedByTriangleCount: 2
-  )
-
   public static let baseColorOnly = MaterialInfo(
     index: 3,
     name: "BaseColorOnly",
