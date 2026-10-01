@@ -70,7 +70,6 @@ struct PreviewScene: View {
     /// in the 16ms tick, unlike re-deriving bounds each frame).
     private let geometryDisablesAutoRotate: Bool
     @State private var playback: RealityKit.AnimationPlaybackController?
-    @State private var clips: [PreviewClip] = []
     @State private var viewport = CGSize(width: 810, height: 600)
     @State private var debugModeIndex = 0
     @State private var pendingReady: AppLook?
@@ -295,11 +294,11 @@ struct PreviewScene: View {
                 Task { @MainActor in
                     interaction.bind(camera: camera, orbitFocus: assembled.pivot)
                     appliedLook = look
-                    clips = usable
-                    if !usable.isEmpty {
-                        startClip(at: 0, playing: false)
-                    }
-                    if !usable.isEmpty {
+                    if let first = usable.first {
+                        // Pose the model on clip 0's first frame (paused at t = 0).
+                        playback?.stop()
+                        playback = entity.playAnimation(first.resource.repeat())
+                        playback?.pause()
                         let summary = usable
                             .map { "\($0.title) (\((($0.duration * 100).rounded() / 100))s)" }
                             .joined(separator: ", ")
@@ -566,18 +565,6 @@ struct PreviewScene: View {
 
     private func chromeTint(active: Bool) -> Color {
         PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: active)
-    }
-
-    private func startClip(at index: Int, playing: Bool) {
-        guard clips.indices.contains(index) else { return }
-        let clip = clips[index]
-        playback?.stop()
-        playback = entity.playAnimation(clip.resource.repeat())
-        if playing {
-            playback?.resume()
-        } else {
-            playback?.pause()
-        }
     }
 
     private func applyDebugIfNeeded(to root: Entity) {
