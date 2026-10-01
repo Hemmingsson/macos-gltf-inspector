@@ -64,7 +64,7 @@ PY
 uses_placeholder_ed_key() {
   local root
   root="$(sparkle_root)"
-  grep -qF "$PLACEHOLDER_ED_KEY" "$root/project.yml" "$root/GLTFInspector/UpdateConfig.swift"
+  grep -qF "$PLACEHOLDER_ED_KEY" "$root/project.yml"
 }
 
 zip_exported_app() {

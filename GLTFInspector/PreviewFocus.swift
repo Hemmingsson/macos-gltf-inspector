@@ -1,6 +1,5 @@
 import CoreGraphics
 import GLTFCore
-import SwiftUI
 
 /// Camera and still commands of the canvas that is on screen. The mounted canvas registers them
 /// (`RealityKit/` and `WebKit/` window roots); `EngineViewportController` forwards the View menu, the Camera pill and
@@ -15,8 +14,4 @@ struct FocusedPreviewCommands {
     /// One frame at the live camera pose (an offscreen re-render on RealityKit, the live canvas
     /// on WebKit). Pixels only — the caller presents the save panel and writes the PNG.
     let screenshot: () async throws -> CGImage
-}
-
-extension FocusedValues {
-    @Entry var previewCommands: FocusedPreviewCommands?
 }

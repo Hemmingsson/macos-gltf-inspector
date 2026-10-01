@@ -138,15 +138,18 @@ extension EngineSceneModel {
 
     private static func mapScenes(_ document: GLTFSessionDocument) -> [SceneInfo] {
         document.scenes.enumerated().map { index, scene in
-            let name = scene.name.isEmpty ? "Scene \(index)" : scene.name
             let rooted = scene.rootNodeIndices.map { rootIndex -> NodeID in
                 if let node = document.nodes.first(where: { $0.index == rootIndex }) {
-                    return NodeID(kind: mapNodeKind(node.kind), index: node.index)
+                    return NodeID(kind: nodeKind(node.kind), index: node.index)
                 }
                 return NodeID(kind: .empty, index: rootIndex)
             }
-            return SceneInfo(index: index, name: name, rootNodeIDs: rooted)
+            return SceneInfo(index: index, name: sceneName(scene, index: index), rootNodeIDs: rooted)
         }
+    }
+
+    static func sceneName(_ scene: GLTFSessionDocument.Scene, index: Int) -> String {
+        scene.name.isEmpty ? "Scene \(index)" : scene.name
     }
 
     private static func buildNodeTree(document: GLTFSessionDocument) -> [SceneNode] {
@@ -158,7 +161,7 @@ extension EngineSceneModel {
             guard let node = byIndex[index] else { return nil }
             guard !path.contains(index) else {
                 return SceneNode(
-                    kind: mapNodeKind(node.kind),
+                    kind: nodeKind(node.kind),
                     index: node.index,
                     name: displayName(node.name, fallback: "Node \(node.index)")
                 )
@@ -167,7 +170,7 @@ extension EngineSceneModel {
             nextPath.insert(index)
             let children = node.children.compactMap { build($0, path: nextPath) }
             return SceneNode(
-                kind: mapNodeKind(node.kind),
+                kind: nodeKind(node.kind),
                 index: node.index,
                 name: displayName(node.name, fallback: "Node \(node.index)"),
                 children: children
@@ -197,50 +200,54 @@ extension EngineSceneModel {
     }
 
     private static func mapCameras(_ cameras: [GLTFSessionDocument.Camera]) -> [CameraInfo] {
-        cameras.enumerated().map { index, camera in
-            let projection: Projection =
-                camera.type.lowercased() == "orthographic" ? .orthographic : .perspective
-            return CameraInfo(
-                index: index,
-                name: displayName(camera.name, fallback: "Camera \(index)"),
-                projection: projection,
-                fieldOfViewDegrees: camera.yfov.map { Double(radiansToDegrees($0)) },
-                xMag: camera.xmag.map(Double.init),
-                yMag: camera.ymag.map(Double.init),
-                zNear: Double(camera.znear),
-                zFar: camera.zfar.map(Double.init)
-            )
-        }
+        cameras.enumerated().map { index, camera in cameraInfo(camera, index: index) }
+    }
+
+    private static func cameraInfo(_ camera: GLTFSessionDocument.Camera, index: Int) -> CameraInfo {
+        let projection: Projection =
+            camera.type.lowercased() == "orthographic" ? .orthographic : .perspective
+        return CameraInfo(
+            index: index,
+            name: displayName(camera.name, fallback: "Camera \(index)"),
+            projection: projection,
+            fieldOfViewDegrees: camera.yfov.map { Double(radiansToDegrees($0)) },
+            xMag: camera.xmag.map(Double.init),
+            yMag: camera.ymag.map(Double.init),
+            zNear: Double(camera.znear),
+            zFar: camera.zfar.map(Double.init)
+        )
     }
 
     /// Single camera from the document cameras array (outliner / inspector).
     static func cameraInfo(index: Int, document: GLTFSessionDocument) -> CameraInfo? {
         guard document.cameras.indices.contains(index) else { return nil }
-        return mapCameras(document.cameras)[index]
+        return cameraInfo(document.cameras[index], index: index)
     }
 
     private static func mapLights(_ lights: [GLTFSessionDocument.Light]) -> [LightInfo] {
-        lights.enumerated().map { index, light in
-            LightInfo(
-                index: index,
-                name: displayName(light.name, fallback: "Light \(index)"),
-                kind: mapLightKind(light.type),
-                color: RGBColor(
-                    red: Double(light.color.x),
-                    green: Double(light.color.y),
-                    blue: Double(light.color.z)
-                ),
-                intensity: Double(light.intensity),
-                range: light.range.map(Double.init),
-                innerConeDegrees: light.innerCone.map { Double(radiansToDegrees($0)) },
-                outerConeDegrees: light.outerCone.map { Double(radiansToDegrees($0)) }
-            )
-        }
+        lights.enumerated().map { index, light in lightInfo(light, index: index) }
+    }
+
+    private static func lightInfo(_ light: GLTFSessionDocument.Light, index: Int) -> LightInfo {
+        LightInfo(
+            index: index,
+            name: displayName(light.name, fallback: "Light \(index)"),
+            kind: mapLightKind(light.type),
+            color: RGBColor(
+                red: Double(light.color.x),
+                green: Double(light.color.y),
+                blue: Double(light.color.z)
+            ),
+            intensity: Double(light.intensity),
+            range: light.range.map(Double.init),
+            innerConeDegrees: light.innerCone.map { Double(radiansToDegrees($0)) },
+            outerConeDegrees: light.outerCone.map { Double(radiansToDegrees($0)) }
+        )
     }
 
     static func lightInfo(index: Int, document: GLTFSessionDocument) -> LightInfo? {
         guard document.lights.indices.contains(index) else { return nil }
-        return mapLights(document.lights)[index]
+        return lightInfo(document.lights[index], index: index)
     }
 
     private static func mapMaterials(document: GLTFSessionDocument) -> [MaterialInfo] {
@@ -291,26 +298,35 @@ extension EngineSceneModel {
     ) -> [AnimationInfo] {
         animations.enumerated().compactMap { index, animation in
             guard animation.duration > 0 else { return nil }
-            let trimmed = animation.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            let name = trimmed.isEmpty ? "Clip \(index + 1)" : trimmed
-            return AnimationInfo(index: index, name: name, duration: animation.duration)
+            return animationInfo(animation, index: index)
         }
     }
 
+    /// Unnamed clips are numbered from 1, as the transport shows them.
+    static func animationInfo(_ animation: GLTFSessionDocument.Animation, index: Int) -> AnimationInfo {
+        AnimationInfo(
+            index: index,
+            name: displayName(animation.name, fallback: "Clip \(index + 1)"),
+            duration: animation.duration
+        )
+    }
+
     private static func mapSkins(_ skins: [GLTFSessionDocument.Skin]) -> [SkinInfo] {
-        skins.enumerated().map { index, skin in
-            SkinInfo(
-                index: index,
-                name: displayName(skin.name, fallback: "Skin \(index)"),
-                jointCount: skin.jointNames.count,
-                jointNames: skin.jointNames
-            )
-        }
+        skins.enumerated().map { index, skin in skinInfo(skin, index: index) }
+    }
+
+    private static func skinInfo(_ skin: GLTFSessionDocument.Skin, index: Int) -> SkinInfo {
+        SkinInfo(
+            index: index,
+            name: displayName(skin.name, fallback: "Skin \(index)"),
+            jointCount: skin.jointNames.count,
+            jointNames: skin.jointNames
+        )
     }
 
     static func skinInfo(index: Int, document: GLTFSessionDocument) -> SkinInfo? {
         guard document.skins.indices.contains(index) else { return nil }
-        return mapSkins(document.skins)[index]
+        return skinInfo(document.skins[index], index: index)
     }
 
     private static func materialMap(_ kind: GLTFSessionDocument.TextureSlot.Kind) -> MaterialMap {
@@ -372,7 +388,7 @@ extension EngineSceneModel {
         )
     }
 
-    private static func mapNodeKind(_ kind: GLTFSessionDocument.Node.Kind) -> NodeKind {
+    static func nodeKind(_ kind: GLTFSessionDocument.Node.Kind) -> NodeKind {
         switch kind {
         case .empty: .empty
         case .mesh: .mesh

@@ -89,3 +89,19 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
   `SceneEvents.Update` after make; whether that update is the first presented frame is unverified.
 - Warrior_Girl_2 is RealityKit-only (the web page would OOM on wireframe) and dominates runtime
   (~1 min per window open); `GLTF_BENCH_RUNS=1` for a quick pass.
+## W2 host
+
+- C / F3d "features once" (`DocumentWindowModel(documentURL:features:)`, `DocumentShell` reads `window.features`) — deferred: needs the two adapter roots' `init` and `DocumentShell(features:)` call sites (`GLTFInspector/RealityKit/`, `GLTFInspector/WebKit/`), owned by the realitykit / core-webkit lanes this wave. Only test-only `RendererAvailability.canHideNodes` was deleted.
+- C (one seed path): accepted deltas, not visible today — the session is no longer re-seeded when a document becomes ready (environment / tone picks made from the View menu while a WebKit page is ahead of its panels are kept), and the viewport now points at the placeholder sidebar while loading instead of the previous document's.
+- D: `PreviewSession+RealityKit.bindings` setters for the five settings-backed keys now pin a window override (they wrote the session only). In the window nothing writes those bindings (only the Quick Look inline chrome does, which has no `PreviewSession`), so no behaviour change.
+- D real-window: the "Settings default (Floor off) seeds a new window" check was not run — the App Group suite cannot be written from a shell and driving Settings needs UI automation (uitest lane). Covered by `settingsOverlayTracksDefaultsInGetters` (session + viewport follow a changed default until pinned) and `lazyOverlayTracksDefaultsUntilOverridden`.
+- E: `FixtureSceneModel.morph` (`PreviewUI/PreviewSupport/Fixtures`) lost its last caller with `CatalogComposites.inspector(model:)`; left for the ui lane (fixture library). E also touched 6 call sites in `DesignCatalog/Pages/Composites/PaneCompositePages.swift` (ui lane) — watch for a merge conflict.
+- ui C6 `AppDefaultsStore.shared` / move to host — not in this lane's scope this wave.
+- F: kept the "No focused window" text in both menus (plan decision) and Reset View enabled without commands (it also resets session state).
+- G: morph and node names in `EngineSelectionModel.detail` were not routed through `EngineSceneModel.displayName` — see Bugs seen.
+- H: optional `shouldStartUpdater` placeholder-key guard (local Release installs poll a feed they cannot verify) — behaviour change, not done.
+- F10 leftovers: `ScreenshotCameraPose` → `PNGExport` rename, `EngineLookBridge` file name, `GLTFInspectorFileDocument` "GLTFKit2 needs a filesystem URL" comment — wave 3 naming.
+
+### Bugs seen
+
+- Inspector vs outliner names: `EngineSelectionModel.nodeDetail` / `morphDetail` use `name.isEmpty ? fallback : name` while the outliner (`EngineSceneModel.displayName`) trims, so a whitespace-only or padded node / morph mesh name shows differently in the inspector header (e.g. "  " vs "Node 3"). Fix: use `displayName` (and `EngineSceneModel.morphInfo`-style per-item builder) in both.

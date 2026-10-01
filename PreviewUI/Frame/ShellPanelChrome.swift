@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Per-window sidebar open state.
 ///
-/// Owned by the window host (`ShellWindow` / `DocumentShell`) so the system sidebar toggle,
+/// Owned by the window host (`DocumentWindowModel`) so the system sidebar toggle,
 /// `SidebarCommands()`, and `NavigationSplitView` share one source of truth. Not an app default —
 /// collapse is live chrome, not Settings. Inspector visibility follows selection (open iff
 /// something is selected).
@@ -22,9 +22,4 @@ public final class ShellPanelChrome {
     }
 
     public func toggleSidebar() { isSidebarVisible.toggle() }
-}
-
-public extension FocusedValues {
-    /// Key-window sidebar visibility (chrome toggle + View-menu twin).
-    @Entry var shellPanelChrome: ShellPanelChrome?
 }

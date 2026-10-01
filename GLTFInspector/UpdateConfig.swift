@@ -3,18 +3,9 @@ import Foundation
 import Sparkle
 import SwiftUI
 
+/// Sparkle reads its feed and key from the `SU*` Info.plist keys (`project.yml`); the app only
+/// decides whether to start the updater.
 enum UpdateConfig {
-    static let githubRepo = "Hemmingsson/macos-gltf-inspector"
-    static let placeholderPublicEdKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-
-    static let githubURL = URL(string: "https://github.com/\(githubRepo)")!
-    static let feedURL = URL(
-        string: "https://github.com/\(githubRepo)/releases/latest/download/appcast.xml"
-    )!
-
-    /// Ed25519 public key from `generate_keys`. Same string as `SUPublicEDKey`.
-    static let publicEdKey = placeholderPublicEdKey
-
 #if DEBUG
     static let shouldStartUpdater = false
 #else

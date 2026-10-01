@@ -22,20 +22,24 @@ final class DocumentWindowModel {
     /// Panel state (sidebar / inspector); the renderer root decides the canvas region's.
     private(set) var phase: ShellDocumentState = .loading
     private(set) var sidebar: HostSidebarModel? {
-        didSet { selection = EngineSelectionModel(sidebar: activeSidebar, canHideNodes: canHideNodes) }
+        didSet {
+            selection = EngineSelectionModel(sidebar: activeSidebar, canHideNodes: canHideNodes)
+            engineViewport.sidebar = activeSidebar
+        }
     }
     let placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
     /// From the mounted renderer's `RendererFeature.nodeVisibility`.
     let canHideNodes: Bool
     /// Window-owned selection adapter over `activeSidebar`, rebuilt only when the sidebar is
     /// replaced (open / adopt / failure) — never in a view body, so `ShellRootView` keeps it.
+    /// The viewport follows the same sidebar.
     private(set) var selection: EngineSelectionModel
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
     let panels = ShellPanelChrome()
     /// Per-window lazy overlay — not seed-once `@State` from UserDefaults.
     let settings = EngineSettingsStore()
-    let previewSession = PreviewSession()
+    let previewSession: PreviewSession
     let engineViewport: EngineViewportController
     private(set) var validation: GLTFValidationState?
     @ObservationIgnored private var validationGeneration = 0
@@ -48,7 +52,11 @@ final class DocumentWindowModel {
         self.documentURL = documentURL
         self.canHideNodes = canHideNodes
         selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: canHideNodes)
+        previewSession = PreviewSession(settings: settings)
         engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
+        engineViewport.saveScreenshot = { [weak self] image in
+            await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
+        }
     }
 
     var activeSidebar: HostSidebarModel { sidebar ?? placeholderSidebar }
@@ -71,22 +79,6 @@ final class DocumentWindowModel {
 
     var exportName: String {
         (loadingURL ?? documentURL)?.deletingPathExtension().lastPathComponent ?? "export"
-    }
-
-    /// Wires the viewport to this window's session, settings and save panel. Idempotent.
-    func wire() {
-        engineViewport.previewSession = previewSession
-        engineViewport.settings = settings
-        engineViewport.saveScreenshot = { [weak self] image in
-            await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
-        }
-    }
-
-    /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
-    func seedSession(settings: EngineSettingsStore) {
-        engineViewport.sidebar = activeSidebar
-        wire()
-        engineViewport.applySession(from: settings)
     }
 
     func failMissingURL() {
@@ -116,7 +108,7 @@ final class DocumentWindowModel {
         loadGeneration += 1
         // New document in this window: drop session overrides and re-track defaults.
         settings.clearSession()
-        engineViewport.applySession(from: settings)
+        engineViewport.applySession()
         AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(uptimeMs())")
         startValidation(of: url, generation: loadGeneration)
         return .started(generation: loadGeneration)
@@ -141,8 +133,6 @@ final class DocumentWindowModel {
         let modelSidebar = HostSidebarModel(document: document)
         modelSidebar.materialVariantNames = materialVariantNames
         sidebar = modelSidebar
-        engineViewport.sidebar = modelSidebar
-        wire()
         previewSession.viewModes = viewModes.isEmpty ? [.shaded] : viewModes
         engineViewport.applyConvertedLighting(
             dimStudioForFileLights: dimStudioForFileLights,

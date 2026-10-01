@@ -17,13 +17,7 @@ struct RendererAvailability: Availability {
     var hasAnimations: Bool { file.hasAnimations && features.contains(.animationPlayback) }
     /// Only gates the file-lights toggle.
     var hasLights: Bool { file.hasLights && features.contains(.fileLights) }
-    var hasCameras: Bool { file.hasCameras }
-    var isMultiScene: Bool { file.isMultiScene }
-    var hasSkin: Bool { file.hasSkin }
-    var hasMorphs: Bool { file.hasMorphs && features.contains(.morphTargets) }
     var availableDebugChannels: [ViewMode] {
         file.availableDebugChannels.filter { $0 != .wireframe || features.contains(.wireframe) }
     }
-    /// Hide / solo in the outliner (`EngineSelectionModel.canHideNodes`).
-    var canHideNodes: Bool { features.contains(.nodeVisibility) }
 }

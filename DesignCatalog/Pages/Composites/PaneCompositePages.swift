@@ -66,7 +66,6 @@ struct InspectorPage: View {
                 StateRow("Mesh", alignment: .top, minHeight: 420) {
                     Live(MockSelectionModel()) { $selection in
                         CatalogComposites.inspector(
-                            model: FixtureSceneModel.cube,
                             selection: $selection.wrappedValue,
                             documentState: .ready,
                             openInMenu: catalogOpenInMenu()
@@ -81,7 +80,6 @@ struct InspectorPage: View {
                         )
                     ) { $selection in
                         CatalogComposites.inspector(
-                            model: FixtureSceneModel.cube,
                             selection: $selection.wrappedValue,
                             documentState: .ready,
                             openInMenu: catalogOpenInMenu()
@@ -96,7 +94,6 @@ struct InspectorPage: View {
                         )
                     ) { $selection in
                         CatalogComposites.inspector(
-                            model: FixtureSceneModel.morph,
                             selection: $selection.wrappedValue,
                             documentState: .ready,
                             openInMenu: catalogOpenInMenu(),
@@ -110,7 +107,6 @@ struct InspectorPage: View {
                 StateRow("Empty", alignment: .top, minHeight: 280) {
                     Live(MockSelectionModel(selected: nil, details: [])) { $selection in
                         CatalogComposites.inspector(
-                            model: FixtureSceneModel.cube,
                             selection: $selection.wrappedValue,
                             documentState: .empty,
                             openInMenu: catalogOpenInMenu()
@@ -120,7 +116,6 @@ struct InspectorPage: View {
                 StateRow("Loading", alignment: .top, minHeight: 280) {
                     Live(MockSelectionModel(selected: nil, details: [])) { $selection in
                         CatalogComposites.inspector(
-                            model: FixtureSceneModel.cube,
                             selection: $selection.wrappedValue,
                             documentState: .loading,
                             openInMenu: catalogOpenInMenu()
@@ -130,7 +125,6 @@ struct InspectorPage: View {
                 StateRow("Failed", alignment: .top, minHeight: 280) {
                     Live(MockSelectionModel(selected: nil, details: [])) { $selection in
                         CatalogComposites.inspector(
-                            model: FixtureSceneModel.cube,
                             selection: $selection.wrappedValue,
                             documentState: .failed("The file is not valid glTF 2.0."),
                             openInMenu: catalogOpenInMenu()

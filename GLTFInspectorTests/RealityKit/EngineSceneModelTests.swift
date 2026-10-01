@@ -16,10 +16,9 @@ struct EngineSceneModelTests {
 
         #expect(!availability.hasAnimations)
         #expect(!availability.hasLights)
-        #expect(!availability.hasCameras)
-        #expect(!availability.hasSkin)
-        #expect(!availability.hasMorphs)
-        #expect(!availability.isMultiScene)
+        #expect(model.cameras.isEmpty)
+        #expect(model.skins.isEmpty)
+        #expect(model.morphs.isEmpty)
         #expect(model.scenes.count == 1)
         #expect(model.animations.isEmpty)
         #expect(model.convertProblems.isEmpty)
@@ -40,10 +39,10 @@ struct EngineSceneModelTests {
 
         #expect(!availability.hasAnimations)
         #expect(!availability.hasLights)
-        #expect(!availability.hasCameras)
-        #expect(!availability.hasSkin)
-        #expect(!availability.hasMorphs)
-        #expect(!availability.isMultiScene)
+        #expect(model.cameras.isEmpty)
+        #expect(model.skins.isEmpty)
+        #expect(model.morphs.isEmpty)
+        #expect(model.scenes.count == 1)
         #expect(model.animations.isEmpty)
         #expect(model.convertProblems.isEmpty)
     }
@@ -84,9 +83,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.cameras)
         let loaded = try await EntityLoader.load(from: TestFixtures.cameras, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "persp-and-ortho.gltf")
-        let availability = availability(for: model, debugModes: loaded.debugModes)
 
-        #expect(availability.hasCameras)
         #expect(model.cameras.count >= 2)
         let perspective = try #require(model.cameras.first { $0.projection == .perspective })
         let fov = try #require(perspective.fieldOfViewDegrees)
@@ -99,9 +96,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.multiScene)
         let loaded = try await EntityLoader.load(from: TestFixtures.multiScene, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "two-scenes.gltf")
-        let availability = availability(for: model, debugModes: loaded.debugModes)
 
-        #expect(availability.isMultiScene)
         #expect(model.scenes.count >= 2)
         #expect(model.defaultSceneID != nil)
         #expect(OutlinerSection.sections(of: model).contains { $0.title == "Scenes" })
@@ -111,9 +106,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.rigged)
         let loaded = try await EntityLoader.load(from: TestFixtures.rigged, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "two-joint-skin.gltf")
-        let availability = availability(for: model, debugModes: loaded.debugModes)
 
-        #expect(availability.hasSkin)
         #expect(!model.skins.isEmpty)
         #expect(model.skins[0].jointCount >= 2)
         #expect(OutlinerSection.sections(of: model).contains { $0.title == "Skins" })
@@ -123,9 +116,7 @@ struct EngineSceneModelTests {
         try requireFixture(TestFixtures.morph)
         let loaded = try await EntityLoader.load(from: TestFixtures.morph, includeAnimations: false)
         let model = EngineSceneModel(loaded: loaded, fileName: "morph-triangle.gltf")
-        let availability = availability(for: model, debugModes: loaded.debugModes)
 
-        #expect(availability.hasMorphs)
         #expect(!model.morphs.isEmpty)
         #expect(!model.morphs[0].targetNames.isEmpty)
     }

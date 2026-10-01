@@ -80,14 +80,12 @@ public enum CatalogComposites {
     /// `openInMenu` is menu *items* (Finder, Blender, …). The inspector wraps them in
     /// `DSGlassMenuButton`. Passing a styled `Menu` nests a submenu.
     public static func inspector(
-        model: some SceneModel,
         selection: some SelectionModel,
         documentState: ShellDocumentState = .ready,
         openInMenu: AnyView,
         morphTargets: [MorphTargetControl] = []
     ) -> some View {
         RightInspector(
-            model: model,
             selection: selection,
             documentState: documentState,
             openInMenu: openInMenu,

@@ -5,10 +5,6 @@ import Foundation
 public protocol Availability: Sendable {
     var hasAnimations: Bool { get }
     var hasLights: Bool { get }
-    var hasCameras: Bool { get }
-    var isMultiScene: Bool { get }
-    var hasSkin: Bool { get }
-    var hasMorphs: Bool { get }
     /// View modes the file can actually render, in menu order. Always starts with the
     /// base modes; channels the file lacks are absent, not disabled.
     var availableDebugChannels: [ViewMode] { get }
@@ -27,9 +23,5 @@ public struct DerivedAvailability<Model: SceneModel>: Availability {
 
     public var hasAnimations: Bool { !model.animations.isEmpty }
     public var hasLights: Bool { !model.lights.isEmpty }
-    public var hasCameras: Bool { !model.cameras.isEmpty }
-    public var isMultiScene: Bool { model.scenes.count > 1 }
-    public var hasSkin: Bool { !model.skins.isEmpty }
-    public var hasMorphs: Bool { !model.morphs.isEmpty }
     public var availableDebugChannels: [ViewMode] { ViewMode.base + channels.map(ViewMode.channel) }
 }

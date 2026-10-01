@@ -166,23 +166,25 @@ struct EngineViewportControllerTests {
         let defaultsStore = AppDefaultsStore(defaults: defaults)
         let lookStore = AppLookStore(directory: lookDir)
         let settings = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
+        let session = PreviewSession(settings: settings)
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
-        let viewport = EngineViewportController(sidebar: sidebar, settings: settings)
+        let viewport = EngineViewportController(sidebar: sidebar, previewSession: session)
 
+        // The canvas reads the session; the pills read the viewport. Both follow the default.
         defaultsStore.set(.dark, for: .backdrop)
-        viewport.applySession(from: settings)
+        #expect(session.backdrop == .dark)
         #expect(viewport.backdrop == .dark)
 
         defaultsStore.set(.white, for: .backdrop)
-        #expect(viewport.backdrop == .white)
+        #expect(session.backdrop == .white)
 
         viewport.setBackdrop(.window)
         defaultsStore.set(.dark, for: .backdrop)
+        #expect(session.backdrop == .window)
         #expect(viewport.backdrop == .window)
 
         settings.clearSession()
-        viewport.syncFromSettings()
-        #expect(viewport.backdrop == .dark)
+        #expect(session.backdrop == .dark)
     }
 
     @Test func hostSessionWriteThroughUpdatesBindings() {
@@ -240,20 +242,15 @@ struct EngineViewportControllerTests {
     @Test func applySessionRemountDoesNotClobberFileLightDim() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let session = PreviewSession()
-        let settings = EngineSettingsStore()
-        let viewport = EngineViewportController(
-            sidebar: sidebar,
-            previewSession: session,
-            settings: settings
-        )
+        let viewport = EngineViewportController(sidebar: sidebar, previewSession: session)
 
         // Convert-owned dim, as the RealityKit window does on punctual-light open.
         viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: true)
         #expect(session.dimStudioForFileLights == true)
         #expect(viewport.lighting.usesFileLights == true)
 
-        // ShellRootView remount: applySession → syncFromSettings.
-        viewport.applySession(from: settings)
+        // A re-seed from the app defaults.
+        viewport.applySession()
         #expect(session.dimStudioForFileLights == true)
         #expect(viewport.lighting.usesFileLights == true)
         #expect(session.exposureEV == 0)

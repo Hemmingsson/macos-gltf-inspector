@@ -3,100 +3,46 @@ import GLTFCore
 import Observation
 import PreviewUI
 
-/// Per-window lazy overlay on `AppDefaultsStore`, with environment keys routed to `AppLookStore`.
+/// Per-window lazy overlay on the app defaults (`EngineAppDefaultsBridge`).
 ///
 /// Untouched keys track the observed app default live. `center` / `projection` are
-/// session-only — never written as app defaults. Environment IBL keys have no host
-/// `UserDefaults` entry; they read/write `AppLook` via `AppLookStore.apply(_:)`.
+/// session-only — never written as app defaults.
 @MainActor
 @Observable
-final class EngineSettingsStore: SettingsStore {
-    let defaultsStore: AppDefaultsStore
-    let lookStore: AppLookStore
+final class EngineSettingsStore {
+    let appDefaults: EngineAppDefaultsBridge
 
-    private var sessionBool: [String: Bool] = [:]
-    private var sessionBackdrop: [String: BackdropStyle] = [:]
-    private var sessionProjection: [String: Projection] = [:]
-    private var sessionString: [String: String] = [:]
+    /// This window's overrides by key name; a value is always its key's `Value`.
+    private var overrides: [String: any Sendable] = [:]
 
     init(
         defaultsStore: AppDefaultsStore? = nil,
         lookStore: AppLookStore? = nil
     ) {
-        self.defaultsStore = defaultsStore ?? .appGroup
-        self.lookStore = lookStore ?? .shared
+        appDefaults = EngineAppDefaultsBridge(defaultsStore: defaultsStore, lookStore: lookStore)
     }
 
     func `default`<Value>(for key: SettingKey<Value>) -> Value {
-        if EngineAppLookRouting.isAppLookKey(key) {
-            return EngineAppLookRouting.read(key, from: lookStore)
-        }
-        if Self.isSessionOnly(key) {
-            return key.fallback
-        }
-        return defaultsStore.value(for: key)
+        Self.isSessionOnly(key) ? key.fallback : appDefaults.value(for: key)
     }
 
     func sessionValue<Value>(for key: SettingKey<Value>) -> Value {
-        if let override = readSession(key) {
+        if let override = overrides[key.name] as? Value {
             return override
         }
         return `default`(for: key)
     }
 
     func setSession<Value>(_ value: Value, for key: SettingKey<Value>) {
-        writeSession(value, for: key)
+        overrides[key.name] = value
     }
 
     func clearSession() {
-        sessionBool.removeAll()
-        sessionBackdrop.removeAll()
-        sessionProjection.removeAll()
-        sessionString.removeAll()
+        overrides.removeAll()
     }
-
-    // MARK: - Session overlay
-
-    private func readSession<Value>(_ key: SettingKey<Value>) -> Value? {
-        if Value.self == Bool.self {
-            return sessionBool[key.name] as? Value
-        }
-        if Value.self == BackdropStyle.self {
-            return sessionBackdrop[key.name] as? Value
-        }
-        if Value.self == Projection.self {
-            return sessionProjection[key.name] as? Value
-        }
-        if Value.self == String.self {
-            return sessionString[key.name] as? Value
-        }
-        return nil
-    }
-
-    private func writeSession<Value>(_ value: Value, for key: SettingKey<Value>) {
-        if let bool = value as? Bool {
-            sessionBool[key.name] = bool
-            return
-        }
-        if let style = value as? BackdropStyle {
-            sessionBackdrop[key.name] = style
-            return
-        }
-        if let projection = value as? Projection {
-            sessionProjection[key.name] = projection
-            return
-        }
-        if let string = value as? String {
-            sessionString[key.name] = string
-            return
-        }
-    }
-
-    // MARK: - Key routing
 
     private static func isSessionOnly<Value>(_ key: SettingKey<Value>) -> Bool {
         key.name == SettingKey<Bool>.center.name
             || key.name == SettingKey<Projection>.projection.name
     }
-
 }

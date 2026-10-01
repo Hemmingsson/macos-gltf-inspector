@@ -7,14 +7,14 @@ import PreviewUI
 /// Renderer-neutral: the RealityKit window maps it onto `PreviewSessionBindings`
 /// (`RealityKit/PreviewSession+RealityKit.swift`), the WebKit window onto the page `Look`.
 /// Quick Look does not use this type.
+///
+/// The settings-backed keys (backdrop / floor / auto-rotate / center / projection) are not stored
+/// here: they read and pin the window's `EngineSettingsStore`, so an untouched key tracks the app
+/// default live.
 @MainActor
 @Observable
 final class PreviewSession {
-    var autoRotate = true
-    var showFloor = true
-    var backdrop = PreviewSession.storedBackdrop
-    var centerModel = true
-    var orthographic = false
+    let settings: EngineSettingsStore
     var exposureEV: Float = 0
     var dimStudioForFileLights = false
     var environmentYaw: Float = 0
@@ -25,8 +25,32 @@ final class PreviewSession {
     /// Modes the open file offers (always starts with `.shaded`); `viewMode` is one of them.
     var viewModes: [RenderViewMode] = [.shaded]
 
-    private static var storedBackdrop: BackdropStyle {
-        let raw = AppGroupSettings.defaults.string(forKey: AppGroupSettings.Key.background)
-        return raw.flatMap(BackdropStyle.init(rawValue:)) ?? .window
+    init(settings: EngineSettingsStore? = nil) {
+        self.settings = settings ?? EngineSettingsStore()
+    }
+
+    var autoRotate: Bool {
+        get { settings.sessionValue(for: .autoRotate) }
+        set { settings.setSession(newValue, for: .autoRotate) }
+    }
+
+    var showFloor: Bool {
+        get { settings.sessionValue(for: .showFloor) }
+        set { settings.setSession(newValue, for: .showFloor) }
+    }
+
+    var backdrop: BackdropStyle {
+        get { settings.sessionValue(for: .backdrop) }
+        set { settings.setSession(newValue, for: .backdrop) }
+    }
+
+    var centerModel: Bool {
+        get { settings.sessionValue(for: .center) }
+        set { settings.setSession(newValue, for: .center) }
+    }
+
+    var orthographic: Bool {
+        get { settings.sessionValue(for: .projection) == .orthographic }
+        set { settings.setSession(newValue ? .orthographic : .perspective, for: .projection) }
     }
 }

@@ -59,11 +59,10 @@ final class EngineSelectionModel: SelectionModel {
     func isolate(_ id: NodeID?) {
         let target = Self.meshNodeIndex(id)
         let current = sidebar.soloRoot
-        if target == current { return }
+        guard target != current else { return }
+        // `isolate` toggles: a new target solos it, nil un-solos the current root.
         if let target {
-            if current != target {
-                sidebar.isolate(target)
-            }
+            sidebar.isolate(target)
         } else if let current {
             sidebar.isolate(current)
         }
@@ -115,17 +114,7 @@ final class EngineSelectionModel: SelectionModel {
         guard let node = document.nodes.first(where: { $0.index == index }) else {
             return NodeID(kind: .empty, index: index)
         }
-        return NodeID(kind: mapNodeKind(node.kind), index: index)
-    }
-
-    private static func mapNodeKind(_ kind: GLTFSessionDocument.Node.Kind) -> NodeKind {
-        switch kind {
-        case .empty: .empty
-        case .mesh: .mesh
-        case .camera: .camera
-        case .light: .light
-        case .skin: .skin
-        }
+        return NodeID(kind: EngineSceneModel.nodeKind(node.kind), index: index)
     }
 
     static func detail(for id: NodeID, document: GLTFSessionDocument) -> NodeDetail? {
@@ -156,18 +145,15 @@ final class EngineSelectionModel: SelectionModel {
         node: GLTFSessionDocument.Node,
         document: GLTFSessionDocument
     ) -> NodeDetail {
-        let id = NodeID(kind: mapNodeKind(node.kind), index: node.index)
+        let id = NodeID(kind: EngineSceneModel.nodeKind(node.kind), index: node.index)
+        let euler = eulerDegrees(from: node.rotation)
         let transform = TransformInfo(
             position: Vector3(
                 x: Double(node.translation.x),
                 y: Double(node.translation.y),
                 z: Double(node.translation.z)
             ),
-            rotationDegrees: Vector3(
-                x: Double(eulerDegrees(from: node.rotation).x),
-                y: Double(eulerDegrees(from: node.rotation).y),
-                z: Double(eulerDegrees(from: node.rotation).z)
-            ),
+            rotationDegrees: Vector3(x: Double(euler.x), y: Double(euler.y), z: Double(euler.z)),
             scale: Vector3(
                 x: Double(node.scale.x),
                 y: Double(node.scale.y),
@@ -250,10 +236,7 @@ final class EngineSelectionModel: SelectionModel {
 
     private static func animationDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
         guard document.animations.indices.contains(index) else { return nil }
-        let animation = document.animations[index]
-        let trimmed = animation.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = trimmed.isEmpty ? "Clip \(index + 1)" : trimmed
-        let info = AnimationInfo(index: index, name: name, duration: animation.duration)
+        let info = EngineSceneModel.animationInfo(document.animations[index], index: index)
         return NodeDetail(id: info.id, name: info.name, animation: info)
     }
 
@@ -268,10 +251,9 @@ final class EngineSelectionModel: SelectionModel {
     private static func sceneDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
         guard document.scenes.indices.contains(index) else { return nil }
         let scene = document.scenes[index]
-        let name = scene.name.isEmpty ? "Scene \(index)" : scene.name
         return NodeDetail(
             id: NodeID(kind: .scene, index: index),
-            name: name,
+            name: EngineSceneModel.sceneName(scene, index: index),
             sceneRootCount: scene.rootNodeIndices.count
         )
     }

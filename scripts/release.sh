@@ -109,7 +109,7 @@ if [[ "$PREFLIGHT" -eq 1 ]]; then
   echo
 
   if uses_placeholder_ed_key; then
-    echo "warning: UpdateConfig/project.yml still uses the placeholder Sparkle public key" >&2
+    echo "warning: project.yml still uses the placeholder Sparkle public key" >&2
   fi
   echo
 
@@ -158,7 +158,7 @@ parse_project_versions || exit 1
 require_newer_build || exit 1
 
 if uses_placeholder_ed_key; then
-  echo "refusing to publish with the placeholder Sparkle public key. Run generate_keys and paste SUPublicEDKey into project.yml and UpdateConfig.publicEdKey." >&2
+  echo "refusing to publish with the placeholder Sparkle public key. Run generate_keys and paste SUPublicEDKey into project.yml." >&2
   exit 1
 fi
 
