@@ -51,6 +51,7 @@ struct RealityDocumentWindow: View {
                     commands: realityCommands,
                     registerCommands: { window.engineViewport.commands = $0 }
                 )
+                .canvasReadyMarker(renderer: .realityKit, isReady: true)
             }
         }
         .onAppear {

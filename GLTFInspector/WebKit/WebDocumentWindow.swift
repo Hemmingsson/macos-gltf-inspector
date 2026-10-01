@@ -87,6 +87,7 @@ struct WebDocumentWindow: View {
                 ),
                 controller: webCanvas
             )
+            .canvasReadyMarker(renderer: .webKit, isReady: webCanvas.phase == .ready)
             .onAppear { window.engineViewport.commands = .web(webCanvas) }
         }
     }
