@@ -258,8 +258,7 @@ final class TransformSampler {
         target: GLTFNode,
         translationChannel: GLTFAnimationChannel?,
         rotationChannel: GLTFAnimationChannel?,
-        scaleChannel: GLTFAnimationChannel?,
-        maximumSampleInterval: Float
+        scaleChannel: GLTFAnimationChannel?
     ) {
         var minTime: Float = .infinity
         var maxTime: Float = -.infinity
@@ -340,7 +339,7 @@ final class TransformSampler {
         let averageKeyDuration = duration / Float(max(keyCount, 1))
         recommendedSampleInterval = AnimationSampling.sampleInterval(
             averageKeyDuration: averageKeyDuration,
-            maximum: maximumSampleInterval
+            maximum: AnimationSampling.defaultInterval
         )
     }
 

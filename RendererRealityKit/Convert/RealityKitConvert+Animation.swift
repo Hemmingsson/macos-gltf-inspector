@@ -38,8 +38,7 @@ extension RealityKitConvert {
             let transformSampler = TransformSampler(target: targetNode,
                                                         translationChannel: translationChannel,
                                                         rotationChannel: rotationChannel,
-                                                        scaleChannel: scaleChannel,
-                                                        maximumSampleInterval: 1 / 30.0) // TODO: Make sample interval an option
+                                                        scaleChannel: scaleChannel)
             if targetNode.isJoint {
                 // GLTFKit2 sets `isJoint` only while adding the node to a skin's `joints`, so the index exists.
                 let index = skins.lazy.compactMap { $0.joints.firstIndex(of: targetNode) }.first ?? 0
@@ -138,7 +137,7 @@ extension RealityKitConvert {
         )
         let interval = AnimationSampling.sampleInterval(
             averageKeyDuration: sampler.recommendedSampleInterval,
-            maximum: 1 / 30
+            maximum: AnimationSampling.defaultInterval
         )
         let frames = AnimationSampling.sampleTimes(
             from: sampler.minimumTime,
