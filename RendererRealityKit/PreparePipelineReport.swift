@@ -10,7 +10,7 @@ public struct PreparePipelineReport: Equatable, Sendable {
     var dimmedStudioIBL = false
     var decompressedDraco = false
     /// Source `extensionsUsed`.
-    var extensionsUsed: [String] = []
+    public internal(set) var extensionsUsed: [String] = []
 
     public init() {}
 
