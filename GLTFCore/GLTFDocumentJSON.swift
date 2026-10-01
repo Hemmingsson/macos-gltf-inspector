@@ -214,22 +214,14 @@ public enum GLTFDocumentJSON {
         var maxUV = 0
         for primitive in mesh["primitives"] as? [[String: Any]] ?? [] {
             let attributes = primitive["attributes"] as? [String: Any] ?? [:]
-            let positions = accessorCount(attributes["POSITION"], accessors: accessors)
-            stamp.vertexCount += positions
+            stamp.vertexCount += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
             if attributes["NORMAL"] != nil { stamp.hasNormals = true }
             if attributes["TANGENT"] != nil { stamp.hasTangents = true }
             if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) { stamp.hasVertexColors = true }
             for uv in 0..<8 where attributes["TEXCOORD_\(uv)"] != nil {
                 maxUV = max(maxUV, uv + 1)
             }
-            let count = primitive["indices"] != nil
-                ? accessorCount(primitive["indices"], accessors: accessors)
-                : positions
-            switch GLTFJSON.int(primitive["mode"]) ?? 4 {
-            case 4: stamp.triangleCount += count / 3
-            case 5, 6: stamp.triangleCount += max(0, count - 2)
-            default: break
-            }
+            stamp.triangleCount += GLTFJSON.triangleCount(primitive, accessors: accessors)
         }
         stamp.uvSetCount = maxUV
         return stamp
@@ -247,11 +239,6 @@ public enum GLTFDocumentJSON {
             indices.append(index)
         }
         return indices
-    }
-
-    private static func accessorCount(_ value: Any?, accessors: [[String: Any]]) -> Int {
-        guard let index = GLTFJSON.int(value), accessors.indices.contains(index) else { return 0 }
-        return GLTFJSON.int(accessors[index]["count"]) ?? 0
     }
 
     private static func makeMorph(_ mesh: [String: Any], meshIndex: Int) -> GLTFSessionDocument.Morph? {

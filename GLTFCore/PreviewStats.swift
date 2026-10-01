@@ -185,33 +185,14 @@ public struct PreviewStats: Equatable {
                 if let targets = primitive["targets"] as? [Any], !targets.isEmpty {
                     meshHasMorph = true
                 }
-                out.vertices += accessorCount(attributes["POSITION"], accessors: accessors)
-                let mode = GLTFJSON.int(primitive["mode"]) ?? 4
-                let count: Int
-                if let indices = primitive["indices"] {
-                    count = accessorCount(indices, accessors: accessors)
-                } else {
-                    count = accessorCount(attributes["POSITION"], accessors: accessors)
-                }
-                switch mode {
-                case 4:
-                    out.triangles += count / 3
-                case 5, 6:
-                    out.triangles += max(0, count - 2)
-                default:
-                    break
-                }
+                out.vertices += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
+                out.triangles += GLTFJSON.triangleCount(primitive, accessors: accessors)
             }
             if meshHasMorph {
                 out.morphMeshes += 1
             }
         }
         return out
-    }
-
-    private static func accessorCount(_ value: Any?, accessors: [[String: Any]]) -> Int {
-        guard let index = GLTFJSON.int(value), accessors.indices.contains(index) else { return 0 }
-        return GLTFJSON.int(accessors[index]["count"]) ?? 0
     }
 
     /// `1234` → `1.2k`, `2_000_000` → `2M`; below 1000 the plain count.

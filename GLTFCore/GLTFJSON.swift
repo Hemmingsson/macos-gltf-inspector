@@ -42,4 +42,22 @@ enum GLTFJSON {
         guard let values = doubles(value), values.count >= 4 else { return nil }
         return SIMD4<Float>(Float(values[0]), Float(values[1]), Float(values[2]), Float(values[3]))
     }
+
+    /// `count` of the accessor `value` indexes; 0 when it is missing.
+    static func accessorCount(_ value: Any?, accessors: [[String: Any]]) -> Int {
+        guard let index = int(value), accessors.indices.contains(index) else { return 0 }
+        return int(accessors[index]["count"]) ?? 0
+    }
+
+    /// Triangles one primitive draws: lists `count / 3`, strips and fans `count - 2`, other
+    /// modes none. `count` is the indices, or the positions when unindexed.
+    static func triangleCount(_ primitive: [String: Any], accessors: [[String: Any]]) -> Int {
+        let attributes = primitive["attributes"] as? [String: Any] ?? [:]
+        let count = accessorCount(primitive["indices"] ?? attributes["POSITION"], accessors: accessors)
+        switch int(primitive["mode"]) ?? 4 {
+        case 4: return count / 3
+        case 5, 6: return max(0, count - 2)
+        default: return 0
+        }
+    }
 }
