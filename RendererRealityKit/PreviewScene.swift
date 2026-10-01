@@ -123,11 +123,8 @@ struct PreviewScene: View {
         _localFieldOfViewDegrees = State(initialValue: RenderCamera.defaultFieldOfViewDegrees)
     }
 
-    /// Host window supplies PreviewUI overlays; Quick Look (`sidebar == nil`) keeps inlined chrome.
-    private var isHost: Bool { sidebar != nil }
-
-    /// Quick Look (`sidebar == nil`) draws minimal canvas chrome; host uses PreviewUI.
-    private var showsInlineChrome: Bool { !isHost }
+    /// Quick Look (`sidebar == nil`) draws minimal canvas chrome; the host window uses PreviewUI.
+    private var showsInlineChrome: Bool { sidebar == nil }
 
     private var backdropIndex: Binding<Int> {
         session?.backdropIndex ?? $localBackdropIndex
