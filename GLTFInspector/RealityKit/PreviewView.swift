@@ -13,15 +13,14 @@ struct PreviewView: View {
         /// User-visible reason. Open never waits on IBL — lighting is applied later by `PreviewScene`.
         case failed(String)
 
-        /// Model bytes → RealityKit only. No HDR / EnvironmentResource on this path.
+        /// Model bytes → RealityKit only. No HDR / EnvironmentResource on this path. The window
+        /// logs the one "open failed".
         static func loaded(from url: URL) async -> State {
             do {
                 let model = try await EntityLoader.load(from: url)
                 return .ready(model)
             } catch {
-                let message = error.localizedDescription
-                AppLog.error(AppLog.preview, "open failed \(url.lastPathComponent): \(message)")
-                return .failed(message)
+                return .failed(error.localizedDescription)
             }
         }
     }
