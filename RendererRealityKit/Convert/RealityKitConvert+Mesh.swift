@@ -44,11 +44,11 @@ extension RealityKitConvert {
     {
         if skeleton == nil {
             do {
-                if let packed = try convertTightFloatMesh(gltfMesh, context: context) {
+                if let packed = try convertLowLevelMesh(gltfMesh, context: context) {
                     return packed
                 }
             } catch {
-                AppLog.error(AppLog.load, "tight float mesh convert failed: \(error)")
+                AppLog.error(AppLog.load, "low-level mesh convert failed: \(error)")
             }
         }
 

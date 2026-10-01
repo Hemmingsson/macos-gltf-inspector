@@ -8,11 +8,11 @@ extension RealityKitConvert {
     /// Build a `LowLevelMesh` with `MTLVertexFormat.float3` / `float2` layouts. Tight float
     /// bufferViews are memcpy'd (EXP-017); strided, sparse, meshopt and quantized
     /// (`KHR_mesh_quantization`, normalized ints) accessors go through one packed float copy.
-    @MainActor func convertTightFloatMesh(
+    @MainActor func convertLowLevelMesh(
         _ gltfMesh: GLTFMesh,
         context: RealityKitResourceContext
     ) throws -> ModelComponent? {
-        var plans: [TightMeshPrimitivePlan] = []
+        var plans: [LowLevelMeshPrimitivePlan] = []
         plans.reserveCapacity(gltfMesh.primitives.count)
         var totalVertices = 0
         var totalIndices = 0
@@ -22,7 +22,7 @@ extension RealityKitConvert {
         var anyColors = false
 
         for primitive in gltfMesh.primitives {
-            guard let gathered = makeTightMeshPrimitivePlan(
+            guard let gathered = makeLowLevelMeshPrimitivePlan(
                 primitive: primitive,
                 materialIndex: plans.count,
                 context: context
@@ -39,7 +39,7 @@ extension RealityKitConvert {
 
         guard !plans.isEmpty, totalVertices > 0, totalIndices > 0 else { return nil }
 
-        let meshLayout = TightLowLevelLayout.make(
+        let meshLayout = LowLevelLayout.make(
             anyNormals: anyNormals,
             anyTangents: anyTangents,
             anyUVs: anyUVs,
@@ -227,7 +227,7 @@ extension RealityKitConvert {
         }
     }
 
-    private struct TightMeshPrimitivePlan {
+    private struct LowLevelMeshPrimitivePlan {
         let primitive: GLTFPrimitive
         let materialIndex: Int
         let positions: VertexFloats
@@ -244,13 +244,13 @@ extension RealityKitConvert {
     }
 
     private struct TightMeshGatherResult {
-        let plan: TightMeshPrimitivePlan
+        let plan: LowLevelMeshPrimitivePlan
         let hasNormals: Bool
         let hasTangents: Bool
         let hasColors: Bool
     }
 
-    private struct TightLowLevelLayout {
+    private struct LowLevelLayout {
         let attributes: [LowLevelMesh.Attribute]
         let layouts: [LowLevelMesh.Layout]
         let normalBufferIndex: Int?
@@ -263,7 +263,7 @@ extension RealityKitConvert {
             anyTangents: Bool,
             anyUVs: [Bool],
             anyColors: Bool
-        ) -> TightLowLevelLayout {
+        ) -> LowLevelLayout {
             var attributes: [LowLevelMesh.Attribute] = [
                 .init(semantic: .position, format: .float3, layoutIndex: 0, offset: 0)
             ]
@@ -298,7 +298,7 @@ extension RealityKitConvert {
                 attributes.append(.init(semantic: .color, format: .float4, layoutIndex: idx, offset: 0))
                 layouts.append(.init(bufferIndex: idx, bufferStride: 16))
             }
-            return TightLowLevelLayout(
+            return LowLevelLayout(
                 attributes: attributes,
                 layouts: layouts,
                 normalBufferIndex: normalBufferIndex,
@@ -323,7 +323,7 @@ extension RealityKitConvert {
         return .some(floats)
     }
 
-    @MainActor private func makeTightMeshPrimitivePlan(
+    @MainActor private func makeLowLevelMeshPrimitivePlan(
         primitive: GLTFPrimitive,
         materialIndex: Int,
         context: RealityKitResourceContext
@@ -360,7 +360,7 @@ extension RealityKitConvert {
 
         guard let indices = triangleIndices(for: primitive, vertexCount: vertexCount) else { return nil }
 
-        let plan = TightMeshPrimitivePlan(
+        let plan = LowLevelMeshPrimitivePlan(
             primitive: primitive,
             materialIndex: materialIndex,
             positions: positions,
@@ -383,9 +383,9 @@ extension RealityKitConvert {
     @MainActor private func fillLowLevelVertexBuffer(
         _ lowLevelMesh: LowLevelMesh,
         bufferIndex: Int,
-        plans: [TightMeshPrimitivePlan],
+        plans: [LowLevelMeshPrimitivePlan],
         bytesPerVertex: Int,
-        write: (TightMeshPrimitivePlan, UnsafeMutableRawPointer) -> Void
+        write: (LowLevelMeshPrimitivePlan, UnsafeMutableRawPointer) -> Void
     ) {
         lowLevelMesh.withUnsafeMutableBytes(bufferIndex: bufferIndex) { dest in
             guard let destBase = dest.baseAddress else { return }
@@ -399,7 +399,7 @@ extension RealityKitConvert {
 
     @MainActor private func fillLowLevelIndexBuffer(
         _ lowLevelMesh: LowLevelMesh,
-        plans: [TightMeshPrimitivePlan]
+        plans: [LowLevelMeshPrimitivePlan]
     ) {
         lowLevelMesh.withUnsafeMutableIndices { dest in
             guard let destBase = dest.baseAddress else { return }
