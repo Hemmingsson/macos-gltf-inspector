@@ -16,34 +16,27 @@ extension RealityKitConvert {
         plans.reserveCapacity(gltfMesh.primitives.count)
         var totalVertices = 0
         var totalIndices = 0
-        var anyNormals = false
-        var anyTangents = false
-        var anyUVs = [false, false]
-        var anyColors = false
 
         for primitive in gltfMesh.primitives {
-            guard let gathered = makeLowLevelMeshPrimitivePlan(
+            guard let plan = makeLowLevelMeshPrimitivePlan(
                 primitive: primitive,
                 materialIndex: plans.count,
                 context: context
             ) else { return nil }
 
-            plans.append(gathered.plan)
-            totalVertices += gathered.plan.vertexCount
-            totalIndices += gathered.plan.indexCount
-            anyNormals = anyNormals || gathered.hasNormals
-            anyTangents = anyTangents || gathered.hasTangents
-            for set in anyUVs.indices where gathered.plan.uvs[set] != nil { anyUVs[set] = true }
-            anyColors = anyColors || gathered.hasColors
+            plans.append(plan)
+            totalVertices += plan.vertexCount
+            totalIndices += plan.indexCount
         }
 
         guard !plans.isEmpty, totalVertices > 0, totalIndices > 0 else { return nil }
 
+        let anyUVs = [0, 1].map { set in plans.contains { $0.uvs[set] != nil } }
         let meshLayout = LowLevelLayout.make(
-            anyNormals: anyNormals,
-            anyTangents: anyTangents,
+            anyNormals: plans.contains { $0.normals != nil },
+            anyTangents: plans.contains { $0.tangents != nil },
             anyUVs: anyUVs,
-            anyColors: anyColors
+            anyColors: plans.contains { $0.colors != nil }
         )
         let descriptor = LowLevelMesh.Descriptor(
             vertexCapacity: totalVertices,
@@ -243,13 +236,6 @@ extension RealityKitConvert {
         var indexCount: Int { indices.count }
     }
 
-    private struct TightMeshGatherResult {
-        let plan: LowLevelMeshPrimitivePlan
-        let hasNormals: Bool
-        let hasTangents: Bool
-        let hasColors: Bool
-    }
-
     private struct LowLevelLayout {
         let attributes: [LowLevelMesh.Attribute]
         let layouts: [LowLevelMesh.Layout]
@@ -327,7 +313,7 @@ extension RealityKitConvert {
         primitive: GLTFPrimitive,
         materialIndex: Int,
         context: RealityKitResourceContext
-    ) -> TightMeshGatherResult? {
+    ) -> LowLevelMeshPrimitivePlan? {
         guard primitive.primitiveType == .triangles,
               primitive.targets.isEmpty,
               primitive.attribute(forName: "JOINTS_0") == nil,
@@ -346,21 +332,18 @@ extension RealityKitConvert {
         guard uvs.allSatisfy({ $0 == nil || $0?.count == vertexCount }) else { return nil }
 
         let colors: [SIMD4<Float>]?
-        let hasColors: Bool
         if let colorAttr = primitive.attribute(forName: "COLOR_0") {
             guard let packed = Packed.color4Array(for: colorAttr.accessor),
                   packed.count == vertexCount
             else { return nil }
             colors = packed
-            hasColors = true
         } else {
             colors = nil
-            hasColors = false
         }
 
         guard let indices = triangleIndices(for: primitive, vertexCount: vertexCount) else { return nil }
 
-        let plan = LowLevelMeshPrimitivePlan(
+        return LowLevelMeshPrimitivePlan(
             primitive: primitive,
             materialIndex: materialIndex,
             positions: positions,
@@ -371,12 +354,6 @@ extension RealityKitConvert {
             colors: colors,
             indices: indices,
             bounds: bounds
-        )
-        return TightMeshGatherResult(
-            plan: plan,
-            hasNormals: normals != nil,
-            hasTangents: tangents != nil,
-            hasColors: hasColors
         )
     }
 
