@@ -1,1 +1,1 @@
-../../.cursor/agents/repository-cleanup-continue.md
+../../.agents/agents/repository-cleanup-continue.md

@@ -1,1 +1,1 @@
-../../.cursor/agents/repository-simplification.md
+../../.agents/agents/repository-simplification.md
