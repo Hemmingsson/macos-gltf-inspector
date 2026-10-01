@@ -35,7 +35,6 @@ Native Khronos Sample Assets (not committed): `./scripts/fetch-test-models.sh` �
 | `rigged/two-joint-skin.gltf` | `.rigged` | two-joint skin | skeleton controls | — (available for UI) |
 | `morph/morph-triangle.gltf` | `.morph` | one named morph target ("Blink") | morph controls | — (available for UI) |
 | `corrupt/truncated.glb` | `.corrupt` | valid magic, lying chunk lengths, truncated | hard-failure path — must show `.failed`, never a spinner (AGENTS.md pitfall 2) | PipelineHoleTests |
-| `probes/*` (+ `env-wheel.hdr`) | `fixture("probes/…")` | mirror sphere, lit planes, emissive ramp, longitude-encoded HDR — regen `python3 scripts/testdata/make_look_probes.py` | look calibration (opt-in, `scripts/testdata/run-look-probes.sh`) | LookProbeTests |
 
 The last fixtures are on-disk stand-ins for adaptive UI and convert honesty. The in-memory builders in
 [`TestGLBFixtures.swift`](../../GLTFInspectorTests/TestGLBFixtures.swift) still cover byte-level edge
