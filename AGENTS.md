@@ -69,7 +69,7 @@ this worktree is throwaway until merged.
 ./scripts/dev.sh test             # xcodegen + xcodebuild test into this branch's DerivedData (args → xcodebuild)
 ./scripts/dev.sh run cube         # install + launch fixture; logs → .build/logs/debug.log
 ./scripts/dev.sh logs             # tail debug log (agents: read .build/logs/debug.log)
-./scripts/build.sh                # install + open /Applications + verify (explicit ship check)
+./scripts/build.sh                # install + open /Applications + verify (ship check; main checkout only)
 ./scripts/build.sh --install-only # same as dev.sh install (VS Code Build task)
 ./scripts/verify.sh               # installed app + pluginkit
 ./scripts/proof.sh                # StillRenderProofTests (RK convert still) + optional qlmanage
