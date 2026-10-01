@@ -18,21 +18,22 @@ extension ScreenshotCameraPose {
         backdrop: String,
         environmentYaw: Float
     ) async throws -> CGImage {
-        guard let request = LiveStillRequest(
-            interaction: interaction,
-            dimStudioForFileLights: dimStudioForFileLights,
-            exposureEV: exposureEV,
-            backdropIndex: PreviewBackground.index(matchingRawValue: backdrop),
-            environmentYaw: environmentYaw
-        ) else {
-            throw Failure.noLiveCameraPose
-        }
         let aspect: Float = {
             if let view = NSApp.keyWindow?.contentView, view.bounds.height > 1 {
                 return Float(view.bounds.width / view.bounds.height)
             }
             return 16 / 9
         }()
-        return try await request.render(aspect: aspect)
+        guard let image = try await LiveStillRequest.renderLiveStill(
+            interaction: interaction,
+            exposureEV: exposureEV,
+            dimStudioForFileLights: dimStudioForFileLights,
+            backdropIndex: PreviewBackground.index(matchingRawValue: backdrop),
+            environmentYaw: environmentYaw,
+            aspect: aspect
+        ) else {
+            throw Failure.noLiveCameraPose
+        }
+        return image
     }
 }

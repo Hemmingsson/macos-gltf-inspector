@@ -29,7 +29,9 @@ private final class PreviewFrame {
     /// Last session FOV applied to the preview camera (nil after file camera).
     var appliedFieldOfViewDegrees: Float?
     let debugStore = DebugMaterialStore()
-    let debugApplied = DebugAppliedIndex()
+    /// Last debug mode index / double-sided flag applied to the pivot.
+    var appliedDebugIndex: Int?
+    var appliedDoubleSided: Bool?
     /// First scene update after `make` — the `rk first frame` marker; cancelled once it fires.
     var firstFrame: EventSubscription?
 }
@@ -37,9 +39,9 @@ private final class PreviewFrame {
 struct PreviewScene: View {
     let entity: Entity
     /// Session document — clip names for `PreviewClip.usable` (RK often drops them).
-    var document: GLTFSessionDocument = GLTFSessionDocument()
-    var stats: PreviewStats?
-    var debugModes: [PreviewDebugMode]
+    let document: GLTFSessionDocument
+    let stats: PreviewStats
+    let debugModes: [PreviewDebugMode]
     @Bindable var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)?
@@ -70,33 +72,28 @@ struct PreviewScene: View {
     /// in the 16ms tick, unlike re-deriving bounds each frame).
     private let geometryDisablesAutoRotate: Bool
     @State private var playback: RealityKit.AnimationPlaybackController?
-    @State private var clips: [PreviewClip] = []
     @State private var viewport = CGSize(width: 810, height: 600)
     @State private var debugModeIndex = 0
     @State private var pendingReady: AppLook?
     @State private var appliedLook: AppLook?
     @State private var appliedFloorLineIndex = -1
-    @State private var prefetchGeneration = 0
     /// Must be `@State` — parent `updateNSView` recreates the view struct.
     @State private var frame = PreviewFrame()
     private let lookStore = AppLookStore.shared
 
     init(
-        entity: Entity,
-        document: GLTFSessionDocument = GLTFSessionDocument(),
-        stats: PreviewStats?,
-        debugModes: [PreviewDebugMode] = [.none],
-        studioIBLExponent: Float = 0,
+        model: EntityLoader.LoadedModel,
         interaction: PreviewInteraction,
         isDark: Bool,
-        sidebar: (any PreviewOverlay)? = nil,
-        overlayRevision: Int = 0,
-        session: PreviewSessionBindings? = nil
+        sidebar: (any PreviewOverlay)?,
+        overlayRevision: Int,
+        session: PreviewSessionBindings?
     ) {
+        let entity = model.entity
         self.entity = entity
-        self.document = document
-        self.stats = stats
-        self.debugModes = debugModes.isEmpty ? [.none] : debugModes
+        document = model.document
+        stats = model.stats
+        debugModes = model.debugModes.isEmpty ? [.none] : model.debugModes
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
@@ -118,18 +115,15 @@ struct PreviewScene: View {
         _localOrthographic = State(initialValue: false)
         _localExposureEV = State(initialValue: 0)
         // Match auto-dim when the file brought punctual lights (`studioIBLExponent == -2`).
-        _localDimStudioForFileLights = State(initialValue: studioIBLExponent < 0)
+        _localDimStudioForFileLights = State(initialValue: model.studioIBLExponent < 0)
         _localEnvironmentYaw = State(initialValue: 0)
         _localDoubleSided = State(initialValue: false)
         _localShowSkeleton = State(initialValue: false)
-        _localFieldOfViewDegrees = State(initialValue: PreviewCamera.defaultFieldOfViewDegrees)
+        _localFieldOfViewDegrees = State(initialValue: RenderCamera.defaultFieldOfViewDegrees)
     }
 
-    /// Host window supplies PreviewUI overlays; Quick Look (`sidebar == nil`) keeps inlined chrome.
-    private var isHost: Bool { sidebar != nil }
-
-    /// Quick Look (`sidebar == nil`) draws minimal canvas chrome; host uses PreviewUI.
-    private var showsInlineChrome: Bool { !isHost }
+    /// Quick Look (`sidebar == nil`) draws minimal canvas chrome; the host window uses PreviewUI.
+    private var showsInlineChrome: Bool { sidebar == nil }
 
     private var backdropIndex: Binding<Int> {
         session?.backdropIndex ?? $localBackdropIndex
@@ -194,12 +188,9 @@ struct PreviewScene: View {
     private var doubleSidedValue: Bool { doubleSidedBinding.wrappedValue }
     private var showSkeletonValue: Bool { showSkeletonBinding.wrappedValue }
     private var fieldOfViewValue: Float {
-        PreviewCamera.clampedFieldOfView(fieldOfViewBinding.wrappedValue)
+        RenderCamera.clampedFieldOfView(fieldOfViewBinding.wrappedValue)
     }
-    private var documentSkins: [GLTFSessionDocument.Skin] {
-        let fromSidebar = sidebar?.document.skins ?? []
-        return fromSidebar.isEmpty ? document.skins : fromSidebar
-    }
+    private var documentSkins: [GLTFSessionDocument.Skin] { document.skins }
     private var effectiveIBLExponent: Float {
         RealityLook.iblExponent(
             exposureEV: exposureEVValue,
@@ -217,10 +208,6 @@ struct PreviewScene: View {
 
     private var backdropColor: Color {
         PreviewBackground.at(backdropIndex.wrappedValue).color
-    }
-
-    private var tickWhileActive: Bool {
-        autoRotateActive
     }
 
     var body: some View {
@@ -295,11 +282,11 @@ struct PreviewScene: View {
                 Task { @MainActor in
                     interaction.bind(camera: camera, orbitFocus: assembled.pivot)
                     appliedLook = look
-                    clips = usable
-                    if !usable.isEmpty {
-                        startClip(at: 0, playing: false)
-                    }
-                    if !usable.isEmpty {
+                    if let first = usable.first {
+                        // Pose the model on clip 0's first frame (paused at t = 0).
+                        playback?.stop()
+                        playback = entity.playAnimation(first.resource.repeat())
+                        playback?.pause()
                         let summary = usable
                             .map { "\($0.title) (\((($0.duration * 100).rounded() / 100))s)" }
                             .joined(separator: ", ")
@@ -311,23 +298,10 @@ struct PreviewScene: View {
                     content.cameraTarget = pivot
                 }
                 if frame.needsLayoutFit, let camera = frame.camera, let pivot = frame.pivot {
-                    // Undo any Shift-pan offset so Fit framing is around the model center.
-                    pivot.setPosition(.zero, relativeTo: nil)
-                    PreviewCamera.applyFit(
-                        to: camera,
-                        bounds: frame.bounds,
-                        aspect: aspect(of: viewport),
-                        orbitFocus: pivot,
-                        orthographic: useSystemOrbit && orthographicValue,
-                        fieldOfViewInDegrees: fieldOfViewValue
-                    )
+                    applyOpeningFit(to: camera, pivot: pivot)
                     frame.needsLayoutFit = false
                     frame.needsOrthoScale = false
                     frame.didLayoutFit = true
-                    if useSystemOrbit {
-                        frame.appliedSessionOrthographic = orthographicValue
-                        frame.appliedFieldOfViewDegrees = fieldOfViewValue
-                    }
                     Task { @MainActor in interaction.markFitted() }
                 } else if frame.needsOrthoScale, useSystemOrbit, orthographicValue,
                           let camera = frame.camera
@@ -402,8 +376,6 @@ struct PreviewScene: View {
                 Color.clear
             }
             .realityViewCameraControls(useSystemOrbit ? .orbit : .none)
-            // Remount when Center toggles so `make` rebuilds the turntable (no @State writes from make).
-            .id(centerModelValue)
             .backgroundStyle(backdropColor)
             .background {
                 GeometryReader { proxy in
@@ -423,23 +395,27 @@ struct PreviewScene: View {
                 )
             }
 
-            if showsInlineChrome, let facts = stats?.overlayFacts, !facts.isEmpty {
-                PreviewOverlayFacts(facts: facts, tint: chromeTint(active: true))
+            if showsInlineChrome, !stats.overlayFacts.isEmpty {
+                PreviewOverlayFacts(facts: stats.overlayFacts, tint: chromeTint)
                     .allowsHitTesting(false)
                     .padding(.leading, 14)
                     .padding(.bottom, 14)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
         }
-        .onAppear {
+        .task(id: lookStore.look) {
             // Lighting is never part of open — warm HDR after the model is on screen.
-            prefetchLook(lookStore.look)
+            // A newer look cancels this task, so a stale prefetch never lands. The load itself
+            // runs in its own task so cancelling does not abort a half-built EnvironmentResource.
+            let look = lookStore.look
+            if look.useEnvironmentMap {
+                await Task { await PreviewLighting.prefetchLook(look) }.value
+                guard !Task.isCancelled else { return }
+            }
+            pendingReady = look
         }
         .onChange(of: isDark) { _, _ in
             appliedFloorLineIndex = -1
-        }
-        .onChange(of: lookStore.look) { _, look in
-            prefetchLook(look)
         }
         .onChange(of: orthographicValue) { _, _ in
             // Toggle from View menu — apply when system orbit owns the camera.
@@ -448,7 +424,7 @@ struct PreviewScene: View {
             syncSessionProjectionIfNeeded()
         }
         .onChange(of: interaction.openingFitResetID) { _, id in
-            // Menu / Task MainActor only — not RealityView update (AGENTS.md pitfall 4).
+            // Menu / Task MainActor only — not RealityView update (AGENTS.md pitfall 1).
             guard id > 0 else { return }
             resetOpeningFit()
         }
@@ -458,8 +434,8 @@ struct PreviewScene: View {
             guard let pivot = frame.pivot else { return }
             sidebar?.applyIfNeeded(to: pivot)
         }
-        .task(id: tickWhileActive) {
-            guard tickWhileActive else { return }
+        .task(id: autoRotateActive) {
+            guard autoRotateActive else { return }
             var lastTick = Date()
             while !Task.isCancelled {
                 let now = Date()
@@ -487,15 +463,21 @@ struct PreviewScene: View {
         frame.pivot?.setPosition(.zero, relativeTo: nil)
         frame.autoRotateYaw = 0
         frame.spin?.orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
-        guard let camera = frame.camera else {
-            interaction.markFitted()
-            return
+        if let camera = frame.camera {
+            applyOpeningFit(to: camera, pivot: frame.pivot)
         }
+        interaction.markFitted()
+    }
+
+    /// Front-3/4 fit of the turntable bounds with the session projection and FOV. Undoes any
+    /// Shift-pan offset first so framing is around the model center.
+    private func applyOpeningFit(to camera: Entity, pivot: Entity?) {
+        pivot?.setPosition(.zero, relativeTo: nil)
         PreviewCamera.applyFit(
             to: camera,
             bounds: frame.bounds,
             aspect: aspect(of: viewport),
-            orbitFocus: frame.pivot,
+            orbitFocus: pivot,
             orthographic: useSystemOrbit && orthographicValue,
             fieldOfViewInDegrees: fieldOfViewValue
         )
@@ -503,22 +485,21 @@ struct PreviewScene: View {
             frame.appliedSessionOrthographic = orthographicValue
             frame.appliedFieldOfViewDegrees = fieldOfViewValue
         }
-        interaction.markFitted()
     }
 
     private func applyFileCamera() {
-        guard let sidebar, let index = sidebar.selectedCameraIndex,
-              sidebar.document.cameras.indices.contains(index),
+        guard let index = sidebar?.selectedCameraIndex,
+              document.cameras.indices.contains(index),
               let preview = frame.camera
         else { return }
-        let node = sidebar.document.nodes.first(where: { $0.cameraIndex == index })
+        let node = document.nodes.first(where: { $0.cameraIndex == index })
         guard let node,
               let cameraNode = GLTFNodeLookup.entity(nodeIndex: node.index, in: entity)
         else { return }
         PreviewCamera.applyFileView(
             to: preview,
             cameraNode: cameraNode,
-            spec: sidebar.document.cameras[index]
+            spec: document.cameras[index]
         )
     }
 
@@ -550,40 +531,14 @@ struct PreviewScene: View {
         frame.appliedFieldOfViewDegrees = want
     }
 
-    private func prefetchLook(_ look: AppLook) {
-        guard look.useEnvironmentMap else {
-            pendingReady = look
-            return
-        }
-        prefetchGeneration += 1
-        let generation = prefetchGeneration
-        Task {
-            await PreviewLighting.prefetchLook(look)
-            guard generation == prefetchGeneration else { return }
-            pendingReady = look
-        }
-    }
-
-    private func chromeTint(active: Bool) -> Color {
-        PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: active)
-    }
-
-    private func startClip(at index: Int, playing: Bool) {
-        guard clips.indices.contains(index) else { return }
-        let clip = clips[index]
-        playback?.stop()
-        playback = entity.playAnimation(clip.resource.repeat())
-        if playing {
-            playback?.resume()
-        } else {
-            playback?.pause()
-        }
+    private var chromeTint: Color {
+        PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: true)
     }
 
     private func applyDebugIfNeeded(to root: Entity) {
         let index = debugModes.indices.contains(debugModeIndexValue) ? debugModeIndexValue : 0
         let doubleSided = doubleSidedValue
-        guard frame.debugApplied.index != index || frame.debugApplied.doubleSided != doubleSided
+        guard frame.appliedDebugIndex != index || frame.appliedDoubleSided != doubleSided
         else { return }
         PreviewDebugMode.apply(
             debugModes[index],
@@ -591,8 +546,8 @@ struct PreviewScene: View {
             to: root,
             store: frame.debugStore
         )
-        frame.debugApplied.index = index
-        frame.debugApplied.doubleSided = doubleSided
+        frame.appliedDebugIndex = index
+        frame.appliedDoubleSided = doubleSided
     }
 
     private func applySkeletonOverlayIfNeeded(to pivot: Entity) {
@@ -636,11 +591,6 @@ struct PreviewScene: View {
     }
 }
 
-private final class DebugAppliedIndex {
-    var index: Int?
-    var doubleSided: Bool?
-}
-
 /// The RealityKit canvas for one loaded model. Remounts when the model's entity changes or the
 /// host toggles Center.
 public struct RealityPreviewCanvas: View {
@@ -669,11 +619,7 @@ public struct RealityPreviewCanvas: View {
 
     public var body: some View {
         PreviewScene(
-            entity: model.entity,
-            document: model.document,
-            stats: model.stats,
-            debugModes: model.debugModes,
-            studioIBLExponent: model.studioIBLExponent,
+            model: model,
             interaction: interaction,
             isDark: isDark,
             sidebar: sidebar,

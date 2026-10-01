@@ -63,7 +63,7 @@ extension PerfBench {
             add("load rest", BenchClock.ms(loaded - start - timings.parse - timings.nodes - timings.clips))
             jsonSide(url, add)
             let assembled = PreviewCamera.makeTurntable(for: model.entity)
-            let still = try await StillRenderer(
+            _ = try await StillRenderer.render(
                 root: assembled.pivot,
                 bounds: assembled.bounds,
                 width: PerfBench.stillSize,
@@ -72,7 +72,6 @@ extension PerfBench {
                 padding: PreviewCamera.previewFitPadding,
                 intensityExponent: model.studioIBLExponent
             )
-            _ = try await still.capture()
             add("first frame", BenchClock.ms(since: loaded))
             add("total", BenchClock.ms(since: start))
         }
@@ -96,7 +95,7 @@ extension PerfBench {
             let loaded = ContinuousClock.now
             add("thumb load", BenchClock.ms(loaded - start))
             let assembled = PreviewCamera.makeTurntable(for: model.entity)
-            let still = try await StillRenderer(
+            _ = try await StillRenderer.render(
                 root: assembled.pivot,
                 bounds: assembled.bounds,
                 width: PerfBench.stillSize,
@@ -105,7 +104,6 @@ extension PerfBench {
                 padding: PreviewCamera.thumbnailFitPadding,
                 intensityExponent: model.studioIBLExponent
             )
-            _ = try await still.capture()
             add("thumb still", BenchClock.ms(since: loaded))
             add("thumb total", BenchClock.ms(since: start))
         }
@@ -124,19 +122,21 @@ extension PerfBench {
             for file in BenchCorpus.files where file.viewModes {
                 let model = try await EntityLoader.load(from: file.url)
                 let assembled = PreviewCamera.makeTurntable(for: model.entity)
-                let still = try await StillRenderer(
-                    root: assembled.pivot,
-                    bounds: assembled.bounds,
-                    width: PerfBench.stillSize,
-                    height: PerfBench.stillSize,
-                    background: Self.background,
-                    padding: PreviewCamera.previewFitPadding,
-                    intensityExponent: model.studioIBLExponent
-                )
+                func frame() async throws -> CGImage {
+                    try await StillRenderer.render(
+                        root: assembled.pivot,
+                        bounds: assembled.bounds,
+                        width: PerfBench.stillSize,
+                        height: PerfBench.stillSize,
+                        background: Self.background,
+                        padding: PreviewCamera.previewFitPadding,
+                        intensityExponent: model.studioIBLExponent
+                    )
+                }
                 let store = DebugMaterialStore()
-                _ = try await still.capture()
+                _ = try await frame()
                 let steadyStart = ContinuousClock.now
-                _ = try await still.capture()
+                _ = try await frame()
                 BenchReport.row("rk.mode", file.name, "shaded frame", [BenchClock.ms(since: steadyStart)])
 
                 var apply: [String: [Double]] = [:]
@@ -148,7 +148,7 @@ extension PerfBench {
                         // First visit of each mode may build materials / pipelines in RealityKit.
                         if round == 0 {
                             let frameStart = ContinuousClock.now
-                            _ = try await still.capture()
+                            _ = try await frame()
                             BenchReport.row("rk.mode", file.name, "\(name) 1st frame", [BenchClock.ms(since: frameStart)])
                         }
                     }

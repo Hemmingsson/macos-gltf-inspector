@@ -43,8 +43,6 @@ struct PipelineReportTests {
             "KHR_materials_clearcoat",
             "KHR_texture_transform",
         ])
-        #expect(model.pipelineReport.extensionEntries.count == 2)
-        #expect(model.pipelineReport.extensionEntries.contains("KHR_materials_clearcoat"))
     }
 
     @Test func captureExtensionsDedupesAndSorts() {

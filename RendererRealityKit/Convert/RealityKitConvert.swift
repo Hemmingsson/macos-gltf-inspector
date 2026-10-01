@@ -36,6 +36,7 @@ final class RealityKitConvert {
     private var nodeIndices: [ObjectIdentifier: Int] = [:]
     private var entityNames: [ObjectIdentifier: String] = [:]
     var ignoreBakedEmissive = false
+    private var punctualLightCount = 0
 
     /// One converted scene and what convert lost or changed on the way.
     struct BuildResult {
@@ -43,6 +44,8 @@ final class RealityKitConvert {
         let problems: ConvertProblemReport
         /// The baked-emissive policy dropped emissive on this file.
         let droppedBakedEmissive: Bool
+        /// Counted while converting lights — load and scene switch reuse this instead of walking.
+        let studioIBLExponent: Float
         /// Where the time went (`parse` is filled in by `EntityLoader`).
         var timings: ConvertTimings
     }
@@ -60,7 +63,7 @@ final class RealityKitConvert {
         if ignoreBakedEmissive {
             AppLog.info(AppLog.lighting, "ignoring achromatic emissive boost; studio IBL already lights the model")
         }
-        let context = RealityKitResourceContext()
+        let context = try RealityKitResourceContext()
         context.maxImageEdge = maxTextureEdge
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
@@ -106,6 +109,7 @@ final class RealityKitConvert {
             entity: rootEntity,
             problems: context.problems,
             droppedBakedEmissive: ignoreBakedEmissive,
+            studioIBLExponent: RealityPolicy.studioIBLExponent(punctualLightCount: punctualLightCount),
             timings: timings
         )
     }
@@ -159,10 +163,13 @@ final class RealityKitConvert {
         if let gltfLight = gltfNode.light {
             switch gltfLight.type {
             case .directional:
+                punctualLightCount += 1
                 nodeEntity.components.set(convert(directionalLight: gltfLight))
             case .point:
+                punctualLightCount += 1
                 nodeEntity.components.set(convert(pointLight: gltfLight))
             case .spot:
+                punctualLightCount += 1
                 nodeEntity.components.set(convert(spotLight: gltfLight))
             default:
                 break

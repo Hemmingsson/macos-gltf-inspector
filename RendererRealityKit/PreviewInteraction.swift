@@ -173,7 +173,7 @@ public final class PreviewInteraction {
     @MainActor
     private func resetFOV() {
         guard let camera else { return }
-        PreviewCamera.applyFieldOfView(to: camera, degrees: PreviewCamera.defaultFieldOfViewDegrees)
+        PreviewCamera.applyFieldOfView(to: camera, degrees: RenderCamera.defaultFieldOfViewDegrees)
     }
 
     /// Dolly along the camera look axis (not eye→target). Factor &lt; 1 advances;
@@ -209,7 +209,7 @@ extension PreviewInteraction {
     public func reframe(
         on model: EntityLoader.LoadedModel?,
         orthographic: Bool,
-        preset: PreviewCamera.CameraPreset? = nil,
+        preset: CameraPreset? = nil,
         fieldOfViewDegrees: Float
     ) -> Bool {
         guard let camera, let entity = model?.entity else {

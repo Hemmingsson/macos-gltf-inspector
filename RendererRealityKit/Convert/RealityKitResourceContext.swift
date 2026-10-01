@@ -57,7 +57,7 @@ extension MTLSamplerDescriptor {
 }
 
 class RealityKitResourceContext {
-    enum ColorMask : Int {
+    enum ColorMask {
         case red
         case green
         case blue
@@ -136,12 +136,15 @@ class RealityKitResourceContext {
         convertedMaterialsForIdentifiers[ObjectIdentifier(gltfMaterial)] = material
     }
 
-    init() {
+    init() throws {
         guard let metalDevice = MTLCreateSystemDefaultDevice() else {
-            fatalError("Unable to create Metal system default device")
+            throw GLTFInspectorError.make(1022, "Unable to create Metal system default device")
+        }
+        guard let queue = metalDevice.makeCommandQueue() else {
+            throw GLTFInspectorError.make(1022, "Unable to create Metal command queue")
         }
         self.device = metalDevice
-        self.commandQueue = metalDevice.makeCommandQueue()!
+        self.commandQueue = queue
     }
 
     @MainActor func alphaUsage(for gltfTextureParams: GLTFTextureParams) -> TextureAlpha.Usage {

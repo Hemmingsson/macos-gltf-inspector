@@ -60,10 +60,7 @@ extension RealityKitConvert {
                 }
                 let sampledAnimation = SampledAnimation(frames: frames,
                                                         tweenMode: transformSampler.hasStepChannel ? .hold : .linear,
-                                                        frameInterval: AnimationSampling.sampleInterval(
-                                                            averageKeyDuration: transformSampler.recommendedSampleInterval,
-                                                            maximum: AnimationSampling.defaultInterval
-                                                        ),
+                                                        frameInterval: transformSampler.recommendedSampleInterval,
                                                         bindTarget: bindPath(of: targetNode).transform,
                                                         delay: TimeInterval(transformSampler.startTime))
                 animations.append(sampledAnimation)
@@ -101,10 +98,7 @@ extension RealityKitConvert {
                 let skeletalAnimation = SampledAnimation(jointNames: jointAnimation.jointNames,
                                                          frames: jointTransforms,
                                                          tweenMode: .linear, // TODO: Support .hold?
-                                                         frameInterval: AnimationSampling.sampleInterval(
-                                                            averageKeyDuration: jointAnimation.sampleInterval,
-                                                            maximum: AnimationSampling.defaultInterval
-                                                         ),
+                                                         frameInterval: jointAnimation.sampleInterval,
                                                          bindTarget: bindPath.jointTransforms,
                                                          delay: delay)
                 animations.append(skeletalAnimation)
@@ -135,10 +129,7 @@ extension RealityKitConvert {
             targetCount: names.count,
             interpolation: channel.sampler.interpolationMode
         )
-        let interval = AnimationSampling.sampleInterval(
-            averageKeyDuration: sampler.recommendedSampleInterval,
-            maximum: AnimationSampling.defaultInterval
-        )
+        let interval = sampler.recommendedSampleInterval
         let frames = AnimationSampling.sampleTimes(
             from: sampler.minimumTime,
             through: sampler.maximumTime,

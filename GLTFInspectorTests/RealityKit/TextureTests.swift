@@ -27,7 +27,7 @@ struct TextureAlphaUsageTests {
 struct TextureChannelSwizzleTests {
     @Test func metallicAndRoughnessShareOneUpload() throws {
         let params = try Self.params(red: 255, green: 128, blue: 0)
-        let context = RealityKitResourceContext()
+        let context = try RealityKitResourceContext()
         let roughness = try #require(context.texture(for: params, channels: .green, semantic: .scalar))
         let metallic = try #require(context.texture(for: params, channels: .blue, semantic: .scalar))
         #expect(roughness.resource === metallic.resource)
@@ -37,7 +37,7 @@ struct TextureChannelSwizzleTests {
 
     @Test func opacityReusesTheBaseColorUpload() throws {
         let params = try Self.params(red: 10, green: 20, blue: 30)
-        let context = RealityKitResourceContext()
+        let context = try RealityKitResourceContext()
         let base = try #require(context.texture(for: params, channels: .all, semantic: .color))
         let alpha = try #require(context.texture(for: params, channels: .alpha, semantic: .scalar))
         #expect(base.resource === alpha.resource)

@@ -44,7 +44,7 @@ struct PrepareFreeInputsTests {
     }
 
     static func render(_ root: Entity, eye: SIMD3<Float>) async throws -> CGImage {
-        let still = try await StillRenderer(
+        return try await StillRenderer.render(
             root: root,
             cameraPose: StillCameraPose(
                 position: eye,
@@ -55,7 +55,6 @@ struct PrepareFreeInputsTests {
             height: 64,
             background: CGColor(gray: 0.5, alpha: 1)
         )
-        return try await still.capture()
     }
 
     static func centerPixel(of image: CGImage) throws -> (r: Int, g: Int, b: Int) {

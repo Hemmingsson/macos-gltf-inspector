@@ -98,12 +98,12 @@ struct RealityDocumentWindow: View {
         return FocusedPreviewCommands(
             fit: { reframingCamera() },
             reset: resetPreviewView,
-            applyCameraPreset: { reframingCamera(preset: PreviewCamera.CameraPreset(rawValue: $0.rawValue)) },
+            applyCameraPreset: { reframingCamera(preset: $0) },
             screenshot: renderRealityStill
         )
     }
 
-    private func reframingCamera(preset: PreviewCamera.CameraPreset? = nil) {
+    private func reframingCamera(preset: GLTFCore.CameraPreset? = nil) {
         let session = window.previewSession
         window.sidebar?.selectedCameraIndex = nil
         guard interaction.reframe(
@@ -161,8 +161,6 @@ struct RealityDocumentWindow: View {
             guard window.isCurrent(generation) else { return }
             switch state {
             case .ready(let model):
-                let player = RealityClipPlayer(model: model)
-                logOpenReady(model, clips: player.clips, url: url)
                 window.adopt(
                     document: model.document,
                     materialVariantNames: model.materialVariantNames,
@@ -171,7 +169,8 @@ struct RealityDocumentWindow: View {
                     dimStudioForFileLights: model.studioIBLExponent < 0
                 )
                 refreshMorphTargets(from: model)
-                playbackController = EngineAnimationPlaybackController(player: player)
+                playbackController = EngineAnimationPlaybackController(loaded: model)
+                logOpenReady(model, url: url)
                 AppLog.info(
                     AppLog.host,
                     "pipeline \(url.lastPathComponent) \(model.pipelineReport.entries.joined(separator: " | "))"
@@ -190,11 +189,12 @@ struct RealityDocumentWindow: View {
         }
     }
 
-    private func logOpenReady(_ model: EntityLoader.LoadedModel, clips: [PreviewClip], url: URL) {
+    private func logOpenReady(_ model: EntityLoader.LoadedModel, url: URL) {
         let dims = model.extent.dimensions
+        let clips = playbackController.clips
         let clipSummary = clips.isEmpty
             ? "none"
-            : clips.map { "\($0.title)(\(String(format: "%.3fs", $0.duration)))" }
+            : clips.map { "\($0.name)(\(String(format: "%.3fs", $0.duration)))" }
                 .joined(separator: ",")
         AppLog.info(
             AppLog.host,
@@ -248,16 +248,15 @@ struct RealityDocumentWindow: View {
         let variantIndex = sidebar.selectedMaterialVariantIndex
         Task {
             do {
-                let scene = try await EntityLoader.loadScene(
-                    index: index,
+                guard case .ready(let model) = convert else { return }
+                let reloaded = try await model.switchingScene(
+                    to: index,
                     from: url,
                     materialVariantIndex: variantIndex
                 )
                 guard window.isCurrent(generation) else { return }
-                guard case .ready(let model) = convert else { return }
                 sidebar.showAll()
                 interaction = PreviewInteraction()
-                let reloaded = model.replacingScene(scene)
                 applyReloaded(reloaded, fileName: url.lastPathComponent, sidebar: sidebar)
             } catch {
                 guard window.isCurrent(generation) else { return }

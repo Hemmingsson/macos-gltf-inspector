@@ -81,14 +81,9 @@ struct StillCameraPose: Sendable {
 
 /// Offscreen `RealityRenderer` for Finder thumbnails and host PNG exports.
 @MainActor
-final class StillRenderer {
-    private let renderer: RealityRenderer
-    private let texture: MTLTexture
-    let width: Int
-    let height: Int
-
+enum StillRenderer {
     /// Thumbnail / fit camera path — front-¾ framing from bounds.
-    init(
+    static func render(
         root: Entity,
         bounds: BoundingBox,
         width: Int,
@@ -96,7 +91,7 @@ final class StillRenderer {
         background: CGColor,
         padding: Float,
         intensityExponent: Float = 0
-    ) async throws {
+    ) async throws -> CGImage {
         let aspect = Float(width) / Float(max(height, 1))
         let camera = PreviewCamera.makeFrontThreeQuarter(
             minBound: bounds.min,
@@ -104,7 +99,7 @@ final class StillRenderer {
             padding: padding,
             aspect: aspect
         )
-        let built = try await Self.build(
+        return try await capture(
             root: root,
             camera: camera,
             width: width,
@@ -114,15 +109,11 @@ final class StillRenderer {
             environmentYaw: 0,
             look: .current
         )
-        self.renderer = built.renderer
-        self.texture = built.texture
-        self.width = width
-        self.height = height
     }
 
     /// Host PNG export — re-render at the current live camera pose.
     /// `look` defaults to the user's; the pixel-diff harness pins its own.
-    init(
+    static func render(
         root: Entity,
         cameraPose: StillCameraPose,
         width: Int,
@@ -131,8 +122,8 @@ final class StillRenderer {
         intensityExponent: Float = 0,
         environmentYaw: Float = 0,
         look: AppLook = .current
-    ) async throws {
-        let built = try await Self.build(
+    ) async throws -> CGImage {
+        try await capture(
             root: root,
             camera: cameraPose.makeCameraEntity(),
             width: width,
@@ -142,10 +133,70 @@ final class StillRenderer {
             environmentYaw: environmentYaw,
             look: look
         )
-        self.renderer = built.renderer
-        self.texture = built.texture
-        self.width = width
-        self.height = height
+    }
+
+    /// Offscreen re-render at `cameraPose`, sized from `pixelHeight` × `aspect`.
+    static func renderImage(
+        root: Entity,
+        cameraPose: StillCameraPose,
+        background: CGColor,
+        intensityExponent: Float,
+        environmentYaw: Float,
+        pixelHeight: Int = 1080,
+        aspect: Float = 16 / 9
+    ) async throws -> CGImage {
+        let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : (16 / 9)
+        let height = max(64, pixelHeight)
+        let width = max(64, Int((Float(height) * safeAspect).rounded()))
+        return try await render(
+            root: root,
+            cameraPose: cameraPose,
+            width: width,
+            height: height,
+            background: background,
+            intensityExponent: intensityExponent,
+            environmentYaw: environmentYaw
+        )
+    }
+
+    private static func capture(
+        root: Entity,
+        camera: Entity,
+        width: Int,
+        height: Int,
+        background: CGColor,
+        intensityExponent: Float,
+        environmentYaw: Float,
+        look: AppLook
+    ) async throws -> CGImage {
+        let built = try await build(
+            root: root,
+            camera: camera,
+            width: width,
+            height: height,
+            background: background,
+            intensityExponent: intensityExponent,
+            environmentYaw: environmentYaw,
+            look: look
+        )
+        let renderer = built.renderer
+        let texture = built.texture
+        let output = try RealityRenderer.CameraOutput(.singleProjection(colorTexture: texture))
+        let interval = AppLog.signposter.beginInterval("still.capture")
+        defer { AppLog.signposter.endInterval("still.capture", interval) }
+        return try await withCheckedThrowingContinuation { continuation in
+            do {
+                try renderer.updateAndRender(deltaTime: 0, cameraOutput: output, onComplete: { [texture, width, height] _ in
+                    do {
+                        continuation.resume(returning: try image(from: texture, width: width, height: height))
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                })
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
     }
 
     private static func build(
@@ -199,50 +250,6 @@ final class StillRenderer {
             throw error("Could not allocate texture", code: 2)
         }
         return (renderer, texture)
-    }
-
-    func capture() async throws -> CGImage {
-        let output = try RealityRenderer.CameraOutput(.singleProjection(colorTexture: texture))
-        let interval = AppLog.signposter.beginInterval("still.capture")
-        defer { AppLog.signposter.endInterval("still.capture", interval) }
-        return try await withCheckedThrowingContinuation { continuation in
-            do {
-                try renderer.updateAndRender(deltaTime: 0, cameraOutput: output, onComplete: { [texture, width, height] _ in
-                    do {
-                        continuation.resume(returning: try image(from: texture, width: width, height: height))
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
-                })
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-
-    /// Offscreen re-render at `cameraPose`, sized from `pixelHeight` × `aspect`.
-    static func renderImage(
-        root: Entity,
-        cameraPose: StillCameraPose,
-        background: CGColor,
-        intensityExponent: Float,
-        environmentYaw: Float,
-        pixelHeight: Int = 1080,
-        aspect: Float = 16 / 9
-    ) async throws -> CGImage {
-        let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : (16 / 9)
-        let height = max(64, pixelHeight)
-        let width = max(64, Int((Float(height) * safeAspect).rounded()))
-        let still = try await StillRenderer(
-            root: root,
-            cameraPose: cameraPose,
-            width: width,
-            height: height,
-            background: background,
-            intensityExponent: intensityExponent,
-            environmentYaw: environmentYaw
-        )
-        return try await still.capture()
     }
 }
 
