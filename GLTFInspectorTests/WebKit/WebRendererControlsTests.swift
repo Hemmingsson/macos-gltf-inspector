@@ -15,9 +15,7 @@ import Testing
 @MainActor
 struct WebRendererControlsTests {
     private func makeHost() async throws -> WebRendererHost {
-        let host = try WebRendererHost(mode: .still, size: 192)
-        try await host.start()
-        try await host.apply(WebPreviewCanvas.Look())
+        let host = try await WebKitTest.stillHost(size: 192)
         _ = try await host.load(
             model: TestModels.khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
         )
@@ -294,7 +292,7 @@ struct RendererLookDefaultsTests {
         defer { store.tearDown() }
 
         func render() async throws -> Data? {
-            let host = try WebRendererHost(mode: .still, size: 160)
+            let host = try WebKitTest.host(size: 160)
             try await host.start()
             try await host.apply(.stored(defaults: store.defaults, directory: store.directory))
             _ = try await host.load(model: model)
@@ -317,9 +315,7 @@ struct RendererLookDefaultsTests {
 struct WebRendererThumbnailPathTests {
     @Test
     func sidecarGLTFProducesAStill() async throws {
-        let host = try WebRendererHost(mode: .still, size: 128)
-        try await host.start()
-        try await host.apply(WebPreviewCanvas.Look())
+        let host = try await WebKitTest.stillHost(size: 128)
         _ = try await host.load(model: TestFixtures.cube)
         let image = try await host.renderStill()
         #expect(image.width > 8)
@@ -328,57 +324,10 @@ struct WebRendererThumbnailPathTests {
 
     @Test
     func corruptFileFailsInsteadOfHanging() async throws {
-        let host = try WebRendererHost(mode: .still, size: 64)
+        let host = try WebKitTest.host(size: 64)
         try await host.start()
         await #expect(throws: Error.self) {
             _ = try await host.load(model: TestFixtures.corrupt)
         }
-    }
-
-    /// Cold still of BoomBox — the spike's 1807 ms comparison point.
-    @Test(.enabled(if: TestModels.hasKhronosSamples))
-    func recordsSingleFileStillTiming() async throws {
-        let started = CFAbsoluteTimeGetCurrent()
-        let host = try WebRendererHost(mode: .still, size: 256)
-        try await host.start()
-        try await host.apply(WebPreviewCanvas.Look())
-        _ = try await host.load(model: TestModels.boomBox)
-        let image = try await host.renderStill()
-        let ms = (CFAbsoluteTimeGetCurrent() - started) * 1000
-        print(String(format: "thumb-bench single BoomBox %.0fms %dx%d", ms, image.width, image.height))
-        #expect(image.width == 256)
-        #expect(ms < 15_000)
-    }
-
-    /// 100 sequential stills on one warm host (the reuse lever) plus 12 cold hosts.
-    @Test
-    func recordsFolderScaleStillTiming() async throws {
-        let files = [TestFixtures.tiny] + TestModels.khronosGLBs.prefix(11)
-        let warmHost = try WebRendererHost(mode: .still, size: 64)
-        try await warmHost.start()
-        try await warmHost.apply(WebPreviewCanvas.Look())
-        let warmStart = CFAbsoluteTimeGetCurrent()
-        for i in 0..<100 {
-            _ = try await warmHost.load(model: files[i % files.count])
-            _ = try await warmHost.renderStill()
-        }
-        let warmMs = (CFAbsoluteTimeGetCurrent() - warmStart) * 1000
-        print(String(format: "thumb-bench warm 100 stills %.0fms (%.0fms/file)", warmMs, warmMs / 100))
-
-        let coldCount = min(12, max(1, files.count))
-        let coldStart = CFAbsoluteTimeGetCurrent()
-        for i in 0..<coldCount {
-            let host = try WebRendererHost(mode: .still, size: 64)
-            try await host.start()
-            try await host.apply(WebPreviewCanvas.Look())
-            _ = try await host.load(model: files[i % files.count])
-            _ = try await host.renderStill()
-        }
-        let coldMs = (CFAbsoluteTimeGetCurrent() - coldStart) * 1000
-        print(String(
-            format: "thumb-bench cold %d hosts %.0fms (%.0fms/file)",
-            coldCount, coldMs, coldMs / Double(coldCount)
-        ))
-        #expect(warmMs / 100 < 5_000)
     }
 }

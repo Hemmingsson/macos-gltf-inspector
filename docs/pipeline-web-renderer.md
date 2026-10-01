@@ -176,6 +176,28 @@ rebuild from source (`npm ci`), which this repo does not do; not measured.
 | Spare warm host in the app | would save a warm page start (~75 ms) for a second window; the first window starts its page with the app anyway | not worth an idle WebContent |
 | Off-main / memory-mapped model reads (256 MB GLB, warm cache) | open 129–230 ms either way; worst main-thread gap 33–38 ms (read), 32–41 (mapped), 18–34 (off-main) | no clear win; `didReceive` still copies on main |
 
+### First-paint experiments (EXP-001…016, 2026-09-30)
+
+Gate: fresh-process `visibleMs` (page + IBL + load) or `stillMs` (first GPU frame + PNG) on
+BoomBox and Corset, KEEP at ≥ 12 % faster with tiny not > 15 % slower. The wait is the page start,
+not model parse: session-first ~1850 ms visible (page ~1170, IBL ~660), process-cold with WebKit
+warm ~300–530 ms. Landed: IBL after the first frame (EXP-002, `iblMs` → 0), our module minified
+6.1 → 3.2 MB (EXP-010), cached Finder icon under the live canvas (EXP-008), Quick Look page
+prestart in `loadView` (EXP-009).
+
+**Measured slower or flat — do not retry without a materially different approach:**
+
+| Idea | Result |
+| --- | --- |
+| Peek the GLB/JSON before `loadGltf` to defer KTX/Draco (EXP-001) | peek cost ate the page save on Corset / tiny |
+| Stub KTX/Draco, inject on decode miss (EXP-005) | −5 / −10 %, under the gate; not banned |
+| Stream the bundle through `WKURLSchemeTask` in 64 KB chunks (EXP-004) | +10 / +13 %; one read is faster |
+| `WKWebsiteDataStore.default()` for a compile cache (EXP-006) | first-process page slower |
+| Official npm `@khronosgroup/gltf-viewer` 1.1.0 module (EXP-007) | older build, `stillMs` ~2×; minify ours instead |
+| Shared live host for Quick Look remounts (EXP-003) | first spacebar unchanged; only a possible second-open win |
+| `internalMSAA = 0`, `floatingPointFramebuffer = false`, `maxAnisotropy = 1`, skip first-bind `generateMipmap` (EXP-011…014) | flat or slower `stillMs` |
+| Skip the unused first-init FBOs or the still-mode tonemap blit (EXP-015/016) | `stillMs` worse, up to ~2× |
+
 ---
 
 ## What this path does not do
