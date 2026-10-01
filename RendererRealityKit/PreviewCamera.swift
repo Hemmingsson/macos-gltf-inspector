@@ -284,11 +284,6 @@ public enum PreviewCamera {
         camera.components.set(orthographic)
     }
 
-    /// A leftover mesh this many times larger than the median mesh is ignored
-    /// for Fit. Typical case: Blender cm-scale helper beside a `0.01` asset.
-    /// Equal-sized city tiles stay; they share one scale.
-    static let outlierExtentRatio = ModelBounds.outlierExtentRatio
-
     /// Union of `ModelComponent` visual bounds. Helper/empty nodes are ignored so
     /// collision boxes do not push the camera out. Falls back to the full entity
     /// if nothing has a mesh yet.
@@ -320,47 +315,11 @@ public enum PreviewCamera {
         return entity.visualBounds(relativeTo: reference)
     }
 
-    /// Keep the cluster of typical mesh sizes; drop a single km-scale leftover.
+    /// Keep the cluster of typical mesh sizes; drop a single km-scale leftover
+    /// (the JSON-bounds rule, `ModelBounds.union`).
     static func unionModelBoxes(_ boxes: [BoundingBox]) -> BoundingBox? {
-        let finite = boxes.filter { !$0.isEmpty && allFinite($0.min) && allFinite($0.max) }
-        guard !finite.isEmpty else { return nil }
-        let extents = finite.map { longest($0.max - $0.min) }
-        let kept: [BoundingBox]
-        if finite.count >= 3 {
-            let mid = median(extents)
-            if mid > 0 {
-                let limit = mid * outlierExtentRatio
-                let filtered = zip(finite, extents).compactMap { box, ext in
-                    ext <= limit ? box : nil
-                }
-                kept = filtered.isEmpty ? finite : filtered
-            } else {
-                kept = finite
-            }
-        } else {
-            kept = finite
-        }
-        var minBound = SIMD3<Float>(repeating: Float.greatestFiniteMagnitude)
-        var maxBound = SIMD3<Float>(repeating: -Float.greatestFiniteMagnitude)
-        for box in kept {
-            minBound = simd_min(minBound, box.min)
-            maxBound = simd_max(maxBound, box.max)
-        }
-        return BoundingBox(min: minBound, max: maxBound)
-    }
-
-    static func longest(_ extent: SIMD3<Float>) -> Float {
-        max(extent.x, max(extent.y, extent.z))
-    }
-
-    static func median(_ values: [Float]) -> Float {
-        guard !values.isEmpty else { return 0 }
-        let sorted = values.sorted()
-        let mid = sorted.count / 2
-        if sorted.count.isMultiple(of: 2) {
-            return (sorted[mid - 1] + sorted[mid]) * 0.5
-        }
-        return sorted[mid]
+        ModelBounds.union(boxes.map { ModelBounds(min: $0.min, max: $0.max) })
+            .map { BoundingBox(min: $0.min, max: $0.max) }
     }
 
     /// Removes live camera components so RealityKit uses the preview camera.

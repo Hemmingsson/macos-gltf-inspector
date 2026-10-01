@@ -403,6 +403,18 @@ struct ModelBoundsTests {
         #expect(abs(afterExtent.z - beforeExtent.z) < 0.01)
     }
 
+    /// `unionModelBoxes` hands RealityKit boxes to `ModelBounds.union`; both must call the same
+    /// boxes empty (any max < min; a zero-size box is not empty).
+    @Test func boundingBoxEmptyMatchesModelBounds() {
+        let cases: [(SIMD3<Float>, SIMD3<Float>)] = [
+            (.zero, .zero), (SIMD3(0, 0, 0), SIMD3(1, 0, 1)), (SIMD3(0, 1, 0), SIMD3(1, 0, 1)),
+            (SIMD3(1, 1, 1), SIMD3(0, 0, 0)), (SIMD3(0, 0, 0), SIMD3(1, 1, 1)),
+        ]
+        for (lo, hi) in cases {
+            #expect(BoundingBox(min: lo, max: hi).isEmpty == ModelBounds(min: lo, max: hi).isEmpty)
+        }
+    }
+
     @Test func unionKeepsEqualSizedTiles() throws {
         let boxes = (0..<6).map { i in
             let o = Float(i) * 200
