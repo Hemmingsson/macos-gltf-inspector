@@ -25,17 +25,6 @@ public struct GLTFValidationReport: Sendable, Equatable {
 
     /// Green badge when there are no errors or warnings (infos/hints OK).
     public var isClean: Bool { errorCount == 0 && warningCount == 0 }
-
-    /// Orange badge count — errors + warnings.
-    public var badgeCount: Int { errorCount + warningCount }
-
-    public var badgeTitle: String {
-        if isClean { return "Valid glTF 2.0" }
-        if errorCount > 0 {
-            return badgeCount == 1 ? "1 issue" : "\(badgeCount) issues"
-        }
-        return warningCount == 1 ? "1 warning" : "\(warningCount) warnings"
-    }
 }
 
 /// Host sidebar outcome — success report, soft failure, or intentional skip.
@@ -43,14 +32,6 @@ public enum GLTFValidationState: Sendable, Equatable {
     case success(GLTFValidationReport)
     case failed(String)
     case skipped(String)
-
-    public var badgeTitle: String {
-        switch self {
-        case .success(let report): report.badgeTitle
-        case .failed(let message): message
-        case .skipped(let message): message
-        }
-    }
 
     public var report: GLTFValidationReport? {
         if case .success(let report) = self { return report }

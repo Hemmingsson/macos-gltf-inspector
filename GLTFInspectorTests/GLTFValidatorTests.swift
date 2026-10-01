@@ -8,7 +8,6 @@ struct GLTFValidatorTests {
         let url = TestFixtures.invalid
         let report = try await GLTFValidator.validate(fileAt: url)
         #expect(report.errorCount >= 1)
-        #expect(report.badgeCount >= 1)
         #expect(!report.isClean)
         #expect(report.messages.contains { $0.code == "UNRESOLVED_REFERENCE" })
         #expect(report.validatorVersion.contains("2.0.0"))
