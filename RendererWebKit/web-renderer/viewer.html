@@ -67,6 +67,43 @@ if (!gl) {
     throw new Error("WebGL 2 unavailable");
 }
 
+// GPU wireframe: LINE around mesh primitives. Post-process (tonemap strip, IBL triangle)
+// stays FILL. Missing extension → cached CPU lines, rebuilt only on scene/variant change.
+const polygonMode = gl.getExtension("WEBGL_polygon_mode");
+let wireframePass = false;
+let cachedWireLines = null;
+let cachedWireKey = null;
+
+function isPostProcessPrimitive(mode, count, isArrays) {
+    // Tonemap / blit quads. `TRIANGLES, 3` is also a one-triangle mesh (the skin fixture),
+    // so it is only skipped on the arrays path when it is the IBL fullscreen triangle —
+    // that pass runs outside `wireframePass` (loadEnvironment), not here.
+    return isArrays && mode === gl.TRIANGLE_STRIP && count === 4;
+}
+
+function wrapPolygonModeDraw(orig, countAt, isArrays) {
+    return function(...args) {
+        const mode = args[0];
+        const count = args[countAt];
+        const line = wireframePass
+            && (mode === gl.TRIANGLES || mode === gl.TRIANGLE_STRIP || mode === gl.TRIANGLE_FAN)
+            && !isPostProcessPrimitive(mode, count, isArrays);
+        if (line) polygonMode.polygonModeWEBGL(gl.FRONT_AND_BACK, polygonMode.LINE_WEBGL);
+        try {
+            return orig.apply(this, args);
+        } finally {
+            if (line) polygonMode.polygonModeWEBGL(gl.FRONT_AND_BACK, polygonMode.FILL_WEBGL);
+        }
+    };
+}
+
+if (polygonMode) {
+    gl.drawArrays = wrapPolygonModeDraw(gl.drawArrays.bind(gl), 2, true);
+    gl.drawElements = wrapPolygonModeDraw(gl.drawElements.bind(gl), 1, false);
+    gl.drawArraysInstanced = wrapPolygonModeDraw(gl.drawArraysInstanced.bind(gl), 2, true);
+    gl.drawElementsInstanced = wrapPolygonModeDraw(gl.drawElementsInstanced.bind(gl), 1, false);
+}
+
 const view = new GltfView(gl);
 const state = view.createState();
 // Relative libPath, per the absolute-URL restriction noted above.
@@ -95,7 +132,9 @@ const frameTimeLimit = 600;
 
 function drawFrame() {
     const t0 = performance.now();
+    wireframePass = !!(showWireframe && polygonMode);
     view.renderFrame(state, canvas.width, canvas.height);
+    wireframePass = false;
     drawOverlays();
     const ms = performance.now() - t0;
     if (frameTimes.length >= frameTimeLimit) frameTimes.shift();
@@ -336,7 +375,10 @@ function collectAABB(lines, box, color) {
     for (const [i, j] of edges) pushLine(lines, corners[i], corners[j], color);
 }
 
+let collectWireframeCalls = 0;
+
 function collectWireframe(lines) {
+    collectWireframeCalls += 1;
     const gltf = state.gltf;
     const scene = gltf?.scenes?.[state.sceneIndex];
     if (!scene) return;
@@ -379,12 +421,22 @@ function collectWireframe(lines) {
 
 function drawOverlays() {
     if (!state.gltf) return;
-    if (!showFloor && centerModel && !showWireframe && selectedNodeIndex == null) return;
+    const gpuWire = showWireframe && polygonMode;
+    if (!showFloor && centerModel && (!showWireframe || gpuWire) && selectedNodeIndex == null) return;
     const program = compileOverlayProgram();
     const lines = [];
     if (showFloor) collectPolarFloor(lines);
     if (!centerModel) collectOriginGizmo(lines);
-    if (showWireframe) collectWireframe(lines);
+    if (showWireframe && !polygonMode) {
+        const key = `${state.sceneIndex}|${state.variant ?? ""}`;
+        if (cachedWireKey !== key || cachedWireLines == null) {
+            const built = [];
+            collectWireframe(built);
+            cachedWireLines = built;
+            cachedWireKey = key;
+        }
+        for (let i = 0; i < cachedWireLines.length; i++) lines.push(cachedWireLines[i]);
+    }
     if (selectedNodeIndex != null) {
         const box = subtreeAABB(selectedNodeIndex);
         if (box) collectAABB(lines, box, [0.15, 0.75, 1]);
@@ -560,6 +612,8 @@ window.__viewer = {
      */
     async open({ url }) {
         const t0 = performance.now();
+        cachedWireLines = null;
+        cachedWireKey = null;
         state.gltf = await resources.loadGltf(url);
         const parseMs = Math.round(performance.now() - t0);
         // A look scene of 0 keeps the file's default scene.
@@ -678,7 +732,29 @@ window.__viewer = {
             triangles: stats.faceCount ?? 0,
             meshes: stats.meshCount ?? 0,
             background: getComputedStyle(document.body).backgroundColor,
+            wireframePath: showWireframe
+                ? (polygonMode ? "polygonMode" : "cachedLines")
+                : "none",
+            wireframeCollects: collectWireframeCalls,
         };
+    },
+
+    /**
+     * Test helper: set a node's quaternion and restates the hierarchy so a later frame
+     * sees the new joint matrices. Used to prove wireframe follows skinning.
+     */
+    poseNode({ index, rotation }) {
+        const node = state.gltf?.nodes?.[index];
+        if (!node) throw new Error(`no node ${index}`);
+        const prop = node.animatedPropertyObjects?.rotation;
+        if (prop) {
+            prop.animatedValue = undefined;
+            prop.restAt(rotation);
+        } else {
+            node.rotation = rotation;
+        }
+        state.gltf.scenes[state.sceneIndex]?.applyTransformHierarchy(state.gltf);
+        return { ok: true };
     },
 };
 
