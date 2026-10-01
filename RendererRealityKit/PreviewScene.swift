@@ -387,8 +387,6 @@ struct PreviewScene: View {
                 Color.clear
             }
             .realityViewCameraControls(useSystemOrbit ? .orbit : .none)
-            // Remount when Center toggles so `make` rebuilds the turntable (no @State writes from make).
-            .id(centerModelValue)
             .backgroundStyle(backdropColor)
             .background {
                 GeometryReader { proxy in
