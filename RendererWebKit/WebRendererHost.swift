@@ -21,8 +21,6 @@ public final class WebRendererHost {
     public struct LoadInfo: Equatable, Decodable {
         public var triangles: Int
         var meshes: Int
-        var sceneCount: Int
-        var animationCount: Int
         /// Drawing-buffer size the page ended up with. Zero-ish values mean the view was never
         /// laid out, which renders blank rather than failing.
         var width: Int
