@@ -3,7 +3,7 @@ import RealityKit
 import GLTFKit2
 
 extension RealityKitConvert {
-    func convert(animation: GLTFAnimation) throws -> AnimationResource {
+    func convert(animation: GLTFAnimation, skins: [GLTFSkin]) throws -> AnimationResource {
         var groupedChannels = [UUID: [GLTFAnimationChannel]]()
         for channel in animation.channels {
             guard let id = channel.target.node?.identifier else { continue }
@@ -41,15 +41,9 @@ extension RealityKitConvert {
                                                         scaleChannel: scaleChannel,
                                                         maximumSampleInterval: 1 / 30.0) // TODO: Make sample interval an option
             if targetNode.isJoint {
-                let jointName: String
-                if let index = (sourceAsset?.skins ?? []).lazy.compactMap({ $0.joints.firstIndex(of: targetNode) }).first {
-                    jointName = JointNames.resolved(targetNode.name, index: index)
-                } else if let name = targetNode.name, !name.isEmpty {
-                    jointName = name
-                } else {
-                    jointName = nextUniqueName(prefix: "joint")
-                }
-                jointAnimation.jointNames.append(jointName)
+                // GLTFKit2 sets `isJoint` only while adding the node to a skin's `joints`, so the index exists.
+                let index = skins.lazy.compactMap { $0.joints.firstIndex(of: targetNode) }.first ?? 0
+                jointAnimation.jointNames.append(JointNames.resolved(targetNode.name, index: index))
                 jointAnimation.jointTransformSamplers.append(transformSampler)
                 jointAnimation.minTime = min(jointAnimation.minTime, transformSampler.startTime)
                 jointAnimation.maxTime = max(jointAnimation.maxTime, transformSampler.endTime)

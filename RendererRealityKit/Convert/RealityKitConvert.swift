@@ -35,7 +35,6 @@ final class RealityKitConvert {
     var pathsForSkeletonIDs: [/*MeshResource.Skeleton.ID*/String : BindTarget.EntityPath] = [:]
     var skeletonIDsByJointName: [String: [/*MeshResource.Skeleton.ID*/String]] = [:]
     var skeletonTransformsByJointName : [String: Transform] = [:]
-    var sourceAsset: GLTFAsset?
     /// Per-node file index and unique entity name, built once per convert (was an O(n) scan per node).
     private var nodeIndices: [ObjectIdentifier: Int] = [:]
     private var entityNames: [ObjectIdentifier: String] = [:]
@@ -57,7 +56,6 @@ final class RealityKitConvert {
     /// ObjC exceptions, and a bad clip must not take the meshes with it (this replaces the old
     /// "no visible mesh -> convert everything again without animations" pass).
     @MainActor func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
-        sourceAsset = asset
         indexNodes(asset.nodes)
         ignoreBakedEmissive = RealityPolicy.fileLooksBaked(asset.materials.map(RealityPolicy.EmissiveHint.init))
         if ignoreBakedEmissive {
@@ -85,7 +83,7 @@ final class RealityKitConvert {
             try GLBTry.run {
                 for animation in asset.animations {
                     do {
-                        try self.convert(animation: animation).store(in: rootEntity)
+                        try self.convert(animation: animation, skins: asset.skins).store(in: rootEntity)
                     } catch {
                         AppLog.error(AppLog.load, "animation convert failed: \(error)")
                     }
