@@ -10,8 +10,6 @@ import SwiftUI
 struct WebDocumentWindow: View {
     let documentURL: URL?
 
-    @Environment(\.colorScheme) private var colorScheme
-
     @State private var window: DocumentWindowModel
     /// Outlives a canvas remount (`DocumentShell` ids the canvas by load generation) so the page
     /// started on open keeps drawing. Replaced only after it failed, for the next document.
@@ -75,31 +73,21 @@ struct WebDocumentWindow: View {
         return .ready
     }
 
+    /// Mounted by `CanvasRegion` only while `canvasState` is `.ready`, i.e. with a page URL whose
+    /// page has not failed; loading and failure are drawn by PreviewUI's status view.
     @ViewBuilder
     private var canvas: some View {
-        let register = { window.engineViewport.commands = $0 }
         if let webCanvasURL {
-            if case .failed(let message) = webCanvas.phase {
-                CanvasStatusView(status: .failed(message), isDark: colorScheme == .dark)
-                    .onAppear { register(nil) }
-            } else {
-                WebPreviewCanvas(
-                    url: webCanvasURL,
-                    look: WebPreviewCanvas.Look(
-                        window.engineViewport,
-                        sceneIndex: window.sidebar?.activeSceneIndex ?? 0,
-                        selectedNodeIndex: window.sidebar?.selectedNodeIndex
-                    ),
-                    controller: webCanvas
-                )
-                .onAppear { register(.web(webCanvas)) }
-            }
-        } else if case .failed(let message) = window.phase {
-            CanvasStatusView(status: .failed(message), isDark: colorScheme == .dark)
-                .onAppear { register(nil) }
-        } else {
-            CanvasStatusView(status: .loading, isDark: colorScheme == .dark)
-                .onAppear { register(nil) }
+            WebPreviewCanvas(
+                url: webCanvasURL,
+                look: WebPreviewCanvas.Look(
+                    window.engineViewport,
+                    sceneIndex: window.sidebar?.activeSceneIndex ?? 0,
+                    selectedNodeIndex: window.sidebar?.selectedNodeIndex
+                ),
+                controller: webCanvas
+            )
+            .onAppear { window.engineViewport.commands = .web(webCanvas) }
         }
     }
 

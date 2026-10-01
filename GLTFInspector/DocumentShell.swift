@@ -137,39 +137,3 @@ private struct OpenInMenuItems: View {
         }
     }
 }
-
-/// Loading spinner / failure message over the window backdrop, for a canvas that has nothing to
-/// draw. Text colour follows the window appearance (the backdrop is clear).
-struct CanvasStatusView: View {
-    enum Status {
-        case loading
-        case failed(String)
-    }
-
-    let status: Status
-    var isDark: Bool
-
-    var body: some View {
-        ZStack {
-            Color.clear.ignoresSafeArea()
-            switch status {
-            case .loading:
-                ProgressView()
-                    .controlSize(.regular)
-                    .progressViewStyle(.circular)
-            case .failed(let message):
-                VStack(spacing: 8) {
-                    Text("Failed to load model")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(message)
-                        .font(.system(size: 12))
-                        .multilineTextAlignment(.center)
-                        .opacity(0.7)
-                }
-                .foregroundStyle(isDark ? Color.white : Color(red: 38.0 / 255, green: 38.0 / 255, blue: 38.0 / 255))
-                .padding()
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}

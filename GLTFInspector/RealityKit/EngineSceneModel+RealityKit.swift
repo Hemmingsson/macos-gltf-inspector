@@ -70,8 +70,4 @@ extension EngineSceneModel {
             authoredOrigin: authored
         )
     }
-
-    static func mapDebugChannels(_ modes: [PreviewDebugMode]) -> [DebugChannel] {
-        mapDebugChannels(modes.map(\.renderViewMode))
-    }
 }

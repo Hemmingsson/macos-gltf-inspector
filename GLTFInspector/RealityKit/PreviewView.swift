@@ -2,8 +2,9 @@ import GLTFCore
 import RendererRealityKit
 import SwiftUI
 
-/// RealityKit document-window canvas: spinner while convert runs, `RealityPreviewCanvas` once it
-/// lands, the failure message when it fails. Quick Look has its own RealityKit root
+/// RealityKit document-window canvas: `RealityPreviewCanvas` over a converted model. Mounted only
+/// once convert lands (loading and failure are drawn by PreviewUI's `CanvasRegion`); `State` is the
+/// window's convert state. Quick Look has its own RealityKit root
 /// (`PreviewExtension/QuickLookRealityKit.swift`).
 struct PreviewView: View {
     enum State {
@@ -12,20 +13,19 @@ struct PreviewView: View {
         /// User-visible reason. Open never waits on IBL — lighting is applied later by `PreviewScene`.
         case failed(String)
 
-        /// Model bytes → RealityKit only. No HDR / EnvironmentResource on this path.
+        /// Model bytes → RealityKit only. No HDR / EnvironmentResource on this path. The window
+        /// logs the one "open failed".
         static func loaded(from url: URL) async -> State {
             do {
                 let model = try await EntityLoader.load(from: url)
                 return .ready(model)
             } catch {
-                let message = error.localizedDescription
-                AppLog.error(AppLog.preview, "open failed \(url.lastPathComponent): \(message)")
-                return .failed(message)
+                return .failed(error.localizedDescription)
             }
         }
     }
 
-    let state: State
+    let model: EntityLoader.LoadedModel
     var interaction: PreviewInteraction
     var isDark: Bool
     var sidebar: (any PreviewOverlay)? = nil
@@ -36,54 +36,19 @@ struct PreviewView: View {
     var session: PreviewSessionBindings? = nil
     /// RealityKit camera commands, registered while the canvas is mounted.
     var commands: FocusedPreviewCommands? = nil
-    /// Called with the mounted canvas's commands (nil while there is no canvas). Runs in
-    /// `onAppear`, never during a view update.
+    /// Called with the mounted canvas's commands. Runs in `onAppear`, never during a view update.
     var registerCommands: (FocusedPreviewCommands?) -> Void = { _ in }
 
     var body: some View {
-        Group {
-            switch state {
-            case .loading:
-                ZStack {
-                    PreviewBackground.window.color.ignoresSafeArea()
-                    ProgressView()
-                        .controlSize(.regular)
-                        .progressViewStyle(.circular)
-                }
-                .onAppear { registerCommands(nil) }
-            case .ready(let model):
-                RealityPreviewCanvas(
-                    model: model,
-                    interaction: interaction,
-                    isDark: isDark,
-                    sidebar: sidebar,
-                    overlayRevision: overlayRevision,
-                    session: session
-                )
-                .onAppear { registerCommands(commands) }
-            case .failed(let message):
-                failedView(message)
-                    .onAppear { registerCommands(nil) }
-            }
-        }
+        RealityPreviewCanvas(
+            model: model,
+            interaction: interaction,
+            isDark: isDark,
+            sidebar: sidebar,
+            overlayRevision: overlayRevision,
+            session: session
+        )
+        .onAppear { registerCommands(commands) }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func failedView(_ message: String) -> some View {
-        ZStack {
-            PreviewBackground.window.color.ignoresSafeArea()
-            VStack(spacing: 8) {
-                Text("Failed to load model")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(message)
-                    .font(.system(size: 12))
-                    .multilineTextAlignment(.center)
-                    .opacity(0.7)
-            }
-            .foregroundStyle(
-                PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
-            )
-            .padding()
-        }
     }
 }

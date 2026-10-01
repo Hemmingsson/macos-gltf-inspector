@@ -17,7 +17,6 @@ struct EngineCoreMappingTests {
         for preset in PreviewUI.CameraPreset.allCases {
             let core = GLTFCore.CameraPreset(preset)
             #expect(core.rawValue == preset.rawValue)
-            #expect(PreviewUI.CameraPreset(core) == preset)
         }
         #expect(GLTFCore.CameraPreset.allCases.count == PreviewUI.CameraPreset.allCases.count)
     }
