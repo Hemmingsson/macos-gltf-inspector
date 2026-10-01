@@ -4,7 +4,7 @@
 #   ./scripts/build.sh              # install + open /Applications + verify (main checkout only)
 #   ./scripts/build.sh --install-only   # install only (no open/verify)
 #   ./scripts/verify.sh             # check only (no rebuild)
-#   ./scripts/proof.sh              # still-renderer PNG + timed qlmanage
+#   ./scripts/proof.sh              # still-renderer PNG (--qlmanage: + timed qlmanage)
 #
 # Prefer ./scripts/dev.sh for day-to-day work (worktree-aware, no surprise open).
 set -euo pipefail
