@@ -25,6 +25,13 @@ schemes:
         targets:
           PreviewUI: all
 
+    DesignCatalog:
+      build:
+        targets:
+          DesignCatalog: all
+      run:
+        config: Debug
+
 # Shared across every target so signing and versions live in one place.
 settings:
   base:
@@ -86,6 +93,30 @@ targets:
     dependencies:
       - target: DesignSystem
         embed: false
+
+  # Showcase app for the design system: every token, DS component and PreviewUI composite
+  # rendered with real Liquid Glass over light / dark canvas and the checkerboard.
+  # `./scripts/dev.sh catalog` builds and launches it in the background.
+  DesignCatalog:
+    type: application
+    platform: macOS
+    sources:
+      - DesignCatalog
+    settings:
+      base:
+        PRODUCT_NAME: DesignCatalog
+        PRODUCT_MODULE_NAME: DesignCatalog
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.design-catalog
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Design Catalog
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+    dependencies:
+      - target: DesignSystem
+        embed: true
+      - target: PreviewUI
+        embed: true
 
   GLTFInspector:
     type: application

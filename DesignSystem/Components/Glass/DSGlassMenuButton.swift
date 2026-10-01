@@ -84,13 +84,21 @@ public struct DSGlassMenuButton<MenuContent: View>: View {
         case .iconWithChevron:
             HStack(spacing: DS.Spacing.xs) {
                 Image(systemName: systemImage)
+                    .dsGlassPrimaryGlyph(isHighlighted: isEngaged)
                 DSGlassChevron()
             }
             .dsGlassControlLabel(.wide, isHighlighted: isEngaged)
         case .titled(let value):
             HStack(spacing: DS.Spacing.s) {
                 Image(systemName: systemImage)
+                    .dsGlassPrimaryGlyph(isHighlighted: isEngaged)
                 Text(value)
+                    .font(DS.Font.body)
+                    .foregroundStyle(
+                        isEngaged
+                            ? AnyShapeStyle(DS.Color.selectionText)
+                            : AnyShapeStyle(DS.Color.textPrimary)
+                    )
                     .lineLimit(1)
                 DSGlassChevron()
             }

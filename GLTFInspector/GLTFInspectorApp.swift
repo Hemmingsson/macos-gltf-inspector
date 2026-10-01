@@ -73,12 +73,13 @@ struct GLTFInspectorApp: App {
         }
         .defaultSize(width: 1280, height: 820)
         .windowResizability(.contentMinSize)
-        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .restorationBehavior(.disabled)
         .commands {
-            // Seam-driven View menu (pills twin). Do **not** add `CommandMenu("View")` or
-            // `SidebarCommands()` — the app is not a `NavigationSplitView`, so the system sidebar
-            // command would be inert and its ⌃⌘S would collide with the toggle below.
+            // Native `NavigationSplitView`: `SidebarCommands()` owns ⌃⌘S and stays in sync with
+            // `ShellPanelChrome.columnVisibility`. Host View menu is the pills twin — never
+            // `CommandMenu("View")`.
+            SidebarCommands()
             CommandGroup(after: .sidebar) {
                 HostViewMenuCommands()
             }

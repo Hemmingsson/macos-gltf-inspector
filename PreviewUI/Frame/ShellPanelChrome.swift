@@ -2,15 +2,23 @@ import SwiftUI
 
 /// Per-window sidebar open state.
 ///
-/// Owned by the window host (`ShellWindow` / `HostShellRootView`) so the chrome toggle and the
-/// View-menu twin share one source of truth. Not an app default — collapse is live chrome, not Settings.
-/// Inspector visibility follows selection (open iff something is selected).
+/// Owned by the window host (`ShellWindow` / `HostShellRootView`) so the system sidebar toggle,
+/// `SidebarCommands()`, and `NavigationSplitView` share one source of truth. Not an app default —
+/// collapse is live chrome, not Settings. Inspector visibility follows selection (open iff
+/// something is selected).
 @Observable
 public final class ShellPanelChrome {
-    public var isSidebarVisible: Bool
+    /// Drives `NavigationSplitView(columnVisibility:)`.
+    public var columnVisibility: NavigationSplitViewVisibility
+
+    /// Menu-friendly wrapper over `columnVisibility`.
+    public var isSidebarVisible: Bool {
+        get { columnVisibility != .detailOnly }
+        set { columnVisibility = newValue ? .all : .detailOnly }
+    }
 
     public init(isSidebarVisible: Bool = true) {
-        self.isSidebarVisible = isSidebarVisible
+        columnVisibility = isSidebarVisible ? .all : .detailOnly
     }
 
     public func toggleSidebar() { isSidebarVisible.toggle() }

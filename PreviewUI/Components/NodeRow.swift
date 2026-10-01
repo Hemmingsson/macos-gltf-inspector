@@ -1,19 +1,20 @@
-import AppKit
+import DesignSystem
 import SwiftUI
 
-/// One selectable outliner row: tinted type icon, name, and a visibility eye that fades in on
-/// hover.
+/// One outliner row: type icon, name, and a visibility eye that fades in on hover.
 ///
-/// Scene-graph sections pass `treeFolding: true` for disclosure chevrons and per-depth indent.
-/// Flat sections (Materials, Animations, …) omit the tree gutter and stay leaf lists.
+/// Built for a native `List(selection:)` — the row draws **no** selection of its own. Hidden
+/// nodes use `.tertiary` (`isMuted`), not opacity. Pass `paintsSelection: true` only for the
+/// S1f custom-row fallback (accent wash + `.onMoveCommand` on the list).
 public struct NodeRow<Selection: SelectionModel>: View {
     public var item: OutlinerItem
     public var isSelected: Bool
     public var selection: Selection
+    /// When true, paint `DS.Color.selectionFill` — native `List` selection must leave this false.
+    public var paintsSelection: Bool = false
     public var treeFolding: Bool = false
     public var isExpanded: Bool = false
     public var onToggleExpand: ((_ recursive: Bool) -> Void)? = nil
-    public var select: () -> Void
 
     @State private var isHovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -22,56 +23,49 @@ public struct NodeRow<Selection: SelectionModel>: View {
         selection.isVisible(item.id)
     }
 
-    private var label: Color {
-        isSelected ? Theme.selectionText : Theme.text
-    }
-
     /// Group / folder nodes with children use the chevron as the affordance — no dotted icon.
     private var showsNodeIcon: Bool {
         !(item.id.kind == .empty && item.hasChildren)
     }
 
+    private var role: DSTypeRole {
+        DSTypeRole(rawValue: item.id.kind.rawValue) ?? .empty
+    }
+
     public var body: some View {
-        HStack(spacing: OutlinerTreeMetrics.contentGap) {
+        HStack(spacing: DS.Spacing.xs) {
             if treeFolding {
                 treeGutter
             }
 
-            // Row select is its own button so the eye (and chevron) can be sibling controls
-            // (SwiftUI nested-Button is unreliable). Shared padding/background keep one hit band.
-            Button(action: select) {
-                HStack(spacing: OutlinerTreeMetrics.contentGap) {
-                    iconSlot
-                    Text(item.name)
-                        .font(.system(size: 13))
-                        .foregroundStyle(label)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .opacity(isVisible ? 1 : 0.45)
-                    Spacer(minLength: OutlinerTreeMetrics.contentGap)
-                }
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(item.name), \(item.id.kind.rawValue)")
+            DSListRow(
+                item.name,
+                isSelected: paintsSelection && isSelected,
+                isMuted: !isVisible,
+                icon: { iconSlot },
+                accessory: { eyeButton }
+            )
+            .accessibilityLabel("\(item.name), \(item.id.kind.displayTitle)")
             .accessibilityValue(isVisible ? "Visible" : "Hidden")
             .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-
-            eyeButton
         }
-        .padding(.leading, treeFolding ? OutlinerTreeMetrics.treeLeading : OutlinerTreeMetrics.flatLeading)
-        .padding(.trailing, OutlinerTreeMetrics.trailing)
-        .padding(.vertical, OutlinerTreeMetrics.vertical)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(background)
-        // `.row { margin: 0 6px }` — the selection fill stops short of the column edges
-        // instead of running into the hairline.
-        .padding(.horizontal, OutlinerTreeMetrics.rowMargin)
-        .contentShape(.rect)
+        .accessibilityElement(children: .contain)
         .onHover { isHovering = $0 }
     }
 
-    /// Depth indent + disclosure column. Kept outside the select button so expand does not select.
+    @ViewBuilder
+    private var iconSlot: some View {
+        if showsNodeIcon {
+            DSTypeIcon(role, isSelected: paintsSelection && isSelected)
+        } else {
+            Color.clear
+                .frame(width: DS.Metrics.typeIcon, height: DS.Metrics.typeIcon)
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// Depth indent + disclosure column — only the custom-row fallback uses this. Native
+    /// `DisclosureGroup` in `OutlinerList` owns the chevron and indent.
     private var treeGutter: some View {
         HStack(spacing: OutlinerTreeMetrics.disclosureGap) {
             Color.clear
@@ -82,39 +76,22 @@ public struct NodeRow<Selection: SelectionModel>: View {
     }
 
     @ViewBuilder
-    private var iconSlot: some View {
-        if showsNodeIcon {
-            NodeIcon(kind: item.id.kind, isSelected: isSelected)
-        } else {
-            Color.clear
-                .frame(
-                    width: OutlinerTreeMetrics.iconSize,
-                    height: OutlinerTreeMetrics.iconSize
-                )
-                .accessibilityHidden(true)
-        }
-    }
-
-    /// Chevron for parents; a fixed slot for leaves so labels stay column-aligned.
-    @ViewBuilder
     private var disclosure: some View {
         let size = OutlinerTreeMetrics.disclosureSize
         if item.hasChildren {
             Button {
-                onToggleExpand?(Self.isOptionDown)
+                onToggleExpand?(OutlinerOptionKey.isDown)
             } label: {
                 Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.semibold))
+                    .font(DS.Font.micro.weight(.semibold))
                     .rotationEffect(.degrees(isExpanded ? 0 : -90))
-                    .foregroundStyle(Theme.text3)
+                    .foregroundStyle(DS.Color.textTertiary)
                     .frame(width: size, height: size)
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .animation(
-                Animation.previewChrome(reduceMotion, duration: 0.12),
-                value: isExpanded
-            )
+            .focusable(false)
+            .animation(DS.Motion.hoverFade(reduceMotion: reduceMotion), value: isExpanded)
             .help("Click to expand or collapse. Option-click to expand or collapse all nested nodes.")
             .accessibilityLabel(isExpanded ? "Collapse \(item.name)" : "Expand \(item.name)")
             .accessibilityHint("Option-click to expand or collapse the whole subtree")
@@ -125,52 +102,40 @@ public struct NodeRow<Selection: SelectionModel>: View {
         }
     }
 
-    @ViewBuilder
-    private var background: some View {
-        if isSelected {
-            RoundedRectangle(cornerRadius: 7).fill(Theme.selection)
-        }
-    }
-
     /// Visibility toggle — click hides/shows; Option-click isolates (DESIGN.md).
     private var eyeButton: some View {
         Button {
-            if NSEvent.modifierFlags.contains(.option) {
+            if OutlinerOptionKey.isDown {
                 selection.isolate(selection.isolated == item.id ? nil : item.id)
             } else {
                 selection.setVisible(item.id, !isVisible)
             }
         } label: {
             Image(systemName: isVisible ? "eye" : "eye.slash")
-                .font(.system(size: 12))
-                .foregroundStyle(label)
+                .font(DS.Font.caption)
+                .foregroundStyle(isVisible ? DS.Color.textSecondary : DS.Color.textTertiary)
                 .frame(
                     width: OutlinerTreeMetrics.eyeSize,
                     height: OutlinerTreeMetrics.eyeSize
                 )
                 .contentShape(.rect)
         }
-        .buttonStyle(EyeButtonStyle())
-        // `.eye { opacity: 0.28 }`, `.row.sel .eye { opacity: 0.55 }` — and 0 until hover, so
-        // a resting sidebar is names and nothing else. Always show when hidden so the user can
-        // find the control again without hunting for hover.
+        .buttonStyle(.plain)
+        .focusable(false)
         .opacity(eyeOpacity)
-        .animation(Animation.previewChrome(reduceMotion, duration: 0.12), value: isHovering)
-        .animation(Animation.previewChrome(reduceMotion, duration: 0.12), value: isVisible)
+        .animation(DS.Motion.hoverFade(reduceMotion: reduceMotion), value: isHovering)
+        .animation(DS.Motion.hoverFade(reduceMotion: reduceMotion), value: isVisible)
         .help(isVisible ? "Hide" : "Show")
         .accessibilityLabel(isVisible ? "Hide \(item.name)" : "Show \(item.name)")
         .accessibilityHint("Option-click to isolate")
     }
 
+    /// Resting sidebar is names only. Always show the eye when hidden so it can be found
+    /// without hunting for hover.
     private var eyeOpacity: Double {
         if !isVisible { return isSelected ? 0.7 : 0.55 }
         if isHovering { return isSelected ? 0.55 : 0.28 }
         return 0
-    }
-
-    private static var isOptionDown: Bool {
-        let eventFlags = NSApp.currentEvent?.modifierFlags ?? []
-        return eventFlags.contains(.option) || NSEvent.modifierFlags.contains(.option)
     }
 }
 
@@ -207,9 +172,7 @@ private struct NodeRowPreviewHost: View {
         let meshID = NodeRowPreviewFixtures.meshID
         let materialID = NodeRowPreviewFixtures.materialID
         switch mode {
-        case .flat:
-            _selection = State(initialValue: MockSelectionModel(selected: nil))
-        case .tree:
+        case .flat, .tree:
             _selection = State(initialValue: MockSelectionModel(selected: nil))
         case .selected:
             _selection = State(initialValue: MockSelectionModel(selected: meshID))
@@ -224,17 +187,14 @@ private struct NodeRowPreviewHost: View {
     }
 
     var body: some View {
-        PreviewCanvas(height: 44) {
+        PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 44) {
             switch mode {
             case .flat:
                 NodeRow(
                     item: NodeRowPreviewFixtures.flatItem,
                     isSelected: false,
-                    selection: selection,
-                    treeFolding: false
-                ) {
-                    selection.select(NodeRowPreviewFixtures.materialID)
-                }
+                    selection: selection
+                )
             case .tree:
                 NodeRow(
                     item: NodeRowPreviewFixtures.treeParent,
@@ -243,44 +203,37 @@ private struct NodeRowPreviewHost: View {
                     treeFolding: true,
                     isExpanded: true,
                     onToggleExpand: { _ in }
-                ) {
-                    selection.select(NodeRowPreviewFixtures.treeParent.id)
-                }
+                )
             case .selected:
                 NodeRow(
                     item: NodeRowPreviewFixtures.meshItem,
                     isSelected: true,
                     selection: selection,
-                    treeFolding: false
-                ) {
-                    selection.select(nil)
-                }
+                    paintsSelection: true
+                )
             case .hidden:
                 NodeRow(
                     item: NodeRowPreviewFixtures.flatItem,
                     isSelected: false,
-                    selection: selection,
-                    treeFolding: false
-                ) {
-                    selection.select(NodeRowPreviewFixtures.materialID)
-                }
+                    selection: selection
+                )
             }
         }
     }
 }
 
-#Preview("flat", traits: .fixedLayout(width: Theme.sidebarWidth, height: 44)) {
+#Preview("flat", traits: .fixedLayout(width: 248, height: 44)) {
     NodeRowPreviewHost(mode: .flat)
 }
 
-#Preview("tree", traits: .fixedLayout(width: Theme.sidebarWidth, height: 44)) {
+#Preview("tree", traits: .fixedLayout(width: 248, height: 44)) {
     NodeRowPreviewHost(mode: .tree)
 }
 
-#Preview("selected", traits: .fixedLayout(width: Theme.sidebarWidth, height: 44)) {
+#Preview("selected", traits: .fixedLayout(width: 248, height: 44)) {
     NodeRowPreviewHost(mode: .selected)
 }
 
-#Preview("hidden", traits: .fixedLayout(width: Theme.sidebarWidth, height: 44)) {
+#Preview("hidden", traits: .fixedLayout(width: 248, height: 44)) {
     NodeRowPreviewHost(mode: .hidden)
 }

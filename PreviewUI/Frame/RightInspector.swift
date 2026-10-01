@@ -1,8 +1,10 @@
+import DesignSystem
 import SwiftUI
 
 /// Right column — the selected outliner row. Closed when nothing is selected.
 ///
 /// Node sections bind to `selection.detail` and omit fields the node type does not have.
+/// `openInMenu` is menu items (Finder, Blender, …); the header wraps them in `DSGlassMenuButton`.
 public struct RightInspector<
     Model: SceneModel,
     Selection: SelectionModel
@@ -14,8 +16,6 @@ public struct RightInspector<
     /// Live morph weights from the host (`PreviewMorph`); shown when a morph is selected.
     public var morphTargets: [MorphTargetControl] = []
     public var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
-
-    @Environment(\.previewHair) private var hair
 
     public init(
         model: Model,
@@ -47,7 +47,7 @@ public struct RightInspector<
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 14)
+                    .padding(.bottom, DS.Spacing.xl)
                 }
                 .focusSection()
             } else {
@@ -55,7 +55,6 @@ public struct RightInspector<
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.chrome)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
     }
@@ -85,10 +84,13 @@ public struct RightInspector<
         }
         if detail.kind == .scene, let roots = detail.sceneRootCount {
             VStack(alignment: .leading, spacing: 0) {
-                InspectorSectionHeader(title: "Scene")
-                InspectorFactRow(label: "Roots", value: "\(roots)")
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 8)
+                DSSectionHeader("Scene")
+                    .padding(.top, DS.Spacing.xl)
+                    .padding(.horizontal, DS.Spacing.l)
+                    .padding(.bottom, DS.Spacing.xs)
+                DSFactRow("Roots", value: "\(roots)")
+                    .padding(.horizontal, DS.Spacing.l)
+                    .padding(.bottom, DS.Spacing.m)
             }
         }
         NodeExtrasSection(detail: detail)
@@ -97,28 +99,20 @@ public struct RightInspector<
             || detail.light != nil || detail.animation != nil || detail.material != nil
             || detail.transform != nil || detail.geometry != nil || detail.sceneRootCount != nil
         {
-            hair
-                .frame(height: Theme.hairlineWidth)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+            DS.Color.separator
+                .frame(height: DS.Metrics.hairline)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.vertical, DS.Spacing.m)
         }
     }
 }
 
 // MARK: - Previews
 
-private struct PreviewOpenInMenu: View {
+private struct PreviewOpenInItems: View {
     var body: some View {
-        Menu {
-            Button("Finder") {}
-            Button("Blender") {}
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.system(size: ChromeMetrics.glyphSize))
-                .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        Button("Finder") {}
+        Button("Blender") {}
     }
 }
 
@@ -177,12 +171,12 @@ private struct RightInspectorPreviewHost: View {
     }
 
     var body: some View {
-        PreviewCanvas(width: Theme.inspectorWidth, height: height) {
+        PreviewCanvas(width: DS.Metrics.inspectorWidth, height: height) {
             RightInspector(
                 model: FixtureSceneModel.cube,
                 selection: selection,
                 documentState: documentState,
-                openInMenu: AnyView(PreviewOpenInMenu()),
+                openInMenu: AnyView(PreviewOpenInItems()),
                 morphTargets: mode == .morph ? MorphFixtures.faceControls : [],
                 onSetMorphWeight: { _, _ in }
             )
@@ -190,26 +184,26 @@ private struct RightInspectorPreviewHost: View {
     }
 }
 
-#Preview("mesh", traits: .fixedLayout(width: Theme.inspectorWidth, height: 520)) {
+#Preview("mesh", traits: .fixedLayout(width: DS.Metrics.inspectorWidth, height: 520)) {
     RightInspectorPreviewHost(mode: .mesh)
 }
 
-#Preview("material", traits: .fixedLayout(width: Theme.inspectorWidth, height: 520)) {
+#Preview("material", traits: .fixedLayout(width: DS.Metrics.inspectorWidth, height: 520)) {
     RightInspectorPreviewHost(mode: .material)
 }
 
-#Preview("morph", traits: .fixedLayout(width: Theme.inspectorWidth, height: 520)) {
+#Preview("morph", traits: .fixedLayout(width: DS.Metrics.inspectorWidth, height: 520)) {
     RightInspectorPreviewHost(mode: .morph)
 }
 
-#Preview("empty", traits: .fixedLayout(width: Theme.inspectorWidth, height: 240)) {
+#Preview("empty", traits: .fixedLayout(width: DS.Metrics.inspectorWidth, height: 240)) {
     RightInspectorPreviewHost(mode: .empty)
 }
 
-#Preview("loading", traits: .fixedLayout(width: Theme.inspectorWidth, height: 240)) {
+#Preview("loading", traits: .fixedLayout(width: DS.Metrics.inspectorWidth, height: 240)) {
     RightInspectorPreviewHost(mode: .loading)
 }
 
-#Preview("failed", traits: .fixedLayout(width: Theme.inspectorWidth, height: 240)) {
+#Preview("failed", traits: .fixedLayout(width: DS.Metrics.inspectorWidth, height: 240)) {
     RightInspectorPreviewHost(mode: .failed)
 }

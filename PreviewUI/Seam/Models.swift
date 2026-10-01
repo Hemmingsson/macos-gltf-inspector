@@ -14,6 +14,21 @@ public enum NodeKind: String, Sendable, Hashable, Codable, CaseIterable {
     case morph
     /// A node that only carries a transform (glTF "empty").
     case empty
+
+    /// Subtitle under the selected name in the inspector header.
+    public var displayTitle: String {
+        switch self {
+        case .scene: "Scene"
+        case .mesh: "Mesh"
+        case .camera: "Camera"
+        case .light: "Light"
+        case .material: "Material"
+        case .animation: "Animation"
+        case .skin: "Skin"
+        case .morph: "Morph"
+        case .empty: "Group"
+        }
+    }
 }
 
 /// Addresses one row across every kind, so mesh 0 and material 0 never collide.

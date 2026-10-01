@@ -1,29 +1,22 @@
+import DesignSystem
 import PreviewUI
 import SwiftUI
 
-/// Host View menu: drives `EngineViewportController` + panel chrome via `FocusedValues`.
+/// Host View menu: drives `EngineViewportController` via `FocusedValues`.
 ///
-/// Lives in `CommandGroup(after: .sidebar)` — never `CommandMenu("View")`.
+/// Lives in `CommandGroup(after: .sidebar)` — never `CommandMenu("View")`. Sidebar visibility is
+/// `SidebarCommands()` (⌃⌘S), kept in sync by `ShellPanelChrome.columnVisibility`.
 struct HostViewMenuCommands: View {
     @FocusedValue(\.engineViewport) private var viewport
-    @FocusedValue(\.shellPanelChrome) private var panels
     @FocusedValue(\.previewCommands) private var previewCommands
 
     var body: some View {
-        // Panel toggles depend only on the window chrome, so they stay available even before a
-        // model finishes loading (or after a failed load), when `viewport` is nil.
-        if let panels {
-            HostPanelChromeMenu(panels: panels)
-        }
         if let viewport {
-            if panels != nil {
-                Divider()
-            }
             HostViewMenuBody(
                 viewport: viewport,
                 previewCommands: previewCommands
             )
-        } else if panels == nil {
+        } else {
             Text("No focused window")
                 .disabled(true)
         }
@@ -35,6 +28,14 @@ private struct HostViewMenuBody: View {
     var previewCommands: FocusedPreviewCommands?
 
     var body: some View {
+        Picker("View Mode", selection: viewMode) {
+            ForEach(ViewMode.base) { mode in
+                Text(mode.title)
+                    .tag(mode)
+                    .keyboardShortcutIfAvailable(viewModeShortcut(for: mode))
+            }
+        }
+
         Picker("Backdrop", selection: backdrop) {
             ForEach(BackdropStyle.allCases) { style in
                 Text(style.title).tag(style)
@@ -48,13 +49,13 @@ private struct HostViewMenuBody: View {
             systemImage: "arrow.trianglehead.counterclockwise.rotate.90",
             isOn: autoRotate
         )
-        .keyboardShortcut("r")
+        .keyboardShortcut(DS.Shortcuts.action(.autoRotate))
 
         Toggle("Center Model", systemImage: "dot.scope", isOn: center)
-            .keyboardShortcut("c")
+            .keyboardShortcut(DS.Shortcuts.action(.center))
 
         Toggle("Orthographic", systemImage: "perspective", isOn: orthographic)
-            .keyboardShortcut("5")
+            .keyboardShortcut(DS.Shortcuts.action(.orthographic))
 
         Toggle("Double-Sided", systemImage: "square.on.square", isOn: doubleSided)
         Toggle(
@@ -68,13 +69,13 @@ private struct HostViewMenuBody: View {
         Button("Fit", systemImage: "viewfinder") {
             viewport.fit()
         }
-        .keyboardShortcut("f")
+        .keyboardShortcut(DS.Shortcuts.action(.fit))
         .disabled(previewCommands == nil)
 
         Button("Reset View", systemImage: "arrow.counterclockwise") {
             viewport.reset()
         }
-        .keyboardShortcut("f", modifiers: [.shift])
+        .keyboardShortcut(DS.Shortcuts.action(.reset))
 
         Divider()
 
@@ -88,7 +89,13 @@ private struct HostViewMenuBody: View {
             .keyboardShortcutIfAvailable(cameraPresetShortcut(for: preset))
             .disabled(previewCommands == nil)
         }
+    }
 
+    private var viewMode: Binding<ViewMode> {
+        Binding(
+            get: { viewport.viewMode },
+            set: { viewport.setViewMode($0) }
+        )
     }
 
     private var backdrop: Binding<BackdropStyle> {
@@ -140,24 +147,11 @@ private struct HostViewMenuBody: View {
         )
     }
 
-    private func cameraPresetShortcut(for preset: CameraPreset) -> KeyboardShortcut? {
-        switch preset {
-        case .front: KeyboardShortcut("1")
-        case .back: KeyboardShortcut("9")
-        case .left: KeyboardShortcut("4")
-        case .right: KeyboardShortcut("3")
-        case .top: KeyboardShortcut("7")
-        case .bottom: KeyboardShortcut("2")
-        case .isometric: nil
-        }
+    private func viewModeShortcut(for mode: ViewMode) -> KeyboardShortcut? {
+        DS.Shortcuts.ViewMode(rawValue: mode.id).map(DS.Shortcuts.viewMode)
     }
-}
 
-private struct HostPanelChromeMenu: View {
-    @Bindable var panels: ShellPanelChrome
-
-    var body: some View {
-        Toggle("Show Sidebar", isOn: $panels.isSidebarVisible)
-            .keyboardShortcut("s", modifiers: [.command, .control])
+    private func cameraPresetShortcut(for preset: CameraPreset) -> KeyboardShortcut? {
+        DS.Shortcuts.CameraPreset(rawValue: preset.rawValue).flatMap(DS.Shortcuts.cameraPreset)
     }
 }

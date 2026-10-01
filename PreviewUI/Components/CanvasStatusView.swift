@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Centered status over the canvas (empty / loading / failed).
@@ -5,37 +6,29 @@ public struct CanvasStatusView: View {
     public var state: ShellDocumentState
 
     public var body: some View {
-        ZStack {
-            Theme.canvasGradient
+        status
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DS.Color.Canvas.gradient)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityLabel)
+    }
 
-            switch state {
-            case .empty:
-                statusStack(
-                    symbol: "cube",
-                    title: ShellStatusCopy.emptyTitle,
-                    detail: ShellStatusCopy.emptyDetail,
-                    spinning: false
-                )
-            case .loading:
-                statusStack(
-                    symbol: nil,
-                    title: ShellStatusCopy.loadingTitle,
-                    detail: nil,
-                    spinning: true
-                )
-            case .failed(let message):
-                statusStack(
-                    symbol: "exclamationmark.triangle",
-                    title: ShellStatusCopy.failedTitle,
-                    detail: message,
-                    spinning: false
-                )
-            case .ready:
-                EmptyView()
-            }
+    @ViewBuilder
+    private var status: some View {
+        switch state {
+        case .empty:
+            DSStatusView.empty(
+                ShellStatusCopy.emptyTitle,
+                systemImage: "cube",
+                message: ShellStatusCopy.emptyDetail
+            )
+        case .loading:
+            DSStatusView.loading(ShellStatusCopy.loadingTitle)
+        case .failed(let message):
+            DSStatusView.failed(ShellStatusCopy.failedTitle, message: message)
+        case .ready:
+            EmptyView()
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
     }
 
     private var accessibilityLabel: String {
@@ -49,39 +42,6 @@ public struct CanvasStatusView: View {
         case .ready:
             "Canvas"
         }
-    }
-
-    private func statusStack(
-        symbol: String?,
-        title: String,
-        detail: String?,
-        spinning: Bool
-    ) -> some View {
-        VStack(spacing: 12) {
-            if spinning {
-                ProgressView()
-                    .controlSize(.regular)
-                    .accessibilityHidden(true)
-            } else if let symbol {
-                Image(systemName: symbol)
-                    .font(.system(size: 36, weight: .ultraLight))
-                    .foregroundStyle(Theme.text3)
-                    .accessibilityHidden(true)
-            }
-
-            Text(title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Theme.text)
-
-            if let detail {
-                Text(detail)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.text2)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 320)
-            }
-        }
-        .padding(24)
     }
 }
 

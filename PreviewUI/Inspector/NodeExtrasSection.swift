@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Kind-specific extras when the selection is not a mesh (camera / light / animation / skin / morph).
@@ -26,92 +27,107 @@ public struct NodeExtrasSection: View {
 
     private func cameraBlock(_ camera: CameraInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Camera")
+            DSSectionHeader("Camera")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
             VStack(spacing: 0) {
-                InspectorFactRow(label: "Projection", value: camera.projection.title)
+                DSFactRow("Projection", value: camera.projection.title)
                 if let fov = camera.fieldOfViewDegrees {
-                    InspectorFactRow(label: "Field of view", value: String(format: "%.1f°", fov))
+                    DSFactRow("Field of view", value: String(format: "%.1f°", fov))
                 }
                 if let xMag = camera.xMag {
-                    InspectorFactRow(label: "X mag", value: String(format: "%.2f", xMag))
+                    DSFactRow("X mag", value: String(format: "%.2f", xMag))
                 }
                 if let yMag = camera.yMag {
-                    InspectorFactRow(label: "Y mag", value: String(format: "%.2f", yMag))
+                    DSFactRow("Y mag", value: String(format: "%.2f", yMag))
                 }
-                InspectorFactRow(label: "Near", value: String(format: "%.2f", camera.zNear))
+                DSFactRow("Near", value: String(format: "%.2f", camera.zNear))
                 if let far = camera.zFar {
-                    InspectorFactRow(label: "Far", value: String(format: "%.1f", far))
+                    DSFactRow("Far", value: String(format: "%.1f", far))
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 8)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.bottom, DS.Spacing.m)
         }
     }
 
     private func lightBlock(_ light: LightInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Light")
+            DSSectionHeader("Light")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
             VStack(spacing: 0) {
-                InspectorFactRow(label: "Kind", value: light.kind.rawValue.capitalized)
-                InspectorFactRow(label: "Intensity", value: light.intensity.formatted())
+                DSFactRow("Kind", value: light.kind.rawValue.capitalized)
+                DSFactRow("Intensity", value: light.intensity.formatted())
                 if let range = light.range {
-                    InspectorFactRow(label: "Range", value: String(format: "%.1f", range))
+                    DSFactRow("Range", value: String(format: "%.1f", range))
                 }
                 if let inner = light.innerConeDegrees {
-                    InspectorFactRow(label: "Inner cone", value: String(format: "%.1f°", inner))
+                    DSFactRow("Inner cone", value: String(format: "%.1f°", inner))
                 }
                 if let outer = light.outerConeDegrees {
-                    InspectorFactRow(label: "Outer cone", value: String(format: "%.1f°", outer))
+                    DSFactRow("Outer cone", value: String(format: "%.1f°", outer))
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 8)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.bottom, DS.Spacing.m)
         }
     }
 
     private func animationBlock(_ animation: AnimationInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Animation")
+            DSSectionHeader("Animation")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
             VStack(spacing: 0) {
-                InspectorFactRow(label: "Duration", value: formatDuration(animation.duration))
+                DSFactRow("Duration", value: formatDuration(animation.duration))
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 8)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.bottom, DS.Spacing.m)
         }
     }
 
     private func skinBlock(_ skin: SkinInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Skin")
+            DSSectionHeader("Skin")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
             VStack(alignment: .leading, spacing: 0) {
-                InspectorFactRow(label: "Joints", value: "\(skin.jointCount)")
+                DSFactRow("Joints", value: "\(skin.jointCount)")
                 if !skin.jointNames.isEmpty {
                     Text(skin.jointNames.joined(separator: ", "))
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.text2)
-                        .padding(.vertical, 4)
+                        .font(DS.Font.callout)
+                        .foregroundStyle(DS.Color.textSecondary)
+                        .padding(.vertical, DS.Spacing.xs)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 8)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.bottom, DS.Spacing.m)
         }
     }
 
     private func morphBlock(_ morph: MorphInfo) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Morph")
+            DSSectionHeader("Morph")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
             VStack(alignment: .leading, spacing: 0) {
-                InspectorFactRow(label: "Mesh", value: morph.meshName)
-                InspectorFactRow(label: "Targets", value: "\(morph.targetNames.count)")
+                DSFactRow("Mesh", value: morph.meshName)
+                DSFactRow("Targets", value: "\(morph.targetNames.count)")
                 if !morph.targetNames.isEmpty {
                     Text(morph.targetNames.joined(separator: ", "))
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.text2)
-                        .padding(.vertical, 4)
+                        .font(DS.Font.callout)
+                        .foregroundStyle(DS.Color.textSecondary)
+                        .padding(.vertical, DS.Spacing.xs)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.bottom, 8)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.bottom, DS.Spacing.m)
         }
     }
 
@@ -128,31 +144,31 @@ public struct NodeExtrasSection: View {
 // MARK: - Previews
 
 #Preview("camera") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         NodeExtrasSection(detail: NodeDetailFixtures.camera)
     }
 }
 
 #Preview("light") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         NodeExtrasSection(detail: NodeDetailFixtures.light)
     }
 }
 
 #Preview("animation") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         NodeExtrasSection(detail: NodeDetailFixtures.animation)
     }
 }
 
 #Preview("skin") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         NodeExtrasSection(detail: NodeDetailFixtures.skin)
     }
 }
 
 #Preview("morph") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         NodeExtrasSection(detail: NodeDetailFixtures.morph)
     }
 }

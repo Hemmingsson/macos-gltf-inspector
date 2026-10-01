@@ -1,17 +1,17 @@
+import DesignSystem
 import SwiftUI
 
 /// Centre column — the viewport's box and the chrome that floats over it.
 ///
-/// Owns the clipping and the ground colour so whatever is injected (a placeholder now, a
-/// `RealityView` later) cannot bleed past the hairlines, and owns the toolbar pills *and*
-/// bottom overlays so they are positioned in the *canvas'* coordinate space rather than the
-/// window's.
+/// The injected canvas is full-bleed (`.ignoresSafeArea()`, no clipping) so it renders under the
+/// floating glass sidebar/inspector and the toolbar band; the pills and bottom overlays stay
+/// inside the leading/trailing safe area so they never sit under a pane.
 ///
 /// **Why overlays and not a window toolbar.** The wireframe floats the controls over the 3D
 /// content, split into independent clusters. A single `.toolbar` would collapse them into one
-/// bar, tie their position to window chrome that this window deliberately hides, and put them
-/// *above* the canvas instead of on it. Overlays keep each cluster free to size itself and to
-/// sit exactly at its own edge.
+/// bar, tie their position to window chrome that this window hides, and put them *above* the
+/// canvas instead of on it. Overlays keep each cluster free to size itself and to sit exactly
+/// at its own edge.
 public struct CanvasRegion<
     Content: View,
     Model: SceneModel,
@@ -33,42 +33,76 @@ public struct CanvasRegion<
     var isSidebarVisible: Bool = true
     /// When false, Camera clears the floating inspector Open in action.
     var isInspectorVisible: Bool = true
+    /// Restores the sidebar from the canvas overlay when the column is collapsed.
+    var onToggleSidebar: () -> Void = {}
     @ViewBuilder var content: () -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Top safe-area inset (the window toolbar band). Written only from `onGeometryChange`'s
+    /// action — never during a view update.
+    @State private var topInset: CGFloat = 0
+
     public var body: some View {
-        Group {
-            switch documentState {
-            case .ready:
-                readyCanvas
-            case .empty, .loading, .failed:
-                CanvasStatusView(state: documentState)
+        ZStack {
+            Group {
+                switch documentState {
+                case .ready:
+                    content()
+                case .empty, .loading, .failed:
+                    CanvasStatusView(state: documentState)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DS.Color.Canvas.ground)
+            .ignoresSafeArea()
+
+            if documentState.isReady {
+                controls
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.canvas)
-        .clipped()
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.safeAreaInsets.top
+        } action: { inset in
+            topInset = inset
+        }
     }
 
-    private var readyCanvas: some View {
-        content()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Top toolbar — Sketch-style islands on the traffic-light centerline.
+    /// Distance from the top of the (top-safe-area-ignoring) overlay to a 30 pt control whose
+    /// center sits on the toolbar band's centerline (the traffic-light line).
+    private var bandTopPadding: CGFloat {
+        max((topInset - DS.Metrics.glassControl) / 2, DS.Metrics.canvasClusterInset)
+    }
+
+    /// Floating chrome. Respects the leading/trailing/bottom safe area (never under a pane);
+    /// the top pills ride in the toolbar band.
+    private var controls: some View {
+        Color.clear
+            .allowsHitTesting(false)
             .overlay(alignment: .topLeading) {
-                StagePill(viewport: viewport)
-                    .padding(.leading, stageLeadingInset)
-                    .chromeBandAligned()
+                HStack(spacing: DS.Metrics.toolbarClearance) {
+                    if !isSidebarVisible {
+                        DSGlassIconButton(
+                            "Show Sidebar",
+                            systemImage: "sidebar.leading",
+                            action: onToggleSidebar
+                        )
+                    }
+                    StagePill(viewport: viewport)
+                }
+                .padding(.leading, stageLeadingInset)
+                .padding(.top, bandTopPadding)
             }
             .overlay(alignment: .top) {
                 LookPill(availability: availability, viewport: viewport)
-                    .chromeBandAligned()
+                    .padding(.top, bandTopPadding)
             }
             .overlay(alignment: .topTrailing) {
                 CameraPill(viewport: viewport)
                     .padding(.trailing, cameraTrailingInset)
-                    .chromeBandAligned()
+                    .padding(.top, bandTopPadding)
             }
+            .ignoresSafeArea(.container, edges: .top)
             // World-origin cue: shown when Center is off, or when the file is uncentered
             // (`authoredOrigin != .zero`), so the Center toggle has one clear effect.
             .overlay {
@@ -93,19 +127,21 @@ public struct CanvasRegion<
                         .transition(reduceMotion ? .identity : .opacity)
                 }
             }
-            .animation(Animation.previewChrome(reduceMotion), value: availability.hasAnimations)
-            .animation(Animation.previewChrome(reduceMotion), value: viewport.isCentered)
-            .animation(Animation.previewChrome(reduceMotion), value: model.dimensions.authoredOrigin)
-            .animation(Animation.previewChrome(reduceMotion), value: isSidebarVisible)
-            .animation(Animation.previewChrome(reduceMotion), value: isInspectorVisible)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: availability.hasAnimations)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: viewport.isCentered)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: model.dimensions.authoredOrigin)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isSidebarVisible)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isInspectorVisible)
     }
 
     private var stageLeadingInset: CGFloat {
-        isSidebarVisible ? PillMetrics.inset : ChromeMetrics.collapsedLeadingInset
+        isSidebarVisible ? DS.Metrics.canvasClusterInset : DS.Metrics.trafficLightLeadingClearance
     }
 
     private var cameraTrailingInset: CGFloat {
-        isInspectorVisible ? PillMetrics.inset : ChromeMetrics.collapsedTrailingInset
+        isInspectorVisible
+            ? DS.Metrics.canvasClusterInset
+            : DS.Metrics.glassControl + DS.Spacing.l + DS.Spacing.l + DS.Metrics.toolbarClearance
     }
 }
 
@@ -114,7 +150,7 @@ public struct CanvasRegion<
 /// Stand-in for the host-injected `RealityView` — flat gray viewport only.
 private struct CanvasPlaceholder: View {
     var body: some View {
-        Theme.canvasGradient
+        DS.Color.Canvas.gradient
     }
 }
 

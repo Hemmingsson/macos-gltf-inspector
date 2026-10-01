@@ -13,6 +13,7 @@ fi
 DERIVED_DATA="/tmp/GLTFInspector-${SLUG}-dd"
 BUILD_PRODUCT="$DERIVED_DATA/Build/Products/Debug/glTF Inspector.app"
 LOCAL_APP="$ROOT/.build/glTF Inspector.app"
+CATALOG_APP="$DERIVED_DATA/Build/Products/Debug/DesignCatalog.app"
 SYSTEM_APP="/Applications/glTF Inspector.app"
 EXEC="$LOCAL_APP/Contents/MacOS/glTF Inspector"
 LOG_DIR="$ROOT/.build/logs"

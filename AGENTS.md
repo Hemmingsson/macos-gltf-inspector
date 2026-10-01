@@ -53,7 +53,7 @@ Champion convert (in code): cutout-as-mask BLEND, packed SIMD/`float3` meshes, m
 | `.worktrees/` (gitignored) | Throwaway until merged — delete = gone |
 | Dex / `.cursor/plans` | Intent only |
 
-Before `git worktree remove`: `git log main..<branch>`, merge/cherry-pick. **Document window** = host chrome + canvas; **Quick Look** = minimal chrome. **`DESIGN.md`**: design *principles* only — never paste shipped layout/state there (use code/tests/`AGENTS.md`). **`ShellRootView`**: fixed `Theme.sidebarWidth` / `inspectorWidth` — not drag-resizable unless a task adds it.
+Before `git worktree remove`: `git log main..<branch>`, merge/cherry-pick. **Document window** = host chrome + canvas; **Quick Look** = minimal chrome. **`DESIGN.md`**: design *principles* only — never paste shipped layout/state there (use code/tests/`AGENTS.md`). **`ShellRootView`**: `NavigationSplitView` + selection-driven `.inspector`; column widths from `DS.Metrics` (sidebar 220…520, inspector 260…560). **Canvas** is full-bleed (`.ignoresSafeArea()`, no `.clipped()`) under the floating panes; overlay clusters stay in the leading/trailing safe area.
 
 ## Pitfalls — do not repeat
 

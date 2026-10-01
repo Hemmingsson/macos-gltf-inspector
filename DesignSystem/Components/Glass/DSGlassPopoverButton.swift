@@ -75,6 +75,7 @@ public struct DSGlassPopoverButton<PopoverContent: View>: View {
         } label: {
             HStack(spacing: DS.Spacing.xs) {
                 Image(systemName: systemImage)
+                    .dsGlassPrimaryGlyph(isHighlighted: isPresented.wrappedValue)
                 DSGlassChevron()
             }
             .dsGlassControlLabel(.wide, isHighlighted: isPresented.wrappedValue)

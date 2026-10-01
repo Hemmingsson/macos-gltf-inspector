@@ -22,6 +22,8 @@ struct HostShellRootView: View {
     @State private var loadingURL: URL?
     @State private var panels = ShellPanelChrome()
     @State private var placeholderSidebar: HostSidebarModel
+    /// Host-owned selection adapter. Rebuilt in `loadDocument` (action context), never in `body`.
+    @State private var selection: EngineSelectionModel
 
     /// Per-window lazy overlay — not seed-once `@State` from UserDefaults.
     @State private var settings = EngineSettingsStore()
@@ -43,6 +45,7 @@ struct HostShellRootView: View {
         self.documentURL = documentURL
         let placeholder = HostSidebarModel(document: GLTFSessionDocument())
         _placeholderSidebar = State(wrappedValue: placeholder)
+        _selection = State(wrappedValue: EngineSelectionModel(sidebar: placeholder))
         let session = PreviewSession()
         _previewSession = State(wrappedValue: session)
         _engineViewport = State(
@@ -81,6 +84,10 @@ struct HostShellRootView: View {
                 // Live-track canvas for keys that still have no session override.
                 engineViewport.syncFromSettings()
             }
+            .onChange(of: isDocumentReady) { _, ready in
+                guard ready else { return }
+                seedSession(settings: settings)
+            }
             .onDrop(of: [.fileURL], isTargeted: nil) {
                 DocumentOpening.handleDrop($0, openDocument: openDocument)
             }
@@ -88,7 +95,6 @@ struct HostShellRootView: View {
 
     @ViewBuilder
     private var shellRoot: some View {
-        let activeSidebar = sidebar ?? placeholderSidebar
         let model = engineSceneModel
         let availability = DerivedAvailability(
             model: model,
@@ -100,7 +106,7 @@ struct HostShellRootView: View {
             model: model,
             availability: availability,
             documentState: shellDocumentState,
-            selection: EngineSelectionModel(sidebar: activeSidebar),
+            selection: selection,
             viewport: engineViewport,
             settings: settings,
             playback: playback,
@@ -118,20 +124,12 @@ struct HostShellRootView: View {
                 overlayRevision: sidebar?.overlayRevision ?? 0,
                 session: previewSession.bindings
             )
+            .id(loadGeneration)
         }
-        // Remount adapters that capture sidebar/entity once; keep settings + viewport identity.
-        .id(shellMountID)
     }
 
-    private var shellMountID: String {
-        switch previewState {
-        case .loading:
-            "loading-\(loadGeneration)"
-        case .ready:
-            "ready-\(loadGeneration)"
-        case .failed(let message):
-            "failed-\(loadGeneration)-\(message)"
-        }
+    private var isDocumentReady: Bool {
+        if case .ready = previewState { true } else { false }
     }
 
     private var shellDocumentState: ShellDocumentState {
@@ -187,7 +185,7 @@ struct HostShellRootView: View {
     }
 
     private func openInMenuView() -> AnyView {
-        AnyView(OpenInChromeMenu(documentURL: loadingURL ?? documentURL))
+        AnyView(OpenInMenuItems(documentURL: loadingURL ?? documentURL))
     }
 
     /// Defaults → viewport → host canvas (AGENTS.md: never in `View.init`).
@@ -198,7 +196,14 @@ struct HostShellRootView: View {
         engineViewport.applySession(from: settings)
     }
 
-    private struct OpenInChromeMenu: View {
+    /// Rebuild the selection adapter. Call only from actions (`loadDocument`), never from `body`.
+    @MainActor
+    private func bindSelection(to sidebar: HostSidebarModel) {
+        selection = EngineSelectionModel(sidebar: sidebar)
+    }
+
+    /// Finder / Blender items only — `ActionRow` wraps them in `DSGlassMenuButton`.
+    private struct OpenInMenuItems: View {
         let documentURL: URL?
 
         private var blenderAppURL: URL? {
@@ -215,37 +220,24 @@ struct HostShellRootView: View {
         }
 
         var body: some View {
-            Menu {
+            Button {
+                guard let documentURL else { return }
+                NSWorkspace.shared.activateFileViewerSelecting([documentURL])
+            } label: {
+                appMenuLabel(title: "Reveal in Finder", appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder"), fallbackSymbol: "folder")
+            }
+            .disabled(documentURL == nil)
+
+            if let blenderAppURL {
                 Button {
                     guard let documentURL else { return }
-                    NSWorkspace.shared.activateFileViewerSelecting([documentURL])
+                    let config = NSWorkspace.OpenConfiguration()
+                    NSWorkspace.shared.open([documentURL], withApplicationAt: blenderAppURL, configuration: config)
                 } label: {
-                    appMenuLabel(title: "Reveal in Finder", appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder"), fallbackSymbol: "folder")
+                    appMenuLabel(title: "Open in Blender", appURL: blenderAppURL, fallbackSymbol: "cube")
                 }
                 .disabled(documentURL == nil)
-
-                if let blenderAppURL {
-                    Button {
-                        guard let documentURL else { return }
-                        let config = NSWorkspace.OpenConfiguration()
-                        NSWorkspace.shared.open([documentURL], withApplicationAt: blenderAppURL, configuration: config)
-                    } label: {
-                        appMenuLabel(title: "Open in Blender", appURL: blenderAppURL, fallbackSymbol: "cube")
-                    }
-                    .disabled(documentURL == nil)
-                }
-            } label: {
-                ChromeIconButton(
-                    symbol: "square.and.arrow.up",
-                    title: "Open in…",
-                    prominent: false,
-                    action: {}
-                )
-                .allowsHitTesting(false)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
         }
 
         @ViewBuilder
@@ -349,6 +341,7 @@ struct HostShellRootView: View {
             AppLog.error(AppLog.host, "open rejected \(url.lastPathComponent)")
             previewState = .failed(message)
             sidebar = nil
+            bindSelection(to: placeholderSidebar)
             loadingURL = url
             loadedSceneModel = nil
             playbackController = nil
@@ -359,6 +352,7 @@ struct HostShellRootView: View {
 
         previewState = .loading
         sidebar = nil
+        bindSelection(to: placeholderSidebar)
         morphTargets = []
         validation = nil
         loadedSceneModel = nil
@@ -389,6 +383,7 @@ struct HostShellRootView: View {
                 let modelSidebar = HostSidebarModel(document: model.document)
                 modelSidebar.materialVariantNames = model.materialVariantNames
                 sidebar = modelSidebar
+                bindSelection(to: modelSidebar)
                 engineViewport.sidebar = modelSidebar
                 wireViewportHostSession()
                 engineViewport.applyConvertedLighting(
@@ -410,6 +405,7 @@ struct HostShellRootView: View {
                 AppLog.info(AppLog.host, model.convertProblems.hostSummary)
             } else if case .failed(let message) = state {
                 sidebar = nil
+                bindSelection(to: placeholderSidebar)
                 morphTargets = []
                 loadedSceneModel = nil
                 playbackController = nil

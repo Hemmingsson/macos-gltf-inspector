@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// File-level stats rows. Shown in the left sidebar footer for a loaded model.
@@ -6,29 +7,29 @@ public struct FileSection: View {
     public var fileName: String
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "File")
+        VStack(alignment: .leading, spacing: DS.Spacing.s) {
+            DSSectionHeader("File")
 
-            VStack(spacing: 0) {
-                InspectorFactRow(label: "Triangles", value: stats.triangleCount.formatted())
-                InspectorFactRow(
-                    label: "Meshes · Materials",
+            VStack(spacing: DS.Spacing.xs) {
+                DSFactRow("Triangles", value: stats.triangleCount.formatted())
+                DSFactRow(
+                    "Meshes · Materials",
                     value: "\(stats.meshCount) · \(stats.materialCount)"
                 )
-                InspectorFactRow(label: "Textures", value: texturesValue)
+                DSFactRow("Textures", value: texturesValue)
                 if stats.animationCount > 0 {
-                    InspectorFactRow(label: "Animations", value: "\(stats.animationCount)")
+                    DSFactRow("Animations", value: "\(stats.animationCount)")
                 }
                 if let size = fileSizeValue {
-                    InspectorFactRow(label: "File size", value: size)
+                    DSFactRow("File size", value: size)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 2)
-            .padding(.bottom, 10)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("File \(fileName)")
         }
+        .padding(.horizontal, DS.Spacing.l)
+        .padding(.top, DS.Spacing.m)
+        .padding(.bottom, DS.Spacing.s)
     }
 
     private var texturesValue: String {
@@ -47,14 +48,14 @@ public struct FileSection: View {
 // MARK: - Previews
 
 #Preview("cube") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let model = FixtureSceneModel.cube
         FileSection(stats: model.stats, fileName: model.fileName)
     }
 }
 
 #Preview("multi-scene") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let model = FixtureSceneModel.multiScene
         FileSection(stats: model.stats, fileName: model.fileName)
     }

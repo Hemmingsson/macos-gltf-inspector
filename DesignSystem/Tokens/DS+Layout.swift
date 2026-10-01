@@ -63,5 +63,16 @@ public extension DS {
 
         /// Minimum canvas width before panes must give way.
         public static let canvasMinWidth: CGFloat = 560
+
+        /// Inset of Stage / Camera clusters from the canvas edge.
+        public static let canvasClusterInset: CGFloat = 14
+        /// Gap between a collapsed-pane restore control and the nearest cluster.
+        public static let toolbarClearance: CGFloat = 20
+        /// Height of the overlay band that shares the traffic-light centerline.
+        public static let toolbarBandHeight: CGFloat = 52
+        /// Vertical center of the system traffic lights, from the top of the window.
+        public static let toolbarCenterY: CGFloat = 26
+        /// Leading space reserved for traffic lights when the sidebar is collapsed.
+        public static let trafficLightLeadingClearance: CGFloat = 78
     }
 }

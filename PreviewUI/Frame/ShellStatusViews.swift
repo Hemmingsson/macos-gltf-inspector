@@ -2,7 +2,7 @@ import Foundation
 
 /// Canvas / panel copy for non-ready document states.
 ///
-/// Quiet chrome, Theme tokens, no fake progress on `.failed` (AGENTS.md).
+/// Quiet chrome, DS tokens, no fake progress on `.failed` (AGENTS.md).
 public enum ShellStatusCopy {
     public static let emptyTitle = "Open a glTF file"
     public static let emptyDetail = "Drop a .glb or .gltf here, or choose File → Open…"

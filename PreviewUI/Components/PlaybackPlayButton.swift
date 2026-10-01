@@ -1,11 +1,13 @@
+import DesignSystem
 import SwiftUI
 
 /// Transport play / pause control used by the playback bar overlay.
+///
+/// A `DSGlassIconButton`. Inside `DSHUDCapsule` it is `inIsland` (borderless, no glass of its
+/// own). Standalone previews draw one glass layer.
 public struct PlaybackPlayButton: View {
     public var isPlaying: Bool
     public var action: () -> Void
-
-    @FocusState private var isFocused: Bool
 
     public init(isPlaying: Bool, action: @escaping () -> Void) {
         self.isPlaying = isPlaying
@@ -13,20 +15,12 @@ public struct PlaybackPlayButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
-            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isPlaying ? Theme.onGlyph : Theme.glyph)
-                .frame(width: 26, height: 26)
-                .contentShape(.rect)
-        }
-        .previewGlassButtonStyle(prominent: isPlaying)
-        .focused($isFocused)
-        .overlay {
-            PreviewFocusStroke(shape: .roundedRect(8), isFocusedOverride: isFocused)
-        }
-        .help(isPlaying ? "Pause" : "Play")
-        .accessibilityLabel(isPlaying ? "Pause" : "Play")
+        DSGlassIconButton(
+            isPlaying ? "Pause" : "Play",
+            systemImage: isPlaying ? "pause.fill" : "play.fill",
+            isEngaged: isPlaying,
+            action: action
+        )
     }
 }
 
@@ -34,10 +28,10 @@ public struct PlaybackPlayButton: View {
 
 #Preview("paused") {
     PlaybackPlayButton(isPlaying: false) {}
-        .padding(24)
+        .padding(DS.Spacing.xxl)
 }
 
 #Preview("playing") {
     PlaybackPlayButton(isPlaying: true) {}
-        .padding(24)
+        .padding(DS.Spacing.xxl)
 }

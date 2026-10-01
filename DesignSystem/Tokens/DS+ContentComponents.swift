@@ -10,7 +10,7 @@ public extension DS.Metrics {
 
     /// Stroke of boxed read-only cells and cards (`DSValueCell`, `DSDocumentCard`). Drawn with
     /// `strokeBorder` in `DS.Color.separator`, so Increase Contrast strengthens the colour, not
-    /// the width. Matches `PreviewUI.Theme.hairlineWidth`.
+    /// the width. Matches `DS.Metrics.hairline`.
     static let cellStrokeWidth: CGFloat = 1
 
     /// Side of the fixed glyph box of a `DSTypeIcon`, so row titles line up whatever each

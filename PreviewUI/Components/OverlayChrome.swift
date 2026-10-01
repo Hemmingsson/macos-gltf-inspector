@@ -1,25 +1,29 @@
+import DesignSystem
 import SwiftUI
+
 
 /// Shared numbers for the canvas-bottom overlays.
 public enum OverlayMetrics {
-    /// `bottom: 16px; left/right: 16px`.
-    public static let inset: CGFloat = 16
-    /// Dimensions pill `height: 30px`.
+    /// Inset of the bottom overlays from the canvas edge (`DS.Spacing.xl`).
+    public static let inset = DS.Spacing.xl
+    /// Dimensions pill height. Slightly under `DS.Metrics.glassControl` so the readout stays compact.
     public static let dimensionsHeight: CGFloat = 30
-    /// Dimensions pill `border-radius: 9px`.
+    /// Legacy rounded-rect radius; HUDs now use `DSHUDCapsule` (capsule). Kept for Phase 2 callers.
     public static let dimensionsRadius: CGFloat = 9
-    /// Playback bar `height: 42px`.
+    /// Playback bar height. Taller than a glass control so the scrubber sits comfortably.
     public static let playbackHeight: CGFloat = 42
-    /// Playback bar `border-radius: 13px`.
+    /// Legacy rounded-rect radius; HUDs now use `DSHUDCapsule` (capsule). Kept for Phase 2 callers.
     public static let playbackRadius: CGFloat = 13
     /// Playback scrub track width in the wireframe.
     public static let scrubWidth: CGFloat = 250
     /// Orientation gizmo box (`width: 66; height: 66`).
     public static let orientationSize: CGFloat = 66
-    /// Conventional RGB axis colours (not Theme tokens — they mean X/Y/Z, not glTF kinds).
-    public static let axisX = Color(red: 0xE2 / 255, green: 0x56 / 255, blue: 0x4A / 255)
-    public static let axisY = Color(red: 0x34 / 255, green: 0xC7 / 255, blue: 0x59 / 255)
-    public static let axisZ = Color(red: 0x0A / 255, green: 0x84 / 255, blue: 0xFF / 255)
+    /// X axis — `DS.Color.Axis.x`.
+    public static let axisX = DS.Color.Axis.x
+    /// Y axis — `DS.Color.Axis.y`.
+    public static let axisY = DS.Color.Axis.y
+    /// Z axis — `DS.Color.Axis.z`.
+    public static let axisZ = DS.Color.Axis.z
 
     public static func strokeAxis(
         _ context: GraphicsContext,
@@ -51,62 +55,52 @@ public enum OverlayMetrics {
     }
 }
 
-/// Flat / glass chrome for a bottom overlay pill (dimensions, playback).
+/// Thin wrapper over `DSHUDCapsule` for the dimensions / playback HUD slot.
 public struct OverlayChrome<Content: View>: View {
     public var height: CGFloat
-    public var cornerRadius: CGFloat
-    public var horizontalPadding: CGFloat = 12
+    /// Ignored — `DSHUDCapsule` is a capsule. Kept so Phase 2 callers still compile.
+    public var cornerRadius: CGFloat = 0
+    public var horizontalPadding: CGFloat = DS.Spacing.l
     @ViewBuilder public var content: () -> Content
 
     public var body: some View {
-        cluster
-            .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-    }
-
-    private var cluster: some View {
-        HStack(spacing: 12) {
+        let _ = cornerRadius
+        DSHUDCapsule(height: height, horizontalPadding: horizontalPadding) {
             content()
         }
-        .padding(.horizontal, horizontalPadding)
-        .frame(height: height)
     }
 }
 
 // MARK: - Previews
 
 #Preview("dimensions slot") {
-    OverlayChrome(
-        height: OverlayMetrics.dimensionsHeight,
-        cornerRadius: OverlayMetrics.dimensionsRadius
-    ) {
+    OverlayChrome(height: OverlayMetrics.dimensionsHeight) {
         Image(systemName: "cube")
-            .font(.system(size: 12))
-            .foregroundStyle(Theme.text2)
+            .font(DS.Font.callout)
+            .foregroundStyle(DS.Color.textSecondary)
         Text("1.00 × 1.00 × 1.00 m")
-            .font(.system(size: 12).monospacedDigit())
-            .foregroundStyle(Theme.glyph)
+            .font(DS.Font.value)
+            .foregroundStyle(DS.Color.textPrimary)
     }
-    .padding(24)
+    .padding(DS.Spacing.xxl)
 }
 
 #Preview("playback slots") {
     OverlayChrome(
         height: OverlayMetrics.playbackHeight,
-        cornerRadius: OverlayMetrics.playbackRadius,
-        horizontalPadding: 14
+        horizontalPadding: DS.Spacing.l
     ) {
         Text("Idle")
-            .font(.system(size: 12))
-            .foregroundStyle(Theme.glyph)
-        Theme.hair
-            .frame(width: Theme.hairlineWidth, height: 20)
+            .font(DS.Font.body)
+            .foregroundStyle(DS.Color.textPrimary)
+        DSGlassIslandDivider()
         PlaybackPlayButton(isPlaying: false) {}
-        RoundedRectangle(cornerRadius: 2, style: .continuous)
-            .fill(Theme.controlFill)
-            .frame(width: OverlayMetrics.scrubWidth, height: 4)
+        DSHUDSlider(value: .constant(0.25), in: 0...1, accessibilityLabel: "Playhead")
+            .controlSize(.small)
+            .frame(width: OverlayMetrics.scrubWidth)
         Text("00:00 / 00:02")
-            .font(.system(size: 11).monospacedDigit())
-            .foregroundStyle(Theme.text2)
+            .font(DS.Font.value)
+            .foregroundStyle(DS.Color.textSecondary)
     }
-    .padding(24)
+    .padding(DS.Spacing.xxl)
 }

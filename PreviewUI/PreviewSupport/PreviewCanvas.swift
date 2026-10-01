@@ -1,9 +1,10 @@
+import DesignSystem
 import SwiftUI
 
 /// Fixed-width preview surface with theme background and contrast-aware borders.
 ///
 /// Use in `#Preview` blocks with `traits: .fixedLayout(width:height:)` — sidebar (248) and
-/// inspector (288) widths match `Theme.sidebarWidth` / `Theme.inspectorWidth`.
+/// inspector (288) widths match `DS.Metrics.sidebarWidth` / `DS.Metrics.inspectorWidth`.
 public struct PreviewCanvas<Content: View>: View {
   public enum Background {
     case chrome
@@ -16,7 +17,7 @@ public struct PreviewCanvas<Content: View>: View {
   @ViewBuilder public var content: () -> Content
 
   public init(
-    width: CGFloat = Theme.sidebarWidth,
+    width: CGFloat = DS.Metrics.sidebarWidth,
     height: CGFloat? = nil,
     background: Background = .chrome,
     @ViewBuilder content: @escaping () -> Content
@@ -39,16 +40,16 @@ public struct PreviewCanvas<Content: View>: View {
 
   private var backgroundColor: Color {
     switch background {
-    case .chrome: Theme.chrome
-    case .canvas: Theme.canvas
+    case .chrome: DS.Color.windowBackground
+    case .canvas: DS.Color.Canvas.ground
     }
   }
 }
 
 public extension PreviewCanvas {
-  /// Left sidebar column width (`Theme.sidebarWidth`).
-  static var sidebarWidth: CGFloat { Theme.sidebarWidth }
+  /// Left sidebar column width (`DS.Metrics.sidebarWidth`).
+  static var sidebarWidth: CGFloat { DS.Metrics.sidebarWidth }
 
-  /// Right inspector column width (`Theme.inspectorWidth`).
-  static var inspectorWidth: CGFloat { Theme.inspectorWidth }
+  /// Right inspector column width (`DS.Metrics.inspectorWidth`).
+  static var inspectorWidth: CGFloat { DS.Metrics.inspectorWidth }
 }

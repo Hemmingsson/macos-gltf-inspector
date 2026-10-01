@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Convert losses next to Khronos validation — “not rendered as authored”.
@@ -13,20 +14,22 @@ public struct ConvertProblemsSection: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Not rendered as authored")
+            DSSectionHeader("Not rendered as authored")
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.top, DS.Spacing.m)
+                .padding(.bottom, DS.Spacing.xs)
 
-            StatusWarningCard(
-                summaryTitle: summaryTitle,
-                rows: problems.entries.map {
-                    StatusWarningCard.Row(id: $0.id, message: $0.title)
-                },
+            DSDisclosureCard(
+                summaryTitle,
+                status: problems.errorCount > 0 ? .error : .warning,
                 isExpanded: $isExpanded,
-                collapseAccessibilityHint: "Collapse problems",
-                expandAccessibilityHint: "Expand problems"
+                messages: problems.entries.map {
+                    DSDisclosureMessage(id: $0.id, text: $0.title)
+                }
             )
-            .padding(.horizontal, 14)
-            .padding(.top, 2)
-            .padding(.bottom, 4)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.top, DS.Spacing.xxs)
+            .padding(.bottom, DS.Spacing.xs)
         }
         .onAppear {
             if problems.errorCount > 0 { isExpanded = true }
@@ -48,8 +51,8 @@ public struct ConvertProblemsSection: View {
 
 // MARK: - Previews
 
-#Preview("with issues", traits: .fixedLayout(width: Theme.sidebarWidth, height: 180)) {
-    PreviewCanvas(width: Theme.sidebarWidth, height: 180) {
+#Preview("with issues", traits: .fixedLayout(width: 248, height: 180)) {
+    PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 180) {
         ConvertProblemsSection(problems: ValidationFixtures.convertProblems)
     }
 }

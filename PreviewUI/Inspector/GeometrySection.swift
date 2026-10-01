@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 /// Per-node geometry chips — only facts that exist (DESIGN.md: hide what the node lacks).
@@ -6,12 +7,15 @@ public struct GeometrySection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(title: "Geometry")
+            DSSectionHeader("Geometry")
+                .padding(.top, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.bottom, DS.Spacing.xs)
 
-            FlexibleChipRow(items: chips, chipsPerRow: 3)
-                .padding(.horizontal, 14)
-                .padding(.top, 2)
-                .padding(.bottom, 8)
+            FlexibleChipRow(items: chips)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.top, DS.Spacing.xxs)
+                .padding(.bottom, DS.Spacing.m)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Geometry: \(chips.joined(separator: ", "))")
@@ -36,14 +40,29 @@ public struct GeometrySection: View {
 // MARK: - Previews
 
 #Preview("basic") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let detail = NodeDetailFixtures.mesh
         GeometrySection(geometry: detail.geometry!)
     }
 }
 
 #Preview("full") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
+        GeometrySection(
+            geometry: GeometryInfo(
+                triangleCount: 18_240,
+                vertexCount: 21_600,
+                uvSetCount: 2,
+                hasNormals: true,
+                hasTangents: true,
+                hasVertexColors: true
+            )
+        )
+    }
+}
+
+#Preview("full, narrow") {
+    PreviewCanvas(width: DS.Metrics.inspectorWidthRange.lowerBound) {
         GeometrySection(
             geometry: GeometryInfo(
                 triangleCount: 18_240,

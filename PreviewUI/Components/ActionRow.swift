@@ -1,45 +1,51 @@
+import DesignSystem
 import SwiftUI
 
-/// Action cluster on the unified chrome baseline (`chromeBandAligned()`).
+/// Trailing Open-in control. In the inspector header it sits padded at the top right; over the
+/// canvas (inspector hidden) it still sits on the chrome baseline so the floating overlay stays
+/// reachable.
 ///
-/// Document actions (Open in…) trail. When floating over the canvas (inspector closed), the same
-/// cluster sits at the trailing edge.
+/// `openInMenu` is **menu items** (Finder, Blender, …), not a styled `Menu`. This row wraps them
+/// in `DSGlassMenuButton`.
 public struct ActionRow: View {
     public let openInMenu: AnyView
+    /// When `true`, align to the window chrome band (floating canvas overlay). The inspector
+    /// header passes `false` and pads instead.
+    public var alignsToChromeBand: Bool = true
 
     public var body: some View {
-        HStack(spacing: 4) {
+        let row = HStack(spacing: DS.Spacing.xs) {
             Spacer(minLength: 0)
-            openInMenu
+            DSGlassMenuButton("Open in", systemImage: "square.and.arrow.up") {
+                openInMenu
+            }
+            .dsGlassPlacement(alignsToChromeBand ? .standalone : .inIsland)
         }
-        .frame(height: ChromeMetrics.buttonSize, alignment: .trailing)
-        .padding(.leading, 12)
-        .padding(.trailing, 12)
-        .chromeBandAligned()
+        .padding(.leading, DS.Spacing.l)
+        .padding(.trailing, DS.Spacing.l)
+        .padding(.top, alignsToChromeBand ? 0 : DS.Spacing.s)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector actions")
+
+        if alignsToChromeBand {
+            row.dsChromeBandAligned()
+        } else {
+            row
+        }
     }
 }
 
 // MARK: - Previews
 
-private struct PreviewOpenInMenu: View {
+private struct PreviewOpenInItems: View {
     var body: some View {
-        Menu {
-            Button("Finder") {}
-            Button("Blender") {}
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.system(size: ChromeMetrics.glyphSize))
-                .frame(width: ChromeMetrics.buttonSize, height: ChromeMetrics.buttonSize)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        Button("Finder") {}
+        Button("Blender") {}
     }
 }
 
 #Preview("with menu") {
-    PreviewCanvas(width: Theme.inspectorWidth) {
-        ActionRow(openInMenu: AnyView(PreviewOpenInMenu()))
+    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
+        ActionRow(openInMenu: AnyView(PreviewOpenInItems()), alignsToChromeBand: false)
     }
 }
