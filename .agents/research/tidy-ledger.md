@@ -158,3 +158,10 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - `MeshBuffers.positions` is populated even for `MeshResource(from: LowLevelMesh)`, so empty MeshBuffers is not a LowLevelMesh vs MeshDescriptor oracle.
 - PreviewScene `@State playback` is now Quick Look only; host first-frame pose is `RealityClipPlayer.init`. The unused host-side `@State` can drop later with the W1 C1 leftover.
 - No real-window Fit / clip-play check (no XCUITest, no `/Applications`).
+
+## WP document
+
+- Warrior_Girl_2 wall is 944k JSON `matrix` nodes (191 MB JSON chunk), not skins (0) or image headers (9). `peekJSON` / `JSONSerialization` of that chunk is outside `makeDocument` and still unpaid.
+- Texture-heavy files (BoomBox, Flame_Knight) still spend most of `makeDocument` in ImageIO thumbnail decode. One `CGImageSource` now serves size + thumb; skipping thumbs would change inspector output.
+- Node build uses `DispatchQueue.concurrentPerform` above 2048 nodes. A typed glTF decoder (no `NSDictionary` / `NSNumber`) was not attempted — would re-parse the 191 MB chunk.
+- Skin parent map is built once, and only when the file has skins. Emma Frost / other rigs were not re-timed here.

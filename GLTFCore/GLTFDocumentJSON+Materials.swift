@@ -120,7 +120,7 @@ extension GLTFDocumentJSON {
             if let cached = previews[index] { return cached }
             var built: (size: (width: Int, height: Int)?, thumb: Data?) = (nil, nil)
             if images.indices.contains(index), let bytes = binary.imageBytes(images[index]) {
-                built = (GLTFImageDecode.pixelSize(of: bytes), GLTFImageDecode.thumbnailPNG(from: bytes, maxEdge: 96))
+                built = GLTFImageDecode.preview(of: bytes, maxEdge: 96)
             }
             previews[index] = built
             return built
