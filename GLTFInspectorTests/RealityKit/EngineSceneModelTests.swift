@@ -205,7 +205,7 @@ private func availability(
     for model: EngineSceneModel,
     debugModes: [PreviewDebugMode]
 ) -> DerivedAvailability<EngineSceneModel> {
-    DerivedAvailability(model: model, channels: EngineSceneModel.mapDebugChannels(debugModes))
+    DerivedAvailability(model: model, channels: EngineSceneModel.mapDebugChannels(debugModes.map(\.renderViewMode)))
 }
 
 private func requireFixture(_ url: URL) throws {
