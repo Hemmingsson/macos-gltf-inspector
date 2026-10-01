@@ -116,20 +116,6 @@ extension CameraPose {
     }
 }
 
-extension PixelDiffManifest.Camera {
-    init(_ pose: CameraPose) {
-        self.init(
-            azimuth: pose.azimuth,
-            elevation: pose.elevation,
-            distance: pose.distance,
-            target: pose.target,
-            yfov: pose.yfov,
-            znear: pose.znear,
-            zfar: pose.zfar
-        )
-    }
-}
-
 /// The safety net for the web renderer: every pinned sample rendered and compared against
 /// `TestModels/References/webkit/`.
 @MainActor

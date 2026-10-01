@@ -1,0 +1,385 @@
+DesignCatalog/Support/CatalogScaffold.swift:125:24: warning: Unused property 'value'
+DesignSystem/Components/Content/DSDisclosureCard.swift:112:15: warning: Redundant public accessibility for struct 'DSDisclosureCardStyle' (not used outside of DesignSystem)
+DesignSystem/Components/Content/DSDisclosureCard.swift:115:12: warning: Redundant public accessibility for initializer 'init(status:)' (not used outside of DesignSystem)
+DesignSystem/Components/Content/DSDisclosureCard.swift:119:17: warning: Redundant public accessibility for function 'makeBody(configuration:)' (not used outside of DesignSystem)
+DesignSystem/Components/Content/DSListRow.swift:76:5: warning: Unused initializer 'init(_:subtitle:isSelected:isMuted:icon:)'
+DesignSystem/Components/Controls/DSPopoverPanel.swift:34:24: warning: Unused property 'exposure'
+DesignSystem/Components/Controls/DSPopoverPanel.swift:35:24: warning: Unused property 'rotation'
+DesignSystem/Components/Controls/DSPopoverPanel.swift:36:24: warning: Unused property 'usesFileLights'
+DesignSystem/Components/Glass/DSGlassCluster.swift:42:24: warning: Unused property 'floor'
+DesignSystem/Components/Glass/DSGlassCluster.swift:43:24: warning: Unused property 'autoRotate'
+DesignSystem/Components/Glass/DSGlassCluster.swift:44:24: warning: Unused property 'centered'
+DesignSystem/Components/Glass/DSGlassCluster.swift:45:24: warning: Unused property 'orthographic'
+DesignSystem/Components/Glass/DSGlassCluster.swift:46:24: warning: Unused property 'backdrop'
+DesignSystem/Components/Glass/DSGlassIsland.swift:63:24: warning: Unused property 'floor'
+DesignSystem/Components/Glass/DSGlassIsland.swift:64:24: warning: Unused property 'grid'
+DesignSystem/Components/Glass/DSGlassPopoverButton.swift:25:24: warning: Unused property 'ownIsPresented'
+DesignSystem/Components/Glass/DSGlassPopoverButton.swift:98:24: warning: Unused property 'open'
+DesignSystem/Components/Glass/DSGlassToggleButton.swift:57:24: warning: Unused property 'off'
+DesignSystem/Components/Glass/DSGlassToggleButton.swift:58:24: warning: Unused property 'on'
+DesignSystem/Components/Glass/DSGlassToggleButton.swift:59:24: warning: Unused property 'islandOff'
+DesignSystem/Components/Glass/DSGlassToggleButton.swift:60:24: warning: Unused property 'islandOn'
+DesignSystem/Components/Glass/DSHUDCapsule.swift:48:24: warning: Unused property 'playhead'
+DesignSystem/Components/Glass/DSSwatchPicker.swift:113:24: warning: Unused property 'first'
+DesignSystem/Components/Glass/DSSwatchPicker.swift:114:24: warning: Unused property 'second'
+DesignSystem/Components/Glass/DSSwatchPicker.swift:115:24: warning: Unused property 'third'
+GLTFCore/AppLog.swift:17:23: warning: Unused property 'prepare'
+GLTFCore/GLBBox.swift:116:24: warning: Unused function 'readUInt16(_:_:)'
+GLTFCore/GLTFBinaryStore.swift:21:16: warning: Unused property 'unavailable'
+GLTFCore/GLTFValidator.swift:22:16: warning: Assign-only property 'infoCount' is assigned, but never used
+GLTFCore/GLTFValidator.swift:23:16: warning: Assign-only property 'hintCount' is assigned, but never used
+GLTFCore/GLTFValidator.swift:32:16: warning: Unused property 'badgeTitle'
+GLTFCore/GLTFValidator.swift:47:16: warning: Unused property 'badgeTitle'
+GLTFCore/GLTFValidator.swift:55:16: warning: Unused property 'report'
+GLTFInspector/Engine/RendererAvailability.swift:20:9: warning: Unused property 'hasCameras'
+GLTFInspector/Engine/RendererAvailability.swift:21:9: warning: Unused property 'isMultiScene'
+GLTFInspector/Engine/RendererAvailability.swift:22:9: warning: Unused property 'hasSkin'
+GLTFInspector/SelectionDetail.swift:16:13: warning: Assign-only property 'xmag' is assigned, but never used
+GLTFInspector/SelectionDetail.swift:17:13: warning: Assign-only property 'ymag' is assigned, but never used
+GLTFInspector/SelectionDetail.swift:24:13: warning: Assign-only property 'color' is assigned, but never used
+GLTFInspector/SelectionDetail.swift:31:9: warning: Assign-only property 'name' is assigned, but never used
+GLTFInspector/SelectionDetail.swift:34:9: warning: Assign-only property 'rotationEulerDegrees' is assigned, but never used
+GLTFInspectorTests/GLTFValidatorTests.swift:4:1: warning: Unused imported module 'GLTFInspector'
+GLTFInspectorTests/OutlinerTreeTests.swift:3:1: warning: Unused imported module 'GLTFInspector'
+GLTFInspectorTests/PreviewStatsTests.swift:3:1: warning: Unused imported module 'GLTFInspector'
+GLTFInspectorTests/RealityKit/MaterialVariantsTests.swift:2:1: warning: Unused imported module 'GLTFCore'
+GLTFInspectorTests/RealityKit/PipelineHoleTests.swift:4:1: warning: Unused imported module 'GLTFCore'
+GLTFInspectorTests/RealityKit/PipelineReportTests.swift:2:1: warning: Unused imported module 'GLTFCore'
+GLTFInspectorTests/RealityKit/RealityTestHelpers.swift:2:1: warning: Unused imported module 'GLTFCore'
+GLTFInspectorTests/RealityKit/SessionDocumentConvertTests.swift:3:1: warning: Unused imported module 'GLTFInspector'
+GLTFInspectorTests/WebKit/CachedQuickLookThumbnailTests.swift:4:1: warning: Unused imported module 'GLTFInspector'
+GLTFInspectorTests/WebKit/PixelDiffWebKitTests.swift:120:5: warning: Unused initializer 'init(_:)'
+GLTFInspectorTests/WebKit/WebRendererLoadCopyTests.swift:4:1: warning: Unused imported module 'GLTFInspector'
+PreviewUI/Components/ActionRow.swift:10:15: warning: Redundant public accessibility for struct 'ActionRow' (not used outside of PreviewUI)
+PreviewUI/Components/ActionRow.swift:11:16: warning: Redundant public accessibility for property 'openInMenu' (not used outside of PreviewUI)
+PreviewUI/Components/ActionRow.swift:14:16: warning: Redundant public accessibility for property 'alignsToChromeBand' (not used outside of PreviewUI)
+PreviewUI/Components/ActionRow.swift:16:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/CanvasStatusView.swift:5:15: warning: Redundant public accessibility for struct 'CanvasStatusView' (not used outside of PreviewUI)
+PreviewUI/Components/CanvasStatusView.swift:6:16: warning: Redundant public accessibility for property 'state' (not used outside of PreviewUI)
+PreviewUI/Components/CanvasStatusView.swift:8:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/DimensionsReadout.swift:5:15: warning: Redundant public accessibility for struct 'DimensionsReadout' (not used outside of PreviewUI)
+PreviewUI/Components/DimensionsReadout.swift:6:16: warning: Redundant public accessibility for property 'dimensions' (not used outside of PreviewUI)
+PreviewUI/Components/DimensionsReadout.swift:8:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/FlexibleChipRow.swift:6:15: warning: Redundant public accessibility for struct 'FlexibleChipRow' (not used outside of PreviewUI)
+PreviewUI/Components/FlexibleChipRow.swift:7:16: warning: Redundant public accessibility for property 'items' (not used outside of PreviewUI)
+PreviewUI/Components/FlexibleChipRow.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/IdentityRow.swift:5:15: warning: Redundant public accessibility for struct 'IdentityRow' (not used outside of PreviewUI)
+PreviewUI/Components/IdentityRow.swift:6:16: warning: Redundant public accessibility for property 'name' (not used outside of PreviewUI)
+PreviewUI/Components/IdentityRow.swift:7:16: warning: Redundant public accessibility for property 'kindTitle' (not used outside of PreviewUI)
+PreviewUI/Components/IdentityRow.swift:8:16: warning: Redundant public accessibility for property 'kind' (not used outside of PreviewUI)
+PreviewUI/Components/IdentityRow.swift:10:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorChip.swift:6:15: warning: Redundant public accessibility for struct 'InspectorChip' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorChip.swift:7:16: warning: Redundant public accessibility for property 'title' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorChip.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorField.swift:6:15: warning: Redundant public accessibility for struct 'InspectorField' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorField.swift:7:16: warning: Redundant public accessibility for property 'text' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorField.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorStatusView.swift:5:15: warning: Redundant public accessibility for struct 'InspectorStatusView' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorStatusView.swift:6:16: warning: Redundant public accessibility for property 'state' (not used outside of PreviewUI)
+PreviewUI/Components/InspectorStatusView.swift:8:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/MaterialSwatch.swift:5:15: warning: Redundant public accessibility for struct 'MaterialSwatch' (not used outside of PreviewUI)
+PreviewUI/Components/MaterialSwatch.swift:6:16: warning: Redundant public accessibility for property 'color' (not used outside of PreviewUI)
+PreviewUI/Components/MaterialSwatch.swift:7:16: warning: Redundant public accessibility for property 'size' (not used outside of PreviewUI)
+PreviewUI/Components/MaterialSwatch.swift:9:12: warning: Redundant public accessibility for initializer 'init(color:size:)' (not used outside of PreviewUI)
+PreviewUI/Components/MaterialSwatch.swift:14:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:9:15: warning: Redundant public accessibility for struct 'NodeRow' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:10:16: warning: Redundant public accessibility for property 'item' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:11:16: warning: Redundant public accessibility for property 'isSelected' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:12:16: warning: Redundant public accessibility for property 'selection' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:14:16: warning: Redundant public accessibility for property 'paintsSelection' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:15:16: warning: Redundant public accessibility for property 'treeFolding' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:16:16: warning: Redundant public accessibility for property 'isExpanded' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:17:16: warning: Redundant public accessibility for property 'onToggleExpand' (not used outside of PreviewUI)
+PreviewUI/Components/NodeRow.swift:35:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/OrientationGizmo.swift:6:15: warning: Redundant public accessibility for struct 'OrientationGizmo' (not used outside of PreviewUI)
+PreviewUI/Components/OrientationGizmo.swift:7:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/OriginGizmo.swift:6:15: warning: Redundant public accessibility for struct 'OriginGizmo' (not used outside of PreviewUI)
+PreviewUI/Components/OriginGizmo.swift:8:16: warning: Redundant public accessibility for property 'authoredOrigin' (not used outside of PreviewUI)
+PreviewUI/Components/OriginGizmo.swift:10:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:6:13: warning: Redundant public accessibility for enum 'OverlayMetrics' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:8:23: warning: Redundant public accessibility for property 'inset' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:10:23: warning: Redundant public accessibility for property 'dimensionsHeight' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:12:23: warning: Unused property 'dimensionsRadius'
+PreviewUI/Components/OverlayChrome.swift:14:23: warning: Redundant public accessibility for property 'playbackHeight' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:16:23: warning: Unused property 'playbackRadius'
+PreviewUI/Components/OverlayChrome.swift:18:23: warning: Redundant public accessibility for property 'scrubWidth' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:20:23: warning: Redundant public accessibility for property 'orientationSize' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:22:23: warning: Redundant public accessibility for property 'axisX' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:24:23: warning: Redundant public accessibility for property 'axisY' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:26:23: warning: Redundant public accessibility for property 'axisZ' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:28:24: warning: Redundant public accessibility for function 'strokeAxis(_:from:to:color:lineWidth:)' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:41:24: warning: Redundant public accessibility for function 'drawAxisLabel(_:_:at:color:size:)' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:59:15: warning: Redundant public accessibility for struct 'OverlayChrome' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:60:16: warning: Redundant public accessibility for property 'height' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:62:16: warning: Redundant public accessibility for property 'cornerRadius' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:63:16: warning: Redundant public accessibility for property 'horizontalPadding' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:64:29: warning: Redundant public accessibility for property 'content' (not used outside of PreviewUI)
+PreviewUI/Components/OverlayChrome.swift:66:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/PlaybackPlayButton.swift:8:15: warning: Redundant public accessibility for struct 'PlaybackPlayButton' (not used outside of PreviewUI)
+PreviewUI/Components/PlaybackPlayButton.swift:9:16: warning: Redundant public accessibility for property 'isPlaying' (not used outside of PreviewUI)
+PreviewUI/Components/PlaybackPlayButton.swift:10:16: warning: Redundant public accessibility for property 'action' (not used outside of PreviewUI)
+PreviewUI/Components/PlaybackPlayButton.swift:12:12: warning: Redundant public accessibility for initializer 'init(isPlaying:action:)' (not used outside of PreviewUI)
+PreviewUI/Components/PlaybackPlayButton.swift:17:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/SidebarStatusView.swift:6:15: warning: Redundant public accessibility for struct 'SidebarStatusView' (not used outside of PreviewUI)
+PreviewUI/Components/SidebarStatusView.swift:7:16: warning: Redundant public accessibility for property 'state' (not used outside of PreviewUI)
+PreviewUI/Components/SidebarStatusView.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:6:15: warning: Redundant public accessibility for struct 'StatusWarningCard' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:7:19: warning: Redundant public accessibility for struct 'Row' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:8:20: warning: Redundant public accessibility for property 'id' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:9:20: warning: Redundant public accessibility for property 'message' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:11:16: warning: Redundant public accessibility for initializer 'init(id:message:)' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:17:16: warning: Redundant public accessibility for property 'summaryTitle' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:18:16: warning: Redundant public accessibility for property 'rows' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:19:25: warning: Redundant public accessibility for property 'isExpanded' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:20:16: warning: Redundant public accessibility for property 'status' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:21:16: warning: Redundant public accessibility for property 'collapseAccessibilityHint' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:22:16: warning: Redundant public accessibility for property 'expandAccessibilityHint' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:24:12: warning: Redundant public accessibility for initializer 'init(summaryTitle:rows:isExpanded:status:collapseAccessibilityHint:expandAccessibilityHint:)' (not used outside of PreviewUI)
+PreviewUI/Components/StatusWarningCard.swift:40:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Frame/CanvasRegion.swift:15:15: warning: Redundant public accessibility for struct 'CanvasRegion' (not used outside of PreviewUI)
+PreviewUI/Frame/CanvasRegion.swift:46:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:8:15: warning: Redundant public accessibility for struct 'LeftSidebar' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:9:16: warning: Redundant public accessibility for property 'model' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:11:16: warning: Redundant public accessibility for property 'selection' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:12:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:13:16: warning: Redundant public accessibility for property 'documentState' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:15:16: warning: Redundant public accessibility for property 'isSidebarVisible' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:16:16: warning: Redundant public accessibility for property 'onToggleSidebar' (not used outside of PreviewUI)
+PreviewUI/Frame/LeftSidebar.swift:18:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:8:15: warning: Redundant public accessibility for struct 'RightInspector' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:12:16: warning: Assign-only property 'model' is assigned, but never used
+PreviewUI/Frame/RightInspector.swift:12:16: warning: Redundant public accessibility for property 'model' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:13:16: warning: Redundant public accessibility for property 'selection' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:14:16: warning: Redundant public accessibility for property 'documentState' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:15:16: warning: Redundant public accessibility for property 'openInMenu' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:17:16: warning: Redundant public accessibility for property 'morphTargets' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:18:16: warning: Redundant public accessibility for property 'onSetMorphWeight' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:20:12: warning: Redundant public accessibility for initializer 'init(model:selection:documentState:openInMenu:morphTargets:onSetMorphWeight:)' (not used outside of PreviewUI)
+PreviewUI/Frame/RightInspector.swift:36:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Frame/ShellRootView.swift:198:9: warning: Assign-only property 'mode' is assigned, but never used
+PreviewUI/Frame/ShellStatusViews.swift:6:13: warning: Redundant public accessibility for enum 'ShellStatusCopy' (not used outside of PreviewUI)
+PreviewUI/Frame/ShellStatusViews.swift:7:23: warning: Redundant public accessibility for property 'emptyTitle' (not used outside of PreviewUI)
+PreviewUI/Frame/ShellStatusViews.swift:8:23: warning: Redundant public accessibility for property 'emptyDetail' (not used outside of PreviewUI)
+PreviewUI/Frame/ShellStatusViews.swift:9:23: warning: Redundant public accessibility for property 'loadingTitle' (not used outside of PreviewUI)
+PreviewUI/Frame/ShellStatusViews.swift:10:23: warning: Redundant public accessibility for property 'failedTitle' (not used outside of PreviewUI)
+PreviewUI/Frame/ShellStatusViews.swift:12:23: warning: Redundant public accessibility for property 'invalidFileDetail' (not used outside of PreviewUI)
+PreviewUI/Inspector/ConvertProblemsSection.swift:5:15: warning: Redundant public accessibility for struct 'ConvertProblemsSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/ConvertProblemsSection.swift:6:16: warning: Redundant public accessibility for property 'problems' (not used outside of PreviewUI)
+PreviewUI/Inspector/ConvertProblemsSection.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/FileSection.swift:5:15: warning: Redundant public accessibility for struct 'FileSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/FileSection.swift:6:16: warning: Redundant public accessibility for property 'stats' (not used outside of PreviewUI)
+PreviewUI/Inspector/FileSection.swift:7:16: warning: Redundant public accessibility for property 'fileName' (not used outside of PreviewUI)
+PreviewUI/Inspector/FileSection.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/GeometrySection.swift:5:15: warning: Redundant public accessibility for struct 'GeometrySection' (not used outside of PreviewUI)
+PreviewUI/Inspector/GeometrySection.swift:6:16: warning: Redundant public accessibility for property 'geometry' (not used outside of PreviewUI)
+PreviewUI/Inspector/GeometrySection.swift:8:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:5:13: warning: Redundant public accessibility for enum 'MaterialInspectorSupport' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:6:24: warning: Redundant public accessibility for function 'workflowTitle(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:14:24: warning: Redundant public accessibility for function 'alphaTitle(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:26:24: warning: Redundant public accessibility for function 'usageTitle(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:35:24: warning: Redundant public accessibility for function 'hexLabel(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:42:24: warning: Redundant public accessibility for function 'scalarLabel(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:48:24: warning: Redundant public accessibility for function 'showsBaseColorFactor(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:55:24: warning: Redundant public accessibility for function 'showsMetallic(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:61:24: warning: Redundant public accessibility for function 'showsRoughness(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:67:24: warning: Redundant public accessibility for function 'showsEmissive(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:74:24: warning: Redundant public accessibility for function 'showsNormalScale(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialInspectorSupport.swift:82:24: warning: Redundant public accessibility for function 'showsOcclusionStrength(_:)' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialSection.swift:10:15: warning: Redundant public accessibility for struct 'MaterialSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialSection.swift:11:17: warning: Redundant public accessibility for enum 'Density' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialSection.swift:18:16: warning: Redundant public accessibility for property 'material' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialSection.swift:19:16: warning: Redundant public accessibility for property 'density' (not used outside of PreviewUI)
+PreviewUI/Inspector/MaterialSection.swift:21:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/MorphWeightsSection.swift:8:15: warning: Redundant public accessibility for struct 'MorphWeightsSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/MorphWeightsSection.swift:9:16: warning: Redundant public accessibility for property 'targets' (not used outside of PreviewUI)
+PreviewUI/Inspector/MorphWeightsSection.swift:10:16: warning: Redundant public accessibility for property 'onSetWeight' (not used outside of PreviewUI)
+PreviewUI/Inspector/MorphWeightsSection.swift:12:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeExtrasSection.swift:5:15: warning: Redundant public accessibility for struct 'NodeExtrasSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeExtrasSection.swift:6:16: warning: Redundant public accessibility for property 'detail' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeExtrasSection.swift:8:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeHeader.swift:8:15: warning: Redundant public accessibility for struct 'NodeHeader' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeHeader.swift:9:16: warning: Redundant public accessibility for property 'name' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeHeader.swift:10:16: warning: Redundant public accessibility for property 'kindTitle' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeHeader.swift:11:16: warning: Redundant public accessibility for property 'kind' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeHeader.swift:12:16: warning: Redundant public accessibility for property 'openInMenu' (not used outside of PreviewUI)
+PreviewUI/Inspector/NodeHeader.swift:14:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/PipelineSection.swift:5:15: warning: Redundant public accessibility for struct 'PipelineSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/PipelineSection.swift:6:16: warning: Redundant public accessibility for property 'report' (not used outside of PreviewUI)
+PreviewUI/Inspector/PipelineSection.swift:8:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/TransformSection.swift:5:15: warning: Redundant public accessibility for struct 'TransformSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/TransformSection.swift:6:16: warning: Redundant public accessibility for property 'transform' (not used outside of PreviewUI)
+PreviewUI/Inspector/TransformSection.swift:7:16: warning: Redundant public accessibility for property 'isAuthored' (not used outside of PreviewUI)
+PreviewUI/Inspector/TransformSection.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Inspector/ValidationSection.swift:5:15: warning: Redundant public accessibility for struct 'ValidationSection' (not used outside of PreviewUI)
+PreviewUI/Inspector/ValidationSection.swift:6:16: warning: Redundant public accessibility for property 'validation' (not used outside of PreviewUI)
+PreviewUI/Inspector/ValidationSection.swift:9:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Overlays/PlaybackBar.swift:9:15: warning: Redundant public accessibility for struct 'PlaybackBar' (not used outside of PreviewUI)
+PreviewUI/Overlays/PlaybackBar.swift:10:16: warning: Redundant public accessibility for property 'playback' (not used outside of PreviewUI)
+PreviewUI/Overlays/PlaybackBar.swift:14:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Fixtures/FixtureSceneModel.swift:121:21: warning: Unused property 'rigged'
+PreviewUI/PreviewSupport/Fixtures/FixtureSceneModel.swift:212:21: warning: Unused property 'cameras'
+PreviewUI/PreviewSupport/Fixtures/MaterialFixtures.swift:54:21: warning: Unused property 'unlit'
+PreviewUI/PreviewSupport/Fixtures/NodeDetailFixtures.swift:36:23: warning: Unused property 'scene'
+PreviewUI/PreviewSupport/Fixtures/NodeDetailFixtures.swift:87:23: warning: Unused property 'empty'
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:4:13: warning: Redundant public accessibility for enum 'OutlinerFixtures' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:6:21: warning: Redundant public accessibility for property 'nestedScene' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:26:21: warning: Redundant public accessibility for property 'cubeScene' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:37:21: warning: Unused property 'riggedScene'
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:56:21: warning: Unused property 'lightsScene'
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:62:21: warning: Redundant public accessibility for property 'multiScenePicker' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:67:21: warning: Redundant public accessibility for property 'defaultExpandedNested' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Fixtures/OutlinerFixtures.swift:69:21: warning: Unused property 'nestedPreorderIdentity'
+PreviewUI/PreviewSupport/Fixtures/ValidationFixtures.swift:17:21: warning: Unused property 'unavailable'
+PreviewUI/PreviewSupport/Fixtures/ValidationFixtures.swift:28:21: warning: Unused property 'withWarnings'
+PreviewUI/PreviewSupport/Mocks/MockSelectionModel.swift:48:23: warning: Unused property 'cubeMeshDetail'
+PreviewUI/PreviewSupport/Mocks/MockSettingsDefaultsStore.swift:7:20: warning: Redundant public accessibility for class 'MockSettingsDefaultsStore' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Mocks/MockSettingsDefaultsStore.swift:13:12: warning: Redundant public accessibility for initializer 'init()' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Mocks/MockSettingsDefaultsStore.swift:15:17: warning: Redundant public accessibility for function 'value(for:)' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Mocks/MockSettingsDefaultsStore.swift:19:17: warning: Redundant public accessibility for function 'set(_:for:)' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:7:20: warning: Redundant public accessibility for class 'MockSettingsStore' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:18:12: warning: Redundant public accessibility for initializer 'init()' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:20:17: warning: Unused function 'default(for:)'
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:25:17: warning: Unused function 'sessionValue(for:)'
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:30:17: warning: Unused function 'setSession(_:for:)'
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:34:17: warning: Unused function 'promoteToDefault(_:)'
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:39:17: warning: Unused function 'clearSession()'
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:48:18: warning: Unused function 'read(_:bool:backdrop:projection:string:)'
+PreviewUI/PreviewSupport/Mocks/MockSettingsStore.swift:70:18: warning: Unused function 'write(_:for:bool:backdrop:projection:string:)'
+PreviewUI/PreviewSupport/Mocks/MockViewportController.swift:61:17: warning: Unused function 'reset()'
+PreviewUI/PreviewSupport/Mocks/MockViewportController.swift:63:17: warning: Unused function 'screenshot()'
+PreviewUI/PreviewSupport/PreviewCanvas.swift:8:15: warning: Redundant public accessibility for struct 'PreviewCanvas' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:9:15: warning: Redundant public accessibility for enum 'Background' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:14:14: warning: Redundant public accessibility for property 'width' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:15:14: warning: Redundant public accessibility for property 'height' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:16:14: warning: Redundant public accessibility for property 'background' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:17:27: warning: Redundant public accessibility for property 'content' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:19:10: warning: Redundant public accessibility for initializer 'init(width:height:background:content:)' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:31:14: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:49:18: warning: Redundant public accessibility for extension 'PreviewCanvas' (not used outside of PreviewUI)
+PreviewUI/PreviewSupport/PreviewCanvas.swift:51:14: warning: Unused property 'sidebarWidth'
+PreviewUI/PreviewSupport/PreviewCanvas.swift:54:14: warning: Unused property 'inspectorWidth'
+PreviewUI/Seam/AppDefaultsStore.swift:11:23: warning: Unused property 'shared'
+PreviewUI/Seam/Availability.swift:8:9: warning: Unused property 'hasCameras'
+PreviewUI/Seam/Availability.swift:9:9: warning: Unused property 'isMultiScene'
+PreviewUI/Seam/Availability.swift:10:9: warning: Unused property 'hasSkin'
+PreviewUI/Seam/Availability.swift:11:9: warning: Unused property 'hasMorphs'
+PreviewUI/Seam/Models.swift:127:16: warning: Unused property 'kind'
+PreviewUI/Seam/Models.swift:144:16: warning: Assign-only property 'rootNodeIDs' is assigned, but never used
+PreviewUI/Seam/Models.swift:198:16: warning: Assign-only property 'color' is assigned, but never used
+PreviewUI/Seam/Models.swift:351:16: warning: Assign-only property 'usedByTriangleCount' is assigned, but never used
+PreviewUI/Seam/Models.swift:353:16: warning: Assign-only property 'uniqueTextureCount' is assigned, but never used
+PreviewUI/Seam/Models.swift:469:16: warning: Assign-only property 'hasNormals' is assigned, but never used
+PreviewUI/Seam/Models.swift:544:16: warning: Assign-only property 'vertexCount' is assigned, but never used
+PreviewUI/Seam/Models.swift:552:16: warning: Assign-only property 'hasVertexColors' is assigned, but never used
+PreviewUI/Seam/Models.swift:553:16: warning: Assign-only property 'isRigged' is assigned, but never used
+PreviewUI/Seam/Models.swift:554:16: warning: Assign-only property 'morphTargetCount' is assigned, but never used
+PreviewUI/Seam/SceneModel.swift:46:10: warning: Unused function 'node(_:)'
+PreviewUI/Seam/SettingsStore.swift:62:10: warning: Unused function 'default(for:)'
+PreviewUI/Seam/SettingsStore.swift:65:10: warning: Unused function 'sessionValue(for:)'
+PreviewUI/Seam/SettingsStore.swift:67:10: warning: Unused function 'setSession(_:for:)'
+PreviewUI/Seam/SettingsStore.swift:69:10: warning: Unused function 'promoteToDefault(_:)'
+PreviewUI/Seam/SettingsStore.swift:71:10: warning: Unused function 'clearSession()'
+PreviewUI/Seam/ViewportController.swift:36:10: warning: Unused function 'reset()'
+PreviewUI/Seam/ViewportController.swift:39:10: warning: Unused function 'screenshot()'
+PreviewUI/Settings/PreviewSettingsRoot.swift:380:16: warning: Unused property 'rootHeight'
+PreviewUI/Sidebar/DocumentHeader.swift:9:15: warning: Redundant public accessibility for struct 'DocumentHeader' (not used outside of PreviewUI)
+PreviewUI/Sidebar/DocumentHeader.swift:10:16: warning: Redundant public accessibility for property 'fileName' (not used outside of PreviewUI)
+PreviewUI/Sidebar/DocumentHeader.swift:13:16: warning: Redundant public accessibility for property 'sceneName' (not used outside of PreviewUI)
+PreviewUI/Sidebar/DocumentHeader.swift:14:16: warning: Redundant public accessibility for property 'variantNames' (not used outside of PreviewUI)
+PreviewUI/Sidebar/DocumentHeader.swift:15:16: warning: Redundant public accessibility for property 'selectedVariantIndex' (not used outside of PreviewUI)
+PreviewUI/Sidebar/DocumentHeader.swift:16:16: warning: Redundant public accessibility for property 'onSelectVariant' (not used outside of PreviewUI)
+PreviewUI/Sidebar/DocumentHeader.swift:18:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:11:15: warning: Redundant public accessibility for struct 'OutlinerList' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:12:16: warning: Redundant public accessibility for property 'model' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:13:16: warning: Redundant public accessibility for property 'selection' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:15:16: warning: Redundant public accessibility for property 'onActivate' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:18:16: warning: Redundant public accessibility for property 'expanded' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:22:12: warning: Redundant public accessibility for initializer 'init(model:selection:onActivate:expanded:)' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:58:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerList.swift:174:24: warning: Unused property 'expanded'
+PreviewUI/Sidebar/OutlinerSection.swift:103:15: warning: Redundant public accessibility for struct 'OutlinerSectionView' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerSection.swift:104:16: warning: Redundant public accessibility for property 'section' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerSection.swift:105:16: warning: Redundant public accessibility for property 'selection' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerSection.swift:106:16: warning: Redundant public accessibility for property 'onSelect' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerSection.swift:109:16: warning: Redundant public accessibility for property 'expanded' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerSection.swift:117:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerSection.swift:199:24: warning: Unused property 'expanded'
+PreviewUI/Sidebar/OutlinerTree.swift:7:13: warning: Redundant public accessibility for enum 'OutlinerTreeMetrics' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerTree.swift:8:23: warning: Unused property 'rowMargin'
+PreviewUI/Sidebar/OutlinerTree.swift:9:23: warning: Unused property 'treeLeading'
+PreviewUI/Sidebar/OutlinerTree.swift:10:23: warning: Unused property 'flatLeading'
+PreviewUI/Sidebar/OutlinerTree.swift:11:23: warning: Unused property 'trailing'
+PreviewUI/Sidebar/OutlinerTree.swift:12:23: warning: Unused property 'vertical'
+PreviewUI/Sidebar/OutlinerTree.swift:14:23: warning: Redundant public accessibility for property 'disclosureSize' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerTree.swift:15:23: warning: Redundant public accessibility for property 'disclosureGap' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerTree.swift:16:23: warning: Redundant public accessibility for property 'indentPerLevel' (not used outside of PreviewUI)
+PreviewUI/Sidebar/OutlinerTree.swift:18:23: warning: Unused property 'iconSize'
+PreviewUI/Sidebar/OutlinerTree.swift:19:23: warning: Unused property 'contentGap'
+PreviewUI/Sidebar/OutlinerTree.swift:20:23: warning: Redundant public accessibility for property 'eyeSize' (not used outside of PreviewUI)
+PreviewUI/Theme/AccessibilityChrome.swift:5:15: warning: Redundant public accessibility for struct 'ThemeContrastEnvironment' (not used outside of PreviewUI)
+PreviewUI/Theme/AccessibilityChrome.swift:6:17: warning: Redundant public accessibility for function 'body(content:)' (not used outside of PreviewUI)
+PreviewUI/Toolbar/CameraPill.swift:8:15: warning: Redundant public accessibility for struct 'CameraPill' (not used outside of PreviewUI)
+PreviewUI/Toolbar/CameraPill.swift:9:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/CameraPill.swift:12:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/CameraPill.swift:65:15: warning: Redundant public accessibility for struct 'CameraPresetMenu' (not used outside of PreviewUI)
+PreviewUI/Toolbar/CameraPill.swift:66:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/CameraPill.swift:68:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/FieldOfViewPopover.swift:5:15: warning: Redundant public accessibility for struct 'FieldOfViewPopover' (not used outside of PreviewUI)
+PreviewUI/Toolbar/FieldOfViewPopover.swift:6:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/FieldOfViewPopover.swift:8:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/FieldOfViewPopover.swift:24:15: warning: Redundant public accessibility for struct 'FieldOfViewControls' (not used outside of PreviewUI)
+PreviewUI/Toolbar/FieldOfViewPopover.swift:25:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/FieldOfViewPopover.swift:27:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/FieldOfViewPopover.swift:56:9: warning: Assign-only property 'projection' is assigned, but never used
+PreviewUI/Toolbar/FieldOfViewPopover.swift:77:9: warning: Assign-only property 'projection' is assigned, but never used
+PreviewUI/Toolbar/LightingPopover.swift:9:15: warning: Redundant public accessibility for struct 'LightingPopover' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LightingPopover.swift:10:16: warning: Redundant public accessibility for property 'availability' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LightingPopover.swift:11:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LightingPopover.swift:13:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LightingPopover.swift:26:15: warning: Redundant public accessibility for struct 'LightingControls' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LightingPopover.swift:27:16: warning: Redundant public accessibility for property 'availability' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LightingPopover.swift:28:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LightingPopover.swift:30:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LookPill.swift:7:15: warning: Redundant public accessibility for struct 'LookPill' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LookPill.swift:9:16: warning: Redundant public accessibility for property 'availability' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LookPill.swift:10:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/LookPill.swift:12:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/PopoverControls.swift:1:1: warning: Unused imported module 'DesignSystem'
+PreviewUI/Toolbar/StagePill.swift:8:15: warning: Redundant public accessibility for struct 'StagePill' (not used outside of PreviewUI)
+PreviewUI/Toolbar/StagePill.swift:9:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/StagePill.swift:11:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/ViewModeMenu.swift:17:15: warning: Redundant public accessibility for struct 'ViewModeMenu' (not used outside of PreviewUI)
+PreviewUI/Toolbar/ViewModeMenu.swift:18:16: warning: Redundant public accessibility for property 'availability' (not used outside of PreviewUI)
+PreviewUI/Toolbar/ViewModeMenu.swift:19:16: warning: Redundant public accessibility for property 'viewport' (not used outside of PreviewUI)
+PreviewUI/Toolbar/ViewModeMenu.swift:21:16: warning: Redundant public accessibility for property 'body' (not used outside of PreviewUI)
+PreviewUI/Toolbar/ViewModeMenu.swift:48:24: warning: Redundant public accessibility for function 'symbol(for:)' (not used outside of PreviewUI)
+RendererRealityKit/Convert/AnimationHelpers.swift:65:17: warning: Unused function 'documentedDuration(_:)'
+RendererRealityKit/Convert/AnimationHelpers.swift:107:9: warning: Unused property 'sampleCount'
+RendererRealityKit/Convert/AnimationHelpers.swift:110:9: warning: Unused property 'interpolation'
+RendererRealityKit/Convert/AnimationHelpers.swift:115:9: warning: Unused property 'sampleCount'
+RendererRealityKit/Convert/RealityKitConvert+Mesh.swift:273:61: warning: Unused parameter 'positions'
+RendererRealityKit/ConvertProblemReport.swift:28:16: warning: Assign-only property 'materialName' is assigned, but never used
+RendererRealityKit/MaterialMapPresence+GLTFKit.swift:6:17: warning: Unused function 'from(gltf:)'
+RendererRealityKit/PreparePipelineReport.swift:17:9: warning: Unused property 'isEmpty'
+RendererRealityKit/PreviewCamera.swift:36:20: warning: Unused property 'title'
+RendererRealityKit/PreviewCamera.swift:39:20: warning: Unused property 'menuSymbol'
+RendererRealityKit/PreviewClip.swift:17:9: warning: Unused property 'info'
+RendererRealityKit/PreviewDebugMode.swift:169:9: warning: Assign-only property 'title' is assigned, but never used
+RendererRealityKit/PreviewInteraction.swift:250:13: warning: Redundant public accessibility for enum 'PreviewOrbitDragMonitor' (not used outside of RendererRealityKit)
+RendererRealityKit/PreviewInteraction.swift:252:24: warning: Redundant public accessibility for function 'install(on:interaction:hitTestBounds:storage:)' (not used outside of RendererRealityKit)
+RendererRealityKit/PreviewInteraction.swift:315:24: warning: Redundant public accessibility for function 'remove(_:)' (not used outside of RendererRealityKit)
+RendererRealityKit/PreviewLighting.swift:7:13: warning: Redundant public accessibility for enum 'PreviewLighting' (not used outside of RendererRealityKit)
+RendererRealityKit/PreviewScene.swift:40:9: warning: Assign-only property 'studioIBLExponent' is assigned, but never used
+RendererRealityKit/PreviewScene.swift:50:24: warning: Unused property 'localBackdropIndex'
+RendererRealityKit/PreviewScene.swift:51:24: warning: Unused property 'localAutoRotate'
+RendererRealityKit/PreviewScene.swift:52:24: warning: Unused property 'localShowFloor'
+RendererRealityKit/PreviewScene.swift:54:24: warning: Unused property 'localCenterModel'
+RendererRealityKit/PreviewScene.swift:56:24: warning: Unused property 'localOrthographic'
+RendererRealityKit/PreviewScene.swift:58:24: warning: Unused property 'localExposureEV'
+RendererRealityKit/PreviewScene.swift:59:24: warning: Unused property 'localDimStudioForFileLights'
+RendererRealityKit/PreviewScene.swift:60:24: warning: Unused property 'localEnvironmentYaw'
+RendererRealityKit/PreviewScene.swift:62:24: warning: Unused property 'localDoubleSided'
+RendererRealityKit/PreviewScene.swift:64:24: warning: Unused property 'localShowSkeleton'
+RendererRealityKit/PreviewScene.swift:66:24: warning: Unused property 'localFieldOfViewDegrees'
+RendererRealityKit/PreviewScene.swift:78:24: warning: Unused property 'debugModeIndex'
+RendererRealityKit/PreviewSessionBindings.swift:20:16: warning: Assign-only property 'debugModes' is assigned, but never used
