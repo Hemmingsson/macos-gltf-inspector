@@ -2,32 +2,33 @@ import AppKit
 import GLTFCore
 import SwiftUI
 
-// First-paint status for the web canvas: the chrome, its copy, and the JSON counts behind it.
+// First-paint status for the web canvas: a non-opaque pill, its copy, and the JSON counts behind it.
 
-/// Centered spinner + honest file facts while the live web view stays hidden.
+/// Small status pill over a clear field so a Quick Look poster (or the live canvas) stays visible.
 struct WebCanvasLoadingChrome: View {
     var title: String
     var detail: String?
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             ProgressView()
-                .controlSize(.regular)
+                .controlSize(.small)
                 .progressViewStyle(.circular)
                 .accessibilityHidden(true)
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
             if let detail {
                 Text(detail)
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
                     .opacity(0.7)
             }
         }
         .foregroundStyle(.primary)
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Cover the live view so a compiling/empty canvas cannot show through.
-        .background(Color(nsColor: .windowBackgroundColor))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial, in: Capsule())
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .padding(.bottom, 16)
         .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
         .accessibilityLabel([title, detail].compactMap { $0 }.joined(separator: ". "))
