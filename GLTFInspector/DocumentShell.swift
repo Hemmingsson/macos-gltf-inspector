@@ -54,7 +54,6 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
             canvasState: canvasState,
             selection: window.selection,
             viewport: window.engineViewport,
-            settings: window.settings,
             playback: playback,
             panels: window.panels,
             morphTargets: morphTargets,

@@ -13,7 +13,6 @@ public struct ShellRootView<
     Capabilities: Availability,
     Selection: SelectionModel,
     Viewport: ViewportController,
-    Settings: SettingsStore,
     Playback: ClipPlaybackController
 >: View {
     /// A snapshot of the loaded file. A value, so a redraw can never see it half-updated.
@@ -34,16 +33,10 @@ public struct ShellRootView<
     /// reason as DESIGN.md's three-job rule: canvas controls are *per window and live*, and they
     /// never write app defaults.
     @State private var viewport: Viewport
-    /// Defaults + this window's session overrides. Seeded in `.onAppear`, never in `init`.
-    @State private var settings: Settings
     /// Sidebar visibility — owned by the window host, shared with `SidebarCommands()`.
     public var panels: ShellPanelChrome
     /// Clip transport for the playback bar. Host-owned and rebuilt per load — not `@State` here.
     public var playback: Playback
-    /// Guards the one-shot defaults → session → viewport seed (AGENTS.md: sync in onAppear).
-    @State private var didSeedSession = false
-    /// Host hook: seed session from defaults. Must not run in `init`.
-    private let seedSession: (@MainActor (Settings) -> Void)?
     private let canvas: () -> Canvas
     /// Open in menu content shared with inspector/floating chrome.
     private let openInMenu: AnyView
@@ -60,12 +53,10 @@ public struct ShellRootView<
         canvasState: ShellDocumentState? = nil,
         selection: Selection,
         viewport: @autoclosure () -> Viewport,
-        settings: @autoclosure () -> Settings,
         playback: Playback,
         panels: ShellPanelChrome,
         morphTargets: [MorphTargetControl] = [],
         onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in },
-        seedSession: (@MainActor (Settings) -> Void)? = nil,
         openInMenu: AnyView = AnyView(EmptyView()),
         @ViewBuilder canvas: @escaping () -> Canvas
     ) {
@@ -75,12 +66,10 @@ public struct ShellRootView<
         self.canvasState = canvasState
         self.selection = selection
         _viewport = State(wrappedValue: viewport())
-        _settings = State(wrappedValue: settings())
         self.playback = playback
         self.panels = panels
         self.morphTargets = morphTargets
         self.onSetMorphWeight = onSetMorphWeight
-        self.seedSession = seedSession
         self.openInMenu = openInMenu
         self.canvas = canvas
     }
@@ -114,7 +103,6 @@ public struct ShellRootView<
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: showsInspector)
-        .onAppear(perform: seedSessionIfNeeded)
     }
 
     private var columnVisibility: Binding<NavigationSplitViewVisibility> {
@@ -161,14 +149,6 @@ public struct ShellRootView<
             }
         }
     }
-
-    /// Never called from `init` — mutating `@Observable` / `@State` there re-enters SwiftUI
-    /// (AGENTS.md pitfall 1).
-    private func seedSessionIfNeeded() {
-        guard !didSeedSession else { return }
-        didSeedSession = true
-        seedSession?(settings)
-    }
 }
 
 // MARK: - Previews
@@ -197,7 +177,6 @@ private struct ShellRootViewPreviewHost: View {
     var mode: Mode
     @State private var selection: MockSelectionModel
     @State private var viewport: MockViewportController
-    @State private var settings: MockSettingsStore
     @State private var playback: MockPlaybackController
     @State private var panels: ShellPanelChrome
 
@@ -205,7 +184,6 @@ private struct ShellRootViewPreviewHost: View {
         self.mode = mode
         _selection = State(initialValue: MockSelectionModel())
         _viewport = State(initialValue: MockViewportController())
-        _settings = State(initialValue: MockSettingsStore())
         _playback = State(initialValue: MockPlaybackController())
         _panels = State(
             initialValue: ShellPanelChrome(isSidebarVisible: mode == .fullChrome)
@@ -218,7 +196,6 @@ private struct ShellRootViewPreviewHost: View {
             availability: MockAvailability(),
             selection: selection,
             viewport: viewport,
-            settings: settings,
             playback: playback,
             panels: panels,
             openInMenu: AnyView(PreviewOpenInItems())

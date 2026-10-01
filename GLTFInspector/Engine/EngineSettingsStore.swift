@@ -9,7 +9,7 @@ import PreviewUI
 /// session-only — never written as app defaults.
 @MainActor
 @Observable
-final class EngineSettingsStore: SettingsStore {
+final class EngineSettingsStore {
     let appDefaults: EngineAppDefaultsBridge
 
     /// This window's overrides by key name; a value is always its key's `Value`.
