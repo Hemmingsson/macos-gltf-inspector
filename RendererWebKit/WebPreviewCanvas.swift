@@ -7,17 +7,13 @@ import SwiftUI
 private struct WebCanvasLoadingChrome: View {
     var title: String
     var detail: String?
-    /// False once the load has failed — a failure must never look like it is still working.
-    var showsSpinner = true
 
     var body: some View {
         VStack(spacing: 8) {
-            if showsSpinner {
-                ProgressView()
-                    .controlSize(.regular)
-                    .progressViewStyle(.circular)
-                    .accessibilityHidden(true)
-            }
+            ProgressView()
+                .controlSize(.regular)
+                .progressViewStyle(.circular)
+                .accessibilityHidden(true)
             Text(title)
                 .font(.system(size: 12, weight: .medium))
             if let detail {
@@ -314,20 +310,12 @@ public final class WebCanvasController {
         installPlaceholder(image, in: container, below: host?.view)
     }
 
-    /// Terminal load failure: stop the spinner here too, so an owner that does not route on
-    /// `phase` still never shows an endless spinner. The log keeps the raw error; the person
+    /// Terminal load failure. The owner routes on `phase` and swaps this canvas for its own
+    /// failure view, so a failure never shows a spinner. The log keeps the raw error; the person
     /// sees `WebRendererError.userMessage`.
     private func fail(_ error: Error, loading url: URL) {
         AppLog.error(AppLog.webRenderer, "viewport failed \(url.lastPathComponent): \(error)")
-        let message = WebRendererError.userMessage(for: error)
-        phase = .failed(message)
-        guard let loadingHost else { return }
-        loadingHost.rootView = WebCanvasLoadingChrome(
-            title: WebRendererLoadCopy.failed,
-            detail: message,
-            showsSpinner: false
-        )
-        loadingHost.isHidden = false
+        phase = .failed(WebRendererError.userMessage(for: error))
     }
 
     private func revealLive(host: WebRendererHost) {
