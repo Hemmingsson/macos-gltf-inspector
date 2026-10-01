@@ -17,10 +17,4 @@ public enum RendererKind: String, Sendable, Hashable, CaseIterable {
         defaults.string(forKey: AppGroupSettings.Key.renderer).flatMap(RendererKind.init(rawValue:))
             ?? .default
     }
-
-    /// Writes the switch. Only the host process can reach the group suite (a shell
-    /// `defaults write` lands in a different domain).
-    public static func store(_ kind: RendererKind, in defaults: UserDefaults = AppGroupSettings.defaults) {
-        defaults.set(kind.rawValue, forKey: AppGroupSettings.Key.renderer)
-    }
 }
