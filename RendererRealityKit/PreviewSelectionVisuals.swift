@@ -3,10 +3,10 @@ import RealityKit
 import simd
 
 /// Host-only selection affordances: dim non-selected meshes, AABB wire box, HoverEffect.
+@MainActor
 enum PreviewSelectionVisuals {
     static let dimOpacity: Float = 0.28
 
-    @MainActor
     static func apply(selectedNodeIndex: Int?, to root: Entity) {
         clearSelectionChrome(in: root)
 
@@ -26,14 +26,12 @@ enum PreviewSelectionVisuals {
 
     // MARK: - Dim
 
-    @MainActor
     private static func clearDim(in root: Entity) {
         walk(root) { entity in
             entity.components.remove(OpacityComponent.self)
         }
     }
 
-    @MainActor
     private static func applyDim(selectedRoot: Entity, under root: Entity) {
         var selectedSubtree = Set<ObjectIdentifier>()
         func collect(_ entity: Entity) {
@@ -61,12 +59,10 @@ enum PreviewSelectionVisuals {
 
     // MARK: - Selection box
 
-    @MainActor
     private static func attachSelectionBox(to selected: Entity, bounds: BoundingBox) {
         selected.addChild(makeWireBox(bounds: bounds))
     }
 
-    @MainActor
     private static func makeWireBox(bounds: BoundingBox) -> Entity {
         let parent = Entity()
         parent.name = PreviewFloor.selectionBoxName
@@ -99,7 +95,6 @@ enum PreviewSelectionVisuals {
         return parent
     }
 
-    @MainActor
     private static func edgeEntity(
         from start: SIMD3<Float>,
         to end: SIMD3<Float>,
@@ -125,7 +120,6 @@ enum PreviewSelectionVisuals {
 
     // MARK: - Hover
 
-    @MainActor
     private static func attachHover(to selected: Entity, bounds: BoundingBox) {
         let size = bounds.max - bounds.min
         let shape = ShapeResource.generateBox(size: size).offsetBy(translation: bounds.center)
@@ -140,7 +134,6 @@ enum PreviewSelectionVisuals {
 
     // MARK: - Clear / walk
 
-    @MainActor
     private static func clearSelectionChrome(in root: Entity) {
         var remove: [Entity] = []
         func visit(_ entity: Entity) {
@@ -165,7 +158,6 @@ enum PreviewSelectionVisuals {
         }
     }
 
-    @MainActor
     private static func walk(_ entity: Entity, visit: (Entity) -> Void) {
         if PreviewFloor.isHelperName(entity.name) { return }
         visit(entity)

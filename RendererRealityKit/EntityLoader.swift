@@ -16,7 +16,7 @@ public enum EntityLoader {
         /// Computed once at load; avoid re-walking the entity tree on every host view refresh.
         public let studioIBLExponent: Float
         /// What convert and policy did (spec-gloss, Draco, emissive drop, studio dim).
-        public let pipelineReport: PreparePipelineReport
+        public let pipelineReport: RealityPipelineReport
         /// Convert losses (missing textures, dropped primitives, ignored extensions).
         public let convertProblems: ConvertProblemReport
         /// `KHR_materials_variants` names from GLTFKit2 (`materialVariants`). Empty when absent.
@@ -71,9 +71,9 @@ public enum EntityLoader {
                 sceneIndex: sceneIndex,
                 materialVariantIndex: materialVariantIndex
             )
-            var report = PreparePipelineReport()
-            report.extensionsUsed = PreparePipelineReport.captureExtensions(from: source.json)
-            report.decompressedDraco = PreparePipelineReport.sourceHadDraco(source.json)
+            var report = RealityPipelineReport()
+            report.extensionsUsed = RealityPipelineReport.captureExtensions(from: source.json)
+            report.decompressedDraco = RealityPipelineReport.sourceHadDraco(source.json)
             report.specGlossToMetalRough = converted.specGloss.converted
             report.bakedSpecGlossTextures = converted.specGloss.baked
             return await loadedModel(
@@ -170,7 +170,7 @@ public enum EntityLoader {
         json: [String: Any],
         fileSizeBytes: Int64?,
         resourceURL: URL,
-        pipelineReport: PreparePipelineReport,
+        pipelineReport: RealityPipelineReport,
         materialVariantNames: [String]
     ) -> LoadedModel {
         let entity = build.entity

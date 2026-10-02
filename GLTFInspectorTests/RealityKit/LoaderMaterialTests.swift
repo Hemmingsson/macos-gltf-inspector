@@ -6,7 +6,7 @@ import RealityKit
 import simd
 import Testing
 
-struct LoaderHelpersTests {
+struct LoaderMaterialTests {
     @MainActor
     @Test func modelComponentCountWalksTree() {
         let root = Entity()

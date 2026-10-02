@@ -37,7 +37,7 @@ extension EngineSceneModel {
         )
     }
 
-    static func mapPipelineReport(_ report: PreparePipelineReport) -> PipelineReport {
+    static func mapPipelineReport(_ report: RealityPipelineReport) -> PipelineReport {
         var entries: [PipelineReport.Entry] = report.conversionEntries.map {
             PipelineReport.Entry(kind: .conversion, title: $0)
         }

@@ -185,7 +185,7 @@ Three honesty voices:
 | Report | Question |
 | --- | --- |
 | `GLTFValidationState` | Is the **file** wrong? (async Khronos validator on the original URL, host only) |
-| `PreparePipelineReport` | What did convert-time rewrites and policy change? |
+| `RealityPipelineReport` | What did convert-time rewrites and policy change? |
 | `ConvertProblemReport` | What did convert drop or approximate? Codes: `missingTexture`, `droppedPrimitive`, `missingTexCoord`, `ignoredExtension`, `approximatedTransmission`, `forcedOpaqueBlend`, `blendAsCutout`, `droppedAnimations`, `approximatedTextureTransform`, `droppedEmissive` |
 
 ## Scene switch and variants (host)
@@ -206,7 +206,7 @@ full `load`.
 | Convert | `RendererRealityKit/Convert/RealityKitConvert*.swift`, `RealityKitResourceContext.swift`, `TextureTransforms.swift`, `PackedAccessors.swift`, `AnimationHelpers.swift` |
 | Look / policy | `RendererRealityKit/RealityLook.swift`, `RendererRealityKit/RealityPolicy.swift` |
 | Variants | `RendererRealityKit/MaterialVariants.swift` |
-| Reports | `RendererRealityKit/PreparePipelineReport.swift`, `RendererRealityKit/ConvertProblemReport.swift` |
+| Reports | `RendererRealityKit/RealityPipelineReport.swift`, `RendererRealityKit/ConvertProblemReport.swift` |
 | Document / JSON | `GLTFCore/GLTFDocumentJSON.swift`, `GLTFCore/GLBBox.swift` (read side) |
 | Lighting / stills | `RendererRealityKit/PreviewLighting.swift`, `StillRenderer.swift`, `RealityThumbnail.swift`, `LiveStillRequest.swift` |
 | Canvas | `RendererRealityKit/PreviewScene.swift`, `PreviewCamera.swift` |

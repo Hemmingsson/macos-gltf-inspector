@@ -6,7 +6,7 @@ import SwiftUI
 /// once convert lands (loading and failure are drawn by PreviewUI's `CanvasRegion`); `State` is the
 /// window's convert state. Quick Look has its own RealityKit root
 /// (`PreviewExtension/QuickLookRealityKit.swift`).
-struct PreviewView: View {
+struct RealityCanvasView: View {
     typealias State = RealityLoadState
 
     let model: EntityLoader.LoadedModel

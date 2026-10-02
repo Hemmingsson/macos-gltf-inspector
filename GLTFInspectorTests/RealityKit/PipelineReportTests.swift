@@ -46,7 +46,7 @@ struct PipelineReportTests {
     }
 
     @Test func captureExtensionsDedupesAndSorts() {
-        let names = PreparePipelineReport.captureExtensions(from: [
+        let names = RealityPipelineReport.captureExtensions(from: [
             "extensionsUsed": ["KHR_materials_unlit", "EXT_mesh_gpu_instancing", "KHR_materials_unlit"],
         ])
         #expect(names == ["EXT_mesh_gpu_instancing", "KHR_materials_unlit"])

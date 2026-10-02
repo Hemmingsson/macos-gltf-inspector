@@ -3,7 +3,7 @@ import GLTFKit2
 import simd
 
 /// Product heuristics that are not glTF spec. Convert maps the file as the spec says; these rules
-/// sit on top, each one reported to the user (`PreparePipelineReport` entries / convert problems).
+/// sit on top, each one reported to the user (`RealityPipelineReport` entries / convert problems).
 enum RealityPolicy {
     /// Studio IBL dim, in EV, when the file brings its own `KHR_lights_punctual` lights, so the
     /// studio does not wash them out. Reported as "File lights: on · Studio IBL: dimmed".

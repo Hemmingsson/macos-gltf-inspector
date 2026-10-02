@@ -1,16 +1,11 @@
 import CoreGraphics
 import GLTFCore
-import ImageIO
 import os
 import RealityKit
 import SwiftUI
 
+@MainActor
 public enum PreviewLighting {
-    private static var studioHDRName: String {
-        KhronosEnvironments.defaultLook.rawValue
-    }
-
-    @MainActor
     public static func prefetchLook(_ look: AppLook) async {
         let interval = AppLog.signposter.beginInterval("ibl")
         defer { AppLog.signposter.endInterval("ibl", interval) }
@@ -27,7 +22,6 @@ public enum PreviewLighting {
 
     /// QL, host, and thumbnail still-renderer. Skybox stays off.
     /// Lights are children of `lookRoot` (created once in `PreviewScene.make`).
-    @MainActor
     static func applyLook(
         lookRoot: Entity,
         pivot: Entity,
@@ -58,19 +52,15 @@ public enum PreviewLighting {
         }
     }
 
-    @MainActor
     private static var cachedProbe: EnvironmentResource?
 
-    @MainActor
     private static var cachedByURL: [String: EnvironmentResource] = [:]
 
-    @MainActor
     private static func cachedResource(for look: AppLook) -> EnvironmentResource? {
         guard let url = look.resolvedHDRURL() else { return cachedProbe }
         return cachedByURL[url.path] ?? (url.path == hdrURL()?.path ? cachedProbe : nil)
     }
 
-    @MainActor
     private static func resource(for url: URL) async -> EnvironmentResource? {
         if let cached = cachedByURL[url.path] { return cached }
         if let loaded = await loadEnvironmentResource(from: url) {
@@ -87,17 +77,15 @@ public enum PreviewLighting {
         return nil
     }
 
-    @MainActor
     private static func studioResource() async -> EnvironmentResource? {
         if let cachedProbe { return cachedProbe }
         guard let url = hdrURL() else {
-            AppLog.error(AppLog.lighting, "studio HDR missing from bundle (\(studioHDRName).hdr)")
+            AppLog.error(AppLog.lighting, "studio HDR missing from bundle (\(KhronosEnvironments.defaultLook.rawValue).hdr)")
             return nil
         }
         return await resource(for: url)
     }
 
-    @MainActor
     private static func makeIBLEntity(
         receiver: Entity,
         resource: EnvironmentResource?,
@@ -117,7 +105,6 @@ public enum PreviewLighting {
         return ibl
     }
 
-    @MainActor
     private static func makeDirectional(
         name: String,
         intensity: Float,
@@ -135,7 +122,6 @@ public enum PreviewLighting {
         return light
     }
 
-    @MainActor
     private static func removeReceivers(from entity: Entity) {
         entity.components.remove(ImageBasedLightReceiverComponent.self)
         for child in entity.children {
@@ -150,7 +136,6 @@ public enum PreviewLighting {
         }.value
     }
 
-    @MainActor
     static func loadEnvironmentResource(from url: URL) async -> EnvironmentResource? {
         guard let image = await decodeHDROffMain(from: url) else {
             AppLog.error(AppLog.lighting, "HDR decode failed \(url.lastPathComponent)")
@@ -168,11 +153,6 @@ public enum PreviewLighting {
         KhronosEnvironments.defaultLook.bundledURL
     }
 
-    nonisolated static func loadEquirectangular(from url: URL) -> CGImage? {
-        EquirectangularImage.load(from: url)
-    }
-
-    @MainActor
     private static func applyReceivers(from light: Entity, to entity: Entity) {
         entity.components.set(ImageBasedLightReceiverComponent(imageBasedLight: light))
         for child in entity.children {

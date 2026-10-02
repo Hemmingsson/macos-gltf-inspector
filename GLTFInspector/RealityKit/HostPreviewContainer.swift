@@ -1,7 +1,7 @@
 import RendererRealityKit
 import SwiftUI
 
-/// Hosts the RealityKit `PreviewView` in a `PreviewHostingView`, which forwards trackpad
+/// Hosts the RealityKit `RealityCanvasView` in a `PreviewHostingView`, which forwards trackpad
 /// scroll / magnify and orbit drags into `PreviewInteraction`.
 struct HostPreviewContainer: NSViewRepresentable {
     var model: EntityLoader.LoadedModel
@@ -14,8 +14,8 @@ struct HostPreviewContainer: NSViewRepresentable {
     var commands: FocusedPreviewCommands?
     var registerCommands: (FocusedPreviewCommands?) -> Void
 
-    private var rootView: PreviewView {
-        PreviewView(
+    private var rootView: RealityCanvasView {
+        RealityCanvasView(
             model: model,
             interaction: interaction,
             isDark: isDark,
@@ -27,18 +27,18 @@ struct HostPreviewContainer: NSViewRepresentable {
         )
     }
 
-    func makeNSView(context: Context) -> PreviewHostingView<PreviewView> {
+    func makeNSView(context: Context) -> PreviewHostingView<RealityCanvasView> {
         let view = PreviewHostingView(rootView: rootView)
         view.interaction = interaction
         return view
     }
 
-    func updateNSView(_ nsView: PreviewHostingView<PreviewView>, context: Context) {
+    func updateNSView(_ nsView: PreviewHostingView<RealityCanvasView>, context: Context) {
         nsView.interaction = interaction
         nsView.rootView = rootView
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PreviewHostingView<PreviewView>, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PreviewHostingView<RealityCanvasView>, context: Context) -> CGSize? {
         CGSize(
             width: proposal.width ?? nsView.bounds.width,
             height: proposal.height ?? nsView.bounds.height
