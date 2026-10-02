@@ -2,11 +2,11 @@ import DesignSystem
 import SwiftUI
 
 /// Convert losses next to Khronos validation — “not rendered as authored”.
-public struct ConvertProblemsSection: View {
-    public var problems: ConvertProblemList
+struct ConvertProblemsSection: View {
+    var problems: ConvertProblemList
     @State private var isExpanded: Bool = false
 
-    public var body: some View {
+    var body: some View {
         if !problems.isEmpty {
             content
         }

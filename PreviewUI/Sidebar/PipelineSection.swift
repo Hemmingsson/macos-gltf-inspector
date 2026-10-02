@@ -2,10 +2,10 @@ import DesignSystem
 import SwiftUI
 
 /// "What our pipeline did" — silent import changes, so nothing is altered without a receipt.
-public struct PipelineSection: View {
-    public var report: PipelineReport
+struct PipelineSection: View {
+    var report: PipelineReport
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Divider()
                 .padding(.horizontal, DS.Spacing.l)

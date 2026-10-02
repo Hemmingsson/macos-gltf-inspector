@@ -33,7 +33,7 @@ public struct FixtureSceneModel: SceneModel {
     materialVariantNames: [String] = [],
     stats: Stats,
     dimensions: Dimensions,
-    validation: ValidationResult = ValidationFixtures.clean,
+    validation: ValidationResult = ValidationResult(),
     pipelineReport: PipelineReport = PipelineReport(entries: [
       PipelineReport.Entry(kind: .lighting, title: "Studio environment", detail: "Bundled IBL")
     ]),

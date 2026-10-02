@@ -2,10 +2,10 @@ import DesignSystem
 import SwiftUI
 
 /// Kind-specific extras when the selection is not a mesh (camera / light / animation / skin / morph).
-public struct NodeExtrasSection: View {
-    public var detail: NodeDetail
+struct NodeExtrasSection: View {
+    var detail: NodeDetail
 
-    public var body: some View {
+    var body: some View {
         Group {
             if let camera = detail.camera {
                 cameraBlock(camera)

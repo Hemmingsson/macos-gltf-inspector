@@ -2,11 +2,11 @@ import DesignSystem
 import SwiftUI
 
 /// Authored (or fitted) TRS grid for the selected node — Position / Rotation / Scale.
-public struct TransformSection: View {
-    public var transform: TransformInfo
-    public var isAuthored: Bool
+struct TransformSection: View {
+    var transform: TransformInfo
+    var isAuthored: Bool
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader(isAuthored ? "Transform · authored" : "Transform · fitted")
 

@@ -4,7 +4,7 @@ import SwiftUI
 /// Centre column — the viewport's box and the chrome that floats over it.
 ///
 /// The injected canvas is full-bleed (`.ignoresSafeArea()`, no clipping) so it renders under the
-/// floating glass sidebar/inspector and the toolbar band; the pills and bottom overlays stay
+/// floating glass sidebar/inspector and the toolbar band; the clusters and bottom overlays stay
 /// inside the leading/trailing safe area so they never sit under a pane.
 ///
 /// **Why overlays and not a window toolbar.** The wireframe floats the controls over the 3D
@@ -12,7 +12,7 @@ import SwiftUI
 /// bar, tie their position to window chrome that this window hides, and put them *above* the
 /// canvas instead of on it. Overlays keep each cluster free to size itself and to sit exactly
 /// at its own edge.
-public struct CanvasRegion<
+struct CanvasRegion<
     Content: View,
     Model: SceneModel,
     Capabilities: Availability,
@@ -21,13 +21,13 @@ public struct CanvasRegion<
 >: View {
     /// File snapshot — dimensions and animation clips for the bottom overlays.
     var model: Model
-    /// Read-only capability snapshot — the Look pill and playback bar offer only what the file has.
+    /// Read-only capability snapshot — the Look cluster and playback bar offer only what the file has.
     var availability: Capabilities
     /// The window's live view state. Injected, not owned: the host owns it and the View menu
     /// drives the same instance.
     var viewport: Viewport
     var playback: Playback
-    /// Empty / loading / failed hide the model chrome; ready shows pills + overlays.
+    /// Empty / loading / failed hide the model chrome; ready shows clusters + overlays.
     var documentState: ShellDocumentState = .ready
     /// When false, Stage clears traffic lights + the floating sidebar restore control.
     var isSidebarVisible: Bool = true
@@ -43,7 +43,7 @@ public struct CanvasRegion<
     /// action — never during a view update.
     @State private var topInset: CGFloat = 0
 
-    public var body: some View {
+    var body: some View {
         ZStack {
             Group {
                 switch documentState {
@@ -75,7 +75,7 @@ public struct CanvasRegion<
     }
 
     /// Floating chrome. Respects the leading/trailing/bottom safe area (never under a pane);
-    /// the top pills ride in the toolbar band.
+    /// the top clusters ride in the toolbar band.
     private var controls: some View {
         Color.clear
             .allowsHitTesting(false)
@@ -88,17 +88,17 @@ public struct CanvasRegion<
                             action: onToggleSidebar
                         )
                     }
-                    StagePill(viewport: viewport)
+                    StageCluster(viewport: viewport)
                 }
                 .padding(.leading, stageLeadingInset)
                 .padding(.top, bandTopPadding)
             }
             .overlay(alignment: .top) {
-                LookPill(availability: availability, viewport: viewport)
+                LookCluster(availability: availability, viewport: viewport)
                     .padding(.top, bandTopPadding)
             }
             .overlay(alignment: .topTrailing) {
-                CameraPill(viewport: viewport)
+                CameraCluster(viewport: viewport)
                     .padding(.trailing, cameraTrailingInset)
                     .padding(.top, bandTopPadding)
             }

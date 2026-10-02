@@ -92,7 +92,7 @@ public enum MaterialInspectorSupport {
     }
 }
 
-public extension Color {
+extension Color {
     init(rgb: RGBColor) {
         self.init(
             .sRGB,

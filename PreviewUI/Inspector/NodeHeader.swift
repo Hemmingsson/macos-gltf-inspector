@@ -5,13 +5,13 @@ import SwiftUI
 ///
 /// Toolbar placement is not used here (needs the shell). `openInMenu` is menu items; `ActionRow`
 /// wraps them in `DSGlassMenuButton`.
-public struct NodeHeader: View {
-    public var name: String
-    public var kindTitle: String
-    public var kind: NodeKind
-    public let openInMenu: AnyView
+struct NodeHeader: View {
+    var name: String
+    var kindTitle: String
+    var kind: NodeKind
+    let openInMenu: AnyView
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ActionRow(openInMenu: openInMenu, alignsToChromeBand: false)
 

@@ -6,18 +6,18 @@ import SwiftUI
 /// SCENE / MATERIALS / …, recursive `DisclosureGroup`s bound to the existing expansion set.
 ///
 /// S1f: native list selection — `NodeRow` draws no selection of its own.
-public struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
-    public var model: Model
-    public var selection: Selection
+struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
+    var model: Model
+    var selection: Selection
     /// Scene / camera side-effects. Selection itself is written by the list binding.
-    public var onActivate: ((OutlinerItem) -> Void)? = nil
+    var onActivate: ((OutlinerItem) -> Void)? = nil
     /// Optional external expand set for previews/tests. The app sidebar leaves this `nil` and
     /// owns expansion in `@State` — never written from `View.init`.
-    public var expanded: Binding<Set<NodeID>>? = nil
+    var expanded: Binding<Set<NodeID>>? = nil
 
     @State private var ownedExpanded = Set<NodeID>()
 
-    public init(
+    init(
         model: Model,
         selection: Selection,
         onActivate: ((OutlinerItem) -> Void)? = nil,
@@ -33,7 +33,7 @@ public struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
         expanded ?? $ownedExpanded
     }
 
-    public var body: some View {
+    var body: some View {
         let sections = OutlinerSection.sections(of: model)
         let foldingRoots = sections.filter(\.folds).flatMap(\.items)
         List(selection: listSelection(in: sections)) {

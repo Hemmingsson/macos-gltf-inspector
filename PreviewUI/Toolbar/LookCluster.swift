@@ -4,12 +4,12 @@ import SwiftUI
 /// Centre cluster — **Look**: how the surface is shaded and lit.
 ///
 /// View mode + lighting stay one island: both answer “what light does to the material”.
-public struct LookPill<Capabilities: Availability, Viewport: ViewportController>: View {
+struct LookCluster<Capabilities: Availability, Viewport: ViewportController>: View {
     /// Read-only capability snapshot: the view-mode menu offers only channels the file has.
-    public var availability: Capabilities
-    public var viewport: Viewport
+    var availability: Capabilities
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSGlassCluster {
             DSGlassIsland {
                 ViewModeMenu(availability: availability, viewport: viewport)
@@ -22,7 +22,7 @@ public struct LookPill<Capabilities: Availability, Viewport: ViewportController>
 
 // MARK: - Previews
 
-private struct LookPillPreviewHost: View {
+private struct LookClusterPreviewHost: View {
     var availability: MockAvailability
     @State private var viewport: MockViewportController
 
@@ -33,20 +33,20 @@ private struct LookPillPreviewHost: View {
 
     var body: some View {
         PreviewCanvas(width: 260, height: 64, background: .canvas) {
-            LookPill(availability: availability, viewport: viewport)
+            LookCluster(availability: availability, viewport: viewport)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 }
 
 #Preview("shaded", traits: .fixedLayout(width: 260, height: 64)) {
-    LookPillPreviewHost(viewport: MockViewportController())
+    LookClusterPreviewHost(viewport: MockViewportController())
 }
 
 #Preview("wireframe", traits: .fixedLayout(width: 260, height: 64)) {
-    LookPillPreviewHost(viewport: MockViewportController(viewMode: .wireframe))
+    LookClusterPreviewHost(viewport: MockViewportController(viewMode: .wireframe))
 }
 
 #Preview("normals channel", traits: .fixedLayout(width: 260, height: 64)) {
-    LookPillPreviewHost(viewport: MockViewportController(viewMode: .channel(.normals)))
+    LookClusterPreviewHost(viewport: MockViewportController(viewMode: .channel(.normals)))
 }

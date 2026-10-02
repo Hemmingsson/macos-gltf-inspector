@@ -5,16 +5,11 @@ import SwiftUI
 ///
 /// A `DSGlassIconButton`. Inside `DSHUDCapsule` it is `inIsland` (borderless, no glass of its
 /// own). Standalone previews draw one glass layer.
-public struct PlaybackPlayButton: View {
-    public var isPlaying: Bool
-    public var action: () -> Void
+struct PlaybackPlayButton: View {
+    var isPlaying: Bool
+    var action: () -> Void
 
-    public init(isPlaying: Bool, action: @escaping () -> Void) {
-        self.isPlaying = isPlaying
-        self.action = action
-    }
-
-    public var body: some View {
+    var body: some View {
         DSGlassIconButton(
             isPlaying ? "Pause" : "Play",
             systemImage: isPlaying ? "pause.fill" : "play.fill",

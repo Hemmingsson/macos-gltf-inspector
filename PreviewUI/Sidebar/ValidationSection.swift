@@ -2,11 +2,11 @@ import DesignSystem
 import SwiftUI
 
 /// glTF-validator badge. Clean fixtures stay a quiet green card; warnings expand in place.
-public struct ValidationSection: View {
-    public var validation: ValidationResult
+struct ValidationSection: View {
+    var validation: ValidationResult
     @State private var isExpanded: Bool = false
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if validation.status != .ready || !validation.isClean {
                 InspectorSectionHeader("Validation", top: DS.Spacing.m)

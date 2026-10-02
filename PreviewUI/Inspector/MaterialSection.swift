@@ -7,18 +7,18 @@ import SwiftUI
 /// Wireframe-simple: **say each fact once**. The inspector header already owns the material’s
 /// name/kind when a material is selected, so this section never repeats that. Present maps appear
 /// as chips *or* (full density) as a sized list — never both, and never also as a colour strip.
-public struct MaterialSection: View {
-    public enum Density {
+struct MaterialSection: View {
+    enum Density {
         /// Mesh selection — name + present-map chips (Main@2x).
         case compact
         /// Material selected — facts + sized maps; header already shows the name.
         case full
     }
 
-    public var material: MaterialInfo
-    public var density: Density = .full
+    var material: MaterialInfo
+    var density: Density = .full
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader("Material")
 

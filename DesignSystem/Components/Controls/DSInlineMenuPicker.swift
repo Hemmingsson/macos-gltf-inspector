@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Inline `Picker` for a `Menu` / `DSGlassMenuButton` label. AppKit draws the checkmark column;
-/// PreviewUI must not call `Picker(` itself (Phase 3 grep gate).
+/// PreviewUI feature code must not call `Picker(` itself.
 public struct DSInlineMenuPicker<SelectionValue: Hashable, Content: View>: View {
     private let title: String
     @Binding private var selection: SelectionValue

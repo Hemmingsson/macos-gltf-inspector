@@ -85,7 +85,6 @@ public extension DS {
 
         /// glTF role tints. Fixed vocabulary — a camera *is* blue whatever the user's accent —
         /// so these do not follow `accent` (DESIGN.md › "Color = meaning").
-        /// Values match `PreviewUI.Theme` so the look is unchanged.
         public enum Role {
             /// Mesh nodes.
             public static let mesh = SwiftUI.Color.dsDynamic(light: 0x6E6E73, dark: 0xA0A0A6)
@@ -100,8 +99,7 @@ public extension DS {
         }
 
         /// Axis colours for the orientation and origin gizmos (X red, Y green, Z blue — the DCC
-        /// convention). sRGB literals, identical in both appearances; values match
-        /// `PreviewUI.OverlayMetrics`.
+        /// convention). sRGB literals, identical in both appearances.
         public enum Axis {
             /// X axis.
             public static let x = SwiftUI.Color(red: 0xE2 / 255, green: 0x56 / 255, blue: 0x4A / 255)
@@ -123,7 +121,7 @@ public extension DS {
             public static let checker = SwiftUI.Color.dsDynamic(light: 0xDCDCE0, dark: 0xDCDCE0)
         }
 
-        /// The flat canvas ground behind the model viewport. Values match `PreviewUI.Theme`.
+        /// The flat canvas ground behind the model viewport.
         public enum Canvas {
             /// Flat viewport colour — the fallback ground for anything drawn over the canvas.
             public static let ground = SwiftUI.Color.dsDynamic(light: 0xECEEF1, dark: 0x1A1B1D)

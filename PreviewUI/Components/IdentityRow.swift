@@ -2,12 +2,12 @@ import DesignSystem
 import SwiftUI
 
 /// Selection identity under the Open-in row.
-public struct IdentityRow: View {
-    public var name: String
-    public var kindTitle: String
-    public var kind: NodeKind
+struct IdentityRow: View {
+    var name: String
+    var kindTitle: String
+    var kind: NodeKind
 
-    public var body: some View {
+    var body: some View {
         HStack(alignment: .center, spacing: DS.Spacing.m) {
             DSTypeIcon(DSTypeRole(rawValue: kind.rawValue) ?? .empty)
 

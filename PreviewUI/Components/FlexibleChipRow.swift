@@ -3,10 +3,10 @@ import SwiftUI
 
 /// Left-to-right wrap of chips. How many fit depends on the pane width — there is no
 /// `chipsPerRow`.
-public struct FlexibleChipRow: View {
-    public var items: [String]
+struct FlexibleChipRow: View {
+    var items: [String]
 
-    public var body: some View {
+    var body: some View {
         DSFlowLayout {
             ForEach(items, id: \.self) { title in
                 DSChip(title)

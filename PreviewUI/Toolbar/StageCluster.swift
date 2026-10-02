@@ -5,10 +5,10 @@ import SwiftUI
 ///
 /// Swatches share one island (`DSSwatchPicker`). Floor is its own circle: same Stage job,
 /// separate control, so the cluster is never one fused stadium.
-public struct StagePill<Viewport: ViewportController>: View {
-    public var viewport: Viewport
+struct StageCluster<Viewport: ViewportController>: View {
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSGlassCluster {
             DSSwatchPicker("Backdrop", selection: backdrop, swatches: swatches)
             DSGlassToggleButton("Floor", systemImage: "circle.grid.cross", isOn: floor)
@@ -40,7 +40,7 @@ public struct StagePill<Viewport: ViewportController>: View {
 
 // MARK: - Previews
 
-private struct StagePillPreviewHost: View {
+private struct StageClusterPreviewHost: View {
     @State private var viewport: MockViewportController
 
     init(viewport: MockViewportController) {
@@ -49,7 +49,7 @@ private struct StagePillPreviewHost: View {
 
     var body: some View {
         PreviewCanvas(width: 220, height: 64, background: .canvas) {
-            StagePill(viewport: viewport)
+            StageCluster(viewport: viewport)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(.leading, DS.Spacing.canvasInset)
         }
@@ -57,13 +57,13 @@ private struct StagePillPreviewHost: View {
 }
 
 #Preview("default", traits: .fixedLayout(width: 220, height: 64)) {
-    StagePillPreviewHost(viewport: MockViewportController())
+    StageClusterPreviewHost(viewport: MockViewportController())
 }
 
 #Preview("white backdrop", traits: .fixedLayout(width: 220, height: 64)) {
-    StagePillPreviewHost(viewport: MockViewportController(backdrop: .white))
+    StageClusterPreviewHost(viewport: MockViewportController(backdrop: .white))
 }
 
 #Preview("floor off", traits: .fixedLayout(width: 220, height: 64)) {
-    StagePillPreviewHost(viewport: MockViewportController(showsFloor: false))
+    StageClusterPreviewHost(viewport: MockViewportController(showsFloor: false))
 }

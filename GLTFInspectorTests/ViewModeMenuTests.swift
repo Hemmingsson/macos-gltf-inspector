@@ -1,7 +1,7 @@
 import PreviewUI
 import Testing
 
-/// The Look pill's view-mode title. A settled change must show one name — interpolate
+/// The Look cluster's view-mode title. A settled change must show one name — interpolate
 /// / numericText on "Shaded"→"Wireframe" painted both strings at once ("Swiaredame").
 @MainActor
 struct ViewModeMenuTests {

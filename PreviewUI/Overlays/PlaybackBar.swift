@@ -6,12 +6,12 @@ import SwiftUI
 /// Shown only when `Availability.hasAnimations`. Transport lives on
 /// `ClipPlaybackController` — the bar never owns a local clock. One `DSHUDCapsule` so the play
 /// button is borderless inside the glass (no glass on glass).
-public struct PlaybackBar<Playback: ClipPlaybackController>: View {
-    public var playback: Playback
+struct PlaybackBar<Playback: ClipPlaybackController>: View {
+    var playback: Playback
 
     @State private var isSeeking = false
 
-    public var body: some View {
+    var body: some View {
         DSHUDCapsule(
             height: OverlayMetrics.playbackHeight,
             horizontalPadding: DS.Spacing.l,

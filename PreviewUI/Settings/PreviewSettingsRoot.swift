@@ -41,7 +41,7 @@ public struct PreviewSettingsRoot<Store: SettingsDefaultsStore>: View {
     }
 }
 
-public extension View {
+extension View {
     func settingsFormChrome() -> some View {
         formStyle(.grouped)
             .scrollContentBackground(.hidden)

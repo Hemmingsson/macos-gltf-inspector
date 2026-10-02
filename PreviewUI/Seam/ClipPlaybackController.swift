@@ -3,8 +3,9 @@ import Observation
 
 /// Live clip transport for the canvas playback bar. Mutable and per-window.
 ///
-/// `SceneModel.animations` is the file inventory; this is the player. The host engine
-/// adapter wraps RealityKit / `PreviewClip`. `PlaybackBar` ticks `advance(by:)`.
+/// `SceneModel.animations` is the file inventory; this is the player. RealityKit's host
+/// adapter wraps `PreviewClip`; WebKit uses `NoClipPlayback` until the page gains transport.
+/// `PlaybackBar` ticks `advance(by:)`.
 @MainActor
 public protocol ClipPlaybackController: AnyObject, Observable {
     var clips: [AnimationInfo] { get }
@@ -17,7 +18,7 @@ public protocol ClipPlaybackController: AnyObject, Observable {
     func pause()
     func seek(_ time: TimeInterval)
     func select(_ clip: AnimationInfo)
-    /// Advance the playhead. `PlaybackBar` drives this while playing; the engine adapter
-    /// mirrors the RealityKit player (RK owns time).
+    /// Advance the playhead. `PlaybackBar` drives this while playing; a RealityKit adapter
+    /// mirrors the clip player (RK owns time). WebKit's stub is a no-op.
     func advance(by delta: TimeInterval)
 }

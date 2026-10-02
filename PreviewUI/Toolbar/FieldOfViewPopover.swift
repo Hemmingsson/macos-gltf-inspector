@@ -2,10 +2,10 @@ import DesignSystem
 import SwiftUI
 
 /// The camera lens chip and its popover: vertical field of view.
-public struct FieldOfViewPopover<Viewport: ViewportController>: View {
-    public var viewport: Viewport
+struct FieldOfViewPopover<Viewport: ViewportController>: View {
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSGlassPopoverButton(
             "Field of view",
             systemImage: "camera.aperture",
@@ -21,10 +21,10 @@ public struct FieldOfViewPopover<Viewport: ViewportController>: View {
     }
 }
 
-public struct FieldOfViewControls<Viewport: ViewportController>: View {
-    public var viewport: Viewport
+struct FieldOfViewControls<Viewport: ViewportController>: View {
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSPopoverPanel {
             if viewport.projection == .orthographic {
                 DSButton("Use Perspective", variant: .prominent, size: .small) {

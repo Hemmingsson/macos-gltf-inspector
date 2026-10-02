@@ -5,29 +5,15 @@ import SwiftUI
 ///
 /// Node sections bind to `selection.detail` and omit fields the node type does not have.
 /// `openInMenu` is menu items (Finder, Blender, …); the header wraps them in `DSGlassMenuButton`.
-public struct RightInspector<Selection: SelectionModel>: View {
-    public var selection: Selection
-    public var documentState: ShellDocumentState = .ready
-    public var openInMenu: AnyView
+struct RightInspector<Selection: SelectionModel>: View {
+    var selection: Selection
+    var documentState: ShellDocumentState = .ready
+    var openInMenu: AnyView
     /// Live morph weights from the host (`PreviewMorph`); shown when a morph is selected.
-    public var morphTargets: [MorphTargetControl] = []
-    public var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
+    var morphTargets: [MorphTargetControl] = []
+    var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
 
-    public init(
-        selection: Selection,
-        documentState: ShellDocumentState = .ready,
-        openInMenu: AnyView,
-        morphTargets: [MorphTargetControl] = [],
-        onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in }
-    ) {
-        self.selection = selection
-        self.documentState = documentState
-        self.openInMenu = openInMenu
-        self.morphTargets = morphTargets
-        self.onSetMorphWeight = onSetMorphWeight
-    }
-
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if documentState.isReady, let detail = selection.detail {
                 header(detail)

@@ -3,8 +3,8 @@ import SwiftUI
 
 /// Bottom-leading corner axes — a fixed isometric triad giving a camera-orientation cue.
 /// Not glass: the wireframe paints bare strokes over the canvas.
-public struct OrientationGizmo: View {
-    public var body: some View {
+struct OrientationGizmo: View {
+    var body: some View {
         ZStack {
             Canvas { context, size in
                 let origin = Self.origin(in: size)

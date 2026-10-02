@@ -9,9 +9,9 @@ import SwiftUI
 /// meaning-colours in `DS.Color` (glTF role tints, axes, backdrops, canvas grounds), which encode
 /// information and must not follow the user's accent.
 ///
-/// `DesignSystem` has no dependencies: it never imports `PreviewUI` or `Shared/`. Where a token is
-/// keyed by a PreviewUI concept (view modes, camera presets) it defines a mirroring enum whose raw
-/// values match the seam's, so callers map with `init(rawValue:)`.
+/// `DesignSystem` has no dependencies: it never imports `PreviewUI`. Where a token is keyed by a
+/// PreviewUI concept (view modes, camera presets) it defines a mirroring enum whose raw values
+/// match the seam's, so callers map with `init(rawValue:)`.
 ///
 /// Inside `DS` the nested `Color` / `Font` / `Glass` enums shadow the SwiftUI types of the same name;
 /// token files therefore spell the SwiftUI types out (`SwiftUI.Color`, `SwiftUI.Font`, …).
@@ -23,8 +23,8 @@ extension SwiftUI.Color {
     /// A colour that resolves per appearance through AppKit, so one token serves light and dark and
     /// follows a live System Appearance switch. SwiftUI has no `Color(light:dark:)`.
     ///
-    /// Internal on purpose: `PreviewUI` still ships a public `Color.dynamic`, and a second public
-    /// overload here would make every existing call site ambiguous.
+    /// Internal on purpose: a public `Color.dsDynamic` would collide with any future
+    /// `Color(light:dark:)` helper at call sites.
     static func dsDynamic(light: NSColor, dark: NSColor) -> SwiftUI.Color {
         SwiftUI.Color(nsColor: NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light

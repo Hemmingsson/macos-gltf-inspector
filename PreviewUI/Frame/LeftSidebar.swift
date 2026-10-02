@@ -5,17 +5,17 @@ import SwiftUI
 ///
 /// Generic over both seam types rather than taking existentials: `SceneModel` has `Self`
 /// requirements through its default implementations.
-public struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: ViewportController>: View {
-    public var model: Model
+struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: ViewportController>: View {
+    var model: Model
     /// Injected, not owned — the window root owns it, and the inspector reads the same instance.
-    public var selection: Selection
-    public var viewport: Viewport
-    public var documentState: ShellDocumentState = .ready
+    var selection: Selection
+    var viewport: Viewport
+    var documentState: ShellDocumentState = .ready
     /// Visual state of the leading chrome toggle (accent while the column is open).
-    public var isSidebarVisible: Bool = true
-    public var onToggleSidebar: () -> Void = {}
+    var isSidebarVisible: Bool = true
+    var onToggleSidebar: () -> Void = {}
 
-    public var body: some View {
+    var body: some View {
         Group {
             if documentState.isReady {
                 OutlinerList(

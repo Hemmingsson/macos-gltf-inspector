@@ -5,18 +5,18 @@ import SwiftUI
 ///
 /// Use in `#Preview` blocks with `traits: .fixedLayout(width:height:)` — sidebar (248) and
 /// inspector (288) widths match `DS.Metrics.sidebarWidth` / `DS.Metrics.inspectorWidth`.
-public struct PreviewCanvas<Content: View>: View {
-  public enum Background {
+struct PreviewCanvas<Content: View>: View {
+  enum Background {
     case chrome
     case canvas
   }
 
-  public var width: CGFloat
-  public var height: CGFloat?
-  public var background: Background
-  @ViewBuilder public var content: () -> Content
+  var width: CGFloat
+  var height: CGFloat?
+  var background: Background
+  @ViewBuilder var content: () -> Content
 
-  public init(
+  init(
     width: CGFloat = DS.Metrics.sidebarWidth,
     height: CGFloat? = nil,
     background: Background = .chrome,
@@ -28,7 +28,7 @@ public struct PreviewCanvas<Content: View>: View {
     self.content = content
   }
 
-  public var body: some View {
+  var body: some View {
     content()
       .frame(maxWidth: .infinity, alignment: .topLeading)
       .frame(width: width)

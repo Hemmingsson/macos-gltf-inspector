@@ -6,16 +6,16 @@ import SwiftUI
 ///
 /// The window has no title band (DESIGN.md: the file name lives in the sidebar), so if this
 /// block is missing there is nothing anywhere on screen that says which file you are looking at.
-public struct DocumentHeader: View {
-    public var fileName: String
+struct DocumentHeader: View {
+    var fileName: String
     /// The scene being shown. Nil for a file with no named scene — the subtitle then collapses
     /// rather than printing a placeholder.
-    public var sceneName: String?
-    public var variantNames: [String] = []
-    public var selectedVariantIndex: Int?
-    public var onSelectVariant: (Int?) -> Void = { _ in }
+    var sceneName: String?
+    var variantNames: [String] = []
+    var selectedVariantIndex: Int?
+    var onSelectVariant: (Int?) -> Void = { _ in }
 
-    public var body: some View {
+    var body: some View {
         Group {
             if variantNames.isEmpty {
                 DSDocumentCard(fileName, subtitle: sceneName)

@@ -7,13 +7,13 @@ import SwiftUI
 ///
 /// `openInMenu` is **menu items** (Finder, Blender, …), not a styled `Menu`. This row wraps them
 /// in `DSGlassMenuButton`.
-public struct ActionRow: View {
-    public let openInMenu: AnyView
+struct ActionRow: View {
+    let openInMenu: AnyView
     /// When `true`, align to the window chrome band (floating canvas overlay). The inspector
     /// header passes `false` and pads instead.
-    public var alignsToChromeBand: Bool = true
+    var alignsToChromeBand: Bool = true
 
-    public var body: some View {
+    var body: some View {
         let row = HStack(spacing: DS.Spacing.xs) {
             Spacer(minLength: 0)
             DSGlassMenuButton("Open in", systemImage: "square.and.arrow.up") {

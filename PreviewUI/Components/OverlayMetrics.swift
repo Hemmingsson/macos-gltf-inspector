@@ -3,19 +3,19 @@ import SwiftUI
 
 
 /// Shared numbers for the canvas-bottom overlays.
-public enum OverlayMetrics {
+enum OverlayMetrics {
     /// Inset of the bottom overlays from the canvas edge (`DS.Spacing.xl`).
-    public static let inset = DS.Spacing.xl
+    static let inset = DS.Spacing.xl
     /// Dimensions pill height. Slightly under `DS.Metrics.glassControl` so the readout stays compact.
-    public static let dimensionsHeight: CGFloat = 30
+    static let dimensionsHeight: CGFloat = 30
     /// Playback bar height. Taller than a glass control so the scrubber sits comfortably.
-    public static let playbackHeight: CGFloat = 42
+    static let playbackHeight: CGFloat = 42
     /// Playback scrub track width in the wireframe.
-    public static let scrubWidth: CGFloat = 250
+    static let scrubWidth: CGFloat = 250
     /// Orientation gizmo box (`width: 66; height: 66`).
-    public static let orientationSize: CGFloat = 66
+    static let orientationSize: CGFloat = 66
 
-    public static func strokeAxis(
+    static func strokeAxis(
         _ context: GraphicsContext,
         from: CGPoint,
         to: CGPoint,
@@ -28,7 +28,7 @@ public enum OverlayMetrics {
         context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
     }
 
-    public static func drawAxisLabel(
+    static func drawAxisLabel(
         _ context: GraphicsContext,
         _ text: String,
         at point: CGPoint,

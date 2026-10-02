@@ -1,20 +1,20 @@
 import Foundation
 
 /// Static glTF-validator snapshots for section previews — no disk I/O.
-public enum ValidationFixtures {
-  public static let clean = ValidationResult(
+enum ValidationFixtures {
+  static let clean = ValidationResult(
     issues: [],
     formatLabel: "glTF 2.0",
     status: .ready
   )
 
-  public static let pending = ValidationResult(
+  static let pending = ValidationResult(
     issues: [],
     formatLabel: "glTF 2.0",
     status: .pending
   )
 
-  public static let withErrors = ValidationResult(
+  static let withErrors = ValidationResult(
     issues: [
       ValidationResult.Issue(
         severity: .error,
@@ -31,7 +31,7 @@ public enum ValidationFixtures {
     status: .ready
   )
 
-  public static let convertProblems = ConvertProblemList(
+  static let convertProblems = ConvertProblemList(
     entries: [
       ConvertProblemList.Entry(
         severity: .error,

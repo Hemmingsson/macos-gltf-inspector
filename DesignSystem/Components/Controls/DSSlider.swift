@@ -18,6 +18,7 @@ public struct DSSlider<Value: BinaryFloatingPoint>: View where Value.Stride: Bin
     private let step: Value.Stride
     private let neutralValue: Value?
     private let reading: (Value) -> String
+    private let accessibilityLabelText: String
 
     /// - Parameters:
     ///   - title: Shown leading in the label row and used as the accessibility label.
@@ -26,12 +27,14 @@ public struct DSSlider<Value: BinaryFloatingPoint>: View where Value.Stride: Bin
     ///   - step: Snap increment. Required — the system default is `1`.
     ///   - neutralValue: Optional rest point the track fill grows from.
     ///   - reading: Formats the current value for the trailing reading and accessibility value.
+    ///   - accessibilityLabel: VoiceOver name when it must differ from the visible title.
     public init(
         _ title: String,
         value: Binding<Value>,
         in range: ClosedRange<Value>,
         step: Value.Stride,
         neutralValue: Value? = nil,
+        accessibilityLabel: String? = nil,
         reading: @escaping (Value) -> String
     ) {
         self.title = title
@@ -40,6 +43,7 @@ public struct DSSlider<Value: BinaryFloatingPoint>: View where Value.Stride: Bin
         self.step = step
         self.neutralValue = neutralValue
         self.reading = reading
+        self.accessibilityLabelText = accessibilityLabel ?? title
     }
 
     /// Same as the closure form, with a reading the caller has already formatted.
@@ -49,6 +53,7 @@ public struct DSSlider<Value: BinaryFloatingPoint>: View where Value.Stride: Bin
         in range: ClosedRange<Value>,
         step: Value.Stride,
         neutralValue: Value? = nil,
+        accessibilityLabel: String? = nil,
         reading: String
     ) {
         self.init(
@@ -57,6 +62,7 @@ public struct DSSlider<Value: BinaryFloatingPoint>: View where Value.Stride: Bin
             in: range,
             step: step,
             neutralValue: neutralValue,
+            accessibilityLabel: accessibilityLabel,
             reading: { _ in reading }
         )
     }
@@ -79,7 +85,7 @@ public struct DSSlider<Value: BinaryFloatingPoint>: View where Value.Stride: Bin
             .accessibilityHidden(true)
 
             Slider(value: $value, in: range, step: step, neutralValue: neutralValue) {
-                Text(title)
+                Text(accessibilityLabelText)
             }
             .labelsHidden()
             .accessibilityValue(currentReading)

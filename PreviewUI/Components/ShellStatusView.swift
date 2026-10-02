@@ -2,17 +2,17 @@ import DesignSystem
 import SwiftUI
 
 /// Quiet filler for a non-ready document. Copy and chrome stay per placement.
-public struct ShellStatusView: View {
-    public enum Placement {
+struct ShellStatusView: View {
+    enum Placement {
         case sidebar
         case inspector
         case canvas
     }
 
-    public var state: ShellDocumentState
-    public var placement: Placement
+    var state: ShellDocumentState
+    var placement: Placement
 
-    public var body: some View {
+    var body: some View {
         switch placement {
         case .sidebar:
             sidebar

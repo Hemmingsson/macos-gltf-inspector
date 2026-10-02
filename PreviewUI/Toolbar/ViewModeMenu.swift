@@ -12,13 +12,13 @@ import SwiftUI
 /// disabled. That keeps the rule in one place (`Availability`) where a later engine adapter
 /// answers it from real data instead of every menu re-deriving it.
 ///
-/// Icon + current title + DS chevron (`DSGlassMenuButton.titled`); no painted `PillMenuLabel`
-/// chip. Shortcuts come from `DS.Shortcuts` so they cannot collide with camera presets.
-public struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: View {
-    public var availability: Capabilities
-    public var viewport: Viewport
+/// Icon + current title + DS chevron (`DSGlassMenuButton.titled`). Shortcuts come from
+/// `DS.Shortcuts` so they cannot collide with camera presets.
+struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: View {
+    var availability: Capabilities
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSGlassMenuButton(
             "View mode",
             systemImage: Self.symbol(for: viewport.viewMode),
@@ -46,7 +46,7 @@ public struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportControl
 
     /// One glyph per family, matching the wireframes: the shaded sphere for Shaded, a grid for
     /// Wireframe, and the mesh cube for any channel (`Inspect@2x.png` on Normals).
-    public static func symbol(for mode: ViewMode) -> String {
+    static func symbol(for mode: ViewMode) -> String {
         switch mode {
         case .shaded: "circle.lefthalf.filled"
         case .wireframe: "grid"

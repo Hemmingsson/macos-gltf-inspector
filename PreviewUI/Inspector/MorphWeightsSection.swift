@@ -1,15 +1,15 @@
 import DesignSystem
 import SwiftUI
 
-/// Runtime morph-target weight sliders (re-homed from the deleted host outliner).
+/// Runtime morph-target weight sliders.
 ///
-/// Shown at file level whenever the host supplies targets — PreviewUI never imports RealityKit;
-/// the host maps `PreviewMorph` ↔ `MorphTargetControl`.
-public struct MorphWeightsSection: View {
-    public var targets: [MorphTargetControl]
-    public var onSetWeight: (String, Double) -> Void
+/// Shown whenever the host supplies targets — PreviewUI never imports a renderer; the host maps
+/// live morph weights ↔ `MorphTargetControl`.
+struct MorphWeightsSection: View {
+    var targets: [MorphTargetControl]
+    var onSetWeight: (String, Double) -> Void
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader("Morphs")
 

@@ -2,16 +2,11 @@ import DesignSystem
 import SwiftUI
 
 /// Small colour tile for material factor readouts and map thumbnails.
-public struct MaterialSwatch: View {
-    public var color: Color
-    public var size: CGFloat
+struct MaterialSwatch: View {
+    var color: Color
+    var size: CGFloat
 
-    public init(color: Color, size: CGFloat) {
-        self.color = color
-        self.size = size
-    }
-
-    public var body: some View {
+    var body: some View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
         shape
             .fill(color)

@@ -2,11 +2,11 @@ import DesignSystem
 import SwiftUI
 
 /// File-level stats rows. Shown in the left sidebar footer for a loaded model.
-public struct FileSection: View {
-    public var stats: Stats
-    public var fileName: String
+struct FileSection: View {
+    var stats: Stats
+    var fileName: String
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.s) {
             DSSectionHeader("File")
 
@@ -24,7 +24,7 @@ public struct FileSection: View {
                     DSFactRow("File size", value: size)
                 }
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("File \(fileName)")
         }
         .padding(.horizontal, DS.Spacing.l)

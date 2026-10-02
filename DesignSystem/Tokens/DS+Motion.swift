@@ -10,7 +10,6 @@ public extension DS {
         public static let hoverDuration: TimeInterval = 0.12
 
         /// `easeInOut` for chrome transitions, or `nil` when Reduce Motion is on.
-        /// Successor of PreviewUI's `Animation.previewChrome(_:duration:)`.
         public static func chrome(
             reduceMotion: Bool,
             duration: TimeInterval = chromeDuration

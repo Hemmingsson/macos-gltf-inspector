@@ -4,13 +4,13 @@ import SwiftUI
 /// Public constructors for the canvas and pane composites, so the `DesignCatalog` app (another
 /// module) can render the real PreviewUI views over PreviewSupport mocks.
 ///
-/// The composites are public types without public initialisers (the shell builds them in-module);
-/// this keeps their API unchanged while the catalog shows the live PreviewUI chrome. Each function
-/// returns exactly what the shell places on screen.
+/// The composites are in-module types (the shell builds them here); this keeps that API
+/// unchanged while the catalog shows the live PreviewUI chrome. Each function returns exactly
+/// what the shell places on screen.
 public enum CatalogComposites {
     /// Leading Stage cluster (backdrop swatches + floor).
     public static func stageCluster(viewport: some ViewportController) -> some View {
-        StagePill(viewport: viewport)
+        StageCluster(viewport: viewport)
     }
 
     /// Centre Look cluster (view-mode menu │ lighting chip).
@@ -18,12 +18,12 @@ public enum CatalogComposites {
         availability: some Availability,
         viewport: some ViewportController
     ) -> some View {
-        LookPill(availability: availability, viewport: viewport)
+        LookCluster(availability: availability, viewport: viewport)
     }
 
     /// Trailing Camera cluster (auto-rotate, center, projection, FoV, fit, presets).
     public static func cameraCluster(viewport: some ViewportController) -> some View {
-        CameraPill(viewport: viewport)
+        CameraCluster(viewport: viewport)
     }
 
     /// The lighting chip; click opens the live popover. Standalone so it draws its own glass.

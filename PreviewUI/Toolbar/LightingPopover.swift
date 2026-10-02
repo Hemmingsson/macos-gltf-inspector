@@ -6,11 +6,11 @@ import SwiftUI
 /// A popover rather than a menu because these are continuous values. A menu is for picking one of
 /// n; dragging an exposure slider while watching the model is the whole point, and a menu closes
 /// on the first click.
-public struct LightingPopover<Capabilities: Availability, Viewport: ViewportController>: View {
-    public var availability: Capabilities
-    public var viewport: Viewport
+struct LightingPopover<Capabilities: Availability, Viewport: ViewportController>: View {
+    var availability: Capabilities
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSGlassPopoverButton(
             "Lighting",
             systemImage: "sun.max",
@@ -22,12 +22,12 @@ public struct LightingPopover<Capabilities: Availability, Viewport: ViewportCont
 }
 
 /// The popover's body. Split out so the chip stays about *presentation* and this stays about the
-/// three values, which is also what makes it easy to host alone in Debug fixtures.
-public struct LightingControls<Capabilities: Availability, Viewport: ViewportController>: View {
-    public var availability: Capabilities
-    public var viewport: Viewport
+/// lighting values (exposure, environment, tone mapping, file-vs-studio).
+struct LightingControls<Capabilities: Availability, Viewport: ViewportController>: View {
+    var availability: Capabilities
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSPopoverPanel {
             DSSlider(
                 "Exposure",
@@ -43,6 +43,7 @@ public struct LightingControls<Capabilities: Availability, Viewport: ViewportCon
                 value: PopoverControls.lighting(\.environmentRotationDegrees, on: viewport),
                 in: 0...360,
                 step: 1,
+                accessibilityLabel: "Environment rotation",
                 reading: PopoverControls.degreesReading
             )
 

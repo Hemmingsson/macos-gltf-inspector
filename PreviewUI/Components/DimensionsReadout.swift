@@ -2,10 +2,10 @@ import DesignSystem
 import SwiftUI
 
 /// Bottom-trailing W×H×D pill.
-public struct DimensionsReadout: View {
-    public var dimensions: Dimensions
+struct DimensionsReadout: View {
+    var dimensions: Dimensions
 
-    public var body: some View {
+    var body: some View {
         DSHUDCapsule(height: OverlayMetrics.dimensionsHeight) {
             Image(systemName: "cube")
                 .font(DS.Font.callout)

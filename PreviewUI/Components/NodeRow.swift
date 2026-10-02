@@ -5,10 +5,10 @@ import SwiftUI
 ///
 /// Built for a native `List(selection:)` — the row draws **no** selection of its own. Hidden
 /// nodes use `.tertiary` (`isMuted`), not opacity.
-public struct NodeRow<Selection: SelectionModel>: View {
-    public var item: OutlinerItem
-    public var isSelected: Bool
-    public var selection: Selection
+struct NodeRow<Selection: SelectionModel>: View {
+    var item: OutlinerItem
+    var isSelected: Bool
+    var selection: Selection
 
     /// Hit box of the visibility eye.
     private static var eyeSize: CGFloat { 18 }
@@ -29,7 +29,7 @@ public struct NodeRow<Selection: SelectionModel>: View {
         DSTypeRole(rawValue: item.id.kind.rawValue) ?? .empty
     }
 
-    public var body: some View {
+    var body: some View {
         HStack(spacing: DS.Spacing.xs) {
             DSListRow(
                 item.name,

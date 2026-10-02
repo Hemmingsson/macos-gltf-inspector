@@ -5,11 +5,11 @@ import SwiftUI
 ///
 /// One `DSGlassCluster`: auto-rotate, center, orthographic, FoV, Fit, presets. Each control
 /// draws its own glass; nothing is nested glass-on-glass.
-public struct CameraPill<Viewport: ViewportController>: View {
-    public var viewport: Viewport
+struct CameraCluster<Viewport: ViewportController>: View {
+    var viewport: Viewport
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    public var body: some View {
+    var body: some View {
         DSGlassCluster {
             DSGlassToggleButton(
                 "Auto-rotate",
@@ -61,11 +61,11 @@ public struct CameraPill<Viewport: ViewportController>: View {
 /// Canned angles — Front · Back · Left · Right · Top · Bottom · Isometric.
 ///
 /// Shortcuts come from `DS.Shortcuts.cameraPreset` (⌥⌘ + digits) so they cannot collide with
-/// view mode (⌘1 / ⌘2). The old un-modified digit shortcuts are gone from this picker.
-public struct CameraPresetMenu<Viewport: ViewportController>: View {
-    public var viewport: Viewport
+/// view mode (⌘1 / ⌘2).
+struct CameraPresetMenu<Viewport: ViewportController>: View {
+    var viewport: Viewport
 
-    public var body: some View {
+    var body: some View {
         DSGlassMenuButton(
             "Camera preset",
             systemImage: "cube",
@@ -101,7 +101,7 @@ public struct CameraPresetMenu<Viewport: ViewportController>: View {
 
 // MARK: - Previews
 
-private struct CameraPillPreviewHost: View {
+private struct CameraClusterPreviewHost: View {
     @State private var viewport: MockViewportController
 
     init(viewport: MockViewportController) {
@@ -110,7 +110,7 @@ private struct CameraPillPreviewHost: View {
 
     var body: some View {
         PreviewCanvas(width: 420, height: 64, background: .canvas) {
-            CameraPill(viewport: viewport)
+            CameraCluster(viewport: viewport)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .padding(.trailing, DS.Spacing.canvasInset)
         }
@@ -118,17 +118,17 @@ private struct CameraPillPreviewHost: View {
 }
 
 #Preview("default", traits: .fixedLayout(width: 420, height: 64)) {
-    CameraPillPreviewHost(viewport: MockViewportController())
+    CameraClusterPreviewHost(viewport: MockViewportController())
 }
 
 #Preview("orthographic", traits: .fixedLayout(width: 420, height: 64)) {
-    CameraPillPreviewHost(viewport: MockViewportController(projection: .orthographic))
+    CameraClusterPreviewHost(viewport: MockViewportController(projection: .orthographic))
 }
 
 #Preview("auto-rotate", traits: .fixedLayout(width: 420, height: 64)) {
-    CameraPillPreviewHost(viewport: MockViewportController(autoRotates: true))
+    CameraClusterPreviewHost(viewport: MockViewportController(autoRotates: true))
 }
 
 #Preview("preset front", traits: .fixedLayout(width: 420, height: 64)) {
-    CameraPillPreviewHost(viewport: MockViewportController(activeCameraPreset: .front))
+    CameraClusterPreviewHost(viewport: MockViewportController(activeCameraPreset: .front))
 }

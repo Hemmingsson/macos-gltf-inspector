@@ -143,6 +143,20 @@ baseline was taken with other lanes building (load average 6–10), so treat it 
 - C8b host `CanvasStatusView` / PreviewView loading branches: host lane, not this tree.
 - C7 mock store: `[String: any Sendable]` does not compile (`as? any Sendable` is a marker-protocol cast). Uses `[String: Any]` instead.
 
+## W3 ui
+
+- C9 `ShellWindow` comment on `ShellPanelChrome`: already gone (now `DocumentWindowModel`).
+- C9 RealityView notes on `CanvasRegion` / `ShellRootView`: already gone (renderer canvas / host-injected canvas).
+- C9 `Models.swift` RealityKit image-handle comment: already gone with the C5 split (`MaterialTextureInfo.thumbnailPNG`).
+- C9 fixture 2-space indent (`PreviewSupport/Fixtures`, `PreviewCanvas`): skipped, not cheap/isolated.
+- C9 `OutlinerTreeMetrics` / `InspectorStatusView` / `SidebarStatusView`: already deleted in W2 (merged to `ShellStatusView`).
+- C10 kept public: `CatalogComposites` (catalog door); seam + settings + `ShellRootView` / `ShellPanelChrome` / `ShellDocumentState`; `ShellStatusCopy` (catalog failed copy); `MaterialInspectorSupport` (host material tests); `ViewModeMenuChrome` (title-interpolation test); `OutlinerTree` / `OutlinerSection` / `OutlinerItem` (outliner tests); catalog fixtures/mocks (`FixtureSceneModel`, `NodeDetailFixtures`, `MorphFixtures`, viewport/selection/playback/availability mocks); `PreviewOpenInItems`; `keyboardShortcutIfAvailable` (host View menu).
+- C10 `Color(rgb:)` is internal (PreviewUI-only). `settingsFormChrome` is internal (settings panes only).
+- C10 `ValidationFixtures` stays internal: `FixtureSceneModel.init` default is now `ValidationResult()` (same clean snapshot) so the public init does not leak an internal default.
+- C5/`W2 ui` `MaterialInfo.emissiveStrength`: W4 restored it; left in place.
+- C12 FileSection: `.combine` + `.accessibilityLabel` would replace fact-row text (SwiftUI label wins over combined children). Switched to `.contain` so stats stay reachable; visible layout unchanged. No Accessibility Inspector / focus steal.
+- Periphery full install not run; compiler + grep for the C10 surface.
+
 ## W4 host-ui
 
 - `LightingSettings` still defaults environment/tone to `.neutral` (memberwise + `.standard`). Reset View now seeds from `environmentCatalog` / `toneMapping` app defaults; other `LightingSettings(...)` call sites that omit those args still get Neutral. Left as the type default.

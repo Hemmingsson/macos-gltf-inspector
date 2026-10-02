@@ -2,8 +2,8 @@ import Foundation
 
 /// Load lifecycle — empty / loading / ready / failed.
 ///
-/// Host drives this from `EntityLoader` / open. Never leave a failed URL as a spinner
-/// (AGENTS.md pitfall 2).
+/// Host drives this from the open path (RealityKit convert or WebKit page + JSON panels).
+/// Never leave a failed URL as a spinner (AGENTS.md pitfall 2).
 public enum ShellDocumentState: Equatable, Sendable, Hashable {
     /// No document yet — drop / Open invite.
     case empty

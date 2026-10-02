@@ -1,8 +1,8 @@
 import Foundation
 
 /// Static material rows for inspector previews — no disk I/O.
-public enum MaterialFixtures {
-  public static let cube = MaterialInfo(
+enum MaterialFixtures {
+  static let cube = MaterialInfo(
     index: 0,
     name: "CubeMaterial",
     workflow: .metallicRoughness,
@@ -22,7 +22,7 @@ public enum MaterialFixtures {
     usedByMeshNames: ["Cube"]
   )
 
-  public static let fullPBR = MaterialInfo(
+  static let fullPBR = MaterialInfo(
     index: 1,
     name: "Hero",
     workflow: .metallicRoughness,
@@ -45,7 +45,7 @@ public enum MaterialFixtures {
     usedByMeshNames: ["Body", "Trim"]
   )
 
-  public static let baseColorOnly = MaterialInfo(
+  static let baseColorOnly = MaterialInfo(
     index: 3,
     name: "BaseColorOnly",
     workflow: .metallicRoughness,
