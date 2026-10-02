@@ -83,6 +83,7 @@ load and scene switch reuse that exponent instead of walking the entity.
    **1023**). Zero `ModelComponent`s → **1022**.
 2. Animations convert afterwards in their **own** `GLBTry`. An exception there drops the clips
    (`droppedAnimations`) and keeps the meshes. Per-clip Swift errors are logged and skipped.
+   Skeletal clips densify no finer than 30 fps (`AnimationSampling.defaultInterval`).
 
 ### Nodes
 
@@ -163,7 +164,7 @@ Non-spec product rules, defaults as shipped, each reported:
 | Spec-gloss bake cap | ≤ 40 images, ≤ 24 textured materials | "Converted from KHR spec-gloss" (without "baked textures") |
 
 The −2 EV dim was re-checked after the ×591 light fix: without it the file lights wash out on
-`PointLightIntensityTest`.
+the PointLightIntensityTest sample.
 
 ---
 
@@ -193,6 +194,17 @@ Three honesty voices:
 | `RealityPipelineReport` | What did convert-time rewrites and policy change? |
 | `ConvertProblemReport` | What did convert drop or approximate? Codes: `missingTexture`, `droppedPrimitive`, `missingTexCoord`, `ignoredExtension`, `approximatedTransmission`, `forcedOpaqueBlend`, `blendAsCutout`, `droppedAnimations`, `approximatedTextureTransform`, `droppedEmissive` |
 
+## Measured keep / do not re-bench
+
+Kept because they measured a win: packed SIMD accessors, the `LowLevelMesh` float3 path
+(any static accessor; tight ones `memcpy`'d), material identity cache, skeletal densify
+≤ 30 fps, cutout-as-mask BLEND (`RealityPolicy`), 1024 px texture cap on Finder icons only,
+and deferred 1×1 placeholders on window / Quick Look.
+
+Do not re-bench `TextureResource.CreateOptions`, mip generation, Metal-upload, or off-main
+decode without a new asset class. Test GLBs are written with `TestGLB` in
+`GLTFInspectorTests/TestGLBFixtures.swift`, not a renderer API.
+
 ## Scene switch and variants (host)
 
 `LoadedModel.switchingScene(to:from:materialVariantIndex:)` re-reads and re-parses from disk (no
@@ -208,11 +220,11 @@ full `load`.
 | --- | --- |
 | Orchestration | `RendererRealityKit/EntityLoader.swift` |
 | Spec-gloss | `RendererRealityKit/SpecGlossBake.swift` |
-| Convert | `RendererRealityKit/Convert/RealityKitConvert*.swift`, `RealityKitResourceContext.swift`, `TextureTransforms.swift`, `PackedAccessors.swift`, `AnimationHelpers.swift` |
+| Convert | `RendererRealityKit/Convert/` |
 | Look / policy | `RendererRealityKit/RealityLook.swift`, `RendererRealityKit/RealityPolicy.swift` |
 | Variants | `RendererRealityKit/MaterialVariants.swift` |
 | Reports | `RendererRealityKit/RealityPipelineReport.swift`, `RendererRealityKit/ConvertProblemReport.swift` |
-| Document / JSON | `GLTFCore/GLTFDocumentJSON.swift`, `GLTFCore/GLBBox.swift` (read side) |
-| Lighting / stills | `RendererRealityKit/PreviewLighting.swift`, `StillRenderer.swift`, `RealityThumbnail.swift`, `LiveStillRequest.swift` |
-| Canvas | `RendererRealityKit/PreviewScene.swift`, `PreviewCamera.swift` |
-| Tests | `GLTFInspectorTests/RealityKit/` (`PixelDiffRealityKitTests` goldens, `PrepareFreeInputsTests`, `InstancingTests`, `TextureTransformConvertTests`, …) |
+| Document / JSON | `GLTFCore/GLTFDocumentJSON.swift`, `GLTFCore/GLBBox.swift` |
+| Lighting / stills | `RendererRealityKit/PreviewLighting.swift`, `RendererRealityKit/StillRenderer.swift`, `RendererRealityKit/RealityThumbnail.swift`, `RendererRealityKit/LiveStillRequest.swift` |
+| Canvas | `RendererRealityKit/PreviewScene.swift`, `RendererRealityKit/PreviewCamera.swift` |
+| Tests | `GLTFInspectorTests/RealityKit/` |

@@ -1,6 +1,12 @@
 # Decision: render glTF in WebKit, not RealityKit
 
-**Status:** **GO**, hybrid on `webkit-renderer`. Finder, Quick Look, and the document
+> **Superseded (2026-10-02).** The product is a renderer switch
+> (`Settings ▸ Preview ▸ Renderer`): RealityKit is the default; WebKit is optional. The same
+> renderer still draws every surface. See [`AGENTS.md`](../AGENTS.md). The record below is the
+> 2026-08-24 WebKit-everywhere decision and is kept as history — do not treat **GO**, the
+> unused-`PreviewScene` claim, or “hybrid on `webkit-renderer`” as current.
+
+**Status (historical):** **GO**, hybrid on `webkit-renderer`. Finder, Quick Look, and the document
 window draw through one Khronos `viewer.html` in `WKWebView`. RealityKit convert remains
 for host inspector data and the unused `PreviewScene` fallback — not for on-screen pixels.
 **Spike date:** 2026-08-24 · **Branch then:** `spike/web-thumbnail` · Apple Silicon, macOS 26

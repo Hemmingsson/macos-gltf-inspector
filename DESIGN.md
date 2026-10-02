@@ -35,8 +35,8 @@ When this doc and the app disagree, **code wins**.
 
 ## glTF & the renderer
 
-- **Closest practical 1:1** with how the file renders on the web — one Khronos Sample Renderer
-  in WebKit for the window, Quick Look, and Finder. Fidelity over DCC breadth.
+- **Closest practical 1:1** with how the file renders on the web — the same renderer on every
+  surface (window, Quick Look, and Finder). Fidelity over DCC breadth.
 - **Complexity follows the asset** — a plain mesh should feel calm; a rigged, textured,
   multi-scene file may legitimately expose more. Never the reverse (empty chrome for a rich file,
   or chrome for data that isn't there).
