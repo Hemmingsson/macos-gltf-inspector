@@ -2,9 +2,10 @@ import RealityKit
 import simd
 
 /// Runtime morph-target weights via `BlendShapeWeightsComponent`.
+@MainActor
 public enum PreviewMorph {
     /// One adjustable target on a morph mesh entity.
-    public struct Target: Equatable, Identifiable, Sendable {
+    nonisolated public struct Target: Equatable, Identifiable, Sendable {
         public var id: String { "\(nodeIndex)-\(targetIndex)" }
         public var nodeIndex: Int
         public var targetIndex: Int
@@ -13,7 +14,6 @@ public enum PreviewMorph {
     }
 
     /// Enumerate morph entities under `root` with current weights (0…1).
-    @MainActor
     static func targets(in root: Entity) -> [Target] {
         var out: [Target] = []
         func walk(_ entity: Entity) {
@@ -44,7 +44,6 @@ public enum PreviewMorph {
     }
 
     /// Write a single target weight on the entity that owns `nodeIndex`.
-    @MainActor
     static func setWeight(
         nodeIndex: Int,
         targetIndex: Int,
@@ -57,7 +56,6 @@ public enum PreviewMorph {
         setWeight(targetIndex: targetIndex, value: value, on: entity)
     }
 
-    @MainActor
     static func setWeight(targetIndex: Int, value: Float, on entity: Entity) {
         guard var component = entity.components[BlendShapeWeightsComponent.self],
               !component.weightSet.isEmpty
@@ -71,14 +69,13 @@ public enum PreviewMorph {
         entity.components.set(component)
     }
 
-    private static func morphName(at index: Int, names: [String]) -> String {
+    nonisolated private static func morphName(at index: Int, names: [String]) -> String {
         if index < names.count, !names[index].isEmpty {
             return names[index]
         }
         return "Morph\(index)"
     }
 
-    @MainActor
     private static func firstMorphEntity(in root: Entity) -> Entity? {
         if root.components[BlendShapeWeightsComponent.self] != nil {
             return root

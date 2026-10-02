@@ -5,20 +5,20 @@ import simd
 
 /// Joint spheres + bone segments for skinned models. Markers parent under
 /// joint entities so they follow animation; bones update in pivot space.
+@MainActor
 enum PreviewSkeletonOverlay {
     /// Fit / selection skip-list (`PreviewFloor.isHelperName`).
-    static let overlayRootName = "skeletonOverlay"
-    static let jointMarkerPrefix = "skeletonJoint"
-    static let bonePrefix = "skeletonBone"
+    nonisolated static let overlayRootName = "skeletonOverlay"
+    nonisolated static let jointMarkerPrefix = "skeletonJoint"
+    nonisolated static let bonePrefix = "skeletonBone"
 
-    static func isHelperName(_ name: String) -> Bool {
+    nonisolated static func isHelperName(_ name: String) -> Bool {
         name == overlayRootName
             || name.hasPrefix(jointMarkerPrefix)
             || name.hasPrefix(bonePrefix)
     }
 
     /// Attach or remove overlay for `skins` under the model `root` (glTF tree).
-    @MainActor
     static func apply(
         show: Bool,
         skins: [GLTFSessionDocument.Skin],
@@ -74,7 +74,6 @@ enum PreviewSkeletonOverlay {
     }
 
     /// Reposition existing bone segments after animation / auto-rotate.
-    @MainActor
     static func updateBones(
         skins: [GLTFSessionDocument.Skin],
         root: Entity,
@@ -98,7 +97,6 @@ enum PreviewSkeletonOverlay {
         }
     }
 
-    @MainActor
     static func clear(from root: Entity, pivot: Entity) {
         func stripMarkers(_ entity: Entity) {
             for child in entity.children.filter({ $0.name.hasPrefix(jointMarkerPrefix) }) {
@@ -112,7 +110,6 @@ enum PreviewSkeletonOverlay {
         pivot.children.first(where: { $0.name == overlayRootName })?.removeFromParent()
     }
 
-    @MainActor
     private static func overlayRoot(in pivot: Entity) -> Entity {
         if let existing = pivot.children.first(where: { $0.name == overlayRootName }) {
             return existing
@@ -123,7 +120,6 @@ enum PreviewSkeletonOverlay {
         return created
     }
 
-    @MainActor
     private static func makeJointMarker(
         skinIndex: Int,
         jointIndex: Int,
@@ -135,7 +131,6 @@ enum PreviewSkeletonOverlay {
         return entity
     }
 
-    @MainActor
     private static func pose(
         _ entity: Entity,
         from: SIMD3<Float>,
@@ -158,7 +153,6 @@ enum PreviewSkeletonOverlay {
         }
     }
 
-    @MainActor
     private static func indexNodes(_ root: Entity) -> [Int: Entity] {
         var joints: [Int: Entity] = [:]
         func walk(_ entity: Entity) {
@@ -173,7 +167,6 @@ enum PreviewSkeletonOverlay {
         return joints
     }
 
-    @MainActor
     private static func jointRadius(for root: Entity, relativeTo reference: Entity) -> Float {
         let bounds = PreviewCamera.modelBounds(of: root, relativeTo: reference)
         let extent = bounds.max - bounds.min

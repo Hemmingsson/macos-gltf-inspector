@@ -32,6 +32,19 @@ line each: what, why.
 - `AnimationSampling.hasPositiveDuration` (RealityKit) and `GLTFDocumentJSON` animation duration (GLTFCore, around line 530) repeat the same min/max/sampleCount loop. Merging them crosses the core lane, so deferred.
 - Bugs seen: `[load] tight float mesh convert failed: ResourceError(... invalid(vertexBufferCount: 5))`. `TightLowLevelLayout.make` (`Convert/RealityKitConvert+Mesh.swift` around line 535) gives every attribute its own vertex buffer: position, normal, tangent, uv0, uv1, color. That is up to 6 buffers. `LowLevelMesh.Descriptor` rejects 5 (the limit seems to be 4), so a mesh with position + normal + tangent + uv0 + (uv1 or color) fails the fast path. It then falls back to the `MeshDescriptor` path, which is slower and logs an error. A fix would interleave attributes into at most 4 buffers.
 
+## W3 realitykit
+
+- `PreviewLighting` stayed `public`: host `RealityDocumentWindow` still calls `prefetchLook` (out-of-module).
+- `PreviewCamera.clampedFieldOfView` / `defaultFieldOfViewDegrees`: already gone; callers use `RenderCamera` (W2/B).
+- `project.yml` "prepare → convert" comment: already rewritten on next-main (`glTF → GLTFKit2 → convert`).
+- `makeCircleRingMesh` not `nonisolated`: `MeshResource` is `@MainActor` (Apple docs).
+- `lineMaterial` not `nonisolated`: `UnlitMaterial` isolation is undocumented; stays on the type actor.
+- `PreviewLighting.loadEquirectangular` one-line forward deleted; decode test calls `EquirectangularImage.load`.
+- `entity(nodeIndex:in:)` in `RealityTestHelpers` kept as a one-line forward (no churn).
+- `RealityRendererFeatureTests` tautology kept as intent (`features == allCases`).
+- Did not stop converting cameras / delete `disableCameras` (research: medium-risk follow-up).
+- Did not annotate `RealityKitResourceContext` (yxki4u4c / wp-textures). Did not rewrite `PreviewScene` first-frame / clip-0-paused.
+
 ## W2 realitykit
 
 - `RealityLoadStateView` not extracted: PreviewView no longer draws loading/failed chrome (host C8b); only Quick Look would consume it.

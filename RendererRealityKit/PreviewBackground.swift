@@ -73,7 +73,7 @@ public enum PreviewBackground: String, CaseIterable, Identifiable {
         return PreviewBackground(rawValue: raw) ?? .window
     }
 
-    public static var storedIndex: Int {
+    static var storedIndex: Int {
         allCases.firstIndex(of: stored) ?? 0
     }
 

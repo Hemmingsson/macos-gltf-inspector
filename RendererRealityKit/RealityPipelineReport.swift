@@ -3,7 +3,7 @@ import Foundation
 /// What convert and the RealityKit policy did to this file (inspector honesty): spec-gloss
 /// conversion, Draco, the baked-emissive drop and the studio dim. Read from the authored JSON
 /// plus the convert-time results; there is no rewritten file any more.
-public struct PreparePipelineReport: Equatable, Sendable {
+public struct RealityPipelineReport: Equatable, Sendable {
     var specGlossToMetalRough = false
     var bakedSpecGlossTextures = false
     var droppedBakedEmissive = false

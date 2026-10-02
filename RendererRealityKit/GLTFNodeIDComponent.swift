@@ -4,8 +4,8 @@ struct GLTFNodeIDComponent: Component, Codable {
     var nodeIndex: Int
 }
 
+@MainActor
 enum GLTFNodeLookup {
-    @MainActor
     static func entity(nodeIndex: Int, in root: Entity) -> Entity? {
         if root.components[GLTFNodeIDComponent.self]?.nodeIndex == nodeIndex {
             return root

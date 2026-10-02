@@ -3,9 +3,10 @@ import RealityKit
 import simd
 
 /// Procedural polar grid under the turntable (rings + radials only — no filled disc).
+@MainActor
 enum PreviewFloor {
-    static let entityName = "previewFloor"
-    static let selectionBoxName = "selectionBox"
+    nonisolated static let entityName = "previewFloor"
+    nonisolated static let selectionBoxName = "selectionBox"
     static let ringCount = 4
     static let radialCount = 8
     /// Tessellation for circular ring meshes (true annuli, not chord boxes).
@@ -18,7 +19,7 @@ enum PreviewFloor {
     private static let lineThickness: Float = 0.0007
 
     /// Helper names skipped by Fit framing (`modelBounds`) and selection dim walks.
-    static func isHelperName(_ name: String) -> Bool {
+    nonisolated static func isHelperName(_ name: String) -> Bool {
         name == entityName
             || name == selectionBoxName
             || name == PreviewCamera.worldOriginGizmoName
@@ -26,7 +27,6 @@ enum PreviewFloor {
     }
 
     /// Floor root named `previewFloor`, parented under the turntable in pivot space.
-    @MainActor
     static func make(bounds: BoundingBox, lineColor: NSColor = NSColor(srgbRed: 0x88 / 255, green: 0x88 / 255, blue: 0x88 / 255, alpha: 1)) -> Entity {
         let extent = bounds.max - bounds.min
         let diameter = diameterScale * max(extent.x, extent.z)
@@ -40,7 +40,6 @@ enum PreviewFloor {
     }
 
     /// Retint every line mesh when the preview backdrop cycles.
-    @MainActor
     static func applyLineColor(_ color: NSColor, to floor: Entity) {
         guard floor.name == entityName else { return }
         let material = lineMaterial(color: color)
@@ -57,7 +56,6 @@ enum PreviewFloor {
     }
 
     /// Contact shadows: model meshes cast (no floor catcher disc).
-    @MainActor
     static func enableCastingShadows(on root: Entity) {
         func walk(_ node: Entity) {
             if isHelperName(node.name) { return }
@@ -71,7 +69,6 @@ enum PreviewFloor {
         walk(root)
     }
 
-    @MainActor
     private static func makePolarGrid(radius: Float, lineColor: NSColor) -> Entity {
         let grid = Entity()
         grid.name = "polarGrid"
@@ -114,7 +111,6 @@ enum PreviewFloor {
         return material
     }
 
-    @MainActor
     private static func thinSegment(
         from: SIMD3<Float>,
         to: SIMD3<Float>,

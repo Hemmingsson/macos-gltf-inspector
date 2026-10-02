@@ -238,9 +238,9 @@ extension PreviewInteraction {
 }
 
 /// Orbit-drag pause + Shift-pan (events swallowed so RealityKit does not orbit while panning).
-public enum PreviewOrbitDragMonitor {
+enum PreviewOrbitDragMonitor {
     @MainActor
-    public static func install(
+    static func install(
         on view: NSView,
         interaction: @escaping () -> PreviewInteraction?,
         storage: inout Any?
@@ -300,7 +300,7 @@ public enum PreviewOrbitDragMonitor {
         return hit === view || hit.isDescendant(of: view)
     }
 
-    public static func remove(_ storage: inout Any?) {
+    static func remove(_ storage: inout Any?) {
         if let storage {
             NSEvent.removeMonitor(storage)
         }

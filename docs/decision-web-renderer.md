@@ -75,7 +75,7 @@ Worse for an inspector, the pipeline **rewrites the file before rendering it**.
 `MetalRoughPrepare` and `RealityPrepare` (~802 lines) re-bake spec-gloss textures, dequantize
 meshes, transcode WebP to PNG, and expand GPU instancing into real nodes. Every one of those
 is natively supported by both candidate web renderers. The app is honest about the rewrites —
-`PreparePipelineReport` surfaces them — but they exist only because the renderer cannot read
+`RealityPipelineReport` surfaces them — but they exist only because the renderer cannot read
 the format.
 
 These are not bugs awaiting a fix. They are absent from `PhysicallyBasedMaterial`, and

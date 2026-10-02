@@ -79,15 +79,15 @@ struct PreviewClipTests {
 
 private func writePreviewClipTwoClipGLB() throws -> URL {
     var bin = Data()
-    appendPreviewClipFloats([0, 0, 0, 1, 0, 0, 0, 1, 0], to: &bin)
+    appendFloats([0, 0, 0, 1, 0, 0, 0, 1, 0], to: &bin)
     let positionLength = bin.count
-    appendPreviewClipFloats([0, 1], to: &bin)
+    appendFloats([0, 1], to: &bin)
     let timeALength = 8
-    appendPreviewClipFloats([0, 0, 0, 1, 0, 0], to: &bin)
+    appendFloats([0, 0, 0, 1, 0, 0], to: &bin)
     let transALength = 24
-    appendPreviewClipFloats([0, 2], to: &bin)
+    appendFloats([0, 2], to: &bin)
     let timeBLength = 8
-    appendPreviewClipFloats([0, 0, 0, 0, 1, 0], to: &bin)
+    appendFloats([0, 0, 0, 0, 1, 0], to: &bin)
     let transBLength = 24
     let timeAOffset = positionLength
     let transAOffset = timeAOffset + timeALength
@@ -145,9 +145,3 @@ private func writePreviewClipTwoClipGLB() throws -> URL {
     return try TestGLB.writeTemp(data, prefix: "preview-clip")
 }
 
-private func appendPreviewClipFloats(_ values: [Float], to data: inout Data) {
-    for value in values {
-        var v = value
-        withUnsafeBytes(of: &v) { data.append(contentsOf: $0) }
-    }
-}

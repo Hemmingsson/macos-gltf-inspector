@@ -11,7 +11,7 @@ struct PreviewLightingDecodeTests {
         let url = try #require(KhronosEnvironments.defaultLook.bundledURL)
         let image = await Task.detached {
             #expect(!Thread.isMainThread)
-            return PreviewLighting.loadEquirectangular(from: url)
+            return EquirectangularImage.load(from: url)
         }.value
         #expect(image != nil)
         #expect((image?.width ?? 0) > 1)
