@@ -1,3 +1,5 @@
+import CoreGraphics
+import Foundation
 import GLTFCore
 import GLTFKit2
 import Metal
@@ -95,6 +97,20 @@ class RealityKitResourceContext {
     /// only (`RealityThumbnail`): a 512 px icon cannot show 4K texels, and `TextureResource`
     /// generation on large rasters is the measured residual load cost.
     var maxImageEdge: Int?
+    /// Window / Quick Look: bind a 1×1 `TextureResource` per raster and replace after first frame.
+    /// Thumbnails and still/proof stay eager (`false`) so captured pixels are final.
+    var deferRasterTextures = false
+
+    struct PendingRasterReplace {
+        let image: GLTFImage
+        let resource: RealityKit.TextureResource
+        let semantic: RealityKit.TextureResource.Semantic
+    }
+
+    private var pendingRasterReplaces: [PendingRasterReplace] = []
+
+    var hasPendingRasters: Bool { !pendingRasterReplaces.isEmpty }
+    var pendingRasterCount: Int { pendingRasterReplaces.count }
 
     var defaultMaterial: any Material {
         return RealityKit.SimpleMaterial(color: .init(white: 0.5, alpha: 1.0), isMetallic: false)
@@ -212,6 +228,11 @@ class RealityKitResourceContext {
             }
         }
 
+        if deferRasterTextures {
+            guard canBindPlaceholder(for: gltfImage) else { return nil }
+            return placeholderTextureResource(for: gltfImage, semantic: semantic)
+        }
+
         guard let image = cachedCGImage(for: gltfImage) else { return nil }
         let options = TextureResource.CreateOptions(semantic: semantic)
         let uploadStart = ContinuousClock.now
@@ -269,4 +290,73 @@ class RealityKitResourceContext {
     ) {
         textureResourcesForImageIdentifiers[gltfImage.identifier, default: []].append((resource, semantic))
     }
+
+    /// Cheap source check so a missing sidecar is still `.missingTexture` in Phase 1.
+    /// Does not decode rasters — buffer-backed / data-URI / in-memory images pass through.
+    private func canBindPlaceholder(for image: GLTFImage) -> Bool {
+        if image.bufferView != nil { return true }
+        guard let uri = image.uri else { return true }
+        if uri.scheme?.lowercased() == "data" { return true }
+        if uri.isFileURL {
+            return FileManager.default.fileExists(atPath: uri.path)
+        }
+        if let directory = image.assetDirectoryURL {
+            return FileManager.default.fileExists(
+                atPath: directory.appendingPathComponent(uri.relativePath).path
+            )
+        }
+        return FileManager.default.fileExists(atPath: uri.path)
+    }
+
+    @MainActor
+    private func placeholderTextureResource(
+        for gltfImage: GLTFImage,
+        semantic: RealityKit.TextureResource.Semantic
+    ) -> RealityKit.TextureResource? {
+        let options = TextureResource.CreateOptions(semantic: semantic)
+        guard let resource = try? TextureResource(
+            image: Self.placeholderCGImage,
+            withName: nil,
+            options: options
+        ) else { return nil }
+        storeTextureResource(resource, for: gltfImage, semantic: semantic)
+        pendingRasterReplaces.append(
+            PendingRasterReplace(image: gltfImage, resource: resource, semantic: semantic)
+        )
+        return resource
+    }
+
+    @MainActor
+    func replacePendingRasters(shouldContinue: @escaping @MainActor () -> Bool) async {
+        while !pendingRasterReplaces.isEmpty {
+            guard shouldContinue(), !Task.isCancelled else { return }
+            let pending = pendingRasterReplaces.removeFirst()
+            guard let cgImage = cachedCGImage(for: pending.image) else { continue }
+            let options = TextureResource.CreateOptions(semantic: pending.semantic)
+            let uploadStart = ContinuousClock.now
+            do {
+                try await pending.resource.replace(using: cgImage, options: options)
+                textureUploadTime += .now - uploadStart
+            } catch {
+                AppLog.error(AppLog.load, "texture replace failed: \(error)")
+            }
+            await Task.yield()
+        }
+    }
+
+    @MainActor
+    private static let placeholderCGImage: CGImage = {
+        let context = CGContext(
+            data: nil,
+            width: 1,
+            height: 1,
+            bitsPerComponent: 8,
+            bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
+        return context.makeImage()!
+    }()
 }

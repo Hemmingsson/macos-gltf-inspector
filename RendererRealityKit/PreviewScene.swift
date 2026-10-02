@@ -260,7 +260,7 @@ struct PreviewScene: View {
                 content.add(lookRoot)
                 // `open ready` logs before RealityKit has drawn anything; this is the first
                 // update after the scene is in, the closest RealityKit hook to a rendered frame.
-                frame.firstFrame = content.subscribe(to: SceneEvents.Update.self) { [frame] _ in
+                frame.firstFrame = content.subscribe(to: SceneEvents.Update.self) { [frame, entity] _ in
                     frame.firstFrame?.cancel()
                     frame.firstFrame = nil
                     AppLog.signposter.emitEvent("first frame")
@@ -268,6 +268,11 @@ struct PreviewScene: View {
                         AppLog.preview,
                         "rk first frame uptimeMs=\(Int(ProcessInfo.processInfo.systemUptime * 1000))"
                     )
+                    Task { @MainActor in
+                        await DeferredTextureReplace.finalize(attachedTo: entity) {
+                            entity.scene != nil
+                        }
+                    }
                 }
                 let intensity = effectiveIBLExponent
                 let yaw = environmentYawValue

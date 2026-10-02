@@ -50,14 +50,29 @@ final class RealityKitConvert {
         var timings: ConvertTimings
     }
 
-    @MainActor static func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
-        try RealityKitConvert().build(scene: scene, asset: asset, maxTextureEdge: maxTextureEdge)
+    @MainActor static func build(
+        scene: GLTFScene,
+        asset: GLTFAsset,
+        maxTextureEdge: Int? = nil,
+        deferRasterTextures: Bool = false
+    ) throws -> BuildResult {
+        try RealityKitConvert().build(
+            scene: scene,
+            asset: asset,
+            maxTextureEdge: maxTextureEdge,
+            deferRasterTextures: deferRasterTextures
+        )
     }
 
     /// Nodes and meshes first, then animations in their own exception guard: GLTFKit2 can raise
     /// ObjC exceptions, and a bad clip must not take the meshes with it (this replaces the old
     /// "no visible mesh -> convert everything again without animations" pass).
-    @MainActor func build(scene: GLTFScene, asset: GLTFAsset, maxTextureEdge: Int? = nil) throws -> BuildResult {
+    @MainActor func build(
+        scene: GLTFScene,
+        asset: GLTFAsset,
+        maxTextureEdge: Int? = nil,
+        deferRasterTextures: Bool = false
+    ) throws -> BuildResult {
         indexNodes(asset.nodes)
         ignoreBakedEmissive = RealityPolicy.fileLooksBaked(asset.materials.map(RealityPolicy.EmissiveHint.init))
         if ignoreBakedEmissive {
@@ -65,6 +80,7 @@ final class RealityKitConvert {
         }
         let context = try RealityKitResourceContext()
         context.maxImageEdge = maxTextureEdge
+        context.deferRasterTextures = deferRasterTextures
         let rootEntity = Entity()
         rootEntity.name = "glTF_\(scene.name ?? "Scene")_Root"
 
@@ -105,6 +121,9 @@ final class RealityKitConvert {
             context.record(.droppedAnimations, severity: .warning, message: "Animations dropped: \(error.localizedDescription)")
         }
         timings.clips = .now - clipsStart
+        if deferRasterTextures {
+            DeferredTextureReplace.attachIfNeeded(context: context, asset: asset, onto: rootEntity)
+        }
         return BuildResult(
             entity: rootEntity,
             problems: context.problems,

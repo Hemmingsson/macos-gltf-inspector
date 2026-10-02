@@ -169,6 +169,7 @@ enum StillRenderer {
         environmentYaw: Float,
         look: AppLook
     ) async throws -> CGImage {
+        await DeferredTextureReplace.finalize(attachedTo: root)
         let built = try await build(
             root: root,
             camera: camera,
