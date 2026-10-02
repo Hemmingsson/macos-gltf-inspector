@@ -15,7 +15,7 @@ struct WebDocumentWindow: View {
     /// Outlives a canvas remount (`DocumentShell` ids the canvas by load generation) so the page
     /// started on open keeps drawing. Replaced only after it failed, for the next document.
     @State private var webCanvas = WebCanvasController()
-    /// App Group poster or bounding-box proxy while the page starts.
+    /// Cached Finder poster while the page starts. Nil shows the loading pill only.
     @State private var firstPixelImage: NSImage?
 
     init(documentURL: URL?) {

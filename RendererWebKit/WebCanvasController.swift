@@ -28,6 +28,7 @@ public final class WebCanvasController {
     @ObservationIgnored private var work: Task<Void, Never>?
     @ObservationIgnored private var placeholderView: NSImageView?
     @ObservationIgnored private var loadingHost: NSHostingView<WebCanvasLoadingChrome>?
+    @ObservationIgnored private var loadingPin: Alignment = .bottom
     @ObservationIgnored private var didRevealLive = false
     /// The model the page was last restarted for. One restart per model: a file that kills the
     /// page twice (jetsam on a huge file) ends in `.failed`, not a restart loop.
@@ -89,7 +90,7 @@ public final class WebCanvasController {
         if let placeholder {
             installPlaceholder(placeholder, in: container, below: nil)
         }
-        installLoadingChrome(in: container)
+        installLoadingChrome(in: container, pin: placeholder == nil ? .center : .bottom)
 
         do {
             let host = try existing ?? WebRendererHost(mode: .live)
@@ -251,16 +252,21 @@ public final class WebCanvasController {
 
     private func showLoading(title: String, detail: String?) {
         guard !didRevealLive else { return }
-        let chrome = WebCanvasLoadingChrome(title: title, detail: detail)
+        let chrome = WebCanvasLoadingChrome(title: title, detail: detail, pin: loadingPin)
         if let loadingHost {
             loadingHost.rootView = chrome
             loadingHost.isHidden = false
         }
     }
 
-    private func installLoadingChrome(in container: NSView) {
+    private func installLoadingChrome(in container: NSView, pin: Alignment) {
+        loadingPin = pin
         let host = NSHostingView(
-            rootView: WebCanvasLoadingChrome(title: WebRendererLoadCopy.starting, detail: nil)
+            rootView: WebCanvasLoadingChrome(
+                title: WebRendererLoadCopy.starting,
+                detail: nil,
+                pin: pin
+            )
         )
         host.wantsLayer = true
         host.layer?.isOpaque = false

@@ -14,7 +14,7 @@ struct WebRendererLoadCopyTests {
             triangleCount: 80_000
         )
         #expect(WebRendererLoadCopy.message(for: inventory) == "Loading 45 textures…")
-        #expect(WebRendererLoadCopy.detail(for: inventory) == "12 meshes · 80k triangles")
+        #expect(WebRendererLoadCopy.detail(for: inventory) == "12 meshes · 80k triangles · 8 materials · 45 textures")
     }
 
     @Test func singularTexture() {
@@ -26,7 +26,7 @@ struct WebRendererLoadCopyTests {
             triangleCount: 12
         )
         #expect(WebRendererLoadCopy.message(for: inventory) == "Loading 1 texture…")
-        #expect(WebRendererLoadCopy.detail(for: inventory) == "1 mesh · 12 triangles")
+        #expect(WebRendererLoadCopy.detail(for: inventory) == "1 mesh · 12 triangles · 1 material · 1 texture")
     }
 
     @Test func meshesWhenThereAreNoRasters() {
@@ -38,7 +38,7 @@ struct WebRendererLoadCopyTests {
             triangleCount: 36
         )
         #expect(WebRendererLoadCopy.message(for: inventory) == "Loading 3 meshes…")
-        #expect(WebRendererLoadCopy.detail(for: inventory) == nil)
+        #expect(WebRendererLoadCopy.detail(for: inventory) == "3 meshes · 36 triangles · 1 material")
     }
 
     @Test func missingInventoryIsGeneric() {
@@ -47,7 +47,7 @@ struct WebRendererLoadCopyTests {
     }
 
     @Test func drawingPhaseIsExplicit() {
-        #expect(WebRendererLoadCopy.drawing == "Drawing…")
+        #expect(WebRendererLoadCopy.drawing == "Drawing first frame…")
     }
 
     @Test func peekReadsSidecarAndGLBHeader() throws {

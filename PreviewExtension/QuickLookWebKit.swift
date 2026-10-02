@@ -49,7 +49,7 @@ final class WebQuickLookController: NSViewController, QLPreviewingController {
             )
             return
         }
-        // App Group poster from the thumbnail extension, or a JSON bounding-box proxy.
+        // Cached Finder poster when the thumbnail extension has written one.
         let placeholder = firstPixelNSImage(for: url, renderer: .webKit)
         hostingView.rootView = QuickLookWebView(
             state: .web(
@@ -92,7 +92,7 @@ struct QuickLookWebView: View {
     enum State {
         case loading
         case failed(String)
-        /// App Group poster or bounding-box proxy under the web view until `load` unhides it.
+        /// Cached Finder poster under the web view until `load` unhides it.
         case web(
             url: URL,
             look: WebPreviewCanvas.Look,
@@ -135,7 +135,7 @@ struct QuickLookWebView: View {
     }
 }
 
-func firstPixelNSImage(for url: URL, renderer: RendererKind) -> NSImage {
-    let image = FirstPixelPreview.image(for: url, renderer: renderer)
+func firstPixelNSImage(for url: URL, renderer: RendererKind) -> NSImage? {
+    guard let image = FirstPixelPreview.image(for: url, renderer: renderer) else { return nil }
     return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
 }

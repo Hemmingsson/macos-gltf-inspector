@@ -4,7 +4,7 @@ import Foundation
 import Testing
 
 /// App Group poster cache (Wave P first pixel): a stored PNG is the first-pixel surface when it
-/// exists; a miss is a bounding-box proxy, not a spinner-only wait.
+/// exists; a miss is no image (load copy, not a drawn box).
 struct AppGroupPosterTests {
     @Test
     func cachedPosterPathIsUsedWhenAFileExists() throws {
@@ -31,17 +31,19 @@ struct AppGroupPosterTests {
         #expect(surface == .cachedPoster(stored))
         #expect(FileManager.default.fileExists(atPath: stored.path))
 
-        let image = FirstPixelPreview.image(
-            for: url,
-            renderer: .webKit,
-            look: look,
-            container: container
+        let image = try #require(
+            FirstPixelPreview.image(
+                for: url,
+                renderer: .webKit,
+                look: look,
+                container: container
+            )
         )
         #expect(isMostlyRed(image))
     }
 
     @Test
-    func missingPosterYieldsABoundingBoxProxy() throws {
+    func missingPosterYieldsNoImage() throws {
         let container = try Scratch.make()
         defer { Scratch.remove(container) }
         let url = TestFixtures.cube
@@ -52,8 +54,8 @@ struct AppGroupPosterTests {
             look: .standard,
             container: container
         )
-        guard case .boundingBoxProxy(let bounds) = surface else {
-            Issue.record("expected a bounding-box proxy, got \(surface)")
+        guard case .noPoster(let bounds) = surface else {
+            Issue.record("expected a poster miss, got \(surface)")
             return
         }
         let box = try #require(bounds)
@@ -65,8 +67,7 @@ struct AppGroupPosterTests {
             look: .standard,
             container: container
         )
-        #expect(image.width > 8 && image.height > 8)
-        #expect(!isMostlyRed(image), "proxy must be a drawn box, not a cached poster")
+        #expect(image == nil)
     }
 
     @Test

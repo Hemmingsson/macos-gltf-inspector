@@ -8,6 +8,8 @@ import SwiftUI
 struct WebCanvasLoadingChrome: View {
     var title: String
     var detail: String?
+    /// Bottom over a cached poster; center when there is no stand-in picture.
+    var pin: Alignment = .bottom
 
     var body: some View {
         VStack(spacing: 4) {
@@ -27,8 +29,8 @@ struct WebCanvasLoadingChrome: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(.regularMaterial, in: Capsule())
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: pin)
+        .padding(.bottom, pin == .bottom ? 16 : 0)
         .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
         .accessibilityLabel([title, detail].compactMap { $0 }.joined(separator: ". "))
@@ -68,7 +70,7 @@ enum WebRendererLoadCopy {
     static let starting = "Starting renderer…"
     static let model = "Loading model…"
     /// First GPU frame after parse — this is the long blank if the spinner is already gone.
-    static let drawing = "Drawing…"
+    static let drawing = "Drawing first frame…"
 
     static func message(for inventory: WebRendererAssetInventory?) -> String {
         guard let inventory else { return model }
@@ -88,17 +90,21 @@ enum WebRendererLoadCopy {
         return model
     }
 
-    /// Extra facts when the headline is textures (or otherwise incomplete).
+    /// File facts from the JSON header. Always lists what the peek found.
     static func detail(for inventory: WebRendererAssetInventory?) -> String? {
         guard let inventory else { return nil }
         var parts: [String] = []
+        if inventory.meshCount > 0 {
+            parts.append(inventory.meshCount == 1 ? "1 mesh" : "\(inventory.meshCount) meshes")
+        }
+        if inventory.triangleCount > 0 {
+            parts.append("\(PreviewStats.compactCount(inventory.triangleCount)) triangles")
+        }
+        if inventory.materialCount > 0 {
+            parts.append(inventory.materialCount == 1 ? "1 material" : "\(inventory.materialCount) materials")
+        }
         if inventory.rasterCount > 0 {
-            if inventory.meshCount > 0 {
-                parts.append(inventory.meshCount == 1 ? "1 mesh" : "\(inventory.meshCount) meshes")
-            }
-            if inventory.triangleCount > 0 {
-                parts.append("\(PreviewStats.compactCount(inventory.triangleCount)) triangles")
-            }
+            parts.append(inventory.rasterCount == 1 ? "1 texture" : "\(inventory.rasterCount) textures")
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

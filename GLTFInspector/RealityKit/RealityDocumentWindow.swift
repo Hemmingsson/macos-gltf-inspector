@@ -20,7 +20,7 @@ struct RealityDocumentWindow: View {
     /// Built once per loaded model: rebuilding it re-touches the live entity's animations. An empty
     /// controller (no clips) while nothing is loaded.
     @State private var playbackController = EngineAnimationPlaybackController()
-    /// App Group poster or bounding-box proxy while convert runs.
+    /// Cached Finder poster while convert runs. Nil keeps the canvas on the loading status.
     @State private var firstPixelImage: NSImage?
 
     init(documentURL: URL?) {
