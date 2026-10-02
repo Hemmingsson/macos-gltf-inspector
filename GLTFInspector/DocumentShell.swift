@@ -8,7 +8,7 @@ import SwiftUI
 /// the canvas, and pass in playback / morph sliders. Feature availability comes from
 /// `window.features` (the mounted renderer's `RendererFeature` set).
 ///
-/// Pills / selection / export / playback / scene+variant write through the engine adapters into
+/// Clusters / selection / export / playback / scene+variant write through the engine adapters into
 /// the window's `DocumentWindowModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
 /// (untouched keys track defaults live).
 struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {

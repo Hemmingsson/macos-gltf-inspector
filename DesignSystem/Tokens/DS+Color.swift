@@ -86,35 +86,25 @@ public extension DS {
         /// glTF role tints. Fixed vocabulary — a camera *is* blue whatever the user's accent —
         /// so these do not follow `accent` (DESIGN.md › "Color = meaning").
         public enum Role {
-            /// Mesh nodes.
             public static let mesh = SwiftUI.Color.dsDynamic(light: 0x6E6E73, dark: 0xA0A0A6)
-            /// Cameras.
             public static let camera = SwiftUI.Color.dsDynamic(light: 0x0A84FF, dark: 0x4CA8FF)
-            /// Punctual lights.
             public static let light = SwiftUI.Color.dsDynamic(light: 0xF5A623, dark: 0xFFC04D)
-            /// Materials.
             public static let material = SwiftUI.Color.dsDynamic(light: 0xA06BD6, dark: 0xC29BEC)
-            /// Animations.
             public static let animation = SwiftUI.Color.dsDynamic(light: 0x34C759, dark: 0x30D158)
         }
 
         /// Axis colours for the orientation and origin gizmos (X red, Y green, Z blue — the DCC
         /// convention). sRGB literals, identical in both appearances.
         public enum Axis {
-            /// X axis.
             public static let x = SwiftUI.Color(red: 0xE2 / 255, green: 0x56 / 255, blue: 0x4A / 255)
-            /// Y axis.
             public static let y = SwiftUI.Color(red: 0x34 / 255, green: 0xC7 / 255, blue: 0x59 / 255)
-            /// Z axis.
             public static let z = SwiftUI.Color(red: 0x0A / 255, green: 0x84 / 255, blue: 0xFF / 255)
         }
 
         /// What the backdrop swatches paint. Fixed across appearances: a "White" backdrop is white
         /// at night too — these are the colour the *canvas* takes, not chrome.
         public enum Backdrop {
-            /// White backdrop.
             public static let white = SwiftUI.Color.dsDynamic(light: 0xFFFFFF, dark: 0xFFFFFF)
-            /// Charcoal backdrop.
             public static let dark = SwiftUI.Color.dsDynamic(light: 0x2C2C2E, dark: 0x2C2C2E)
             /// Dark square of the "None" checkerboard (the light square is `white`). Checkerboard
             /// means *no* backdrop and reads that way only as light-grey-on-white.

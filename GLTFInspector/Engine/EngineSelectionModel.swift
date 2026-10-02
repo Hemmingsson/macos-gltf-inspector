@@ -192,7 +192,7 @@ final class EngineSelectionModel: SelectionModel {
             skin = EngineSceneModel.skinInfo(index: skinIndex, document: document)
         }
 
-        let name = node.name.isEmpty ? "Node \(node.index)" : node.name
+        let name = EngineSceneModel.displayName(node.name, fallback: "Node \(node.index)")
         return NodeDetail(
             id: id,
             name: name,
@@ -242,7 +242,7 @@ final class EngineSelectionModel: SelectionModel {
     private static func morphDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
         guard document.morphs.indices.contains(index) else { return nil }
         let morph = document.morphs[index]
-        let meshName = morph.meshName.isEmpty ? "Mesh \(morph.meshIndex)" : morph.meshName
+        let meshName = EngineSceneModel.displayName(morph.meshName, fallback: "Mesh \(morph.meshIndex)")
         let info = MorphInfo(index: index, meshName: meshName, targetNames: morph.targetNames)
         return NodeDetail(id: info.id, name: info.meshName, morph: info)
     }

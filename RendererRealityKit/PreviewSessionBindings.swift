@@ -14,7 +14,7 @@ public struct PreviewSessionBindings {
     var doubleSided: Binding<Bool>
     var showSkeleton: Binding<Bool>
     var fieldOfViewDegrees: Binding<Float>
-    /// Look / view-mode cycle index into `PreviewScene.debugModes` (host pills).
+    /// Look / view-mode cycle index into `PreviewScene.debugModes` (host clusters).
     var debugModeIndex: Binding<Int>
 
     public init(

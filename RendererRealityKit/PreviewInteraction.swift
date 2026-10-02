@@ -255,7 +255,7 @@ enum PreviewOrbitDragMonitor {
         ) { event in
             guard event.window === view.window else { return event }
             let panning = interaction()?.isPanning == true
-            // A full-bleed canvas sits *under* the sidebar / inspector / pills, so a bounds
+            // A full-bleed canvas sits *under* the sidebar / inspector / clusters, so a bounds
             // check alone would swallow e.g. a Shift-click on a sidebar row as a pan. Only
             // take events whose topmost hit view is the canvas (or inside it); a pan that
             // already started keeps its drags/up wherever the pointer goes.

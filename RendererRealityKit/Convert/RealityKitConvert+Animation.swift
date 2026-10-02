@@ -97,7 +97,7 @@ extension RealityKitConvert {
             for bindPath in animatedBindPaths {
                 let skeletalAnimation = SampledAnimation(jointNames: jointAnimation.jointNames,
                                                          frames: jointTransforms,
-                                                         tweenMode: .linear, // TODO: Support .hold?
+                                                         tweenMode: .linear, // glTF STEP is not mapped; samples stay linear.
                                                          frameInterval: jointAnimation.sampleInterval,
                                                          bindTarget: bindPath.jointTransforms,
                                                          delay: delay)

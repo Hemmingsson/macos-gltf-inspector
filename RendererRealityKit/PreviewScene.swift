@@ -51,22 +51,17 @@ struct PreviewScene: View {
     var session: PreviewSessionBindings?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Quick Look copies of session keys. Ephemeral — never UserDefaults.
     @State private var localBackdropIndex: Int
     @State private var localAutoRotate: Bool
     @State private var localShowFloor: Bool
-    /// Center on by default; ephemeral, never UserDefaults.
     @State private var localCenterModel: Bool
-    /// Orthographic projection; ephemeral, never UserDefaults.
     @State private var localOrthographic: Bool
-    /// Session lighting; ephemeral, never UserDefaults.
     @State private var localExposureEV: Float
     @State private var localDimStudioForFileLights: Bool
     @State private var localEnvironmentYaw: Float
-    /// Force double-sided materials; ephemeral, never UserDefaults.
     @State private var localDoubleSided: Bool
-    /// Skeleton overlay; ephemeral, never UserDefaults.
     @State private var localShowSkeleton: Bool
-    /// Perspective FOV; ephemeral, never UserDefaults.
     @State private var localFieldOfViewDegrees: Float
     /// Huge/flat models veto auto-rotate. Computed once per entity in `init` (cheap to read
     /// in the 16ms tick, unlike re-deriving bounds each frame).

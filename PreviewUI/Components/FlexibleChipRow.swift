@@ -1,8 +1,7 @@
 import DesignSystem
 import SwiftUI
 
-/// Left-to-right wrap of chips. How many fit depends on the pane width — there is no
-/// `chipsPerRow`.
+/// Left-to-right wrap of chips. How many fit depends on the pane width.
 struct FlexibleChipRow: View {
     var items: [String]
 

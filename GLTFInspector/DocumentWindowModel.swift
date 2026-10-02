@@ -120,7 +120,7 @@ final class DocumentWindowModel {
         // New document in this window: drop session overrides and re-track defaults.
         settings.clearSession()
         engineViewport.applySession()
-        AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(uptimeMs())")
+        AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(AppLog.uptimeMs())")
         validationTask?.cancel()
         return .started(generation: loadGeneration)
     }
@@ -203,7 +203,7 @@ final class DocumentWindowModel {
             let size = summary.bounds.map { "\($0.size.x)x\($0.size.y)x\($0.size.z)" } ?? "empty"
             AppLog.info(
                 AppLog.host,
-                "open ready \(url.lastPathComponent) renderer=\(renderer.rawValue) nodes=\(summary.document.nodes.count) cameras=\(summary.document.cameras.count) triangles=\(summary.stats.triangleCount) bounds=\(size) uptimeMs=\(uptimeMs())"
+                "open ready \(url.lastPathComponent) renderer=\(renderer.rawValue) nodes=\(summary.document.nodes.count) cameras=\(summary.document.cameras.count) triangles=\(summary.stats.triangleCount) bounds=\(size) uptimeMs=\(AppLog.uptimeMs())"
             )
             finishOpen(.ready)
         } catch {
@@ -249,11 +249,6 @@ final class DocumentWindowModel {
             }
         }
     }
-}
-
-/// Process uptime in ms, for ordering host and canvas log lines (the log stamps are seconds).
-func uptimeMs() -> Int {
-    Int(ProcessInfo.processInfo.systemUptime * 1000)
 }
 
 private func fileSize(_ url: URL) -> Int64 {

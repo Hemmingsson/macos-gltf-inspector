@@ -256,6 +256,6 @@ final class EngineViewportController: ViewportController {
 }
 
 extension FocusedValues {
-    /// Key-window engine viewport for the host View menu (pill twin).
+    /// Key-window engine viewport for the host View menu (cluster twin).
     @Entry var engineViewport: EngineViewportController?
 }

@@ -168,6 +168,13 @@ public struct NodeDetail: Sendable, Hashable, Identifiable {
 
     public var kind: NodeKind { id.kind }
 
+    /// Any inspector section besides the header. Keep in sync with `RightInspector` body.
+    public var hasBody: Bool {
+        transform != nil || geometry != nil || material != nil || light != nil
+            || camera != nil || animation != nil || skin != nil || morph != nil
+            || sceneRootCount != nil
+    }
+
     public init(
         id: NodeID,
         name: String,

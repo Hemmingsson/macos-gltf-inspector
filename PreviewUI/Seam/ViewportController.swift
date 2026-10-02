@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// The per-window "how it is shown" state — what the canvas pills and the View menu drive.
+/// The per-window "how it is shown" state — what the canvas clusters and the View menu drive.
 /// Live and per-window: it never writes app defaults (DESIGN.md three-job rule).
 @MainActor
 public protocol ViewportController: AnyObject, Observable {

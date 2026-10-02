@@ -208,7 +208,7 @@ struct RealityDocumentWindow: View {
                 .joined(separator: ",")
         AppLog.info(
             AppLog.host,
-            "open ready \(url.lastPathComponent) renderer=realitykit nodes=\(model.document.nodes.count) cameras=\(model.document.cameras.count) triangles=\(model.stats.triangleCount) dimensions=\(dims?.readout ?? "empty") emptyBounds=\(dims == nil) clips=\(clipSummary) uptimeMs=\(uptimeMs())"
+            "open ready \(url.lastPathComponent) renderer=realitykit nodes=\(model.document.nodes.count) cameras=\(model.document.cameras.count) triangles=\(model.stats.triangleCount) dimensions=\(dims?.readout ?? "empty") emptyBounds=\(dims == nil) clips=\(clipSummary) uptimeMs=\(AppLog.uptimeMs())"
         )
     }
 

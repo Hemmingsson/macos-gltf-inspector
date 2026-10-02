@@ -104,7 +104,7 @@ private struct HostViewMenuBody: View {
         Binding(get: { viewport[keyPath: get] }, set: set)
     }
 
-    /// SF Symbols for the View menu (the Camera pill uses `cube` for the group).
+    /// SF Symbols for the View menu (the Camera cluster uses `cube` for the group).
     private static func menuSymbol(for preset: CameraPreset) -> String {
         switch preset {
         case .front: "arrow.up.to.line"

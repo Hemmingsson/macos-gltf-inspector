@@ -143,7 +143,7 @@ extension EngineSceneModel {
     }
 
     static func sceneName(_ scene: GLTFSessionDocument.Scene, index: Int) -> String {
-        scene.name.isEmpty ? "Scene \(index)" : scene.name
+        displayName(scene.name, fallback: "Scene \(index)")
     }
 
     private static func buildNodeTree(document: GLTFSessionDocument) -> [SceneNode] {
@@ -430,7 +430,7 @@ extension EngineSceneModel {
         return maps
     }
 
-    private static func displayName(_ name: String, fallback: String) -> String {
+    static func displayName(_ name: String, fallback: String) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? fallback : trimmed
     }

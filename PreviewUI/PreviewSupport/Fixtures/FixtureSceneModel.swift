@@ -115,24 +115,6 @@ public struct FixtureSceneModel: SceneModel {
     dimensions: Dimensions(width: 12, height: 4, depth: 8)
   )
 
-  public static let morph = FixtureSceneModel(
-    fileName: "MorphTriangle.gltf",
-    scenes: [cubeScene],
-    nodeTree: [
-      SceneNode(kind: .empty, index: 0, name: "Root", children: [
-        SceneNode(kind: .mesh, index: 0, name: "Triangle")
-      ])
-    ],
-    materials: [MaterialFixtures.baseColorOnly],
-    morphs: [MorphFixtures.triangle, MorphFixtures.face],
-    stats: Stats(
-      triangleCount: 1,
-      meshCount: 1,
-      materialCount: 1
-    ),
-    dimensions: Dimensions(width: 1, height: 1, depth: 0.01)
-  )
-
   public static let lights = FixtureSceneModel(
     fileName: "PunctualLights.gltf",
     scenes: [cubeScene],

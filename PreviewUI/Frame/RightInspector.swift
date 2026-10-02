@@ -72,10 +72,7 @@ struct RightInspector<Selection: SelectionModel>: View {
         }
         NodeExtrasSection(detail: detail)
 
-        if detail.skin != nil || detail.morph != nil || detail.camera != nil
-            || detail.light != nil || detail.animation != nil || detail.material != nil
-            || detail.transform != nil || detail.geometry != nil || detail.sceneRootCount != nil
-        {
+        if detail.hasBody {
             DS.Color.separator
                 .frame(height: DS.Metrics.hairline)
                 .padding(.horizontal, DS.Spacing.l)

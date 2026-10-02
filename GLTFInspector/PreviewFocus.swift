@@ -2,7 +2,7 @@ import CoreGraphics
 import GLTFCore
 
 /// Camera and still commands of the canvas that is on screen. The mounted canvas registers them
-/// (`RealityKit/` and `WebKit/` window roots); `EngineViewportController` forwards the View menu, the Camera pill and
+/// (`RealityKit/` and `WebKit/` window roots); `EngineViewportController` forwards the View menu, the Camera cluster and
 /// File ▸ Export PNG to whatever is registered, and the host owns the save panel.
 @MainActor
 struct FocusedPreviewCommands {
