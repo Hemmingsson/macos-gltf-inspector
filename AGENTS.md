@@ -114,6 +114,8 @@ GLTFKit2's; spec-gloss is baked in place on the parsed asset; instancing is one 
 instance. Kept for measured wins: packed SIMD accessors, the `LowLevelMesh` float3 path (now any
 static accessor, tight ones `memcpy`'d), material identity cache, skeletal densify ≤ 30 fps,
 cutout-as-mask BLEND (a `RealityPolicy` rule), 1024 px texture cap on Finder icons only.
+Window / Quick Look bind 1×1 `TextureResource` placeholders and replace after the first RealityKit
+frame; thumbnails and proof goldens stay eager so captured pixels are final.
 Texture channels are `Texture.swizzle` on one `.raw` upload; `KHR_texture_transform` / `texCoord`
 are material parameters (`TextureTransforms`), never baked into UVs. Clips build in their own
 `GLBTry`; `build` returns `BuildResult` (no static problem state). Look constants (yaw π − Y,

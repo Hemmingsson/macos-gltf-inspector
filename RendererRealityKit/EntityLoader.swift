@@ -69,7 +69,8 @@ public enum EntityLoader {
                 source,
                 includeAnimations: includeAnimations,
                 sceneIndex: sceneIndex,
-                materialVariantIndex: materialVariantIndex
+                materialVariantIndex: materialVariantIndex,
+                deferRasterTextures: true
             )
             var report = RealityPipelineReport()
             report.extensionsUsed = RealityPipelineReport.captureExtensions(from: source.json)
@@ -121,7 +122,8 @@ public enum EntityLoader {
                 source,
                 includeAnimations: includeAnimations,
                 sceneIndex: index,
-                materialVariantIndex: materialVariantIndex
+                materialVariantIndex: materialVariantIndex,
+                deferRasterTextures: true
             ).build
         }
     }
@@ -203,7 +205,8 @@ public enum EntityLoader {
         includeAnimations: Bool,
         sceneIndex: Int?,
         materialVariantIndex: Int?,
-        maxTextureEdge: Int? = nil
+        maxTextureEdge: Int? = nil,
+        deferRasterTextures: Bool = false
     ) async throws -> Converted {
         let name = source.url.lastPathComponent
         let parseStart = ContinuousClock.now
@@ -240,7 +243,12 @@ public enum EntityLoader {
         let parse = ContinuousClock.now - parseStart
         var build = try await MainActor.run {
             do {
-                return try RealityKitConvert.build(scene: scene, asset: asset, maxTextureEdge: maxTextureEdge)
+                return try RealityKitConvert.build(
+                    scene: scene,
+                    asset: asset,
+                    maxTextureEdge: maxTextureEdge,
+                    deferRasterTextures: deferRasterTextures
+                )
             } catch {
                 AppLog.error(AppLog.load, error.localizedDescription)
                 throw convertFailure(from: error)

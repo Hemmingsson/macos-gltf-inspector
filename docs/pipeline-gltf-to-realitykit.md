@@ -115,6 +115,10 @@ UV1 needs macOS 27, else `missingTexCoord`). Nothing is baked into the UVs.
   roughness G, occlusion R, specular / opacity A, clearcoat) are read with `Texture.swizzle` on a
   `.raw` upload (`.raw` passes bytes through; `.scalar` would take a luminance). Opacity reuses the
   base-colour upload. KTX2 → `LowLevelTexture`. `Texture.uvIndex` = the texture's `texCoord`.
+  Window / Quick Look bind a 1×1 placeholder per raster (same semantic) and
+  `TextureResource.replace(using:options:)` after the first `SceneEvents.Update` (`rk textures
+  final`); MASK/BLEND still CPU-decodes base colour for `alphaUsage`. Finder icons stay eager.
+  `StillRenderer` waits for replace so exports match the final image.
 - **`KHR_texture_transform`** → `textureCoordinateTransform` (UV0) /
   `secondaryTextureCoordinateTransform` (UV1). RealityKit applies it in image space (glTF's UV
   space, `T · R · S`), so offset and scale carry over and only the rotation sign flips
@@ -178,7 +182,8 @@ The −2 EV dim was re-checked after the ×591 light fix: without it the file li
 
 `ThumbnailModel` (Finder icons, pixel-diff harness): entity + studio exponent, no clips.
 `RealityThumbnail` passes `maxTextureEdge: 1024` — a 512 px icon cannot show 4K texels, and it
-measured −8 % icon time on the load corpus. Window, Quick Look, exports and goldens are uncapped.
+measured −8 % icon time on the load corpus. Window / Quick Look convert is uncapped but deferred
+(placeholders until first frame). Goldens stay on `loadThumbnail` (eager). Exports await replace.
 
 Three honesty voices:
 
