@@ -146,18 +146,52 @@ enum StillRenderer {
         look: AppLook
     ) async throws -> CGImage {
         await DeferredTextureReplace.finalize(attachedTo: root)
-        let built = try await build(
-            root: root,
-            camera: camera,
-            width: width,
-            height: height,
-            background: background,
-            intensityExponent: intensityExponent,
-            environmentYaw: environmentYaw,
-            look: look
-        )
-        let renderer = built.renderer
-        let texture = built.texture
+        let renderer: RealityRenderer
+        let texture: MTLTexture
+        do {
+            let interval = AppLog.signposter.beginInterval("still.build")
+            defer { AppLog.signposter.endInterval("still.build", interval) }
+            guard let device = MTLCreateSystemDefaultDevice() else {
+                throw error("No Metal device", code: 1)
+            }
+
+            let built = try RealityRenderer()
+            built.cameraSettings.colorBackground = .color(background)
+            built.cameraSettings.antialiasing = .multisample4X
+            built.extendedDynamicRangeOutput = false
+
+            built.entities.append(root)
+            // Same look path as the live canvas (IBL entity with the session yaw, or key+fill).
+            await PreviewLighting.prefetchLook(look)
+            let lookRoot = Entity()
+            lookRoot.name = PreviewLighting.lookRootName
+            PreviewLighting.applyLook(
+                lookRoot: lookRoot,
+                pivot: root,
+                look: look,
+                intensityExponent: intensityExponent,
+                environmentYaw: environmentYaw
+            )
+            built.entities.append(lookRoot)
+            built.entities.append(camera)
+            built.activeCamera = camera
+
+            // `_srgb` so the GPU applies the sRGB OETF on store: a plain `.bgra8Unorm` target holds
+            // scene-linear bytes (look probes), which read as far too dark once wrapped as sRGB.
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm_srgb,
+                width: width,
+                height: height,
+                mipmapped: false
+            )
+            descriptor.usage = [.renderTarget, .shaderRead]
+            descriptor.storageMode = .shared
+            guard let madeTexture = device.makeTexture(descriptor: descriptor) else {
+                throw error("Could not allocate texture", code: 2)
+            }
+            renderer = built
+            texture = madeTexture
+        }
         let output = try RealityRenderer.CameraOutput(.singleProjection(colorTexture: texture))
         let interval = AppLog.signposter.beginInterval("still.capture")
         defer { AppLog.signposter.endInterval("still.capture", interval) }
@@ -174,59 +208,6 @@ enum StillRenderer {
                 continuation.resume(throwing: error)
             }
         }
-    }
-
-    private static func build(
-        root: Entity,
-        camera: Entity,
-        width: Int,
-        height: Int,
-        background: CGColor,
-        intensityExponent: Float,
-        environmentYaw: Float,
-        look: AppLook
-    ) async throws -> (renderer: RealityRenderer, texture: MTLTexture) {
-        let interval = AppLog.signposter.beginInterval("still.build")
-        defer { AppLog.signposter.endInterval("still.build", interval) }
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            throw error("No Metal device", code: 1)
-        }
-
-        let renderer = try RealityRenderer()
-        renderer.cameraSettings.colorBackground = .color(background)
-        renderer.cameraSettings.antialiasing = .multisample4X
-        renderer.extendedDynamicRangeOutput = false
-
-        renderer.entities.append(root)
-        // Same look path as the live canvas (IBL entity with the session yaw, or key+fill).
-        await PreviewLighting.prefetchLook(look)
-        let lookRoot = Entity()
-        lookRoot.name = PreviewLighting.lookRootName
-        PreviewLighting.applyLook(
-            lookRoot: lookRoot,
-            pivot: root,
-            look: look,
-            intensityExponent: intensityExponent,
-            environmentYaw: environmentYaw
-        )
-        renderer.entities.append(lookRoot)
-        renderer.entities.append(camera)
-        renderer.activeCamera = camera
-
-        // `_srgb` so the GPU applies the sRGB OETF on store: a plain `.bgra8Unorm` target holds
-        // scene-linear bytes (look probes), which read as far too dark once wrapped as sRGB.
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm_srgb,
-            width: width,
-            height: height,
-            mipmapped: false
-        )
-        descriptor.usage = [.renderTarget, .shaderRead]
-        descriptor.storageMode = .shared
-        guard let texture = device.makeTexture(descriptor: descriptor) else {
-            throw error("Could not allocate texture", code: 2)
-        }
-        return (renderer, texture)
     }
 }
 

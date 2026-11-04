@@ -99,7 +99,7 @@ struct QuickLookRealityView: View {
             case .failed(let message):
                 QuickLookFailureView(
                     message: message,
-                    foreground: PreviewBackground.iconColor(at: 0, systemDark: isDark, active: true)
+                    foreground: PreviewBackground.iconColor(at: 0, systemDark: isDark)
                 )
             }
         }

@@ -50,28 +50,14 @@ final class RealityKitConvert {
         var timings: ConvertTimings
     }
 
-    @MainActor static func build(
-        scene: GLTFScene,
-        asset: GLTFAsset,
-        maxTextureEdge: Int? = nil,
-        deferRasterTextures: Bool = false
-    ) throws -> BuildResult {
-        try RealityKitConvert().build(
-            scene: scene,
-            asset: asset,
-            maxTextureEdge: maxTextureEdge,
-            deferRasterTextures: deferRasterTextures
-        )
-    }
-
     /// Nodes and meshes first, then animations in their own exception guard: GLTFKit2 can raise
     /// ObjC exceptions, and a bad clip must not take the meshes with it (this replaces the old
     /// "no visible mesh -> convert everything again without animations" pass).
     @MainActor func build(
         scene: GLTFScene,
         asset: GLTFAsset,
-        maxTextureEdge: Int? = nil,
-        deferRasterTextures: Bool = false
+        maxTextureEdge: Int?,
+        deferRasterTextures: Bool
     ) throws -> BuildResult {
         indexNodes(asset.nodes)
         ignoreBakedEmissive = RealityPolicy.fileLooksBaked(asset.materials.map(RealityPolicy.EmissiveHint.init))
@@ -150,11 +136,7 @@ final class RealityKitConvert {
                     if joint.parentIndex == nil, let referenceNode = skin.skeleton {
                         skeletonTransformsByJointName[joint.name] = Transform(matrix: referenceNode.matrix)
                     }
-                    if let existingJointCache = skeletonIDsByJointName[joint.name] {
-                        skeletonIDsByJointName[joint.name] = existingJointCache + [meshSkeleton.id]
-                    } else {
-                        skeletonIDsByJointName[joint.name] = [meshSkeleton.id]
-                    }
+                    skeletonIDsByJointName[joint.name, default: []].append(meshSkeleton.id)
                 }
             }
         }

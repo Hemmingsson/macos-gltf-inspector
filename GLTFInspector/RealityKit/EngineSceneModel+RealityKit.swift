@@ -10,11 +10,11 @@ extension EngineSceneModel {
     @MainActor
     init(
         loaded: EntityLoader.LoadedModel,
-        fileName: String? = nil,
+        fileName: String,
         validation: GLTFValidationState? = nil
     ) {
         self.init(
-            fileName: fileName ?? loaded.name,
+            fileName: fileName,
             document: loaded.document,
             stats: loaded.stats,
             dimensions: Self.mapDimensions(loaded),

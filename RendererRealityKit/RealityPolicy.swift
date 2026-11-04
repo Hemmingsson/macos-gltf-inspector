@@ -66,26 +66,6 @@ enum RealityPolicy {
             let minC = min(factor.x, min(factor.y, factor.z))
             return maxC - minC < 0.08
         }
-
-        init(factor: SIMD3<Float> = .zero, strength: Float = 1, hasTexture: Bool = false, sharesAlbedoTexture: Bool = false) {
-            self.factor = factor
-            self.strength = strength
-            self.hasTexture = hasTexture
-            self.sharesAlbedoTexture = sharesAlbedoTexture
-        }
-
-        init(_ material: GLTFMaterial) {
-            let emissive = material.emissive
-            let albedoTexture = material.metallicRoughness?.baseColorTexture?.texture
-                ?? material.specularGlossiness?.diffuseTexture?.texture
-            let emissiveTexture = emissive?.emissiveTexture?.texture
-            self.init(
-                factor: emissive?.emissiveFactor ?? .zero,
-                strength: emissive?.emissiveStrength ?? 1,
-                hasTexture: emissiveTexture != nil,
-                sharesAlbedoTexture: albedoTexture != nil && albedoTexture === emissiveTexture
-            )
-        }
     }
 
     /// Most materials use emissive as baked lighting, not as a few glow parts.
@@ -98,5 +78,20 @@ enum RealityPolicy {
         if hint.strength > 1.001 { return false }
         if hint.sharesAlbedoTexture { return true }
         return fileLooksBaked && hint.isAchromaticBoost
+    }
+}
+
+extension RealityPolicy.EmissiveHint {
+    init(_ material: GLTFMaterial) {
+        let emissive = material.emissive
+        let albedoTexture = material.metallicRoughness?.baseColorTexture?.texture
+            ?? material.specularGlossiness?.diffuseTexture?.texture
+        let emissiveTexture = emissive?.emissiveTexture?.texture
+        self.init(
+            factor: emissive?.emissiveFactor ?? .zero,
+            strength: emissive?.emissiveStrength ?? 1,
+            hasTexture: emissiveTexture != nil,
+            sharesAlbedoTexture: albedoTexture != nil && albedoTexture === emissiveTexture
+        )
     }
 }

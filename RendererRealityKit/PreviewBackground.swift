@@ -1,5 +1,4 @@
 import AppKit
-import GLTFCore
 import SwiftUI
 
 public enum PreviewBackground: String, CaseIterable, Identifiable {
@@ -68,15 +67,6 @@ public enum PreviewBackground: String, CaseIterable, Identifiable {
         allCases.firstIndex(of: PreviewBackground(rawValue: rawValue) ?? .window) ?? 0
     }
 
-    static var stored: PreviewBackground {
-        let raw = AppGroupSettings.defaults.string(forKey: AppGroupSettings.Key.background) ?? window.rawValue
-        return PreviewBackground(rawValue: raw) ?? .window
-    }
-
-    static var storedIndex: Int {
-        allCases.firstIndex(of: stored) ?? 0
-    }
-
     static func useLightIcons(at index: Int, systemDark: Bool) -> Bool {
         switch at(index) {
         case .white: return false
@@ -92,12 +82,9 @@ public enum PreviewBackground: String, CaseIterable, Identifiable {
         return systemDark
     }
 
-    static let inactiveIconOpacity = 0.55
-
-    public static func iconColor(at index: Int, systemDark: Bool, active: Bool) -> Color {
-        let base: Color = useLightIcons(at: index, systemDark: systemDark)
+    public static func iconColor(at index: Int, systemDark: Bool) -> Color {
+        useLightIcons(at: index, systemDark: systemDark)
             ? .white
             : Color(red: charcoal.r, green: charcoal.g, blue: charcoal.b)
-        return active ? base : base.opacity(inactiveIconOpacity)
     }
 }

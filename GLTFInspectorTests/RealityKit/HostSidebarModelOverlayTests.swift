@@ -68,7 +68,7 @@ struct HostSidebarModelOverlayTests {
         model.hide.insert(0)
         model.overlayRevision += 1
         model.applyIfNeeded(to: loaded.entity)
-        #expect(entity(nodeIndex: 0, in: loaded.entity)?.isEnabled == false)
+        #expect(GLTFNodeLookup.entity(nodeIndex: 0, in: loaded.entity)?.isEnabled == false)
     }
 
     @MainActor
@@ -81,7 +81,7 @@ struct HostSidebarModelOverlayTests {
         model.hide.insert(0)
         model.overlayRevision += 1
         model.applyIfNeeded(to: loaded.entity)
-        #expect(entity(nodeIndex: 0, in: loaded.entity)?.isEnabled == false)
+        #expect(GLTFNodeLookup.entity(nodeIndex: 0, in: loaded.entity)?.isEnabled == false)
     }
 
     @MainActor

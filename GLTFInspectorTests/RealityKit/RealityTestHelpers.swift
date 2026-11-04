@@ -57,11 +57,6 @@ func firstComponent<T: Component>(_ type: T.Type, in entity: Entity) -> T? {
 }
 
 @MainActor
-func entity(nodeIndex: Int, in root: Entity) -> Entity? {
-    GLTFNodeLookup.entity(nodeIndex: nodeIndex, in: root)
-}
-
-@MainActor
 func namedEntity(_ name: String, in entity: Entity) -> Entity? {
     if entity.name == name { return entity }
     for child in entity.children {

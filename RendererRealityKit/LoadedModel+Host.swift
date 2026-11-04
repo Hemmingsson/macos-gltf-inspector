@@ -3,9 +3,6 @@ import RealityKit
 
 /// Host-facing reads and writes on a loaded model, so host code never touches the entity.
 extension EntityLoader.LoadedModel {
-    /// Name of the converted root (the file name).
-    public var name: String { entity.name }
-
     /// W×H×D and the visual AABB centre, both in model space. `dimensions` is nil for empty bounds.
     @MainActor
     public var extent: (dimensions: ModelDimensions?, center: SIMD3<Float>) {

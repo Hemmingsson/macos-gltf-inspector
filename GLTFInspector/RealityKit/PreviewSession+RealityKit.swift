@@ -7,7 +7,6 @@ extension PreviewSession {
     /// Bindings for `RealityPreviewCanvas`. `debugModes` is the loaded model's RealityKit list;
     /// the canvas indexes it, the session keeps the neutral `viewMode`.
     func bindings(debugModes: [PreviewDebugMode]) -> PreviewSessionBindings {
-        let modes = debugModes.isEmpty ? [PreviewDebugMode.none] : debugModes
         return PreviewSessionBindings(
             autoRotate: Binding(get: { self.autoRotate }, set: { self.autoRotate = $0 }),
             showFloor: Binding(get: { self.showFloor }, set: { self.showFloor = $0 }),
@@ -30,10 +29,10 @@ extension PreviewSession {
                 set: { self.fieldOfViewDegrees = $0 }
             ),
             debugModeIndex: Binding(
-                get: { Self.debugModeIndex(for: self.viewMode, in: modes) },
+                get: { Self.debugModeIndex(for: self.viewMode, in: debugModes) },
                 set: { index in
-                    guard modes.indices.contains(index) else { return }
-                    self.viewMode = modes[index].renderViewMode
+                    guard debugModes.indices.contains(index) else { return }
+                    self.viewMode = debugModes[index].renderViewMode
                 }
             )
         )
@@ -42,7 +41,6 @@ extension PreviewSession {
     /// First RealityKit mode that shows `viewMode`; shaded (`.none`) when the model has none.
     static func debugModeIndex(for viewMode: RenderViewMode, in modes: [PreviewDebugMode]) -> Int {
         modes.firstIndex { $0.renderViewMode == viewMode }
-            ?? modes.firstIndex(of: .none)
             ?? 0
     }
 }

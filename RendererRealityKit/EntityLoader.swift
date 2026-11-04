@@ -29,7 +29,6 @@ public enum EntityLoader {
     struct ThumbnailModel {
         let entity: Entity
         let studioIBLExponent: Float
-        var timings = ConvertTimings()
     }
 
     /// The file as authored: its JSON (sidebar document, overlay stats, debug modes, report) and
@@ -103,8 +102,7 @@ public enum EntityLoader {
             )
             return ThumbnailModel(
                 entity: converted.entity,
-                studioIBLExponent: converted.build.studioIBLExponent,
-                timings: converted.build.timings
+                studioIBLExponent: converted.build.studioIBLExponent
             )
         }
     }
@@ -243,7 +241,7 @@ public enum EntityLoader {
         let parse = ContinuousClock.now - parseStart
         var build = try await MainActor.run {
             do {
-                return try RealityKitConvert.build(
+                return try RealityKitConvert().build(
                     scene: scene,
                     asset: asset,
                     maxTextureEdge: maxTextureEdge,

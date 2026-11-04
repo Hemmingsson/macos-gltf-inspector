@@ -70,15 +70,14 @@ enum PreviewSkeletonOverlay {
         overlay.components.set(
             SkeletonOverlayState(joints: joints, bones: bones, thickness: thickness)
         )
-        updateBones(pivot: pivot, thickness: thickness)
+        updateBones(pivot: pivot)
     }
 
     /// Reposition existing bone segments after animation / auto-rotate.
-    static func updateBones(pivot: Entity, thickness: Float? = nil) {
+    static func updateBones(pivot: Entity) {
         guard let overlay = pivot.children.first(where: { $0.name == overlayRootName }),
               let state = overlay.components[SkeletonOverlayState.self]
         else { return }
-        let boneThickness = thickness ?? state.thickness
         for bone in state.bones {
             guard let parent = state.joints[bone.parentNode],
                   let child = state.joints[bone.childNode]
@@ -87,7 +86,7 @@ enum PreviewSkeletonOverlay {
                 bone.entity,
                 from: parent.position(relativeTo: pivot),
                 to: child.position(relativeTo: pivot),
-                thickness: boneThickness
+                thickness: state.thickness
             )
         }
     }

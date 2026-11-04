@@ -69,9 +69,7 @@ public final class RealityClipPlayer {
         entity = model.entity
         clips = PreviewClip.usable(on: model.entity, document: model.document)
         if let first = clips.first {
-            entity.stopAllAnimations()
-            playback = entity.playAnimation(first.resource.repeat())
-            playback?.pause()
+            start(clipID: first.id, playing: false)
         }
     }
 

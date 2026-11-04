@@ -81,7 +81,7 @@ struct PreviewScene: View {
         self.entity = entity
         document = model.document
         stats = model.stats
-        debugModes = model.debugModes.isEmpty ? [.none] : model.debugModes
+        debugModes = model.debugModes
         self.interaction = interaction
         self.isDark = isDark
         self.sidebar = sidebar
@@ -96,7 +96,12 @@ struct PreviewScene: View {
             initialValue: AppGroupSettings.defaults.object(forKey: AppGroupSettings.Key.autoRotate) as? Bool ?? true
         )
         quickLookShowFloor = AppGroupSettings.defaults.object(forKey: AppGroupSettings.Key.showFloor) as? Bool ?? true
-        _localBackdropIndex = State(initialValue: PreviewBackground.storedIndex)
+        _localBackdropIndex = State(
+            initialValue: PreviewBackground.index(
+                matchingRawValue: AppGroupSettings.defaults.string(forKey: AppGroupSettings.Key.background)
+                    ?? PreviewBackground.window.rawValue
+            )
+        )
         // Match auto-dim when the file brought punctual lights (`studioIBLExponent == -2`).
         quickLookDimStudioForFileLights = model.studioIBLExponent < 0
     }
@@ -493,7 +498,7 @@ struct PreviewScene: View {
     }
 
     private var chromeTint: Color {
-        PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark, active: true)
+        PreviewBackground.iconColor(at: backdropIndex.wrappedValue, systemDark: isDark)
     }
 
     private func applyDebugIfNeeded(to root: Entity) {

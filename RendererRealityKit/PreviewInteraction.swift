@@ -234,10 +234,7 @@ enum PreviewOrbitDragMonitor {
         interaction: @escaping () -> PreviewInteraction?,
         storage: inout Any?
     ) {
-        if let storage {
-            NSEvent.removeMonitor(storage)
-        }
-        storage = nil
+        remove(&storage)
         guard view.window != nil else { return }
         storage = NSEvent.addLocalMonitorForEvents(
             matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
