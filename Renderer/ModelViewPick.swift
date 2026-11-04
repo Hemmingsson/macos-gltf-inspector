@@ -1,5 +1,16 @@
 import AppKit
 
+/// Mesh pick at one pixel: glTF node (if any) and stored depth in Metal's 0…1 range.
+public struct MetalPickResult: Sendable {
+    public var nodeIndex: Int?
+    public var depth: Float
+
+    public init(nodeIndex: Int?, depth: Float) {
+        self.nodeIndex = nodeIndex
+        self.depth = depth
+    }
+}
+
 /// Click-vs-drag discrimination for canvas picking (view points, window space).
 public enum ModelViewPick {
     public static let defaultClickThreshold: CGFloat = 3

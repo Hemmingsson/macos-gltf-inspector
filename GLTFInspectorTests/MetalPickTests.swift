@@ -136,4 +136,44 @@ struct MetalPickTests {
         #expect(try renderer.pick(ViewOptions(fileCameraNodeIndex: 1), pose: frontPose(),
                                   width: size, height: size, point: point) == 0)
     }
+
+    @Test func nearerLightGizmoDepthIsLessThanFartherQuad() async throws {
+        let light: [String: Any] = ["name": "Lamp", "translation": [0, 0, 2],
+                                    "extensions": ["KHR_lights_punctual": ["light": 0]]]
+        let url = try reviewQuadsGLB([(cx: 0, z: 0, h: 2)], extraNodes: [light],
+                                     extensions: ["KHR_lights_punctual": ["lights": [["type": "point"]]]],
+                                     prefix: "review2-r9-depth")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        let scene = try #require(renderer.scene)
+        let options = ViewOptions(showsSceneGizmos: true)
+        let pose = frontPose()
+        let size = 64
+        let point = center(of: size)
+        let mesh = try renderer.pickResult(options, pose: pose, width: size, height: size, point: point)
+        #expect(mesh.nodeIndex == 0)
+        let frame = try renderer.gizmoPickFrame(options: options, pose: pose, width: size, height: size)
+        let segments = overlayGizmoSegments(scene: scene, options: MetalOverlayOptions(sceneGizmos: true))
+        let gizmo = gizmoHitResult(at: SIMD2(Float(point.x), Float(point.y)), segments: segments,
+                                   viewProjection: frame.viewProjection,
+                                   viewport: GizmoHitViewport(viewWidthPoints: Float(size), viewHeightPoints: Float(size),
+                                                              contentAspect: frame.viewportAspect))
+        let gizmoHit = try #require(gizmo)
+        #expect(gizmoHit.nodeIndex == 1)
+        #expect(gizmoHit.depth <= mesh.depth + 1e-4)
+    }
+
+    @Test func gizmoPickFrameUsesTheSameCameraAsPickPass() async throws {
+        let url = try writeTempCameraPickGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        let scene = try #require(renderer.scene)
+        let options = ViewOptions(fileCameraNodeIndex: 1, showsSceneGizmos: true)
+        let size = 64
+        let frame = try renderer.gizmoPickFrame(options: options, pose: frontPose(), width: size, height: size)
+        let fileCamera = try #require(scene.fileCamera(at: 1, aspect: Float(size) / Float(size)))
+        #expect(frame.viewProjection == fileCamera.viewProjection)
+    }
 }

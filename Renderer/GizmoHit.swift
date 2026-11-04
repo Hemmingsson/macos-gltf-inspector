@@ -52,6 +52,12 @@ public struct GizmoHitViewport: Sendable {
     }
 }
 
+/// Matches the Khronos vertex shader depth remap and the pick-pass depth buffer (ANGLE-style).
+private func storedSceneDepth(_ clip: SIMD4<Float>) -> Float {
+    guard clip.w > 0 else { return 1 }
+    return (clip.z + clip.w) / (2 * clip.w)
+}
+
 /// Projects a clip-space point into view points (y down). Returns nil when `w <= 0` (behind the camera).
 private func gizmoProjectClip(_ clip: SIMD4<Float>, viewport: GizmoHitViewport) -> SIMD2<Float>? {
     guard clip.w > 0 else { return nil }
@@ -62,12 +68,19 @@ private func gizmoProjectClip(_ clip: SIMD4<Float>, viewport: GizmoHitViewport) 
     return SIMD2(x, yDown)
 }
 
-private func distanceSquaredPointToSegment(_ p: SIMD2<Float>, _ a: SIMD2<Float>, _ b: SIMD2<Float>) -> Float {
+private func closestPointOnSegment2D(_ p: SIMD2<Float>, _ a: SIMD2<Float>, _ b: SIMD2<Float>) -> (distSq: Float, t: Float) {
     let ab = b - a
     let lenSq = simd_length_squared(ab)
-    if lenSq < 1e-12 { return simd_length_squared(p - a) }
+    if lenSq < 1e-12 { return (simd_length_squared(p - a), 0) }
     let t = simd_clamp(simd_dot(p - a, ab) / lenSq, 0, 1)
-    return simd_length_squared(p - (a + t * ab))
+    return (simd_length_squared(p - (a + t * ab)), t)
+}
+
+/// Nearest gizmo segment within slop, with Metal depth at the closest point on the segment.
+public struct GizmoHitResult: Sendable {
+    public var nodeIndex: Int
+    /// Stored depth in Metal's 0…1 range, matching the pick pass and overlay soft depth.
+    public var depth: Float
 }
 
 /// Keeps the part of `g0 + t * (g1 - g0)` that is `>= 0` for `t` in `[tMin, tMax]` (Liang-Barsky step).
@@ -96,15 +109,15 @@ private func clipSegmentToDepthRange(_ a: SIMD4<Float>, _ b: SIMD4<Float>) -> (S
 
 /// Nearest camera/light gizmo segment within `hitSlop` view **points** of `point`, or nil.
 /// Tie-break: smaller distance, then lower `nodeIndex`.
-public func gizmoHit(
+public func gizmoHitResult(
     at point: SIMD2<Float>,
     segments: [MetalGizmoSegment],
     viewProjection: simd_float4x4,
     viewport: GizmoHitViewport,
     hitSlop: Float = 6
-) -> Int? {
+) -> GizmoHitResult? {
     let slopSq = hitSlop * hitSlop
-    var bestIndex: Int?
+    var best: GizmoHitResult?
     var bestDistSq = Float.greatestFiniteMagnitude
     for segment in segments {
         let clipA = viewProjection * SIMD4(segment.a, 1)
@@ -113,12 +126,26 @@ public func gizmoHit(
               let a = gizmoProjectClip(clipped.0, viewport: viewport),
               let b = gizmoProjectClip(clipped.1, viewport: viewport)
         else { continue }
-        let distSq = distanceSquaredPointToSegment(point, a, b)
+        let (distSq, t) = closestPointOnSegment2D(point, a, b)
         guard distSq <= slopSq else { continue }
-        if distSq < bestDistSq - 1e-6 || (abs(distSq - bestDistSq) <= 1e-6 && (bestIndex.map { segment.nodeIndex < $0 } ?? true)) {
+        let depthA = storedSceneDepth(clipped.0)
+        let depthB = storedSceneDepth(clipped.1)
+        let depth = depthA + t * (depthB - depthA)
+        if distSq < bestDistSq - 1e-6 || (abs(distSq - bestDistSq) <= 1e-6 && (best.map { segment.nodeIndex < $0.nodeIndex } ?? true)) {
             bestDistSq = distSq
-            bestIndex = segment.nodeIndex
+            best = GizmoHitResult(nodeIndex: segment.nodeIndex, depth: depth)
         }
     }
-    return bestIndex
+    return best
+}
+
+public func gizmoHit(
+    at point: SIMD2<Float>,
+    segments: [MetalGizmoSegment],
+    viewProjection: simd_float4x4,
+    viewport: GizmoHitViewport,
+    hitSlop: Float = 6
+) -> Int? {
+    gizmoHitResult(at: point, segments: segments, viewProjection: viewProjection, viewport: viewport, hitSlop: hitSlop)?
+        .nodeIndex
 }

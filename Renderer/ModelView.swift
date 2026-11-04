@@ -494,6 +494,8 @@ public final class ModelView: NSView {
         }
     }
 
+    private static let pickDepthEpsilon: Float = 1e-4
+
     /// Camera / light gizmo under the point when they are drawn, else the mesh node under it.
     private func nodeIndex(atWindowPoint location: NSPoint) throws -> Int? {
         let viewPoint = convert(location, from: nil)
@@ -502,25 +504,29 @@ public final class ModelView: NSView {
         let point = SIMD2(min(max(Int(viewPoint.x * scale), 0), width - 1),
                           min(max(Int(yDown * scale), 0), height - 1))
         let pointPoints = SIMD2(Float(viewPoint.x), Float(yDown))
+        let cameraPose = pose(width: width, height: height)
+        let center = centerOffset(pixelWidth: width)
+        let mesh = try renderer.pickResult(options, pose: cameraPose, width: width, height: height,
+                                           centerOffset: center, point: point,
+                                           animationPose: animationPoseProvider?())
         if options.showsSceneGizmos, let scene = renderer.scene {
-            let center = centerOffset(pixelWidth: width)
-            let frame = try renderer.gizmoPickFrame(options: options, pose: pose(width: width, height: height),
+            let frame = try renderer.gizmoPickFrame(options: options, pose: cameraPose,
                                                     width: width, height: height, centerOffset: center)
             let overlayOptions = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
             let segments = overlayGizmoSegments(scene: scene, options: overlayOptions)
             let hitViewport = GizmoHitViewport(viewWidthPoints: Float(bounds.width),
                                                viewHeightPoints: Float(bounds.height),
                                                contentAspect: frame.viewportAspect)
-            if let node = gizmoHit(at: pointPoints, segments: segments, viewProjection: frame.viewProjection,
-                                   viewport: hitViewport) {
-                return node
+            if let gizmo = gizmoHitResult(at: pointPoints, segments: segments, viewProjection: frame.viewProjection,
+                                          viewport: hitViewport) {
+                if options.fileCameraNodeIndex != nil
+                    || mesh.nodeIndex == nil
+                    || gizmo.depth <= mesh.depth + Self.pickDepthEpsilon {
+                    return gizmo.nodeIndex
+                }
             }
         }
-        return try renderer.pick(options, pose: pose(width: width, height: height),
-                                 width: width, height: height,
-                                 centerOffset: centerOffset(pixelWidth: width),
-                                 point: point,
-                                 animationPose: animationPoseProvider?())
+        return mesh.nodeIndex
     }
 
     /// The canvas's pixel size and backing scale, as picking and pointer zoom measure it.
