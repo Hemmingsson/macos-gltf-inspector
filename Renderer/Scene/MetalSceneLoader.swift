@@ -292,15 +292,20 @@ private final class Builder {
             indices = source.count < 3 ? [] : (2..<source.count).flatMap { [source[0],source[$0-1],source[$0]] }; topology = .triangle
         default: throw MetalSceneError.invalid("Unsupported primitive topology")
         }
+        let morphPositionTargets = Self.hasPositionMorphTargets(primitive)
         if normal == nil && topology == .triangle {
             // Khronos generates a face normal when absent: split shared vertices to preserve hard edges.
+            // With POSITION morph targets and no NORMAL, leave zeros so the shader derives from morphed position.
             let flatCount = indices.count - indices.count%3
             let sources = Array(indices.prefix(flatCount))
-            vertices = Self.deindexed(vertices, indices, count: flatCount, faceNormals: true)
+            vertices = Self.deindexed(vertices, indices, count: flatCount, faceNormals: !morphPositionTargets)
+            if morphPositionTargets {
+                for index in vertices.indices { vertices[index].normal = .zero }
+            }
             sourceOf = sources.map { sourceOf[Int($0)] }
             indices = Self.sequence(flatCount)
         }
-        if tangent == nil && uv0 != nil && topology == .triangle {
+        if tangent == nil && uv0 != nil && topology == .triangle && !morphPositionTargets {
             // A tangent discontinuity can split one indexed vertex into several corners.
             // Keep Mikk's corner results by deindexing before running its callback interface.
             let sources = indices
@@ -313,6 +318,11 @@ private final class Builder {
             vertices = corners
             sourceOf = sources.map { sourceOf[Int($0)] }
             indices = Self.sequence(corners.count)
+        }
+        if morphPositionTargets && tangent == nil {
+            for index in vertices.indices {
+                vertices[index].tangent = .zero
+            }
         }
         guard !indices.isEmpty else { return }
         let morph = try gatherMorph(primitive, sourceCount: count, sourceOf: sourceOf)
@@ -399,7 +409,7 @@ private final class Builder {
         m.hasTexCoord0 = uv0 != nil
         m.hasNormal = normal != nil
         // MikkTSpace above fills TANGENT when the mesh has UVs but no authored tangent.
-        m.hasTangent = tangent != nil || (uv0 != nil && topology == .triangle)
+        m.hasTangent = tangent != nil || (uv0 != nil && topology == .triangle && !morphPositionTargets)
         draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,gltfMaterialIndex:gltfMaterialIndex,nodeIndex:nodeIndex(node),negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
     }
 
@@ -520,6 +530,12 @@ private final class Builder {
         guard inRange else { throw MetalSceneError.invalid("Index outside vertex buffer") }
         return indices
     }
+    static func hasPositionMorphTargets(_ primitive: GLTFPrimitive) -> Bool {
+        primitive.targets.contains { target in
+            target.contains { MorphSlot.index(for: $0.name ?? "") == MorphSlot.position }
+        }
+    }
+
     static func sequence(_ count: Int) -> [UInt32] {
         [UInt32](unsafeUninitializedCapacity: count) { buffer, initialized in
             GLTFMetalSequentialIndices(buffer.baseAddress, count); initialized = count

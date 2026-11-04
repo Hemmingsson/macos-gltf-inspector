@@ -108,9 +108,7 @@ import Testing
         #expect(gpu.scene?.draws.first?.vertexBuffer === buffer)
         expectNear(before[0].position.xyz, [0, 0, 0])
         expectNear(after[0].position.xyz, [0, 0, 1])
-        expectNear(after[0].normal.xyz, [0, 0, 1])
-        let morphedGeometric = simd_normalize(simd_cross(SIMD3<Float>(1, 0, -1), SIMD3<Float>(0, 1, -1)))
-        #expect(simd_distance(after[0].normal.xyz, morphedGeometric) > 0.2)
+        #expect(simd_length(after[0].normal.xyz) < 1e-5, "vertex NORMAL stays zero for shader derivative shading")
         expectNear(after[0].color, SIMD4<Float>(repeating: 1))
         expectNear(after[0].uv0, .zero)
         expectNear(after[0].uv1, .zero)
@@ -139,14 +137,14 @@ import Testing
         expectNear(mixed[1].position.xyz, [1, 0, 0.5])
         expectNear(mixed[5].position.xyz, [0, 1, 2])
         expectNear(mixed[0].uv0, SIMD2<Float>(0.5, -0.25) * 0.5)
-        expectNear(mixed[0].normal.xyz, [0, 0, 1])
+        #expect(simd_length(mixed[0].normal.xyz) < 1e-5)
         expectNear(mixed[0].color, SIMD4<Float>(repeating: 1))
 
-        try await expectTangentsStayOnTheBaseShape()
+        try await expectTangentsZeroForPositionMorphWithoutAuthoredTangent()
     }
 
-    /// Rest weight 1 must not change the tangent MikkTSpace builds from the unmorphed triangle.
-    private func expectTangentsStayOnTheBaseShape() async throws {
+    /// POSITION morph without authored TANGENT leaves zeros so the shader uses UV derivatives on the morphed shape.
+    private func expectTangentsZeroForPositionMorphWithoutAuthoredTangent() async throws {
         let positions: [SIMD3<Float>] = [[0, 0, 0], [1, 0, 0], [0, 1, 0]]
         let uvs: [SIMD2<Float>] = [[0, 0], [1, 0], [0, 1]]
         let weighted = try write(MorphFile(
@@ -167,8 +165,17 @@ import Testing
         let tiltedScene = try await MetalSceneLoader.load(url: moved, device: gpu)
         let base = try #require(baseScene.draws.first)
         let tilted = try #require(tiltedScene.draws.first)
-        expectNear(vertices(base)[0].tangent.xyz, [1, 0, 0], tolerance: 1e-3)
-        #expect(abs(vertices(tilted)[0].tangent.y) > 0.4)
+        #expect(simd_length(vertices(base)[0].tangent.xyz) < 1e-5)
+        #expect(abs(vertices(tilted)[0].tangent.y) > 0.4, "rigid meshes without morph targets still get MikkTSpace tangents")
+    }
+
+    @Test func morphWithoutAuthoredNormalLeavesZeroNormalsInBuffer() async throws {
+        let scene = try await MetalSceneLoader.load(url: TestFixtures.morph, device: device())
+        let draw = try #require(scene.draws.first)
+        #expect(!draw.material.hasNormal)
+        for vertex in vertices(draw) {
+            #expect(simd_length(vertex.normal.xyz) < 1e-5)
+        }
     }
 }
 
