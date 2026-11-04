@@ -71,11 +71,12 @@ struct ModelViewPickTests {
         window.contentView = view
         defer { window.contentView = nil; window.close() }
         try await view.load(TestFixtures.cube)
-        var lastHover: (Int?, CGPoint?) = (nil, nil)
-        view.onHover = { node, point in lastHover = (node, point) }
+        var reported: (Int?, CGPoint?)?
+        view.onHover = { node, point in reported = (node, point) }
         view.mouseMoved(with: try testMouseEvent(.mouseMoved, NSPoint(x: 10, y: 100), in: window))
-        #expect(lastHover.0 == nil)
-        #expect(lastHover.1 == nil)
+        let hover = try #require(reported, "a move in the side inset must call onHover")
+        #expect(hover.0 == nil)
+        #expect(hover.1 == nil)
     }
 
     @Test func hoverStillWorksInModelAreaWithSideInsets() async throws {
