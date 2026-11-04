@@ -8,8 +8,6 @@
 #   ./scripts/dev.sh run [fixture]        # install + launch fixture (default: cube)
 #   ./scripts/dev.sh logs                 # tail .build/logs/debug.log (or unified log stream)
 #   ./scripts/dev.sh fixtures             # list fixture ids
-#   ./scripts/dev.sh fixture-path <id>    # resolve absolute path (for launch/tasks)
-#   ./scripts/dev.sh app-path             # Mach-O inside .build app (for launch.json)
 #   ./scripts/dev.sh catalog [-page id]   # build DesignCatalog + launch in background (open -g)
 set -euo pipefail
 
@@ -18,7 +16,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
 DEFAULT_FIXTURE=cube
 
 usage() {
-  sed -n '2,13p' "$0"
+  sed -n '2,11p' "$0"
 }
 
 require_xcodegen() {
@@ -173,16 +171,6 @@ case "$cmd" in
     ;;
   fixtures)
     dev_fixtures
-    ;;
-  fixture-path)
-    [[ $# -eq 1 ]] || {
-      echo "usage: ./scripts/dev.sh fixture-path <id>" >&2
-      exit 2
-    }
-    dev_fixture_path "$1"
-    ;;
-  app-path)
-    echo "$EXEC"
     ;;
   catalog)
     dev_catalog "$@"

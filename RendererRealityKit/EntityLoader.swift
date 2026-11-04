@@ -149,10 +149,10 @@ public enum EntityLoader {
         }
 
         let json: [String: Any]
-        if url.pathExtension.lowercased() == "glb" {
-            json = (try? GLBBox.peekJSON(from: url)) ?? [:]
-        } else {
-            json = try GLBBox.parseJSON(Data(contentsOf: url, options: [.mappedIfSafe]))
+        do {
+            json = try GLBBox.peekDocumentJSON(from: url)
+        } catch where url.pathExtension.lowercased() == "glb" {
+            json = [:]
         }
         for uri in externalURIs(in: json) where !isAllowedSidecarURI(uri, assetDirectory: directory) {
             throw GLTFInspectorError.make(1021, "glTF sidecar URI is not a safe relative path")

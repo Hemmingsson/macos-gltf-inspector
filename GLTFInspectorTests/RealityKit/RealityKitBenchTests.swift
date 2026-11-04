@@ -79,7 +79,7 @@ extension PerfBench {
         /// The JSON-side work `load` does besides convert (sidebar document, overlay stats,
         /// debug-mode list), timed on their own to explain `load rest`.
         private func jsonSide(_ url: URL, _ add: (String, Double) -> Void) {
-            guard let json = try? GLBBox.peekJSON(from: url) else { return }
+            guard let json = try? GLBBox.peekDocumentJSON(from: url) else { return }
             var start = ContinuousClock.now
             _ = GLTFDocumentJSON.makeDocument(json: json, fileURL: url)
             add("json document", BenchClock.ms(since: start))

@@ -185,9 +185,7 @@ struct PixelDiffManifest: Codable, Sendable {
 /// entries run without opening every file; a core test keeps the record honest.
 enum PixelDiffSampleFeatures {
     static func json(of url: URL) throws -> [String: Any] {
-        url.pathExtension.lowercased() == "glb"
-            ? try GLBBox.peekJSON(from: url)
-            : try GLBBox.parseJSON(Data(contentsOf: url))
+        try GLBBox.peekDocumentJSON(from: url)
     }
 
     /// `extensionsUsed`, plus `core:` tags for core features a renderer can get wrong.

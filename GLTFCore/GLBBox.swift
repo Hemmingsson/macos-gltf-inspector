@@ -60,7 +60,7 @@ public struct GLBBox {
     }
 
     /// JSON chunk only — never reads the BIN, so textures are not copied.
-    public static func peekJSON(from url: URL) throws -> [String: Any] {
+    static func peekJSON(from url: URL) throws -> [String: Any] {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         guard let header = try handle.read(upToCount: 12), header.count == 12, header.prefix(4) == magic,

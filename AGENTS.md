@@ -54,7 +54,6 @@ Ship **`GLTFInspector/`** from `main` (both renderers behind the switch).
 ./scripts/dev.sh run cube  # logs → .build/logs/debug.log
 ./scripts/dev.sh logs
 ./scripts/build.sh         # open /Applications + verify (main checkout only)
-./scripts/build.sh --install-only
 ./scripts/verify.sh
 ./scripts/proof.sh         # StillRenderProofTests; --qlmanage optional
 ./scripts/release.sh
