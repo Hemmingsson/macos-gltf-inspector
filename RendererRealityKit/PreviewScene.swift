@@ -54,21 +54,14 @@ struct PreviewScene: View {
     /// Quick Look copies of session keys. Ephemeral — never UserDefaults.
     @State private var localBackdropIndex: Int
     @State private var localAutoRotate: Bool
-    @State private var localShowFloor: Bool
-    @State private var localCenterModel: Bool
-    @State private var localOrthographic: Bool
-    @State private var localExposureEV: Float
-    @State private var localDimStudioForFileLights: Bool
-    @State private var localEnvironmentYaw: Float
-    @State private var localDoubleSided: Bool
-    @State private var localShowSkeleton: Bool
-    @State private var localFieldOfViewDegrees: Float
+    /// Quick Look never writes these; the host's `session` supplies live values instead.
+    private let quickLookShowFloor: Bool
+    private let quickLookDimStudioForFileLights: Bool
     /// Huge/flat models veto auto-rotate. Computed once per entity in `init` (cheap to read
     /// in the 16ms tick, unlike re-deriving bounds each frame).
     private let geometryDisablesAutoRotate: Bool
     @State private var playback: RealityKit.AnimationPlaybackController?
     @State private var viewport = CGSize(width: 810, height: 600)
-    @State private var debugModeIndex = 0
     @State private var pendingReady: AppLook?
     @State private var appliedLook: AppLook?
     @State private var appliedFloorLineIndex = -1
@@ -102,19 +95,10 @@ struct PreviewScene: View {
         _localAutoRotate = State(
             initialValue: AppGroupSettings.defaults.object(forKey: AppGroupSettings.Key.autoRotate) as? Bool ?? true
         )
-        _localShowFloor = State(
-            initialValue: AppGroupSettings.defaults.object(forKey: AppGroupSettings.Key.showFloor) as? Bool ?? true
-        )
+        quickLookShowFloor = AppGroupSettings.defaults.object(forKey: AppGroupSettings.Key.showFloor) as? Bool ?? true
         _localBackdropIndex = State(initialValue: PreviewBackground.storedIndex)
-        _localCenterModel = State(initialValue: true)
-        _localOrthographic = State(initialValue: false)
-        _localExposureEV = State(initialValue: 0)
         // Match auto-dim when the file brought punctual lights (`studioIBLExponent == -2`).
-        _localDimStudioForFileLights = State(initialValue: model.studioIBLExponent < 0)
-        _localEnvironmentYaw = State(initialValue: 0)
-        _localDoubleSided = State(initialValue: false)
-        _localShowSkeleton = State(initialValue: false)
-        _localFieldOfViewDegrees = State(initialValue: RenderCamera.defaultFieldOfViewDegrees)
+        quickLookDimStudioForFileLights = model.studioIBLExponent < 0
     }
 
     /// Quick Look (`sidebar == nil`) draws minimal canvas chrome; the host window uses PreviewUI.
@@ -128,62 +112,23 @@ struct PreviewScene: View {
         session?.autoRotate ?? $localAutoRotate
     }
 
-    private var showFloorBinding: Binding<Bool> {
-        session?.showFloor ?? $localShowFloor
-    }
-
-    private var centerModelBinding: Binding<Bool> {
-        session?.centerModel ?? $localCenterModel
-    }
-
-    private var orthographicBinding: Binding<Bool> {
-        session?.orthographic ?? $localOrthographic
-    }
-
-    private var exposureEVBinding: Binding<Float> {
-        session?.exposureEV ?? $localExposureEV
-    }
-
-    private var dimStudioForFileLightsBinding: Binding<Bool> {
-        session?.dimStudioForFileLights ?? $localDimStudioForFileLights
-    }
-
-    private var environmentYawBinding: Binding<Float> {
-        session?.environmentYaw ?? $localEnvironmentYaw
-    }
-
-    private var doubleSidedBinding: Binding<Bool> {
-        session?.doubleSided ?? $localDoubleSided
-    }
-
-    private var showSkeletonBinding: Binding<Bool> {
-        session?.showSkeleton ?? $localShowSkeleton
-    }
-
-    private var fieldOfViewBinding: Binding<Float> {
-        session?.fieldOfViewDegrees ?? $localFieldOfViewDegrees
-    }
-
-    private var debugModeIndexBinding: Binding<Int> {
-        session?.debugModeIndex ?? $debugModeIndex
-    }
-
-    private var debugModeIndexValue: Int {
-        debugModeIndexBinding.wrappedValue
-    }
-
     // Session auto-rotate / floor are ephemeral. `autoRotateActive` layers runtime vetoes
     // (Reduced Motion, geometry) without writing them back to Settings.
-    private var showFloorValue: Bool { showFloorBinding.wrappedValue }
-    private var centerModelValue: Bool { centerModelBinding.wrappedValue }
-    private var orthographicValue: Bool { orthographicBinding.wrappedValue }
-    private var exposureEVValue: Float { exposureEVBinding.wrappedValue }
-    private var dimStudioForFileLightsValue: Bool { dimStudioForFileLightsBinding.wrappedValue }
-    private var environmentYawValue: Float { environmentYawBinding.wrappedValue }
-    private var doubleSidedValue: Bool { doubleSidedBinding.wrappedValue }
-    private var showSkeletonValue: Bool { showSkeletonBinding.wrappedValue }
+    private var debugModeIndexValue: Int { session?.debugModeIndex.wrappedValue ?? 0 }
+    private var showFloorValue: Bool { session?.showFloor.wrappedValue ?? quickLookShowFloor }
+    private var centerModelValue: Bool { session?.centerModel.wrappedValue ?? true }
+    private var orthographicValue: Bool { session?.orthographic.wrappedValue ?? false }
+    private var exposureEVValue: Float { session?.exposureEV.wrappedValue ?? 0 }
+    private var dimStudioForFileLightsValue: Bool {
+        session?.dimStudioForFileLights.wrappedValue ?? quickLookDimStudioForFileLights
+    }
+    private var environmentYawValue: Float { session?.environmentYaw.wrappedValue ?? 0 }
+    private var doubleSidedValue: Bool { session?.doubleSided.wrappedValue ?? false }
+    private var showSkeletonValue: Bool { session?.showSkeleton.wrappedValue ?? false }
     private var fieldOfViewValue: Float {
-        RenderCamera.clampedFieldOfView(fieldOfViewBinding.wrappedValue)
+        RenderCamera.clampedFieldOfView(
+            session?.fieldOfViewDegrees.wrappedValue ?? RenderCamera.defaultFieldOfViewDegrees
+        )
     }
     private var documentSkins: [GLTFSessionDocument.Skin] { document.skins }
     private var effectiveIBLExponent: Float {

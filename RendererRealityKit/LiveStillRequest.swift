@@ -11,24 +11,26 @@ public enum LiveStillRequest {
         dimStudioForFileLights: Bool,
         backdropIndex: Int,
         environmentYaw: Float,
-        aspect: Float,
-        pixelHeight: Int = 1080
+        aspect: Float
     ) async throws -> CGImage? {
         guard let camera = interaction.camera,
               let pivot = interaction.orbitFocus,
               let pose = StillCameraPose.capturing(from: camera)
         else { return nil }
-        return try await StillRenderer.renderImage(
+        let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : (16 / 9)
+        let height = 1080
+        let width = max(64, Int((Float(height) * safeAspect).rounded()))
+        return try await StillRenderer.render(
             root: pivot.clone(recursive: true),
             cameraPose: pose,
+            width: width,
+            height: height,
             background: PreviewBackground.at(backdropIndex).stillBackgroundCGColor,
             intensityExponent: RealityLook.iblExponent(
                 exposureEV: exposureEV,
                 dimEV: RealityPolicy.studioDimEV(fileHasLights: dimStudioForFileLights)
             ),
-            environmentYaw: environmentYaw,
-            pixelHeight: pixelHeight,
-            aspect: aspect
+            environmentYaw: environmentYaw
         )
     }
 }

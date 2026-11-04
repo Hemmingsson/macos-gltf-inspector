@@ -248,7 +248,7 @@ extension RealityKitConvert {
     ) -> [[SIMD2<Float>]?] {
         let uvs = (0..<2).map { set in
             primitive.attribute(forName: "TEXCOORD_\(set)")
-                .flatMap { Packed.float2Array(for: $0.accessor, flipVertically: true) }
+                .flatMap { Packed.float2Array(for: $0.accessor) }
         }
         if let material = primitive.material {
             let needed = Set(TextureTransforms.slots(of: material).map(\.uvSet))

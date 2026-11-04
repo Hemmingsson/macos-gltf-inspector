@@ -52,12 +52,12 @@ enum Packed {
         }
     }
 
-    static func float2Array(for accessor: GLTFAccessor, flipVertically: Bool = false) -> [SIMD2<Float>]? {
+    /// UV-style read: glTF top-left V flipped to RealityKit bottom-left (`1 - v`).
+    static func float2Array(for accessor: GLTFAccessor) -> [SIMD2<Float>]? {
         packedFloats(accessor, dimension: 2, allowed: { $0 == .vector2 }) { src, count in
             [SIMD2<Float>](unsafeUninitializedCapacity: count) { dest, initializedCount in
                 for i in 0..<count {
-                    let y = src[i * 2 + 1]
-                    dest[i] = SIMD2(src[i * 2], flipVertically ? 1 - y : y)
+                    dest[i] = SIMD2(src[i * 2], 1 - src[i * 2 + 1])
                 }
                 initializedCount = count
             }

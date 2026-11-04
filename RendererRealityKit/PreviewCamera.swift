@@ -85,8 +85,8 @@ enum PreviewCamera {
     /// When `orthographic` is true, swaps to `OrthographicCameraComponent` and sets
     /// `scale` so the projected bounds fill the viewport.
     ///
-    /// Pass `preset:` (or explicit `yaw`/`pitch` with `applyThinAxisOverride: false`) for
-    /// view presets — thin-axis override stays on for the default Fit path only.
+    /// Pass `preset:` for a named view; `nil` is the default front-three-quarter Fit, the only
+    /// path with the thin-axis override.
     @MainActor
     static func applyFit(
         to camera: Entity,
@@ -95,9 +95,7 @@ enum PreviewCamera {
         aspect: Float = 1,
         orbitFocus: Entity? = nil,
         orthographic: Bool = false,
-        yaw: Float = yawDegrees,
-        pitch: Float = pitchDegrees,
-        applyThinAxisOverride: Bool = true,
+        preset: CameraPreset? = nil,
         fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) {
         guard !bounds.isEmpty else { return }
@@ -110,9 +108,7 @@ enum PreviewCamera {
             maxBound: bounds.max,
             padding: padding,
             aspect: aspect,
-            yaw: yaw,
-            pitch: pitch,
-            applyThinAxisOverride: applyThinAxisOverride,
+            preset: preset,
             fieldOfViewInDegrees: fov
         )
         applyView(to: camera, eye: eye, target: center)
@@ -132,32 +128,6 @@ enum PreviewCamera {
                 camera.components.set(perspective)
             }
         }
-    }
-
-    /// Reframe with a named preset. Thin-axis override is always off.
-    @MainActor
-    static func applyFit(
-        to camera: Entity,
-        bounds: BoundingBox,
-        padding: Float = previewFitPadding,
-        aspect: Float = 1,
-        orbitFocus: Entity? = nil,
-        orthographic: Bool = false,
-        preset: CameraPreset,
-        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
-    ) {
-        applyFit(
-            to: camera,
-            bounds: bounds,
-            padding: padding,
-            aspect: aspect,
-            orbitFocus: orbitFocus,
-            orthographic: orthographic,
-            yaw: preset.yawDegrees,
-            pitch: preset.pitchDegrees,
-            applyThinAxisOverride: false,
-            fieldOfViewInDegrees: fieldOfViewInDegrees
-        )
     }
 
     /// Update live perspective FOV without moving the camera. No-op while ortho.
@@ -271,9 +241,6 @@ enum PreviewCamera {
         maxBound: SIMD3<Float>,
         padding: Float,
         aspect: Float = 1,
-        yaw: Float = yawDegrees,
-        pitch: Float = pitchDegrees,
-        applyThinAxisOverride: Bool = true,
         fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) -> PerspectiveCamera {
         let center = (minBound + maxBound) * 0.5
@@ -283,9 +250,6 @@ enum PreviewCamera {
             maxBound: maxBound,
             padding: padding,
             aspect: aspect,
-            yaw: yaw,
-            pitch: pitch,
-            applyThinAxisOverride: applyThinAxisOverride,
             fieldOfViewInDegrees: fov
         )
         let camera = PerspectiveCamera()

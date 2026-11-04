@@ -59,9 +59,7 @@ struct FitCameraTests {
             minBound: minBound,
             maxBound: maxBound,
             padding: 1,
-            yaw: GLTFCore.CameraPreset.right.yawDegrees,
-            pitch: GLTFCore.CameraPreset.right.pitchDegrees,
-            applyThinAxisOverride: false
+            preset: GLTFCore.CameraPreset.right
         )
         #expect(position.x > 0)
         #expect(abs(position.z) < 0.01)
@@ -90,9 +88,7 @@ struct CameraPresetTests {
             minBound: minBound,
             maxBound: maxBound,
             padding: 1,
-            yaw: p.yawDegrees,
-            pitch: p.pitchDegrees,
-            applyThinAxisOverride: false
+            preset: p
         )
         #expect(position.z > 0)
         #expect(abs(position.x) < 0.01)
@@ -107,9 +103,7 @@ struct CameraPresetTests {
             minBound: minBound,
             maxBound: maxBound,
             padding: 1,
-            yaw: p.yawDegrees,
-            pitch: p.pitchDegrees,
-            applyThinAxisOverride: false
+            preset: p
         )
         #expect(position.y > 0)
         #expect(abs(position.x) < 0.01)
@@ -124,9 +118,7 @@ struct CameraPresetTests {
                 minBound: minBound,
                 maxBound: maxBound,
                 padding: 1,
-                yaw: preset.yawDegrees,
-                pitch: preset.pitchDegrees,
-                applyThinAxisOverride: false
+                preset: preset
             )
         }
         let back = pos(.back)

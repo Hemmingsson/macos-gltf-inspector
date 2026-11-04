@@ -213,24 +213,14 @@ extension PreviewInteraction {
             markFitted()
             return false
         }
-        if let preset {
-            PreviewCamera.applyFit(
-                to: camera,
-                bounds: bounds,
-                orbitFocus: orbitFocus,
-                orthographic: orthographic,
-                preset: preset,
-                fieldOfViewInDegrees: fieldOfViewDegrees
-            )
-        } else {
-            PreviewCamera.applyFit(
-                to: camera,
-                bounds: bounds,
-                orbitFocus: orbitFocus,
-                orthographic: orthographic,
-                fieldOfViewInDegrees: fieldOfViewDegrees
-            )
-        }
+        PreviewCamera.applyFit(
+            to: camera,
+            bounds: bounds,
+            orbitFocus: orbitFocus,
+            orthographic: orthographic,
+            preset: preset,
+            fieldOfViewInDegrees: fieldOfViewDegrees
+        )
         markFitted()
         return true
     }
