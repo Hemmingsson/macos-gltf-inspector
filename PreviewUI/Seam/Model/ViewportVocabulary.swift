@@ -118,6 +118,19 @@ public enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable, Ide
         case .isometric: "Isometric"
         }
     }
+
+    /// Menu glyph (canvas View menu and the menu bar's View menu).
+    public var systemImage: String {
+        switch self {
+        case .front: "arrow.up.to.line"
+        case .back: "arrow.down.to.line"
+        case .left: "arrow.left.to.line"
+        case .right: "arrow.right.to.line"
+        case .top: "arrow.up.to.line.compact"
+        case .bottom: "arrow.down.to.line.compact"
+        case .isometric: "cube"
+        }
+    }
 }
 
 /// The bundled image-based lighting environments.

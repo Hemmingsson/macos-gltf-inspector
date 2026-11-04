@@ -12,17 +12,32 @@ struct ShellStatusView: View {
     var state: ShellDocumentState
     var placement: Placement
 
+    @Environment(\.openFilePanel) private var openFilePanel
+    @Environment(\.openRecentMenu) private var openRecentMenu
+
     var body: some View {
         switch placement {
         case .sidebar, .inspector:
             status
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .canvas:
-            status
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(DS.Color.Canvas.gradient)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(canvasAccessibilityLabel)
+            Group {
+                if case .empty = state {
+                    canvasEmpty
+                } else {
+                    status
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(canvasAccessibilityLabel)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                if case .empty = state {
+                    DS.Color.windowBackground.ignoresSafeArea()
+                } else {
+                    DS.Color.Canvas.gradient.ignoresSafeArea()
+                }
+            }
         }
     }
 
@@ -49,7 +64,7 @@ struct ShellStatusView: View {
     private var emptyStatus: DSStatusView {
         switch placement {
         case .sidebar:
-            .empty(ShellStatusCopy.emptyTitle, systemImage: "cube", message: "No file open")
+            .empty(ShellStatusCopy.emptyTitle, systemImage: "cube", message: ShellStatusCopy.emptySidebarDetail)
         case .inspector:
             .empty(
                 "Nothing to inspect",
@@ -57,14 +72,31 @@ struct ShellStatusView: View {
                 message: state == .empty ? "Open a file to see node and file details." : nil
             )
         case .canvas:
-            .empty(ShellStatusCopy.emptyTitle, systemImage: "cube", message: ShellStatusCopy.emptyDetail)
+            .empty(ShellStatusCopy.emptyCanvasTitle, systemImage: "cube", message: nil)
         }
+    }
+
+    /// System empty state: symbol, short title, one sentence, then actions.
+    /// The default button is trailing, matching macOS button order.
+    private var canvasEmpty: some View {
+        ContentUnavailableView {
+            Label(ShellStatusCopy.emptyCanvasTitle, systemImage: "cube")
+        } description: {
+            Text(ShellStatusCopy.emptyOpenHint)
+        } actions: {
+            HStack(spacing: DS.Spacing.m) {
+                Button("Open Recent", action: openRecentMenu.call)
+                Button("Open…", action: openFilePanel.call)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var canvasAccessibilityLabel: String {
         switch state {
         case .empty:
-            "\(ShellStatusCopy.emptyTitle). \(ShellStatusCopy.emptyDetail)"
+            ShellStatusCopy.emptyOpenHint
         case .loading:
             ShellStatusCopy.loadingTitle
         case .failed(let message):

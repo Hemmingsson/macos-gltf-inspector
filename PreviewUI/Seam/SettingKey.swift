@@ -15,7 +15,7 @@ public struct SettingKey<Value: Sendable>: Sendable {
 
 public extension SettingKey where Value == Bool {
     /// Default on for a new window.
-    static var autoRotate: SettingKey<Bool> { .init(name: "settings.preview.autoRotate", fallback: true) }
+    static var autoRotate: SettingKey<Bool> { .init(name: "settings.preview.autoRotate", fallback: false) }
     /// Floor on for a new window; Settings can set a different app default.
     /// Matches the fresh-install default in `AppGroupSettings.defaultValues`.
     static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: true) }

@@ -13,10 +13,13 @@ struct DocumentShell<Canvas: View>: View {
     let window: DocumentWindowModel
     /// Canvas region state; the panels follow `window.phase`.
     let canvasState: ShellDocumentState
+    var closesWelcome = true
     @ViewBuilder let canvas: () -> Canvas
 
     @Environment(\.openDocument) private var openDocument
     @Environment(\.dismissWindow) private var dismissWindow
+    /// Recent files for the empty canvas. Filled on appear, not in `init`.
+    @State private var recentURLs: [URL] = []
 
     var body: some View {
         let viewport = window.engineViewport
@@ -26,11 +29,34 @@ struct DocumentShell<Canvas: View>: View {
                 \.engineViewport,
                 !window.hasLoadedDocument && viewport.commands == nil ? nil : viewport
             )
+            .environment(\.recentGLTFURLs, recentURLs)
+            .environment(\.openGLTFFile, OpenGLTFFileAction { url in
+                Task { @MainActor in
+                    do {
+                        try await openDocument(at: url)
+                    } catch {
+                        AppLog.error(AppLog.host, "openDocument failed \(error.localizedDescription)")
+                    }
+                }
+            })
+            .environment(\.canvasFileDrop, CanvasFileDropAction { providers in
+                DocumentOpening.handleDrop(providers, openDocument: openDocument)
+            })
+            .environment(\.openFilePanel, OpenFilePanelAction {
+                NSDocumentController.shared.openDocument(nil)
+            })
+            .environment(\.openRecentMenu, OpenRecentMenuAction {
+                RecentGLTFFiles.popUpMenu()
+            })
+            .environment(\.clearRecentFiles, ClearRecentFilesAction {
+                NSDocumentController.shared.clearRecentDocuments(nil)
+                recentURLs = []
+            })
             .onAppear {
-                dismissWindow(id: WelcomeWindow.id)
-            }
-            .onDrop(of: [.fileURL], isTargeted: nil) {
-                DocumentOpening.handleDrop($0, openDocument: openDocument)
+                recentURLs = RecentGLTFFiles.current()
+                if closesWelcome {
+                    dismissWindow(id: WelcomeWindow.id)
+                }
             }
     }
 

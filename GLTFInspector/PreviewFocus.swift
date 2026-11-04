@@ -11,7 +11,11 @@ struct FocusedPreviewCommands {
     let reset: () -> Void
     /// Session-only view preset; never persisted.
     let applyCameraPreset: (CameraPreset) -> Void
+    /// Dolly at the current angle: < 1 closer, > 1 farther.
+    let zoom: (Double) -> Void
     /// One frame of the live canvas at its current camera pose. Pixels only — the caller presents
     /// the save panel and writes the PNG.
     let screenshot: () async throws -> CGImage
+    /// Live zoom against the last fit (100 = fitted); nil before the canvas has framed a model.
+    var zoomPercent: () -> Int? = { nil }
 }

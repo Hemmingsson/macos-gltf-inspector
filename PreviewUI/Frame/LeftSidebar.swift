@@ -14,6 +14,10 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
     /// Visual state of the leading chrome toggle (accent while the column is open).
     var isSidebarVisible: Bool = true
     var onToggleSidebar: () -> Void = {}
+    /// The whole model is selected (document inspector open).
+    var isDocumentSelected = false
+    /// Clicking the document card selects the whole model.
+    var onSelectDocument: () -> Void = {}
 
     var body: some View {
         Group {
@@ -24,10 +28,7 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
                     onActivate: activate
                 )
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        sidebarChrome
-                        documentCard
-                    }
+                    documentCard
                 }
                 .safeAreaBar(edge: .bottom, spacing: 0) {
                     ViewThatFits(in: .vertical) {
@@ -40,41 +41,38 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
                 VStack(alignment: .leading, spacing: 0) {
                     sidebarChrome
                     documentCard
-                    ShellStatusView(state: documentState, placement: .sidebar)
+                    if documentState != .empty {
+                        ShellStatusView(state: documentState, placement: .sidebar)
+                    }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DS.Color.paneFill, ignoresSafeAreaEdges: .all)
     }
 
+    /// Clears the toolbar band so the file card sits under the system sidebar toggle,
+    /// which is the only sidebar button.
     private var sidebarChrome: some View {
-        HStack(spacing: 0) {
-            Spacer(minLength: 0)
-            DSGlassIconButton(
-                isSidebarVisible ? "Hide Sidebar" : "Show Sidebar",
-                systemImage: "sidebar.leading",
-                isEngaged: isSidebarVisible,
-                action: onToggleSidebar
-            )
-            .dsGlassPlacement(.inIsland)
-        }
-        .padding(.trailing, DS.Spacing.l)
-        .dsChromeBandAligned()
-        .accessibilityElement(children: .contain)
+        Color.clear
+            .frame(height: DS.Metrics.toolbarBandHeight)
+            .accessibilityHidden(true)
     }
 
     private var documentCard: some View {
         DocumentHeader(
             fileName: documentState.isReady ? model.fileName : documentState.panelDocumentTitle,
-            sceneName: documentState.isReady ? currentSceneName : nil,
+            subtitle: documentState.isReady ? DocumentIdentity.kind(model.fileName) : nil,
             variantNames: documentState.isReady ? model.materialVariantNames : [],
             selectedVariantIndex: viewport.selectedMaterialVariantIndex,
-            onSelectVariant: { viewport.setMaterialVariant($0) }
+            onSelectVariant: { viewport.setMaterialVariant($0) },
+            isSelected: documentState.isReady && isDocumentSelected,
+            onSelect: documentState.isReady ? onSelectDocument : nil
         )
     }
 
-    /// File facts + validation — pinned under the outliner. `ViewThatFits` drops the file stats
-    /// rather than nesting a `ScrollView`.
+    /// File facts — pinned under the outliner. `ViewThatFits` drops them rather than nesting a
+    /// `ScrollView`. Validation lives in the document inspector (click the document card).
     @ViewBuilder
     private func fileFooter(showsFile: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -82,7 +80,6 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
             if showsFile {
                 FileSection(stats: model.stats, fileName: model.fileName)
             }
-            ValidationSection(validation: model.validation)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
@@ -94,13 +91,6 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
         } else if item.id.kind == .camera {
             viewport.setFileCamera(item.id)
         }
-    }
-
-    /// Subtitle under the file name — the active scene, falling back to the file default.
-    private var currentSceneName: String? {
-        let id = viewport.activeSceneID ?? model.defaultSceneID
-        guard let id else { return nil }
-        return model.scenes.first { $0.id == id }?.name
     }
 }
 

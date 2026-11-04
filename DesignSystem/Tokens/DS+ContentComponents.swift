@@ -17,6 +17,10 @@ public extension DS.Metrics {
     /// symbol's natural width. Scaled with the text size via `@ScaledMetric`.
     static let typeIcon: CGFloat = 16
 
+    /// Leading indent per tree level in a `DSOutlineRow`. Scaled with the text size via
+    /// `@ScaledMetric`.
+    static let outlineIndent: CGFloat = 16
+
     /// Minimum width of the short axis label ("P", "R", "S") in a `DSVectorRow`, so the value
     /// cells of stacked rows line up. Scaled with the text size via `@ScaledMetric`.
     static let vectorLabelWidth: CGFloat = 14

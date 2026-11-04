@@ -62,6 +62,13 @@ public extension DS {
         /// (HIG › Color › "windowBackgroundColor").
         public static let windowBackground = SwiftUI.Color(nsColor: .windowBackgroundColor)
 
+        /// Tint over the sidebar's and inspector's glass: near-white like a design tool's layer panel, but
+        /// translucent so the canvas still reads faintly through it.
+        public static let paneFill = SwiftUI.Color.dsDynamic(
+            light: NSColor.white.withAlphaComponent(0.82),
+            dark: NSColor(white: 0.12, alpha: 0.82)
+        )
+
         // MARK: Status
 
         /// Valid / succeeded. System green (`NSColor.systemGreen`, HIG › Color › "System colors").

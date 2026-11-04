@@ -37,6 +37,10 @@ public struct ShellRootView<
     /// Open in menu content shared with inspector/floating chrome.
     private let openInMenu: AnyView
 
+    /// The whole model is selected (document card) — the inspector shows the file and its
+    /// validation. Mutually exclusive with a node selection.
+    @State private var isDocumentSelected = false
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
@@ -69,7 +73,12 @@ public struct ShellRootView<
                 viewport: viewport,
                 documentState: documentState,
                 isSidebarVisible: panels.isSidebarVisible,
-                onToggleSidebar: { panels.toggleSidebar() }
+                onToggleSidebar: { panels.toggleSidebar() },
+                isDocumentSelected: isDocumentSelected,
+                onSelectDocument: {
+                    selection.select(nil)
+                    isDocumentSelected = true
+                }
             )
             .navigationSplitViewColumnWidth(
                 min: DS.Metrics.sidebarWidthRange.lowerBound,
@@ -82,6 +91,9 @@ public struct ShellRootView<
                     RightInspector(
                         selection: selection,
                         documentState: documentState,
+                        document: isDocumentSelected
+                            ? .init(fileName: model.fileName, validation: model.validation)
+                            : nil,
                         openInMenu: openInMenu
                     )
                     .inspectorColumnWidth(
@@ -95,6 +107,10 @@ public struct ShellRootView<
         .toolbar(removing: .title)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: showsInspector)
+        .onChange(of: selection.selected) { _, newID in
+            if newID != nil { isDocumentSelected = false }
+        }
+        .onChange(of: model.fileName) { _, _ in isDocumentSelected = false }
     }
 
     private var columnVisibility: Binding<NavigationSplitViewVisibility> {
@@ -110,7 +126,9 @@ public struct ShellRootView<
         Binding(
             get: { showsInspector },
             set: { isPresented in
-                if !isPresented, selection.selected != nil {
+                guard !isPresented else { return }
+                isDocumentSelected = false
+                if selection.selected != nil {
                     selection.select(nil)
                 }
             }
@@ -118,7 +136,7 @@ public struct ShellRootView<
     }
 
     private var showsInspector: Bool {
-        documentState.isReady && selection.selected != nil
+        documentState.isReady && (selection.selected != nil || isDocumentSelected)
     }
 
     /// Canvas plus the floating Open-in action when the inspector is closed.
@@ -130,11 +148,10 @@ public struct ShellRootView<
             documentState: canvasState ?? documentState,
             isSidebarVisible: panels.isSidebarVisible,
             isInspectorVisible: showsInspector,
-            onToggleSidebar: { panels.toggleSidebar() },
             content: canvas
         )
         .overlay(alignment: .topTrailing) {
-            if !showsInspector {
+            if documentState.isReady, !showsInspector {
                 ActionRow(openInMenu: openInMenu)
                     .ignoresSafeArea(.container, edges: .top)
             }

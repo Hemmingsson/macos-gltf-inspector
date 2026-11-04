@@ -8,6 +8,9 @@ import SwiftUI
 /// truncates in the middle so the extension stays visible. The accessory sits below the title row
 /// at the card's full width, so a long variant name never squeezes the file name.
 ///
+/// With an `action`, the title row is a button (it selects the whole document); `isSelected` then
+/// draws the card with the accent selection fill and an accent hairline.
+///
 /// Opaque `DS.Color.controlBackground` ground with a `DS.Color.separator` hairline at
 /// `DS.Radius.large`. The icon and texts are one accessibility element; the accessory stays its
 /// own control.
@@ -15,22 +18,30 @@ public struct DSDocumentCard<Accessory: View>: View {
     private let title: String
     private let subtitle: String?
     private let systemImage: String
+    private let isSelected: Bool
+    private let action: (() -> Void)?
     private let accessory: Accessory
 
     /// - Parameters:
     ///   - title: File name.
     ///   - subtitle: Scene name; `nil` collapses the line rather than printing a placeholder.
     ///   - systemImage: Document glyph. Defaults to `cube`.
+    ///   - isSelected: The whole document is selected.
+    ///   - action: Click on the title row; `nil` leaves the card static.
     ///   - accessory: Extra control under the title row.
     public init(
         _ title: String,
         subtitle: String? = nil,
         systemImage: String = "cube",
+        isSelected: Bool = false,
+        action: (() -> Void)? = nil,
         @ViewBuilder accessory: () -> Accessory
     ) {
         self.title = title
         self.subtitle = subtitle
         self.systemImage = systemImage
+        self.isSelected = isSelected
+        self.action = action
         self.accessory = accessory()
     }
 
@@ -38,44 +49,77 @@ public struct DSDocumentCard<Accessory: View>: View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.large, style: .continuous)
 
         VStack(alignment: .leading, spacing: DS.Spacing.m) {
-            HStack(spacing: DS.Spacing.m) {
-                Image(systemName: systemImage)
-                    .font(DS.Font.body)
-                    .imageScale(.large)
-                    .foregroundStyle(DS.Color.accent)
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-                    Text(title)
-                        .font(DS.Font.bodyEmphasized)
-                        .foregroundStyle(DS.Color.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(DS.Font.subheadline)
-                            .foregroundStyle(DS.Color.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: 0)
+            if let action {
+                Button(action: action) { titleRow }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+            } else {
+                titleRow
             }
-            .accessibilityElement(children: .combine)
 
             accessory
         }
         .padding(.horizontal, DS.Spacing.l)
         .padding(.vertical, DS.Spacing.m)
-        .background(DS.Color.controlBackground, in: shape)
-        .overlay(shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.cellStrokeWidth))
+        .background {
+            ZStack {
+                shape.fill(DS.Color.controlBackground)
+                if isSelected { shape.fill(DS.Color.selectionFill) }
+            }
+        }
+        .overlay(
+            shape.strokeBorder(
+                isSelected ? AnyShapeStyle(DS.Color.accent) : AnyShapeStyle(DS.Color.separator),
+                lineWidth: DS.Metrics.cellStrokeWidth
+            )
+        )
+    }
+
+    private var titleRow: some View {
+        HStack(spacing: DS.Spacing.m) {
+            Image(systemName: systemImage)
+                .font(DS.Font.body)
+                .imageScale(.large)
+                .foregroundStyle(DS.Color.accent)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                Text(title)
+                    .font(DS.Font.bodyEmphasized)
+                    .foregroundStyle(DS.Color.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(DS.Font.subheadline)
+                        .foregroundStyle(DS.Color.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 
 public extension DSDocumentCard where Accessory == EmptyView {
     /// Card without an accessory.
-    init(_ title: String, subtitle: String? = nil, systemImage: String = "cube") {
-        self.init(title, subtitle: subtitle, systemImage: systemImage) { EmptyView() }
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        systemImage: String = "cube",
+        isSelected: Bool = false,
+        action: (() -> Void)? = nil
+    ) {
+        self.init(
+            title,
+            subtitle: subtitle,
+            systemImage: systemImage,
+            isSelected: isSelected,
+            action: action
+        ) { EmptyView() }
     }
 }
 
@@ -87,6 +131,7 @@ public extension DSDocumentCard where Accessory == EmptyView {
     DSContentPreviewStage(width: DS.Metrics.sidebarWidth) {
         DSDocumentCard("cube.gltf")
         DSDocumentCard("cube.gltf", subtitle: "Scene1")
+        DSDocumentCard("cube", subtitle: "glTF", isSelected: true, action: {})
         DSDocumentCard("Variants.glb", subtitle: "Scene") {
             DSMenuPicker(
                 "Material variant",

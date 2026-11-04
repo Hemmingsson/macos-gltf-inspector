@@ -9,6 +9,8 @@ import SwiftUI
 /// to the page through the `Look`.
 struct DocumentWindow: View {
     let documentURL: URL?
+    /// The launch window is itself the welcome scene, so it must not dismiss that scene.
+    var closesWelcome = true
 
     @State private var window: DocumentWindowModel
     /// Outlives a canvas remount (`DocumentShell` ids the canvas by load generation) so the page
@@ -17,20 +19,19 @@ struct DocumentWindow: View {
     /// Cached Finder poster while the page starts. Nil shows the loading pill only.
     @State private var firstPixelImage: NSImage?
 
-    init(documentURL: URL?) {
+    init(documentURL: URL?, closesWelcome: Bool = true) {
         self.documentURL = documentURL
+        self.closesWelcome = closesWelcome
         _window = State(wrappedValue: DocumentWindowModel(documentURL: documentURL))
     }
 
     var body: some View {
-        DocumentShell(window: window, canvasState: canvasState) {
+        DocumentShell(window: window, canvasState: canvasState, closesWelcome: closesWelcome) {
             canvas
         }
         .onAppear {
             if let documentURL {
                 loadDocument(documentURL)
-            } else {
-                window.failMissingURL()
             }
         }
         .onChange(of: documentURL) { _, url in
@@ -41,8 +42,8 @@ struct DocumentWindow: View {
         }
     }
 
-    /// The document the page draws; nil for a rejected file or a missing URL, whose failure then
-    /// comes from the open path.
+    /// The document the page draws. Nil while the window is empty, or when the open path rejected
+    /// the file; the canvas then follows the panels.
     private var webCanvasURL: URL? {
         guard let url = window.loadingURL ?? documentURL, DocumentOpening.isGLTFFile(url) else { return nil }
         return url

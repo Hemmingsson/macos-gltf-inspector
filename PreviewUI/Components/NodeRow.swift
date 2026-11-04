@@ -1,37 +1,33 @@
 import DesignSystem
 import SwiftUI
 
-/// One outliner row: type icon and name.
+/// One outliner row: indent, type glyph (a folder for a group), name. A row with children swaps
+/// its glyph for a fold chevron on hover — see `DSOutlineRow`.
 ///
 /// Built for a native `List(selection:)` — the row draws **no** selection of its own.
 struct NodeRow: View {
     var item: OutlinerItem
     var isSelected: Bool
-
-    /// Group / folder nodes with children use the chevron as the affordance — no dotted icon.
-    private var showsNodeIcon: Bool {
-        !(item.id.kind == .empty && item.hasChildren)
-    }
+    var depth: Int = 0
+    /// `nil` for a leaf or a flat (non-folding) section.
+    var isExpanded: Bool? = nil
+    var onToggle: () -> Void = {}
 
     private var role: DSTypeRole {
         DSTypeRole(rawValue: item.id.kind.rawValue) ?? .empty
     }
 
     var body: some View {
-        DSListRow(item.name) { iconSlot }
-            .accessibilityLabel("\(item.name), \(item.id.kind.displayTitle)")
-            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-    }
-
-    @ViewBuilder
-    private var iconSlot: some View {
-        if showsNodeIcon {
-            DSTypeIcon(role)
-        } else {
-            Color.clear
-                .frame(width: DS.Metrics.typeIcon, height: DS.Metrics.typeIcon)
-                .accessibilityHidden(true)
-        }
+        DSOutlineRow(
+            item.name,
+            role: role,
+            depth: depth,
+            isExpanded: isExpanded,
+            isSelected: isSelected,
+            onToggle: onToggle
+        )
+        .accessibilityLabel("\(item.name), \(item.id.kind.displayTitle)")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 

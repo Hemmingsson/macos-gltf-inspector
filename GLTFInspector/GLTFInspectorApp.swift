@@ -92,11 +92,11 @@ struct GLTFInspectorApp: App {
         }
 
         WindowGroup(id: WelcomeWindow.id) {
-            WelcomeView()
+            DocumentWindow(documentURL: nil, closesWelcome: false)
         }
-        .defaultSize(width: 520, height: 420)
-        .defaultPosition(.center)
-        .windowResizability(.contentSize)
+        .defaultSize(width: 1280, height: 820)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .defaultLaunchBehavior(.presented)
         .restorationBehavior(.disabled)
 

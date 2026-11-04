@@ -112,6 +112,7 @@ struct EngineViewportControllerTests {
             fit: { calls.append("fit") },
             reset: { calls.append("reset") },
             applyCameraPreset: { calls.append("preset \($0.rawValue)") },
+            zoom: { calls.append("zoom \($0)") },
             screenshot: {
                 calls.append("screenshot")
                 return image
@@ -119,10 +120,11 @@ struct EngineViewportControllerTests {
         )
         viewport.fit()
         viewport.applyCameraPreset(.left)
+        viewport.zoom(by: 0.5)
         viewport.reset()
         await viewport.exportScreenshot()
 
-        #expect(calls == ["fit", "preset left", "reset", "screenshot"])
+        #expect(calls == ["fit", "preset left", "zoom 0.5", "reset", "screenshot"])
         #expect(saved.count == 1)
         #expect(saved.first?.width == 4)
         #expect(viewport.activeCameraPreset == nil)
@@ -136,7 +138,7 @@ struct EngineViewportControllerTests {
         var saved = 0
         let viewport = EngineViewportController(sidebar: sidebar, saveScreenshot: { _ in saved += 1 })
         viewport.commands = FocusedPreviewCommands(
-            fit: {}, reset: {}, applyCameraPreset: { _ in },
+            fit: {}, reset: {}, applyCameraPreset: { _ in }, zoom: { _ in },
             screenshot: { throw NoCameraPose() }
         )
         await viewport.exportScreenshot()

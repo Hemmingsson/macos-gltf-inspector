@@ -10,6 +10,7 @@ import SwiftUI
 /// - `.titled(value)` — icon + the current choice + chevron in a content-sized capsule. The
 ///   button's `title` stays the accessibility label ("View mode") and `value` is announced as its
 ///   accessibility value ("Shaded").
+/// - `.text(value)` — the current choice + chevron, no icon (the zoom menu's "90% ▾").
 ///
 /// Placement follows `DSGlassPlacement`: standalone draws one `DS.Glass.control` layer
 /// (tinted while `isEngaged`, e.g. a non-default view mode); inside a `DSGlassIsland` it draws none.
@@ -24,6 +25,7 @@ public struct DSGlassMenuButton<MenuContent: View>: View {
         case icon
         case iconWithChevron
         case titled(String)
+        case text(String)
     }
 
     private let title: String
@@ -87,10 +89,12 @@ public struct DSGlassMenuButton<MenuContent: View>: View {
                 DSGlassChevron()
             }
             .dsGlassControlLabel(.wide, isHighlighted: isEngaged)
-        case .titled(let value):
+        case .titled(let value), .text(let value):
             HStack(spacing: DS.Spacing.s) {
-                Image(systemName: systemImage)
-                    .dsGlassPrimaryGlyph(isHighlighted: isEngaged)
+                if case .titled = style {
+                    Image(systemName: systemImage)
+                        .dsGlassPrimaryGlyph(isHighlighted: isEngaged)
+                }
                 Text(value)
                     .font(DS.Font.body)
                     .foregroundStyle(
@@ -109,7 +113,10 @@ public struct DSGlassMenuButton<MenuContent: View>: View {
     }
 
     private var accessibilityValue: String {
-        if case .titled(let value) = style { value } else { "" }
+        switch style {
+        case .titled(let value), .text(let value): value
+        case .icon, .iconWithChevron: ""
+        }
     }
 }
 

@@ -21,6 +21,9 @@ public final class WebCanvasController {
     }
 
     public private(set) var phase: Phase = .loading
+    /// Camera zoom against the last fit (100 = fitted), reported by the page. Nil before the first
+    /// model is framed.
+    public private(set) var zoomPercent: Int?
 
     @ObservationIgnored private(set) var host: WebRendererHost?
     @ObservationIgnored private var loaded: URL?
@@ -52,6 +55,15 @@ public final class WebCanvasController {
         let angles = preset.webOrbitAngles
         let distance = fitted.isMeasurable ? fitted.distance(framing: preset) : nil
         try await host.camera(.orbit(azimuth: angles.azimuth, elevation: angles.elevation, distance: distance))
+    }
+
+    /// Dolly toward (`factor` < 1) or away from (`factor` > 1) the target at the current angle —
+    /// the View menu's Zoom In / Zoom Out. Orthographic scale follows the distance.
+    public func zoom(by factor: Double) async throws {
+        let host = try readyHost()
+        let pose = try await host.camera(.get).pose
+        guard pose.isFinite, factor > 0 else { return }
+        try await host.camera(.orbit(azimuth: pose.azimuth, elevation: pose.elevation, distance: pose.distance * factor))
     }
 
     /// One frame at the live camera and canvas size. The owner writes the file.
@@ -96,6 +108,7 @@ public final class WebCanvasController {
             let host = try existing ?? WebRendererHost(mode: .live)
             self.host = host
             host.onFailure = { [weak self] error in self?.pageDied(error) }
+            host.onZoom = { [weak self] percent in self?.zoomPercent = percent }
             AppLog.info(
                 AppLog.webRenderer,
                 "viewport attach \(url.lastPathComponent) host=\(host.logID) reused=\(existing != nil) uptimeMs=\(AppLog.uptimeMs())"

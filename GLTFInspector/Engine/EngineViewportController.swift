@@ -143,6 +143,14 @@ final class EngineViewportController: ViewportController {
         activeCameraPreset = nil
     }
 
+    /// Read through the canvas, so a view showing it tracks the page's zoom reports.
+    var zoomPercent: Int? { commands?.zoomPercent() }
+
+    func zoom(by factor: Double) {
+        commands?.zoom(factor)
+        activeCameraPreset = nil
+    }
+
     func reset() {
         setBackdrop(settings.default(for: .backdrop))
         setFloor(settings.default(for: .showFloor))

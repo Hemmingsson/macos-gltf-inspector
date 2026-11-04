@@ -3,7 +3,8 @@ import SwiftUI
 
 /// Trailing **Camera** cluster — where you stand and how you move.
 ///
-/// One `DSGlassCluster`: auto-rotate, center, orthographic, FoV, Fit, presets. Each control
+/// One `DSGlassCluster`: auto-rotate, center, orthographic, FoV, and the View menu (zoom, fit,
+/// camera angles). Each control
 /// draws its own glass; nothing is nested glass-on-glass.
 struct CameraCluster<Viewport: ViewportController>: View {
     var viewport: Viewport
@@ -24,11 +25,7 @@ struct CameraCluster<Viewport: ViewportController>: View {
 
             FieldOfViewPopover(viewport: viewport)
 
-            DSGlassIconButton("Fit", systemImage: "viewfinder") {
-                viewport.fit()
-            }
-
-            CameraPresetMenu(viewport: viewport)
+            ViewMenu(viewport: viewport)
         }
     }
 
@@ -55,47 +52,6 @@ struct CameraCluster<Viewport: ViewportController>: View {
             get: { viewport.projection == .orthographic },
             set: { viewport.setProjection($0 ? .orthographic : .perspective) }
         )
-    }
-}
-
-/// Canned angles — Front · Back · Left · Right · Top · Bottom · Isometric.
-///
-/// Shortcuts come from `DS.Shortcuts.cameraPreset` (⌥⌘ + digits) so they cannot collide with
-/// view mode (⌘1 / ⌘2).
-struct CameraPresetMenu<Viewport: ViewportController>: View {
-    var viewport: Viewport
-
-    var body: some View {
-        DSGlassMenuButton(
-            "Camera preset",
-            systemImage: "cube",
-            isEngaged: viewport.activeCameraPreset != nil,
-            help: "Camera presets — Front · Top · Isometric…"
-        ) {
-            DSInlineMenuPicker("Camera preset", selection: preset) {
-                ForEach(CameraPreset.allCases) { preset in
-                    Text(preset.title)
-                        .tag(Optional(preset))
-                        .keyboardShortcutIfAvailable(cameraPresetShortcut(for: preset))
-                }
-            }
-        }
-        .accessibilityValue(viewport.activeCameraPreset?.title ?? "Custom")
-    }
-
-    private var preset: Binding<CameraPreset?> {
-        Binding(
-            get: { viewport.activeCameraPreset },
-            set: { newValue in
-                guard let newValue else { return }
-                viewport.applyCameraPreset(newValue)
-            }
-        )
-    }
-
-    private func cameraPresetShortcut(for preset: CameraPreset) -> KeyboardShortcut? {
-        DS.Shortcuts.CameraPreset(rawValue: preset.rawValue)
-            .flatMap { DS.Shortcuts.cameraPreset($0) }
     }
 }
 

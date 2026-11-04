@@ -36,6 +36,8 @@ public extension DS {
             case fit
             case reset
             case autoRotate
+            case zoomIn
+            case zoomOut
         }
 
         /// One row of the table.
@@ -70,7 +72,8 @@ public extension DS {
             }
         }
 
-        /// Orthographic ⌥⌘5, Center ⌥⌘C (⌘C is Copy), Fit ⌘9, Reset ⌘0, Auto-rotate ⌘R.
+        /// Orthographic ⌥⌘5, Center ⌥⌘C (⌘C is Copy), Fit ⌘9, Reset ⌘0, Auto-rotate ⌘R,
+        /// Zoom In ⌘+, Zoom Out ⌘− (as in design tools).
         public static func action(_ action: Action) -> KeyboardShortcut {
             switch action {
             case .orthographic: KeyboardShortcut("5", modifiers: [.command, .option])
@@ -78,6 +81,8 @@ public extension DS {
             case .fit: KeyboardShortcut("9", modifiers: .command)
             case .reset: KeyboardShortcut("0", modifiers: .command)
             case .autoRotate: KeyboardShortcut("r", modifiers: .command)
+            case .zoomIn: KeyboardShortcut("+", modifiers: .command)
+            case .zoomOut: KeyboardShortcut("-", modifiers: .command)
             }
         }
 

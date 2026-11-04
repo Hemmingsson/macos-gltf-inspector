@@ -54,4 +54,15 @@ struct OutlinerTreeTests {
             root.children[0].children[0].id
         ])
     }
+
+    @Test func visibleRows_followExpansionWithDepth() {
+        #expect(OutlinerTree.visibleRows([root], expanded: []).map(\.id) == [root.id])
+
+        let rows = OutlinerTree.visibleRows([root], expanded: [root.id])
+        #expect(rows.map(\.id) == [root.id, root.children[0].id])
+        #expect(rows.map(\.depth) == [0, 1])
+
+        let all = OutlinerTree.visibleRows([root], expanded: [root.id, root.children[0].id])
+        #expect(all.map(\.depth) == [0, 1, 2])
+    }
 }

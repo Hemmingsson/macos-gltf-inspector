@@ -20,7 +20,9 @@ extension FocusedPreviewCommands {
             applyCameraPreset: { preset in
                 run("preset \(preset.rawValue)") { try await canvas.apply(preset: preset) }
             },
-            screenshot: { try await canvas.snapshot() }
+            zoom: { factor in run("zoom") { try await canvas.zoom(by: factor) } },
+            screenshot: { try await canvas.snapshot() },
+            zoomPercent: { canvas.zoomPercent }
         )
     }
 }

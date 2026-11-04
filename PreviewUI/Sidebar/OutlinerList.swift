@@ -3,7 +3,8 @@ import DesignSystem
 import SwiftUI
 
 /// Native sidebar outliner: `List(selection:)` + `.listStyle(.sidebar)`, one `Section` per
-/// SCENE / MATERIALS / …, recursive `DisclosureGroup`s bound to the existing expansion set.
+/// SCENE / MATERIALS / …. The scene graph is flattened to its visible rows with an indent, so each
+/// row's glyph slot carries its own fold chevron (on hover) instead of a system disclosure column.
 ///
 /// S1f: native list selection — `NodeRow` draws no selection of its own.
 struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
@@ -40,12 +41,17 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
             ForEach(sections) { section in
                 Section {
                     if section.folds {
-                        ForEach(section.items) { item in
-                            OutlinerDisclosure(
-                                item: item,
-                                expanded: expandedBinding,
-                                selection: selection
+                        ForEach(OutlinerTree.visibleRows(section.items, expanded: expandedBinding.wrappedValue)) { row in
+                            NodeRow(
+                                item: row.item,
+                                isSelected: selection.selected == row.id,
+                                depth: row.depth,
+                                isExpanded: row.item.hasChildren
+                                    ? expandedBinding.wrappedValue.contains(row.id)
+                                    : nil,
+                                onToggle: { toggle(row.item) }
                             )
+                            .tag(Optional(row.id))
                         }
                     } else {
                         ForEach(section.items) { item in
@@ -59,8 +65,12 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
             }
         }
         .listStyle(.sidebar)
+        // Compact rows (11 pt), like a design tool's layer list, whatever the system sidebar size.
+        .environment(\.sidebarRowSize, .small)
         .focusSection()
         .onExitCommand { selection.select(nil) }
+        .onKeyPress(.rightArrow) { fold(open: true, in: foldingRoots) }
+        .onKeyPress(.leftArrow) { fold(open: false, in: foldingRoots) }
         .onKeyPress(.escape) {
             guard selection.selected != nil else { return .ignored }
             selection.select(nil)
@@ -87,6 +97,24 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
         )
     }
 
+    /// Plain click folds one row; Option-click folds or unfolds the whole subtree.
+    private func toggle(_ item: OutlinerItem) {
+        var next = expandedBinding.wrappedValue
+        OutlinerTree.toggle(item, recursive: OutlinerOptionKey.isDown, expanded: &next)
+        expandedBinding.wrappedValue = next
+    }
+
+    /// ← / → on the selected scene row folds or unfolds it, as a disclosure list does.
+    private func fold(open: Bool, in roots: [OutlinerItem]) -> KeyPress.Result {
+        guard let id = selection.selected,
+              let item = Self.item(id: id, in: [OutlinerSection(title: "", items: roots)]),
+              item.hasChildren,
+              expandedBinding.wrappedValue.contains(id) != open
+        else { return .ignored }
+        toggle(item)
+        return .handled
+    }
+
     /// Seed once from `onAppear` — never from `View.init` (AGENTS.md pitfall #1).
     private func seedExpansionIfNeeded(roots: [OutlinerItem]) {
         guard ownedExpanded.isEmpty else { return }
@@ -108,50 +136,7 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
     }
 }
 
-/// Recursive scene-graph branch. Expansion is the shared `Set<NodeID>`; Option-click still
-/// expands or collapses the whole subtree via `OutlinerTree.toggle`.
-struct OutlinerDisclosure<Selection: SelectionModel>: View {
-    let item: OutlinerItem
-    @Binding var expanded: Set<NodeID>
-    var selection: Selection
-
-    var body: some View {
-        if item.hasChildren {
-            DisclosureGroup(isExpanded: disclosureExpanded) {
-                ForEach(item.children) { child in
-                    OutlinerDisclosure(item: child, expanded: $expanded, selection: selection)
-                }
-            } label: {
-                NodeRow(item: item, isSelected: selection.selected == item.id)
-            }
-            .tag(Optional(item.id))
-        } else {
-            NodeRow(item: item, isSelected: selection.selected == item.id)
-                .tag(Optional(item.id))
-        }
-    }
-
-    /// Forwards the system chevron into the existing expansion set. Option-click ignores the
-    /// incoming bool and runs the subtree toggle (expand-if-partial, collapse-if-full).
-    private var disclosureExpanded: Binding<Bool> {
-        Binding(
-            get: { expanded.contains(item.id) },
-            set: { newValue in
-                var next = expanded
-                if OutlinerOptionKey.isDown {
-                    OutlinerTree.toggle(item, recursive: true, expanded: &next)
-                } else if newValue {
-                    next.insert(item.id)
-                } else {
-                    next.remove(item.id)
-                }
-                expanded = next
-            }
-        )
-    }
-}
-
-/// Option-key read for disclosure: Option-click expands or collapses the whole subtree.
+/// Option-key read for folding: Option-click expands or collapses the whole subtree.
 enum OutlinerOptionKey {
     static var isDown: Bool {
         let eventFlags = NSApp.currentEvent?.modifierFlags ?? []

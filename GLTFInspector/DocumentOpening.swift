@@ -46,3 +46,79 @@ enum DocumentOpening {
 enum WelcomeWindow {
     static let id = "welcome"
 }
+
+@MainActor
+private final class RecentMenuTarget: NSObject {
+    static let shared = RecentMenuTarget()
+
+    @objc func open(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
+            if let error {
+                AppLog.error(AppLog.host, "open recent failed \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc func clear(_ sender: NSMenuItem) {
+        NSDocumentController.shared.clearRecentDocuments(sender)
+    }
+}
+
+enum RecentGLTFFiles {
+    static let limit = 6
+
+    /// The document controller's recent `.glb` / `.gltf` files, capped.
+    @MainActor
+    static func current() -> [URL] {
+        urls(from: NSDocumentController.shared.recentDocumentURLs)
+    }
+
+    /// Pops the recent-files menu under the pointer. The system document controller opens the file.
+    @MainActor
+    static func popUpMenu() {
+        let menu = NSMenu()
+        let urls = current()
+        if urls.isEmpty {
+            let empty = NSMenuItem(title: "No Recent Files", action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            menu.addItem(empty)
+        } else {
+            for url in urls {
+                let item = NSMenuItem(
+                    title: url.lastPathComponent,
+                    action: #selector(RecentMenuTarget.open(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = RecentMenuTarget.shared
+                item.representedObject = url
+                item.toolTip = url.path
+                menu.addItem(item)
+            }
+            menu.addItem(.separator())
+            let clear = NSMenuItem(
+                title: "Clear Menu",
+                action: #selector(RecentMenuTarget.clear(_:)),
+                keyEquivalent: ""
+            )
+            clear.target = RecentMenuTarget.shared
+            menu.addItem(clear)
+        }
+        guard let view = NSApp.keyWindow?.contentView else {
+            menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+            return
+        }
+        let point = view.convert(NSEvent.mouseLocation, from: nil)
+        menu.popUp(positioning: nil, at: point, in: view)
+    }
+
+    /// The first `.glb` / `.gltf` URLs in `recent`, capped.
+    static func urls(from recent: [URL]) -> [URL] {
+        var kept: [URL] = []
+        for url in recent where DocumentOpening.isGLTFFile(url) {
+            kept.append(url)
+            if kept.count == limit { break }
+        }
+        return kept
+    }
+}

@@ -16,6 +16,10 @@ public extension DS {
         /// Subtitles under a title. `Font.subheadline` (macOS 11 pt).
         public static let subheadline = SwiftUI.Font.subheadline
 
+        /// Layer-list row titles and their glyphs (`DSOutlineRow`): compact, like a design tool's
+        /// layer list. `Font.subheadline` (macOS 11 pt).
+        public static let outlineRow = SwiftUI.Font.subheadline
+
         /// Captions and chip labels. `Font.caption` (macOS 10 pt).
         public static let caption = SwiftUI.Font.caption
 

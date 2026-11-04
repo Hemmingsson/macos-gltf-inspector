@@ -19,6 +19,9 @@ public protocol ViewportController: AnyObject, Observable {
     var activeCameraPreset: CameraPreset? { get }
     /// Scene the canvas is showing. Selecting a Scene row calls `setScene`.
     var activeSceneID: NodeID? { get }
+    /// Camera zoom against the last fit (100 = fitted), for the View menu's readout. Nil before
+    /// the canvas has framed a model.
+    var zoomPercent: Int? { get }
     /// Selected `KHR_materials_variants` index, or nil for the file default.
     var selectedMaterialVariantIndex: Int? { get }
 
@@ -32,6 +35,8 @@ public protocol ViewportController: AnyObject, Observable {
     func setFieldOfViewDegrees(_ degrees: Float)
     /// Frame the model in the current view.
     func fit()
+    /// Move the camera closer (`factor` < 1) or farther (`factor` > 1) at the same angle.
+    func zoom(by factor: Double)
     func applyCameraPreset(_ preset: CameraPreset)
     func setScene(_ id: NodeID)
     func setMaterialVariant(_ index: Int?)

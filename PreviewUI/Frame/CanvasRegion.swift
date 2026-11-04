@@ -26,19 +26,16 @@ struct CanvasRegion<
     var viewport: Viewport
     /// Empty / loading / failed hide the model chrome; ready shows clusters + overlays.
     var documentState: ShellDocumentState = .ready
-    /// When false, Stage clears traffic lights + the floating sidebar restore control.
+    /// When false, Stage clears the traffic lights and the system sidebar toggle beside them.
     var isSidebarVisible: Bool = true
     /// When false, Camera clears the floating inspector Open in action.
     var isInspectorVisible: Bool = true
-    /// Restores the sidebar from the canvas overlay when the column is collapsed.
-    var onToggleSidebar: () -> Void = {}
     @ViewBuilder var content: () -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    /// Top safe-area inset (the window toolbar band). Written only from `onGeometryChange`'s
-    /// action — never during a view update.
-    @State private var topInset: CGFloat = 0
+    @Environment(\.canvasFileDrop) private var canvasFileDrop
+    /// Drop highlight. Written from the drop callback, never during a view update.
+    @State private var dropTargeted = false
 
     var body: some View {
         ZStack {
@@ -46,29 +43,37 @@ struct CanvasRegion<
                 switch documentState {
                 case .ready:
                     content()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(DS.Color.Canvas.ground)
+                        .ignoresSafeArea()
                 case .empty, .loading, .failed:
+                    // Stay inside the safe area so the empty group centers in the visible pane.
                     ShellStatusView(state: documentState, placement: .canvas)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(DS.Color.Canvas.ground)
-            .ignoresSafeArea()
+            .onDrop(of: [.fileURL], isTargeted: $dropTargeted) { providers in
+                canvasFileDrop(providers)
+            }
+            .overlay {
+                if dropTargeted {
+                    RoundedRectangle(cornerRadius: DS.Radius.pane, style: .continuous)
+                        .strokeBorder(DS.Color.textTertiary, lineWidth: DS.Metrics.hairline)
+                        .padding(DS.Spacing.l)
+                        .allowsHitTesting(false)
+                }
+            }
 
             if documentState.isReady {
                 controls
             }
         }
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.safeAreaInsets.top
-        } action: { inset in
-            topInset = inset
-        }
     }
 
-    /// Distance from the top of the (top-safe-area-ignoring) overlay to a 30 pt control whose
-    /// center sits on the toolbar band's centerline (the traffic-light line).
+    /// Distance from the window top to a glass control whose center sits on the traffic-light
+    /// line — the same line as the system sidebar toggle and the inspector's Open-in button.
     private var bandTopPadding: CGFloat {
-        max((topInset - DS.Metrics.glassControl) / 2, DS.Metrics.canvasClusterInset)
+        DS.Metrics.toolbarCenterY - DS.Metrics.glassControl / 2
     }
 
     /// Floating chrome. Respects the leading/trailing/bottom safe area (never under a pane);
@@ -77,17 +82,8 @@ struct CanvasRegion<
         Color.clear
             .allowsHitTesting(false)
             .overlay(alignment: .topLeading) {
-                HStack(spacing: DS.Metrics.toolbarClearance) {
-                    if !isSidebarVisible {
-                        DSGlassIconButton(
-                            "Show Sidebar",
-                            systemImage: "sidebar.leading",
-                            action: onToggleSidebar
-                        )
-                    }
-                    StageCluster(viewport: viewport)
-                }
-                .padding(.leading, stageLeadingInset)
+                StageCluster(viewport: viewport)
+                    .padding(.leading, stageLeadingInset)
                 .padding(.top, bandTopPadding)
             }
             .overlay(alignment: .top) {
@@ -124,7 +120,11 @@ struct CanvasRegion<
     }
 
     private var stageLeadingInset: CGFloat {
-        isSidebarVisible ? DS.Metrics.canvasClusterInset : DS.Metrics.trafficLightLeadingClearance
+        // Collapsed: the system sidebar toggle stays in the band after the traffic lights.
+        isSidebarVisible
+            ? DS.Metrics.canvasClusterInset
+            : DS.Metrics.trafficLightLeadingClearance + DS.Metrics.glassControl
+                + DS.Metrics.toolbarClearance + DS.Metrics.clusterSpacing
     }
 
     private var cameraTrailingInset: CGFloat {

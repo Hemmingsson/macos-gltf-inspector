@@ -1,22 +1,15 @@
 import DesignSystem
 import SwiftUI
 
-/// Top of the inspector: Open-in as a glass-circle menu at the top right, identity under it.
-///
-/// Toolbar placement is not used here (needs the shell). `openInMenu` is menu items; `ActionRow`
-/// wraps them in `DSGlassMenuButton`.
+/// Top of the inspector: the selection's identity. The Open-in button floats over the inspector
+/// on the traffic-light line (`RightInspector`), not in this header.
 struct NodeHeader: View {
     var name: String
     var kind: NodeKind
-    let openInMenu: AnyView
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ActionRow(openInMenu: openInMenu, alignsToChromeBand: false)
-
-            IdentityRow(name: name, kind: kind)
-        }
-        .accessibilityElement(children: .contain)
+        IdentityRow(name: name, kind: kind)
+            .accessibilityElement(children: .contain)
     }
 }
 
@@ -27,8 +20,7 @@ struct NodeHeader: View {
         let detail = NodeDetailFixtures.mesh
         NodeHeader(
             name: detail.name,
-            kind: detail.kind,
-            openInMenu: AnyView(PreviewOpenInItems())
+            kind: detail.kind
         )
     }
 }
@@ -38,8 +30,7 @@ struct NodeHeader: View {
         let detail = NodeDetailFixtures.material
         NodeHeader(
             name: detail.name,
-            kind: detail.kind,
-            openInMenu: AnyView(PreviewOpenInItems())
+            kind: detail.kind
         )
     }
 }

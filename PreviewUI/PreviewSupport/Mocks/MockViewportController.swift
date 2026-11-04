@@ -46,6 +46,10 @@ public final class MockViewportController: ViewportController {
     public func setBackdrop(_ style: BackdropStyle) { backdrop = style }
     public func setFloor(_ isOn: Bool) { showsFloor = isOn }
     public func setAutoRotate(_ isOn: Bool) { autoRotates = isOn }
+    public var zoomPercent: Int? = 100
+    public func zoom(by factor: Double) {
+        zoomPercent = zoomPercent.map { Int((Double($0) / factor).rounded()) }
+    }
     public func setCenter(_ isOn: Bool) { isCentered = isOn }
     public func setViewMode(_ mode: ViewMode) { viewMode = mode }
     public func setProjection(_ projection: Projection) { self.projection = projection }

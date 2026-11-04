@@ -48,23 +48,41 @@ public enum DSTypeRole: String, Sendable, Hashable, CaseIterable {
 ///
 /// DESIGN.md — colour is meaning: a reader learns the hues once (camera blue, light amber,
 /// material purple, animation green, mesh graphite) and scans the outliner without reading. Every
-/// type glyph comes from here. In a selected custom row pass `isSelected` so the tint yields to
-/// `DS.Color.selectionText`. Hidden from VoiceOver: the row's label already names the type.
+/// type glyph comes from here. Pass `isSelected` on a selected row so the glyph uses the label
+/// colour, which turns light on the system highlight. A fixed role colour, mesh graphite
+/// included, fails contrast on that blue. Hidden from VoiceOver: the row's label already names
+/// the type.
 public struct DSTypeIcon: View {
     private let role: DSTypeRole
+    private let isGroup: Bool
     private let isSelected: Bool
+    private let font: Font
 
     @ScaledMetric(relativeTo: .body) private var side = DS.Metrics.typeIcon
 
-    public init(_ role: DSTypeRole, isSelected: Bool = false) {
+    /// - Parameters:
+    ///   - isGroup: an empty node that holds children — drawn as a folder, like a layer group.
+    ///   - font: glyph size; a compact row passes `DS.Font.outlineRow`.
+    public init(
+        _ role: DSTypeRole,
+        isGroup: Bool = false,
+        isSelected: Bool = false,
+        font: Font = DS.Font.body
+    ) {
         self.role = role
+        self.isGroup = isGroup
         self.isSelected = isSelected
+        self.font = font
+    }
+
+    private var systemImage: String {
+        isGroup && role == .empty ? "folder" : role.systemImage
     }
 
     public var body: some View {
-        Image(systemName: role.systemImage)
-            .font(DS.Font.body)
-            .foregroundStyle(isSelected ? AnyShapeStyle(DS.Color.selectionText) : AnyShapeStyle(role.tint))
+        Image(systemName: systemImage)
+            .font(font)
+            .foregroundStyle(isSelected ? AnyShapeStyle(DS.Color.textPrimary) : AnyShapeStyle(role.tint))
             .frame(width: side, height: side)
             .accessibilityHidden(true)
     }

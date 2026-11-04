@@ -50,6 +50,8 @@ public final class WebRendererHost {
 
     /// Called when a page that was running dies. The owner decides whether to `start()` again.
     var onFailure: ((WebRendererError) -> Void)?
+    /// Live mode: the camera's zoom against the last fit, as a whole percent, when it changes.
+    var onZoom: ((Int) -> Void)?
 
     /// The renderer surface, for `.live` hosting. Untouched in `.still`.
     var view: NSView { webView }
@@ -287,6 +289,8 @@ public final class WebRendererHost {
             isReady = true
             readyContinuation?.resume()
             readyContinuation = nil
+        case "zoom":
+            if let percent = message.flatMap({ Int($0) }) { onZoom?(percent) }
         case "warning":
             // Khronos reports many load problems through `console.error` rather than throwing.
             AppLog.info(AppLog.webRenderer, "page warning host=\(logID): \(message ?? "")")

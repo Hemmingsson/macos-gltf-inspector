@@ -7,7 +7,8 @@
   Swift calls five async functions on `window.__viewer` through `callAsyncJavaScript`:
   open, apply, camera, still, stats — one JSON argument, one JSON result, a throw is an error
   (WebRendererHost.call). Mode and still size come from the URL (`?mode=still&size=512`). The page
-  only pushes events on `webkit.messageHandlers.viewer`: ready, warning, contextlost, error.
+  only pushes events on `webkit.messageHandlers.viewer`: ready, warning, contextlost, error, and
+  zoom (camera distance vs the last fit, as a whole percent, sent when it changes).
 
   Nothing here is fetched from the network. All bytes arrive through the Swift scheme handler,
   and paths stay relative — the Khronos renderer rejects absolute URLs for its library and LUT
@@ -156,6 +157,7 @@ function tick() {
     if (autoRotate && state.gltf) state.userCamera.orbit(1.2, 0);
     // `renderFrame` clears the drawing buffer even when there is no gltf — skip until load.
     if (state.gltf) drawFrame();
+    reportZoom();
     requestAnimationFrame(tick);
 }
 
@@ -231,6 +233,20 @@ function sharedFitDistance(extent, toCamera, aspect, fovDeg, padding) {
     return Math.max(0.0001, distance * padding);
 }
 
+/** Distance the last fit chose — 100% on the View menu's zoom readout. */
+let fitDistance = null;
+let reportedZoom = null;
+
+/** Tells Swift the zoom (fit distance ÷ camera distance) when its whole percent changes. */
+function reportZoom() {
+    const distance = state.userCamera?.distance;
+    if (!state.gltf || !(fitDistance > 0) || !(distance > 0)) return;
+    const percent = Math.round(fitDistance / distance * 100);
+    if (percent === reportedZoom || !Number.isFinite(percent)) return;
+    reportedZoom = percent;
+    send({ event: "zoom", message: String(percent) });
+}
+
 function applySharedFitDistance() {
     const camera = state.userCamera;
     const min = camera.sceneExtents.min;
@@ -256,6 +272,7 @@ function applySharedFitDistance() {
     if (!Number.isFinite(distance)) return;
     camera.setDistanceFromTarget(distance, target);
     camera.baseDistance = distance;
+    fitDistance = camera.distance;
 }
 
 /**
@@ -754,6 +771,7 @@ window.__viewer = {
             // `fit` resets the transform but not the orbit angles; restate the front view so the
             // next drag continues from it.
             orbitTo(0, 0, camera.distance, camera.getTarget());
+            fitDistance = camera.distance;
         } else if (op === "orbit") {
             orbitTo(azimuth, elevation, distance ?? camera.distance, camera.getTarget());
         } else if (op === "pose") {

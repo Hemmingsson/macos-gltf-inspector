@@ -1,21 +1,44 @@
 import DesignSystem
 import SwiftUI
 
-/// Selection identity under the Open-in row.
+/// Selection identity under the Open-in row: glyph, name, and what it is.
 struct IdentityRow: View {
     var name: String
-    var kind: NodeKind
+    var subtitle: String
+    /// Nil draws the document glyph (the whole model is selected).
+    var role: DSTypeRole?
+
+    init(name: String, kind: NodeKind) {
+        self.name = name
+        self.subtitle = kind.displayTitle
+        self.role = DSTypeRole(rawValue: kind.rawValue) ?? .empty
+    }
+
+    /// The whole model: file name and file kind beside the document glyph.
+    init(documentName: String, kind: String) {
+        self.name = documentName
+        self.subtitle = kind
+        self.role = nil
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: DS.Spacing.m) {
-            DSTypeIcon(DSTypeRole(rawValue: kind.rawValue) ?? .empty)
+            if let role {
+                DSTypeIcon(role)
+            } else {
+                Image(systemName: "cube")
+                    .font(DS.Font.body)
+                    .imageScale(.large)
+                    .foregroundStyle(DS.Color.accent)
+                    .accessibilityHidden(true)
+            }
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(name)
                     .font(DS.Font.bodyEmphasized)
                     .foregroundStyle(DS.Color.textPrimary)
                     .lineLimit(1)
-                Text(kind.displayTitle)
+                Text(subtitle)
                     .font(DS.Font.subheadline)
                     .foregroundStyle(DS.Color.textSecondary)
                     .lineLimit(1)

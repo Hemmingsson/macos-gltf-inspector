@@ -25,6 +25,25 @@ public enum OutlinerTree {
         return ids
     }
 
+    /// One visible row of a flattened tree: the item and how deep it sits.
+    public struct Row: Identifiable, Hashable, Sendable {
+        public var item: OutlinerItem
+        public var depth: Int
+        public var id: NodeID { item.id }
+    }
+
+    /// Rows a reader sees, depth-first: an item's children follow it only while it is expanded.
+    public static func visibleRows(_ roots: [OutlinerItem], expanded: Set<NodeID>) -> [Row] {
+        var rows: [Row] = []
+        func walk(_ item: OutlinerItem, depth: Int) {
+            rows.append(Row(item: item, depth: depth))
+            guard expanded.contains(item.id) else { return }
+            item.children.forEach { walk($0, depth: depth + 1) }
+        }
+        roots.forEach { walk($0, depth: 0) }
+        return rows
+    }
+
     /// Plain click toggles one node; Option-click expands/collapses the whole subtree.
     /// If open but not fully expanded, Option-click finishes expanding (does not collapse).
     public static func toggle(

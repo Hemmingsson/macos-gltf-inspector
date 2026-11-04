@@ -19,7 +19,7 @@ final class DocumentWindowModel {
 
     var documentURL: URL?
     /// Panel state (sidebar / inspector); `DocumentWindow` decides the canvas region's.
-    private(set) var phase: ShellDocumentState = .loading
+    private(set) var phase: ShellDocumentState
     private(set) var sidebar: HostSidebarModel? {
         didSet {
             selection = EngineSelectionModel(sidebar: activeSidebar)
@@ -47,6 +47,7 @@ final class DocumentWindowModel {
 
     init(documentURL: URL?) {
         self.documentURL = documentURL
+        phase = documentURL == nil ? .empty : .loading
         selection = EngineSelectionModel(sidebar: placeholderSidebar)
         previewSession = PreviewSession(settings: settings)
         engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
@@ -75,10 +76,6 @@ final class DocumentWindowModel {
 
     var exportName: String {
         (loadingURL ?? documentURL)?.deletingPathExtension().lastPathComponent ?? "export"
-    }
-
-    func failMissingURL() {
-        phase = .failed("The document URL is missing.")
     }
 
     /// Resets the window for `url`; the caller then loads the panels with `openSummary`.

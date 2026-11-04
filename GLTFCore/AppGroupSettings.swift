@@ -29,7 +29,7 @@ public enum AppGroupSettings {
     public static var defaultValues: [String: Any] {
         [
             Key.background: "window",
-            Key.autoRotate: true,
+            Key.autoRotate: false,
             Key.showFloor: true,
             Key.toneMapping: RenderLook.standard.toneMapping.rawValue,
             Key.environment: RenderLook.standard.environment.rawValue,

@@ -54,6 +54,18 @@ private struct HostViewMenuBody: View {
 
         Divider()
 
+        Button("Zoom In", systemImage: "plus.magnifyingglass") {
+            viewport.zoom(by: 0.8)
+        }
+        .keyboardShortcut(DS.Shortcuts.action(.zoomIn))
+        .disabled(viewport.commands == nil)
+
+        Button("Zoom Out", systemImage: "minus.magnifyingglass") {
+            viewport.zoom(by: 1 / 0.8)
+        }
+        .keyboardShortcut(DS.Shortcuts.action(.zoomOut))
+        .disabled(viewport.commands == nil)
+
         Button("Fit", systemImage: "viewfinder") {
             viewport.fit()
         }
@@ -70,7 +82,7 @@ private struct HostViewMenuBody: View {
         ForEach(CameraPreset.allCases) { preset in
             Button(
                 preset.title,
-                systemImage: Self.menuSymbol(for: preset)
+                systemImage: preset.systemImage
             ) {
                 viewport.applyCameraPreset(preset)
             }
@@ -85,19 +97,6 @@ private struct HostViewMenuBody: View {
         _ set: @escaping (Value) -> Void
     ) -> Binding<Value> {
         Binding(get: { viewport[keyPath: get] }, set: set)
-    }
-
-    /// SF Symbols for the View menu (the Camera cluster uses `cube` for the group).
-    private static func menuSymbol(for preset: CameraPreset) -> String {
-        switch preset {
-        case .front: "arrow.up.to.line"
-        case .back: "arrow.down.to.line"
-        case .left: "arrow.left.to.line"
-        case .right: "arrow.right.to.line"
-        case .top: "arrow.up.to.line.compact"
-        case .bottom: "arrow.down.to.line.compact"
-        case .isometric: "cube"
-        }
     }
 
     private var orthographic: Binding<Bool> {
