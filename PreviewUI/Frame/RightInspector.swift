@@ -8,6 +8,8 @@ import SwiftUI
 struct RightInspector<Selection: SelectionModel>: View {
     var selection: Selection
     var documentState: ShellDocumentState = .ready
+    /// File-wide validator report. The inspector shows the issues about the selection.
+    var validation = ValidationResult()
     var openInMenu: AnyView
 
     var body: some View {
@@ -17,6 +19,7 @@ struct RightInspector<Selection: SelectionModel>: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
+                        IssuesSection(issues: validation.issues(for: detail.id))
                         nodeSections(detail)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -139,6 +142,7 @@ private struct RightInspectorPreviewHost: View {
             RightInspector(
                 selection: selection,
                 documentState: documentState,
+                validation: mode == .material ? ValidationFixtures.materialReport : ValidationResult(),
                 openInMenu: AnyView(PreviewOpenInItems())
             )
         }

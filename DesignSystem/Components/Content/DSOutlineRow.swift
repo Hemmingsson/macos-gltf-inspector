@@ -14,6 +14,7 @@ public struct DSOutlineRow: View {
     /// `nil` for a leaf; otherwise whether the row's children are showing.
     private let isExpanded: Bool?
     private let isSelected: Bool
+    private let badge: DSStatus?
     private let onToggle: () -> Void
 
     @State private var isHovered = false
@@ -26,6 +27,7 @@ public struct DSOutlineRow: View {
         depth: Int = 0,
         isExpanded: Bool? = nil,
         isSelected: Bool = false,
+        badge: DSStatus? = nil,
         onToggle: @escaping () -> Void = {}
     ) {
         self.title = title
@@ -33,6 +35,7 @@ public struct DSOutlineRow: View {
         self.depth = depth
         self.isExpanded = isExpanded
         self.isSelected = isSelected
+        self.badge = badge
         self.onToggle = onToggle
     }
 
@@ -45,6 +48,12 @@ public struct DSOutlineRow: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
+            if let badge {
+                Image(systemName: badge.systemImage)
+                    .font(DS.Font.outlineRow)
+                    .foregroundStyle(badge.tint)
+                    .accessibilityLabel(badge == .error ? "Has errors" : "Has warnings")
+            }
         }
         .padding(.leading, CGFloat(depth) * indent)
         .contentShape(Rectangle())

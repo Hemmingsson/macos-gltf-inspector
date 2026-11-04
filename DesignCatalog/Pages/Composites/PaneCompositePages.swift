@@ -52,6 +52,21 @@ struct InspectorPage: View {
                         )
                     }
                 }
+                StateRow("Material · with validator issues", alignment: .top, minHeight: 560) {
+                    Live(
+                        MockSelectionModel(
+                            selected: NodeDetailFixtures.material.id,
+                            details: [NodeDetailFixtures.material]
+                        )
+                    ) { $selection in
+                        CatalogComposites.inspector(
+                            selection: $selection.wrappedValue,
+                            documentState: .ready,
+                            validation: ValidationFixtures.materialReport,
+                            openInMenu: AnyView(PreviewOpenInItems())
+                        )
+                    }
+                }
                 StateRow("Morph", alignment: .top, minHeight: 420) {
                     Live(
                         MockSelectionModel(

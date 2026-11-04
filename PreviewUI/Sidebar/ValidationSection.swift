@@ -19,12 +19,16 @@ struct ValidationSection: View {
                     DSStatusBadge("Valid glTF 2.0", status: .valid)
                 } else {
                     DSDisclosureCard(
-                        issueSummary(errors: validation.errorCount, warnings: validation.warningCount),
+                        issueSummary(
+                            errors: validation.errorCount,
+                            warnings: validation.warningCount,
+                            notes: validation.noteCount
+                        ),
                         status: validation.errorCount > 0 ? .error : .warning,
                         isExpanded: $isExpanded,
-                        messages: validation.issues.map {
-                            DSDisclosureMessage(id: $0.id, text: $0.message)
-                        }
+                        messages: validation.issues
+                            .sorted { $0.severity.rank < $1.severity.rank }
+                            .map { DSDisclosureMessage(id: $0.id, text: $0.message, status: $0.severity.dsStatus) }
                     )
                 }
             }

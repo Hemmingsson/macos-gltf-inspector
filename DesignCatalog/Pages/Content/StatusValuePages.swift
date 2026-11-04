@@ -30,6 +30,36 @@ struct StatusBadgePage: View {
     }
 }
 
+struct InlineIssuePage: View {
+    var body: some View {
+        CatalogPageView(page: .inlineIssue) {
+            StateGroup(title: "Statuses") {
+                StateRow("Warning", alignment: .top) {
+                    DSInlineIssue("Material requires a tangent space but the mesh primitive does not provide it.")
+                        .frame(maxWidth: DS.Metrics.inspectorWidth)
+                }
+                StateRow("Error", alignment: .top) {
+                    DSInlineIssue("Mesh primitive is missing its POSITION attribute.", status: .error)
+                        .frame(maxWidth: DS.Metrics.inspectorWidth)
+                }
+                StateRow("Note", alignment: .top) {
+                    DSInlineIssue("Image has non-power-of-two dimensions: 1024x576.", status: .note)
+                        .frame(maxWidth: DS.Metrics.inspectorWidth)
+                }
+            }
+            StateGroup(title: "Stacked") {
+                StateRow("Warning + note", alignment: .top) {
+                    VStack(spacing: DS.Spacing.s) {
+                        DSInlineIssue("Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.")
+                        DSInlineIssue("Image has non-power-of-two dimensions: 1024x576.", status: .note)
+                    }
+                    .frame(maxWidth: DS.Metrics.inspectorWidth)
+                }
+            }
+        }
+    }
+}
+
 struct StatusViewPage: View {
     var body: some View {
         CatalogPageView(page: .statusView) {

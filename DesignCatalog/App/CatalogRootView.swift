@@ -93,6 +93,7 @@ private struct CatalogDetail: View {
         case .disclosureCard: DisclosureCardPage()
         case .documentCard: DocumentCardPage()
         case .factRow: FactRowPage()
+        case .inlineIssue: InlineIssuePage()
         case .listRow: ListRowPage()
         case .sectionHeader: SectionHeaderPage()
         case .statusBadge: StatusBadgePage()

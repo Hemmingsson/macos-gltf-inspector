@@ -11,6 +11,8 @@ struct NodeRow: View {
     var depth: Int = 0
     /// `nil` for a leaf or a flat (non-folding) section.
     var isExpanded: Bool? = nil
+    /// Worst validator finding on this row, when it is a fault. Notes get no badge.
+    var badge: DSStatus? = nil
     var onToggle: () -> Void = {}
 
     private var role: DSTypeRole {
@@ -24,6 +26,7 @@ struct NodeRow: View {
             depth: depth,
             isExpanded: isExpanded,
             isSelected: isSelected,
+            badge: badge,
             onToggle: onToggle
         )
         .accessibilityLabel("\(item.name), \(item.id.kind.displayTitle)")
@@ -32,6 +35,16 @@ struct NodeRow: View {
 }
 
 // MARK: - Previews
+
+#Preview("warning badge", traits: .fixedLayout(width: 248, height: 44)) {
+    PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 44) {
+        NodeRow(
+            item: OutlinerItem(id: NodeID(kind: .material, index: 0), name: "DefaultMaterial"),
+            isSelected: false,
+            badge: .warning
+        )
+    }
+}
 
 #Preview("flat", traits: .fixedLayout(width: 248, height: 44)) {
     PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 44) {

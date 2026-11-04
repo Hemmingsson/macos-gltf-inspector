@@ -26,7 +26,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
     // Standard controls
     case button, segmentedPicker, menuPicker, slider, popoverPanel
     // Content
-    case chip, flowLayout, disclosureCard, documentCard, factRow, listRow
+    case chip, flowLayout, disclosureCard, documentCard, factRow, inlineIssue, listRow
     case sectionHeader, statusBadge, statusView, typeIcon, valueCell, vectorRow
     // Composites
     case stageCluster, lookCluster, cameraCluster, lightingPopover, fieldOfViewPopover
@@ -43,7 +43,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
             .glass
         case .button, .segmentedPicker, .menuPicker, .slider, .popoverPanel:
             .controls
-        case .chip, .flowLayout, .disclosureCard, .documentCard, .factRow, .listRow,
+        case .chip, .flowLayout, .disclosureCard, .documentCard, .factRow, .inlineIssue, .listRow,
              .sectionHeader, .statusBadge, .statusView, .typeIcon, .valueCell, .vectorRow:
             .content
         case .stageCluster, .lookCluster, .cameraCluster, .lightingPopover, .fieldOfViewPopover,
@@ -81,6 +81,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
         case .disclosureCard: "Disclosure Card"
         case .documentCard: "Document Card"
         case .factRow: "Fact Row"
+        case .inlineIssue: "Inline Issue"
         case .listRow: "List Row"
         case .sectionHeader: "Section Header"
         case .statusBadge: "Status Badge"
@@ -127,6 +128,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
         case .disclosureCard: "DSDisclosureCard"
         case .documentCard: "DSDocumentCard"
         case .factRow: "DSFactRow"
+        case .inlineIssue: "DSInlineIssue"
         case .listRow: "DSListRow"
         case .sectionHeader: "DSSectionHeader"
         case .statusBadge: "DSStatusBadge"
@@ -173,6 +175,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
         case .disclosureCard: "Expandable status card that opens onto a list of issues."
         case .documentCard: "The document's identity card at the top of the sidebar."
         case .factRow: "Read-only label · value fact with selectable value."
+        case .inlineIssue: "One validator finding shown where it applies: warning, error, or a neutral note."
         case .listRow: "Outliner / list row: icon, title, subtitle, trailing accessory."
         case .sectionHeader: "Quiet uppercase section label with the header accessibility trait."
         case .statusBadge: "One-line status pill: valid, warning, error, pending."
