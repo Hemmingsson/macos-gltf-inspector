@@ -1,0 +1,1338 @@
+⚙️  Generating plists...
+⚙️  Generating project...
+⚙️  Writing project...
+Created project at /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme GLTFInspector -destination platform=macOS -derivedDataPath /tmp/GLTFInspector-codex-implementation-review-dd test "-skip-testing:GLTFInspectorTests/PerfBench"
+
+Resolve Package Graph
+
+Fetching from https://github.com/warrenm/GLTFKit2 (cached)
+
+Fetching from https://github.com/sparkle-project/Sparkle (cached)
+
+Fetching from https://github.com/warrenm/DracoSwift (cached)
+
+Creating working copy of package ‘Sparkle’
+
+Checking out 2.10.1 of package ‘Sparkle’
+
+Creating working copy of package ‘GLTFKit2’
+
+Checking out 0.5.15 of package ‘GLTFKit2’
+
+Creating working copy of package ‘DracoSwift’
+
+Checking out 1.5.7 of package ‘DracoSwift’
+
+
+Resolved source packages:
+  GLTFKit2: https://github.com/warrenm/GLTFKit2 @ 0.5.15
+  Sparkle: https://github.com/sparkle-project/Sparkle @ 2.10.1
+  DracoSwift: https://github.com/warrenm/DracoSwift @ 1.5.7
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (9 targets)
+    Target 'GLTFInspectorTests' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFInspector' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+    Target 'GLTFInspector' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'PreviewExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'ThumbnailExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFKit2-product' in project 'GLTFKit2'
+        ➜ Explicit dependency on target 'Sparkle-product' in project 'Sparkle'
+    Target 'Sparkle-product' in project 'Sparkle' (no dependencies)
+    Target 'ThumbnailExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+    Target 'PreviewExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+    Target 'Renderer' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFKit2-product' in project 'GLTFKit2'
+        ➜ Explicit dependency on target 'DracoSwift-product' in project 'DracoSwift'
+    Target 'DracoSwift-product' in project 'DracoSwift' (no dependencies)
+    Target 'GLTFKit2-product' in project 'GLTFKit2' (no dependencies)
+    Target 'GLTFCore' in project 'GLTFInspector' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x objective-c++ -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x c++ -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: c16a4ee33c5c819588254267c599fcbf
+Build description path: /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/XCBuildData/c16a4ee33c5c819588254267c599fcbf.xcbuilddata
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/CompilationCache.noindex
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/CompilationCache.noindex
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -o /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/PrecompiledHeaders
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/PrecompiledHeaders
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml
+
+CreateBuildDirectory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PackageFrameworks
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-create-build-directory /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PackageFrameworks
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.hmap (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-all-target-headers.hmap (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-generated-files.hmap (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-all-non-framework-target-headers.hmap (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-own-target-headers.hmap (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.DependencyMetadataFileList (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-project-headers.hmap (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources/Entitlements.plist (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources/Entitlements.plist
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.DependencyStaticMetadataFileList (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftConstValuesFileList (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_const_extract_protocols.json (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.LinkFileList (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.LinkFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftFileList (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-OutputFileMap.json (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.DependencyMetadataFileList (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.DependencyStaticMetadataFileList (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.hmap (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-project-headers.hmap (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-own-target-headers.hmap (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-generated-files.hmap (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-all-target-headers.hmap (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-all-non-framework-target-headers.hmap (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources/Entitlements.plist (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources/Entitlements.plist
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/empty-GLTFInspectorTests.plist (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/empty-GLTFInspectorTests.plist
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_const_extract_protocols.json (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftConstValuesFileList (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftFileList (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.LinkFileList (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.LinkFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-OutputFileMap.json (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftFileList (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.hmap (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_const_extract_protocols.json (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftConstValuesFileList (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.DependencyStaticMetadataFileList (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.LinkFileList (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.LinkFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.DependencyMetadataFileList (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-project-headers.hmap (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-OutputFileMap.json (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-own-target-headers.hmap (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-generated-files.hmap (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-all-target-headers.hmap (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-all-non-framework-target-headers.hmap (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/module.modulemap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/module.modulemap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/empty-GLTFCore.plist (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/empty-GLTFCore.plist
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.hmap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.DependencyStaticMetadataFileList (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.DependencyMetadataFileList (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-project-headers.hmap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftConstValuesFileList (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_const_extract_protocols.json (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftFileList (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.LinkFileList (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.LinkFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-own-target-headers.hmap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-generated-files.hmap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-OutputFileMap.json (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+'-std=gnu11' -fmodules -gmodules '-fmodules-cache-path=/tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex' '-fmodule-name=GLTFCore' -fapplication-extension -fpascal-strings -O0 -fno-common '-DDEBUG=1' -g -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-generated-files.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-own-target-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-non-framework-target-headers.hmap -ivfsoverlay /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-project-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources-normal/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-target-headers.hmap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-non-framework-target-headers.hmap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-non-framework-target-headers.hmap
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/ThumbnailExtension.appex (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/ThumbnailExtension.appex
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PreviewExtension.appex (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PreviewExtension.appex
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/GLTFCore_vers.c (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/GLTFCore_vers.c
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PreviewExtension.appex/Contents (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PreviewExtension.appex/Contents
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/MacOS (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/MacOS
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PreviewExtension.appex/Contents/MacOS (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/PreviewExtension.appex/Contents/MacOS
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Modules Versions/Current/Modules (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/Modules /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Modules
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Headers Versions/Current/Headers (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/Headers /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Headers
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/GLTFCore Versions/Current/GLTFCore (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/GLTFCore /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/GLTFCore
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Resources Versions/Current/Resources (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/Resources /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Resources
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/Current A (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh A /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/Current
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Headers (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Headers
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/MacOS (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/MacOS
+
+Copy /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/module.modulemap /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/module.modulemap (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/module.modulemap /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules
+
+ProcessInfoPlistFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources/Info.plist /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/empty-GLTFCore.plist (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-infoPlistUtility /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/empty-GLTFCore.plist -producttype com.apple.product-type.framework -expandbuildsettings -platform macosx -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources/Info.plist
+
+CpResource /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources/gltf_validator.dart.js /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/gltf-validator/gltf_validator.dart.js (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/gltf-validator/gltf_validator.dart.js /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources
+
+CpResource /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources/LICENSE /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/gltf-validator/LICENSE (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/gltf-validator/LICENSE /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources
+
+CpResource /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources/NOTICES /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/gltf-validator/NOTICES (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/gltf-validator/NOTICES /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources
+
+ProcessXCFramework /tmp/GLTFInspector-codex-implementation-review-dd/SourcePackages/artifacts/gltfkit2/GLTFKit2/GLTFKit2.xcframework /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFKit2.framework macos
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-process-xcframework --xcframework /tmp/GLTFInspector-codex-implementation-review-dd/SourcePackages/artifacts/gltfkit2/GLTFKit2/GLTFKit2.xcframework --platform macos --library-identifier macos-arm64_x86_64 --target-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+ProcessXCFramework /tmp/GLTFInspector-codex-implementation-review-dd/SourcePackages/checkouts/DracoSwift/Libs/Draco.xcframework /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/libdraco.a macos
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-process-xcframework --xcframework /tmp/GLTFInspector-codex-implementation-review-dd/SourcePackages/checkouts/DracoSwift/Libs/Draco.xcframework --platform macos --library-identifier macos-arm64_x86_64 --target-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+ProcessXCFramework /tmp/GLTFInspector-codex-implementation-review-dd/SourcePackages/artifacts/sparkle/Sparkle/Sparkle.xcframework /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Sparkle.framework macos
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFInspector.xcodeproj
+    builtin-process-xcframework --xcframework /tmp/GLTFInspector-codex-implementation-review-dd/SourcePackages/artifacts/sparkle/Sparkle/Sparkle.xcframework --platform macos --library-identifier macos-arm64_x86_64 --target-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-project-headers.hmap (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-generated-files.hmap (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-all-non-framework-target-headers.hmap (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-own-target-headers.hmap (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-all-target-headers.hmap (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.DependencyMetadataFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.hmap (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.DependencyStaticMetadataFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-DebugDylibPath-normal-arm64.txt (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-DebugDylibInstallName-normal-arm64.txt (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-DebugDylibInstallName-normal-arm64.txt
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Resources (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Resources
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-OutputFileMap.json (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-OutputFileMap.json
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftConstValuesFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftConstValuesFileList
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.LinkFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.LinkFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector_const_extract_protocols.json (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector_const_extract_protocols.json
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources/Entitlements.plist (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources/Entitlements.plist
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app/Contents
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/glTF\ Inspector.app
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-target-headers.hmap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.hmap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/empty-Renderer.plist (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/empty-Renderer.plist
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Resources Versions/Current/Resources (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/Resources /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Resources
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.DependencyStaticMetadataFileList (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module.modulemap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module.modulemap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/module.modulemap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/module.modulemap
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/Current A (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh A /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/Current
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.DependencyMetadataFileList (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/af3fcb34312c57c0f52879cdce924b91-common-args.resp
+'-std=c++20' '-stdlib=libc++' -fobjc-arc -fobjc-weak -fmodules -fno-cxx-modules -gmodules '-fmodules-cache-path=/tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex' '-fmodule-name=Renderer' -fapplication-extension '-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG' -fpascal-strings -O0 -fno-common '-DDEBUG=1' '-DOBJC_OLD_DISPATCH_PROTOTYPES=0' -g -fvisibility-inlines-hidden -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -ivfsoverlay /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -I/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/libktx/include -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftConstValuesFileList (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.LinkFileList (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.LinkFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/82b82416624d2658e5098eb0a28c15c5-common-args.resp (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/82b82416624d2658e5098eb0a28c15c5-common-args.resp
+'-std=c++20' '-stdlib=libc++' -fmodules -fno-cxx-modules -gmodules '-fmodules-cache-path=/tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex' '-fmodule-name=Renderer' -fapplication-extension '-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG' -fpascal-strings -O0 -fno-common '-DDEBUG=1' -g -fvisibility-inlines-hidden -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -ivfsoverlay /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -I/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/libktx/include -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+'-std=gnu11' -fmodules -gmodules '-fmodules-cache-path=/tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex' '-fmodule-name=Renderer' -fapplication-extension -fpascal-strings -O0 -fno-common '-DDEBUG=1' -g -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -ivfsoverlay /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -iquote /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -I/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/libktx/include -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-OutputFileMap.json (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/Renderer_vers.c (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    write-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/Renderer_vers.c
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/PrivateHeaders/mikktspace.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/mikktspace/mikktspace.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/mikktspace/mikktspace.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/PrivateHeaders
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers/MetalTangents.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalTangents.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalTangents.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers/Renderer.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Renderer.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Renderer.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers/MetalLoadKernels.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalLoadKernels.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalLoadKernels.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers/MetalMeshopt.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalMeshopt.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalMeshopt.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers/MetalKTX2.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalKTX2.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalKTX2.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers/GLBDracoDecompressor.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Draco/GLBDracoDecompressor.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Draco/GLBDracoDecompressor.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers
+
+CpHeader /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/PrivateHeaders/meshoptimizer.h /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/meshoptimizer/meshoptimizer.h (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/meshoptimizer/meshoptimizer.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/PrivateHeaders
+
+Copy /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/module.modulemap /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/module.modulemap (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/module.modulemap /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Renderer Versions/Current/Renderer (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/Renderer /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Renderer
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/PrivateHeaders Versions/Current/PrivateHeaders (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/PrivateHeaders /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/PrivateHeaders
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Modules Versions/Current/Modules (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/Modules /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Modules
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Headers Versions/Current/Headers (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh Versions/Current/Headers /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Headers
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/PrivateHeaders (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/PrivateHeaders
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Headers
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A
+
+MkDir /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/mkdir -p /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework
+
+SwiftDriver GLTFCore normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFCore -Onone @/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -F /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-generated-files.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-project-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-Swift.h -working-directory /Users/mattias/dev/glb-preview/.worktrees/implementation-review -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_stdarg-4TX1Q5IIICP4TC8332RHPZLMS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_AvailabilityInternal-5HWKWK0FPPLKZHITFHE3Z5RN9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ptrauth-4DTH117RLXJ52HHT34KV951CO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_SwiftConcurrencyShims-7NAY3XS2TV6R3LAFKK7559LY3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_stddef-HWR2I9PB98S5HUBZ7P7YZYPH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/SwiftShims-7MQA9UZS9IXBX5128RR3XIANT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_float-2YA3602PG7V1SD18O8RJZ275N.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_stdbool-4Y3OZC8QBD21WJJ76EBT9S1IQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ptrcheck-334KBSGWYGH4QARA70TZOR1MY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_DarwinFoundation1-1ZIULLJF9FDBMLK19ACLBJC83.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_DarwinFoundation2-12YEXW44RYBZDDRJME2JNF6ZF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_limits-4LURANTO4KB7XWE30RMB1B09S.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_tgmath-3NAH0ASLVR1GC3DGUIU0I6NKV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/string_h-3L9F62ZY9QTA13BDIVQUD9JP8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/sys_types-410WOSSIYUMYXHK1H02FHEER1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_stdint-8C32OLGZK9E8PMQT83HHBCWXS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_DarwinFoundation3-49VP9MOTNAZC9300ROXJEBLHQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_stdatomic-C4BF9G5DEKL96OAY1EC1XRRE8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/libDER-2TDBS7L138LO14VBN91LJ65MD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_intrinsics-1NKIMFW7O82VGZZ7153SLSXN8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_Builtin_inttypes-37IF3VA3PYASCSTPV0BJ7YHS8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/simd-3VEEE7U37F76XB28ELCOM6XL0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Darwin-C8MN3R6AHGRUGM1OQASICOI01.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/libkern-BZXZJZNE7EWNJQGHAJG61MNQ8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/MachO-39IO3DAAVE1Q8XQG92EW1RNKO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/launch-48BLET2YXMGBBKBJ61X5RYND4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ObjectiveC-EO8EA96NIP8N18NFF89L9D2L7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/os_object-3619Y0G9CODK40TF4M6WLECWE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/os_workgroup-8NTEPAJJRDQ375T1S9D0UV6HI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Dispatch-C6YJUY51LV926XD5NF21W50MS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreFoundation-AERX40BBE35X60AH0VAA4HC50.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/XPC-AEGWIGIMMTWXO09W1P649B75P.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/os-4GSGLPW7VJU7DI1WDKYPMFVVL.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CFNetwork-F5BS9WAKKSM7RQYBJ4MLC07PR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/IOKit-CTCM8B34BWHOCGF4X1RB07PER.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Security-47L58R7XV9P3IQOWLVYI3BA7D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreGraphics-3UJ80VTV1MFXNJUPIKGUJJSLM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/DiskArbitration-5JL9USMZ86TUJCNR3YQX3SRTH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreServices-1GWDI778HCVIX0SXLQRCZXTDI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ImageIO-1QKTEZ794YVOWXU83KFQEGZ8K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Foundation-9VG622K9V9R4N6NUBCFCWT80N.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/UniformTypeIdentifiers-SK78QQ2RMUMKS6WJXDGBUXAN.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/JavaScriptCore-E0IARIDSTT1DGVIY4XCQPMUX6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/IOSurface-7BLU7G7N9OM0BYI6PEOXOT9JO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/OpenGL-60LRP5YNQK2E9Q6DPLD6DN4Z0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Metal-A89KATLFYCG4T2WQQMUCI9UPI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreVideo-6B8DPK5JRZCKPVUFS61ZY6URV.pcm
+
+SwiftCompile normal arm64 Compiling\ ViewModeAvailability.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/ViewModeAvailability.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/ViewModeAvailability.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile ViewModeAvailability.swift
+
+SwiftCompile normal arm64 Compiling\ GLTFIssueResolver.swift,\ GLTFJSON.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFIssueResolver.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFJSON.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFIssueResolver.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFIssueResolver.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFJSON.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFJSON.swift
+
+SwiftCompile normal arm64 Compiling\ GLBBox.swift,\ GLTFBinaryStore.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLBBox.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFBinaryStore.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLBBox.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLBBox.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFBinaryStore.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFBinaryStore.swift
+
+SwiftCompile normal arm64 Compiling\ RenderLook.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/RenderLook.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/RenderLook.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile RenderLook.swift
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ GLTFCore (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    
+
+SwiftCompile normal arm64 Compiling\ GLTFDocumentJSON.swift,\ GLTFImageDecode.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFDocumentJSON.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFImageDecode.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFDocumentJSON.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFDocumentJSON.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFImageDecode.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFImageDecode.swift
+
+SwiftCompile normal arm64 Compiling\ ModelBounds.swift,\ PNGWriter.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/ModelBounds.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/PNGWriter.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/ModelBounds.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile ModelBounds.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/PNGWriter.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile PNGWriter.swift
+
+SwiftCompile normal arm64 Compiling\ RenderViewMode.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/RenderViewMode.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/RenderViewMode.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile RenderViewMode.swift
+
+SwiftCompile normal arm64 Compiling\ GLTFValidator.swift,\ LightingEnvironment.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFValidator.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/LightingEnvironment.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFValidator.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFValidator.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/LightingEnvironment.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile LightingEnvironment.swift
+
+SwiftCompile normal arm64 Compiling\ AppGroupSettings.swift,\ AppLog.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/AppGroupSettings.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/AppLog.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/AppGroupSettings.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile AppGroupSettings.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/AppLog.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile AppLog.swift
+
+SwiftCompile normal arm64 Compiling\ GLTFDocument.swift,\ GLTFDocumentJSON+Materials.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFDocument.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFDocumentJSON+Materials.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFDocument.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFDocument.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/GLTFCore/GLTFDocumentJSON+Materials.swift (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GLTFDocumentJSON+Materials.swift
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for GLTFCore (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation\ Requirements GLTFCore normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFCore -Onone @/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -F /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-generated-files.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-project-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-Swift.h -working-directory /Users/mattias/dev/glb-preview/.worktrees/implementation-review -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling RenderViewMode.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling RenderLook.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftMergeGeneratedHeaders /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Headers/GLTFCore-Swift.h /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-Swift.h (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-swiftHeaderTool -arch arm64 /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-Swift.h -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Headers/GLTFCore-Swift.h
+
+Copy /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/arm64-apple-macos.swiftmodule /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftmodule (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftmodule /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/arm64-apple-macos.swiftdoc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftdoc (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftdoc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/arm64-apple-macos.abi.json /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.abi.json (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.abi.json /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftsourceinfo (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftsourceinfo /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Modules/GLTFCore.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+ScanDependencies /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/GLTFCore_vers.c normal arm64 c com.apple.compilers.llvm.clang.1_0.compiler (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    
+    Using response file: /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+    
+    builtin-ScanDependencies -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.o.scan -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x c -ivfsstatcache /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -target arm64-apple-macos26.0 -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -fmodules-prune-interval\=86400 -fmodules-prune-after\=345600 -fbuild-session-file\=/tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -fmodules-validate-once-per-build-session -Wnon-modular-include-in-framework-module -Werror\=non-modular-include-in-framework-module -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Werror\=return-type -Wdocumentation -Wunreachable-code -Wquoted-include-in-framework-header -Werror\=deprecated-objc-isa-usage -Werror\=objc-root-class -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wconditional-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wconstant-conversion -Wint-conversion -Wbool-conversion -Wenum-conversion -Wno-float-conversion -Wnon-literal-null-conversion -Wobjc-literal-conversion -Wshorten-64-to-32 -Wpointer-sign -Wno-newline-eof -Wno-implicit-fallthrough -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fstrict-aliasing -Wdeprecated-declarations -Wno-sign-conversion -Winfinite-recursion -Wcomma -Wblock-capture-autoreleasing -Wstrict-prototypes -Wno-semicolon-before-method-body -Wunguarded-availability -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore @/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.d --serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.dia -c /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/GLTFCore_vers.c -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.o -index-unit-output-path /GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.o
+
+CompileMetalFile /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/tonemapping.metal (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain/usr/bin/metal -c -target air64-apple-macos26.0 -gline-tables-only -frecord-sources -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fmetal-math-mode\=safe -fmetal-math-fp32-functions\=precise -serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/tonemapping.dia -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/tonemapping.air -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/tonemapping.dat /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/tonemapping.metal
+
+SwiftDriver Renderer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Renderer -Onone @/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -F /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -Xcc -I/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/libktx/include -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-Swift.h -import-underlying-module -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml -working-directory /Users/mattias/dev/glb-preview/.worktrees/implementation-review -experimental-emit-module-separately -disable-cmo
+
+CompileC /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/GLTFCore_vers.c normal arm64 c com.apple.compilers.llvm.clang.1_0.compiler (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    
+    Using response file: /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x c -ivfsstatcache /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -target arm64-apple-macos26.0 -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -fmodules-prune-interval\=86400 -fmodules-prune-after\=345600 -fbuild-session-file\=/tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -fmodules-validate-once-per-build-session -Wnon-modular-include-in-framework-module -Werror\=non-modular-include-in-framework-module -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Werror\=return-type -Wdocumentation -Wunreachable-code -Wquoted-include-in-framework-header -Werror\=deprecated-objc-isa-usage -Werror\=objc-root-class -Wno-missing-braces -Wparentheses -Wswitch -Wunused-function -Wno-unused-label -Wno-unused-parameter -Wunused-variable -Wunused-value -Wempty-body -Wuninitialized -Wconditional-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wconstant-conversion -Wint-conversion -Wbool-conversion -Wenum-conversion -Wno-float-conversion -Wnon-literal-null-conversion -Wobjc-literal-conversion -Wshorten-64-to-32 -Wpointer-sign -Wno-newline-eof -Wno-implicit-fallthrough -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fstrict-aliasing -Wdeprecated-declarations -Wno-sign-conversion -Winfinite-recursion -Wcomma -Wblock-capture-autoreleasing -Wstrict-prototypes -Wno-semicolon-before-method-body -Wunguarded-availability -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore @/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.d --serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.dia -c /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/GLTFCore_vers.c -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.o -index-unit-output-path /GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_vers.o
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/DeveloperToolsSupport-1NERQOIK62756010DLWT223LE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/QuartzCore-4P7W4KAB6V7EJODD85SYZ8W5G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreTransferable-45JBA5O7OSFOB1WZSIY4XK91S.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ShaderGraph-BDIWXO11N9O0ONYY3WD2GCF2A.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/_LocationEssentials-4BN4YEK9NNBDPFY7MZNH1J471.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CUPS-45LDTYBD1XXDGFI7KYLYDM052.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/OSLog-9MQJ5P692SMMRHE0709LZFZA4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Symbols-BAW8UZK68ZDTHQC79ESJ8QOZF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ColorSync-B2A252SBMGANOJER50WLOGOY2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreLocation-5ELISUA77IE7ZKAJD9FKW6MUD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Accessibility-3903JG014VY6EVCGP4PA5UIND.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Spatial-7SEFKS0X2HC3FDWWQIWD7SAL1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CloudKit-D7P4KZ7BAKKWI9ALP2BS3SQT0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreData-E7EPNMUIYS8Z5GU20773S3J4A.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreText-5K1VK30N9SQ6BXOH0SDZADGNF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/DataDetection-C9TVS38L13EG5TCC8X325BCYT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreImage-CSQZ78B2Y46JS5WUAIKD3HF7U.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreMotion-EKYP3RPZDQKJORHR0A09YZEN9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreAudioTypes-7J89C9HEOMAX4OOEYEQR6BHRF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Accelerate-9DSAUD0DMR505F9AP6C0S0Z6B.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/SwiftUICore-13QSUKAJRNO4404TAOYEFUPD8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreAudio-16Q2ZCREHCEVV35VZZW8QW6XX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ModelIO-E4B5VLPNVD15QULUS7WJSVUWN.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreMedia-6JN4ZJDAOPLM3C5D0S1EMRNG3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/LocalAuthentication-820IXY8HRZJFWDV31W6KAFKCN.pcm
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/RealityCoreDeformation-2ASVY84IV5E8Y.swiftmodule
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/RealityCoreTextureProcessing-86K3OMXRYPH299I3X9L3FHSP9.pcm
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ShaderGraph-36CFMMUON2TC0.swiftmodule
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/RealityCoreTextureProcessing-4A1MYXZOT4PK.swiftmodule
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/CoreMIDI-6Y1MAE3IIFZ166LVA9UYABGO6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/ApplicationServices-25LV3TO7GVHJE3NPWI15JVBD1.pcm
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/RealityCoreRenderer-2X1J8T4CARN27.swiftmodule
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/GroupActivities-C9RLE9SBV7DY2OKYWJIK0PSZ2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/AppKit-1THMM2RSRWP80AX6EPW41FTTQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Carbon-1ILA8W68ISUBXX22G49JL343U.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/VideoToolbox-1WVPFJEU4P9ZO7V0DML3Y7JRF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/AudioToolbox-2FUHRFPCLI6J3T16XUK6IF3WQ.pcm
+
+CompileMetalFile /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/punctual.metal (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain/usr/bin/metal -c -target air64-apple-macos26.0 -gline-tables-only -frecord-sources -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fmetal-math-mode\=safe -fmetal-math-fp32-functions\=precise -serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/punctual.dia -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/punctual.air -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/punctual.dat /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/punctual.metal
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/MediaToolbox-D2YC04UUQLL4K8CNWGEYAI00C.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/AVFAudio-BAMZSL55DW1VQNJM76BMXLSH1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/GameController-4DEGOF7VSXARCI73CMH8PWW5W.pcm
+
+SwiftDriverJobDiscovery normal arm64 Compiling GLBBox.swift, GLTFBinaryStore.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/SwiftUI-CHBLW5DUMVRL0446EIGV2C66G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/GLKit-EZHKPYMPB73M2M7ZMWBSMC75K.pcm
+
+SwiftDriverJobDiscovery normal arm64 Compiling GLTFIssueResolver.swift, GLTFJSON.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ViewModeAvailability.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling GLTFDocument.swift, GLTFDocumentJSON+Materials.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/Cocoa-8UBJ86ZFOQAHE2B33QGF3H83C.pcm
+
+CompileMetalFile /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/pbr.metal (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain/usr/bin/metal -c -target air64-apple-macos26.0 -gline-tables-only -frecord-sources -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fmetal-math-mode\=safe -fmetal-math-fp32-functions\=precise -serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/pbr.dia -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/pbr.air -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/pbr.dat /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/pbr.metal
+
+CompileMetalFile /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/iridescence.metal (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain/usr/bin/metal -c -target air64-apple-macos26.0 -gline-tables-only -frecord-sources -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fmetal-math-mode\=safe -fmetal-math-fp32-functions\=precise -serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/iridescence.dia -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/iridescence.air -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/iridescence.dat /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/iridescence.metal
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/MultipeerConnectivity-EJ5DT53HPNMZ9YGUXSVT0EBU1.pcm
+
+SwiftDriverJobDiscovery normal arm64 Compiling GLTFValidator.swift, LightingEnvironment.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+CompileMetalFile /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/ibl.metal (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain/usr/bin/metal -c -target air64-apple-macos26.0 -gline-tables-only -frecord-sources -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fmetal-math-mode\=safe -fmetal-math-fp32-functions\=precise -serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/ibl.dia -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/ibl.air -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/ibl.dat /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/ibl.metal
+
+SwiftDriverJobDiscovery normal arm64 Compiling AppGroupSettings.swift, AppLog.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+CompileMetalFile /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/brdf.metal (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain/usr/bin/metal -c -target air64-apple-macos26.0 -gline-tables-only -frecord-sources -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -fmetal-math-mode\=safe -fmetal-math-fp32-functions\=precise -serialize-diagnostics /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/brdf.dia -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/brdf.air -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -MMD -MT dependencies -MF /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/brdf.dat /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Shaders/brdf.metal
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/SceneKit-929S9HV0UN1I9HGQI0II0UVIV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/AVFoundation-2S82PJP4IE254C7R2ZKXWRA1F.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/GLTFKit2-DR06S312VOQD6Z45HYLU6KU86.pcm
+
+MetalLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/default.metallib (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain/usr/bin/metal -target air64-apple-macos26.0 -frecord-sources -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/default.metallib /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/brdf.air /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/ibl.air /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/iridescence.air /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/pbr.air /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/punctual.air /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Metal/tonemapping.air
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/Renderer-2ZVZJJ8NA8NULUEPWL0O5TFXK.pcm
+
+SwiftDriverJobDiscovery normal arm64 Compiling ModelBounds.swift, PNGWriter.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling GLTFDocumentJSON.swift, GLTFImageDecode.swift (in target 'GLTFCore' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation GLTFCore normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFCore -Onone @/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -F /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-generated-files.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore-project-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore-Swift.h -working-directory /Users/mattias/dev/glb-preview/.worktrees/implementation-review -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/GLTFCore normal (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -filelist /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.LinkFileList -install_name @rpath/GLTFCore.framework/Versions/A/GLTFCore -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_dependency_info.dat -fapplication-extension -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.swiftmodule -compatibility_version 1 -current_version 1 -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/GLTFCore
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules/RealityFoundationCloth-PU3WXGMQTDYX.swiftmodule
+
+ExtractAppIntentsMetadata (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --module-name GLTFCore --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --xcode-version 27B52 --platform-family macOS --deployment-target 26.0 --bundle-identifier lol.mattias.gltf-inspector.GLTFCore --output /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/GLTFCore --dependency-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore_dependency_info.dat --stringsdata-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftFileList --metadata-file-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.DependencyMetadataFileList --static-metadata-file-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/GLTFCore.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/Objects-normal/arm64/GLTFCore.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-04 14:34:33.878 appintentsmetadataprocessor[89332:512826] Starting App Intents metadata extraction
+2026-11-04 14:34:33.884 appintentsmetadataprocessor[89332:512826] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+
+GenerateTAPI /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/GLTFCore.framework/Versions/A/GLTFCore.tbd (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/tapi stubify -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -F/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -L/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/GLTFCore -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/GLTFCore.framework/Versions/A/GLTFCore.tbd
+
+RegisterExecutionPolicyException /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-RegisterExecutionPolicyException /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework
+
+Touch /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /usr/bin/touch -c /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/GLTFCore.framework
+
+SymLink /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/GLTFCore.framework/GLTFCore.tbd /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/GLTFCore.framework/Versions/A/GLTFCore.tbd (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    /bin/ln -sfh /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/GLTFCore.framework/Versions/A/GLTFCore.tbd /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/GLTFCore.framework/GLTFCore.tbd
+
+ProcessInfoPlistFile /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/Info.plist /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/empty-Renderer.plist (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-infoPlistUtility /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/empty-Renderer.plist -producttype com.apple.product-type.framework -expandbuildsettings -platform macosx -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/Info.plist
+
+CpResource /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/shared.metalibl /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/shared.metalibl (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/shared.metalibl /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources
+
+CpResource /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/neutral.metalibl /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/neutral.metalibl (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/neutral.metalibl /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources
+
+CpResource /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/Colorful_Studio.metalibl /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/Colorful_Studio.metalibl (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/Colorful_Studio.metalibl /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources
+
+CpResource /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/field.metalibl /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/field.metalibl (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Environments/field.metalibl /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/GLTFKit2-1WZ3UP4GM4LBZ.swiftmodule
+
+SwiftCompile normal arm64 Compiling\ MetalUserCamera.swift,\ ModelCanvas.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalUserCamera.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelCanvas.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalUserCamera.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalUserCamera.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelCanvas.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile ModelCanvas.swift
+
+SwiftCompile normal arm64 Compiling\ ModelView.swift,\ ModelViewPick.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelView.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelViewPick.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelView.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile ModelView.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelViewPick.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile ModelViewPick.swift
+
+SwiftCompile normal arm64 Compiling\ ThumbnailRenderer.swift,\ ViewOptions.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ThumbnailRenderer.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ViewOptions.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ThumbnailRenderer.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile ThumbnailRenderer.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ViewOptions.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile ViewOptions.swift
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ Renderer (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    
+
+SwiftCompile normal arm64 Compiling\ AnimationSampler.swift,\ GizmoHit.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationSampler.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/GizmoHit.swift (in target 'Renderer' from project 'GLTFInspector')
+/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationSampler.swift:189:13: warning: variable 'q0' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+187 | 
+188 |     private func slerpQuaternions(_ a: [Float], _ b: [Float], tn: Float) -> SIMD4<Float> {
+189 |         var q0 = simd_normalize(SIMD4(a[0], a[1], a[2], a[3]))
+    |             `- warning: variable 'q0' was never mutated; consider changing to 'let' constant [#VariableNeverMutated]
+190 |         var q1 = simd_normalize(SIMD4(b[0], b[1], b[2], b[3]))
+191 |         var dot = simd_dot(q0, q1)
+
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationSampler.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile AnimationSampler.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/GizmoHit.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile GizmoHit.swift
+
+SwiftCompile normal arm64 Compiling\ MetalCamera.swift,\ MetalDrawFilter.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalCamera.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalDrawFilter.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalCamera.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalCamera.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalDrawFilter.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalDrawFilter.swift
+
+SwiftCompile normal arm64 Compiling\ MetalScene.swift,\ MetalSceneLoader.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalScene.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalSceneLoader.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalScene.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalScene.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalSceneLoader.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalSceneLoader.swift
+
+SwiftCompile normal arm64 Compiling\ AnimationChannelTarget.swift,\ AnimationClip.swift,\ AnimationPose.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationChannelTarget.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationClip.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationPose.swift (in target 'Renderer' from project 'GLTFInspector')
+/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationClip.swift:211:25: error: value of type 'GLTFAccessor' has no member 'type'
+209 | 
+210 |     static func componentCount(for accessor: GLTFAccessor) -> Int {
+211 |         switch accessor.type {
+    |                         `- error: value of type 'GLTFAccessor' has no member 'type'
+212 |         case .scalar: 1
+213 |         case .vec2: 2
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c -primary-file /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationChannelTarget.swift -primary-file /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationClip.swift -primary-file /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationPose.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationSampler.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/GizmoHit.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalCamera.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalDrawFilter.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalEnvironment.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalImageLoader.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalMaterialUniforms.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalMeshoptPreprocessor.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalOverlays.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalRenderer.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalScene.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalSceneLoader.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalUserCamera.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelCanvas.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelView.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ModelViewPick.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ThumbnailRenderer.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/ViewOptions.swift -supplementary-output-file-map /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/supplementaryOutputs-1 -target arm64-apple-macos26.0 -disable-cross-import-overlay-search -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libPreviewsMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#PreviewsMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -F /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -no-color-diagnostics -Xcc -fno-color-diagnostics -application-extension -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -import-underlying-module -swift-version 5 -Onone -D DEBUG -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/mattias/dev/glb-preview/.worktrees/implementation-review -enable-anonymous-context-mangled-names -file-compilation-dir /Users/mattias/dev/glb-preview/.worktrees/implementation-review -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -Xcc -I/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/libktx/include -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -Xcc -DDEBUG\=1 -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml -no-auto-bridging-header-chaining -module-name Renderer -const-gather-protocols-file /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.2 -target-sdk-version 27.2 -target-sdk-name macosx27.2 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/AnimationChannelTarget.o -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/AnimationClip.o -o /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/AnimationPose.o -debug-module-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule -index-unit-output-path /GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/AnimationChannelTarget.o -index-unit-output-path /GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/AnimationClip.o -index-unit-output-path /GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/AnimationPose.o -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -index-system-modules
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationChannelTarget.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile AnimationChannelTarget.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationClip.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile AnimationClip.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationPose.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile AnimationPose.swift
+
+SwiftCompile normal arm64 Compiling\ MetalOverlays.swift,\ MetalRenderer.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalOverlays.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalRenderer.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalOverlays.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalOverlays.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalRenderer.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalRenderer.swift
+
+SwiftCompile normal arm64 Compiling\ MetalMaterialUniforms.swift,\ MetalMeshoptPreprocessor.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalMaterialUniforms.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalMeshoptPreprocessor.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalMaterialUniforms.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalMaterialUniforms.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalMeshoptPreprocessor.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalMeshoptPreprocessor.swift
+
+SwiftCompile normal arm64 Compiling\ MetalEnvironment.swift,\ MetalImageLoader.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalEnvironment.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalImageLoader.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/MetalEnvironment.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalEnvironment.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/MetalImageLoader.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-SwiftPerFileCompile MetalImageLoader.swift
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for Renderer (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation\ Requirements Renderer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview/.worktrees/implementation-review
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Renderer -Onone @/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-codex-implementation-review-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -F /tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-codex-implementation-review-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Products/Debug/include -Xcc -I/Users/mattias/dev/glb-preview/.worktrees/implementation-review/Vendor/libktx/include -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-Swift.h -import-underlying-module -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml -working-directory /Users/mattias/dev/glb-preview/.worktrees/implementation-review -experimental-emit-module-separately -disable-cmo
+
+PruneExplicitPrecompiledModules /tmp/GLTFInspector-codex-implementation-review-dd/SDKExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /tmp/GLTFInspector-codex-implementation-review-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+
+Test session results, code coverage, and logs:
+	/tmp/GLTFInspector-codex-implementation-review-dd/Logs/Test/Test-GLTFInspector-2026.11.04_14-33-56-+0100.xcresult
+
+Testing failed:
+	Value of type 'GLTFAccessor' has no member 'type'
+	Testing cancelled because the build failed.
+
+** TEST FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ AnimationChannelTarget.swift,\ AnimationClip.swift,\ AnimationPose.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationChannelTarget.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationClip.swift /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationPose.swift (in target 'Renderer' from project 'GLTFInspector')
+	SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/.worktrees/implementation-review/Renderer/Scene/AnimationClip.swift (in target 'Renderer' from project 'GLTFInspector')
+	Testing project GLTFInspector with scheme GLTFInspector
+(3 failures)

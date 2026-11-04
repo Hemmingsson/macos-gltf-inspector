@@ -1,0 +1,16 @@
+􀢄 Test stepReturnsTheExactKeyValueAndHoldsTheLastKey() recorded an issue at CriticalReviewRegressionTests2.swift:46:9: Expectation failed: short.evaluate(at: 1) == [10]
+􀢄 Test stepReturnsTheExactKeyValueAndHoldsTheLastKey() recorded an issue at CriticalReviewRegressionTests2.swift:49:9: Expectation failed: inLongClip.evaluate(at: 7) == [20]
+􀢄 Test stepReturnsTheExactKeyValueAndHoldsTheLastKey() failed after 0.001 seconds with 2 issues.
+􀢄 Test segmentCrossingTheWholeViewportIsPickable() recorded an issue at CriticalReviewRegressionTests2.swift:55:9: Expectation failed: gizmoHit(at: SIMD2(50, 50), segments: [segment], viewProjection: matrix_identity_float4x4,
+􀢄 Test segmentCrossingTheWholeViewportIsPickable() failed after 0.004 seconds with 1 issue.
+􀢄 Test segmentBeyondTheFarPlaneIsNotPickable() recorded an issue at CriticalReviewRegressionTests2.swift:62:9: Expectation failed: gizmoHit(at: SIMD2(50, 50), segments: [segment], viewProjection: matrix_identity_float4x4,
+􀢄 Test segmentBeyondTheFarPlaneIsNotPickable() failed after 0.001 seconds with 1 issue.
+􀢄 Test frameSelectionTargetsTheSelectionWhenCentringIsOff() recorded an issue at CriticalReviewRegressionTests2.swift:73:9: Expectation failed: simd_distance(view.camera.target, SIMD3(10.5, 0, 0)) < 1e-3
+􀢄 Test frameSelectionTargetsTheSelectionWhenCentringIsOff() failed after 0.274 seconds with 1 issue.
+􀢄 Test frameSelectionKeepsTheRestOfTheSceneInsideTheClipRange() recorded an issue at CriticalReviewRegressionTests2.swift:86:9: Expectation failed: view.camera.zfar > simd_distance(eye, SIMD3(0, 0, -20))
+􀢄 Test frameSelectionKeepsTheRestOfTheSceneInsideTheClipRange() recorded an issue at CriticalReviewRegressionTests2.swift:88:9: Expectation failed: view.camera.sceneMin == sceneMin && view.camera.sceneMax == sceneMax
+􀢄 Test frameSelectionKeepsTheRestOfTheSceneInsideTheClipRange() failed after 0.006 seconds with 2 issues.
+􀢄 Test occludedLightDoesNotWinOverTheMeshInFront() recorded an issue at CriticalReviewRegressionTests2.swift:112:9: Expectation failed: hit == nil
+􀢄 Test occludedLightDoesNotWinOverTheMeshInFront() failed after 0.139 seconds with 1 issue.
+􀢄 Suite CriticalReviewRegressionTests2 failed after 0.429 seconds with 8 issues.
+􀢄 Test run with 6 tests in 1 suite failed after 0.429 seconds with 8 issues.

@@ -1,0 +1,3348 @@
+diff --git a/DESIGN.md b/DESIGN.md
+index 6202faa..13d97b0 100644
+--- a/DESIGN.md
++++ b/DESIGN.md
+@@ -77,5 +77,9 @@ The inspector answers *"is the file wrong, or are we?"*
+ - Not an editor: no shader debugger, GPU counters, or heavy DCC tooling.
+ - No second renderer and no renderer setting. Window, Quick Look and Finder use the same one.
+ - No fake chrome. No duplicate settings. No section for data that isn't in the file.
+-- No control the renderer cannot drive. Playback, morph weights, hide/solo, double-sided,
+-  skeleton, a file-light toggle and a custom environment are not part of the product.
++- No control the renderer cannot drive. Morph weight sliders, a double-sided override and a
++  custom environment are not part of the product.
++- **View state, never file edits.** Hide / solo, picking, the isolated shape preview, camera /
++  light / skeleton gizmos and animation playback are per-window ways of *looking* at the file.
++  Nothing writes the file. Hiding a light's node turns that light off, honestly, as hiding does.
++  Quick Look and Finder thumbnails stay at the rest pose with nothing hidden.
+diff --git a/GLTFCore/GLTFDocument.swift b/GLTFCore/GLTFDocument.swift
+index ff9f18c..aea5922 100644
+--- a/GLTFCore/GLTFDocument.swift
++++ b/GLTFCore/GLTFDocument.swift
+@@ -32,6 +32,22 @@ public struct GLTFDocument: Sendable, Equatable {
+     }
+ 
+     /// Flat glTF node with child indices — small tree, no nested copies.
++    /// One draw primitive on a mesh (`meshes[].primitives[]`).
++    public struct MeshPrimitive: Sendable, Equatable {
++        /// glTF `material` index, when present and in range.
++        public var materialIndex: Int?
++        /// Triangle count for triangle-compatible topologies; zero for points and lines.
++        public var triangleCount: Int
++        /// glTF primitive `mode` (0–6). Omitted in JSON means `4` (triangles).
++        public var mode: Int
++
++        public init(materialIndex: Int? = nil, triangleCount: Int = 0, mode: Int = 4) {
++            self.materialIndex = materialIndex
++            self.triangleCount = triangleCount
++            self.mode = mode
++        }
++    }
++
+     public struct Node: Sendable, Equatable {
+         public enum Kind: String, Sendable, Equatable {
+             case empty
+@@ -60,6 +76,15 @@ public struct GLTFDocument: Sendable, Equatable {
+         public var uvSetCount: Int = 0
+         public var hasTangents: Bool = false
+         public var hasVertexColors: Bool = false
++        /// Per-primitive facts for this node's mesh (mesh nodes only).
++        public var meshPrimitives: [MeshPrimitive] = []
++        /// Instance count from `EXT_mesh_gpu_instancing` when present.
++        public var gpuInstanceCount: Int?
++        /// Skins that list this node as a joint (`skins[].joints`).
++        public var jointOfSkinIndices: [Int] = []
++        /// `KHR_node_visibility` says `visible: false` in the file. The renderer does not read it;
++        /// the outliner marks it and the inspector explains it.
++        public var isHiddenInFile: Bool = false
+ 
+         /// Primary attachment wins: mesh > camera > light > skin; all nil → empty.
+         public static func inferredKind(
+@@ -158,6 +183,8 @@ public struct GLTFDocument: Sendable, Equatable {
+     public struct Skin: Sendable, Equatable {
+         public var name: String
+         public var jointNames: [String]
++        /// glTF node indices for each joint, same order as `jointNames`.
++        public var jointNodeIndices: [Int]
+     }
+ 
+     /// Morph targets for one mesh (`extras.targetNames`, else by index).
+@@ -176,6 +203,22 @@ public struct GLTFDocument: Sendable, Equatable {
+ }
+ 
+ extension GLTFDocument {
++    /// True when `index` is listed as a joint on any skin in the file.
++    public func isJoint(nodeIndex: Int) -> Bool {
++        skins.contains { $0.jointNodeIndices.contains(nodeIndex) }
++    }
++
++    /// Scene node indices whose mesh uses `materialIndex` on at least one primitive (each once).
++    public func nodeIndices(usingMaterial materialIndex: Int) -> [Int] {
++        var seen = Set<Int>()
++        var indices: [Int] = []
++        for node in nodes where node.kind == .mesh {
++            guard node.meshPrimitives.contains(where: { $0.materialIndex == materialIndex }) else { continue }
++            if seen.insert(node.index).inserted { indices.append(node.index) }
++        }
++        return indices
++    }
++
+     /// Reads a `.gltf` or a GLB's JSON chunk (plus texture headers for the inspector) off the main
+     /// thread. Throws for a file that is not glTF.
+     public static func load(from url: URL) async throws -> GLTFDocument {
+diff --git a/GLTFCore/GLTFDocumentJSON.swift b/GLTFCore/GLTFDocumentJSON.swift
+index 1af7a8f..feb3a14 100644
+--- a/GLTFCore/GLTFDocumentJSON.swift
++++ b/GLTFCore/GLTFDocumentJSON.swift
+@@ -22,6 +22,7 @@ public enum GLTFDocumentJSON {
+         let materialsJSON = json["materials"] as? [[String: Any]] ?? []
+ 
+         let geometryByMesh = meshesJSON.map { meshGeometry($0, accessors: accessors) }
++        let primitivesByMesh = meshesJSON.map { meshPrimitives($0, accessors: accessors, materialCount: materialsJSON.count) }
+         let materialsByMesh = meshesJSON.map { boundMaterialIndices($0, materialCount: materialsJSON.count) }
+ 
+         var document = GLTFDocument()
+@@ -49,10 +50,13 @@ public enum GLTFDocumentJSON {
+             makeNodes(
+                 nodesJSON,
+                 counts: counts,
++                accessors: accessors,
+                 geometryByMesh: geometryByMesh,
++                primitivesByMesh: primitivesByMesh,
+                 materialsByMesh: materialsByMesh
+             )
+         }
++        stampJointMembership(&document)
+         document.cameras = camerasJSON.map(makeCamera)
+         document.lights = lightsJSON.map(makeLight)
+         document.materials = materialsJSON.map(makeMaterial)
+@@ -113,7 +117,9 @@ public enum GLTFDocumentJSON {
+     private static func makeNodes(
+         _ nodesJSON: [[String: Any]],
+         counts: Counts,
++        accessors: [[String: Any]],
+         geometryByMesh: [MeshGeometry],
++        primitivesByMesh: [[GLTFDocument.MeshPrimitive]],
+         materialsByMesh: [[Int]]
+     ) -> [GLTFDocument.Node] {
+         let count = nodesJSON.count
+@@ -124,7 +130,9 @@ public enum GLTFDocumentJSON {
+                     nodesJSON[index],
+                     index: index,
+                     counts: counts,
++                    accessors: accessors,
+                     geometryByMesh: geometryByMesh,
++                    primitivesByMesh: primitivesByMesh,
+                     materialsByMesh: materialsByMesh
+                 )
+             }
+@@ -137,7 +145,9 @@ public enum GLTFDocumentJSON {
+                         nodesJSON[index],
+                         index: index,
+                         counts: counts,
++                        accessors: accessors,
+                         geometryByMesh: geometryByMesh,
++                        primitivesByMesh: primitivesByMesh,
+                         materialsByMesh: materialsByMesh
+                     )
+                 )
+@@ -158,13 +168,16 @@ public enum GLTFDocumentJSON {
+         static let skin = "skin" as NSString
+         static let extensions = "extensions" as NSString
+         static let light = "light" as NSString
++        static let visible = "visible" as NSString
+     }
+ 
+     private static func makeNode(
+         _ node: [String: Any],
+         index: Int,
+         counts: Counts,
++        accessors: [[String: Any]],
+         geometryByMesh: [MeshGeometry],
++        primitivesByMesh: [[GLTFDocument.MeshPrimitive]],
+         materialsByMesh: [[Int]]
+     ) -> GLTFDocument.Node {
+         let dict = node as NSDictionary
+@@ -205,10 +218,19 @@ public enum GLTFDocumentJSON {
+             vertexCount: geometry.vertexCount,
+             uvSetCount: geometry.uvSetCount,
+             hasTangents: geometry.hasTangents,
+-            hasVertexColors: geometry.hasVertexColors
++            hasVertexColors: geometry.hasVertexColors,
++            meshPrimitives: meshIndex.map { primitivesByMesh[$0] } ?? [],
++            gpuInstanceCount: gpuInstanceCount(dict, accessors: accessors),
++            isHiddenInFile: isHiddenInFile(dict)
+         )
+     }
+ 
++    private static func isHiddenInFile(_ node: NSDictionary) -> Bool {
++        let extensions = node.object(forKey: NodeKey.extensions) as? NSDictionary
++        let visibility = extensions?.object(forKey: visibilityExtension) as? NSDictionary
++        return (visibility?.object(forKey: NodeKey.visible) as? Bool) == false
++    }
++
+     private static func punctualLightIndex(_ node: NSDictionary) -> Any? {
+         let extensions = node.object(forKey: NodeKey.extensions) as? NSDictionary
+         let punctual = extensions?.object(forKey: lightsExtension) as? NSDictionary
+@@ -274,6 +296,56 @@ public enum GLTFDocumentJSON {
+         var hasVertexColors = false
+     }
+ 
++    private static func meshPrimitives(
++        _ mesh: [String: Any],
++        accessors: [[String: Any]],
++        materialCount: Int
++    ) -> [GLTFDocument.MeshPrimitive] {
++        (mesh["primitives"] as? [[String: Any]] ?? []).map { primitive in
++            let material = GLTFJSON.int(primitive["material"]).flatMap {
++                $0 >= 0 && $0 < materialCount ? $0 : nil
++            }
++            let mode = GLTFJSON.int(primitive["mode"]) ?? 4
++            return GLTFDocument.MeshPrimitive(
++                materialIndex: material,
++                triangleCount: GLTFJSON.triangleCount(primitive, accessors: accessors),
++                mode: mode
++            )
++        }
++    }
++
++    private static func gpuInstanceCount(_ node: NSDictionary, accessors: [[String: Any]]) -> Int? {
++        let extensions = node.object(forKey: NodeKey.extensions) as? NSDictionary
++        let instancing = extensions?.object(forKey: gpuInstancingExtension) as? NSDictionary
++        let attributes = instancing?.object(forKey: "attributes") as? NSDictionary
++        guard let attributes, attributes.count > 0 else { return nil }
++        for key in ["TRANSLATION", "ROTATION", "SCALE"] as [NSString] {
++            if let index = GLTFJSON.int(attributes.object(forKey: key)),
++               accessors.indices.contains(index),
++               let count = GLTFJSON.int(accessors[index]["count"]),
++               count > 0 {
++                return count
++            }
++        }
++        for key in attributes.allKeys {
++            guard let index = GLTFJSON.int(attributes.object(forKey: key)),
++                  accessors.indices.contains(index),
++                  let count = GLTFJSON.int(accessors[index]["count"]),
++                  count > 0
++            else { continue }
++            return count
++        }
++        return nil
++    }
++
++    private static func stampJointMembership(_ document: inout GLTFDocument) {
++        for skinIndex in document.skins.indices {
++            for joint in document.skins[skinIndex].jointNodeIndices where document.nodes.indices.contains(joint) {
++                document.nodes[joint].jointOfSkinIndices.append(skinIndex)
++            }
++        }
++    }
++
+     private static func meshGeometry(
+         _ mesh: [String: Any],
+         accessors: [[String: Any]]
+@@ -353,6 +425,8 @@ public enum GLTFDocumentJSON {
+     }
+ 
+     private static let lightsExtension = "KHR_lights_punctual"
++    private static let visibilityExtension = "KHR_node_visibility"
++    private static let gpuInstancingExtension = "EXT_mesh_gpu_instancing"
+ 
+     private static func punctualLights(_ json: [String: Any]) -> [[String: Any]] {
+         let extensions = json["extensions"] as? [String: Any] ?? [:]
+@@ -393,7 +467,8 @@ public enum GLTFDocumentJSON {
+         let rawName = skin["name"] as? String ?? ""
+         return GLTFDocument.Skin(
+             name: rawName.isEmpty ? "Skin\(index)" : rawName,
+-            jointNames: jointNames
++            jointNames: jointNames,
++            jointNodeIndices: joints
+         )
+     }
+ 
+diff --git a/GLTFInspector/App/MenuCommands.swift b/GLTFInspector/App/MenuCommands.swift
+index 6979db6..17f78cd 100644
+--- a/GLTFInspector/App/MenuCommands.swift
++++ b/GLTFInspector/App/MenuCommands.swift
+@@ -1,4 +1,5 @@
+ import AppKit
++import GLTFCore
+ import SwiftUI
+ import Renderer
+ 
+@@ -84,7 +85,7 @@ struct ViewMenuCommands: View {
+ 
+     var body: some View {
+         if let view = window?.view {
+-            ViewMenuItems(view: view)
++            ViewMenuItems(view: view, document: window?.document ?? GLTFDocument())
+         } else {
+             Text("No focused window")
+                 .disabled(true)
+@@ -94,6 +95,11 @@ struct ViewMenuCommands: View {
+ 
+ private struct ViewMenuItems: View {
+     @Bindable var view: ViewState
++    var document: GLTFDocument
++
++    private var hasSceneGizmos: Bool {
++        !document.cameras.isEmpty || !document.lights.isEmpty
++    }
+ 
+     var body: some View {
+         Picker("View Mode", selection: $view.viewMode) {
+@@ -112,6 +118,10 @@ private struct ViewMenuItems: View {
+ 
+         Toggle("Show Floor", systemImage: "circle.grid.cross", isOn: $view.showsFloor)
+ 
++        if hasSceneGizmos {
++            Toggle("Show Cameras & Lights", systemImage: "camera.viewfinder", isOn: $view.showsSceneGizmos)
++        }
++
+         Toggle("Auto-Rotate", systemImage: "arrow.trianglehead.counterclockwise.rotate.90", isOn: $view.autoRotates)
+             .keyboardShortcut(Shortcuts.action(.autoRotate))
+ 
+@@ -135,5 +145,24 @@ private struct ViewMenuItems: View {
+ 
+         ViewportCameraPresetCommands(view: view)
+             .disabled(view.canvas.phase != .ready)
++
++        Divider()
++
++        // Layers act on the selected scene node; the outliner's eye and context menu do the same.
++        let node = view.selection.flatMap { $0.kind.isSceneNode ? $0.index : nil }
++        Button(node.map { view.hiddenNodes.contains($0) } == true ? "Show Selection" : "Hide Selection") {
++            if let node { view.toggleHidden(node) }
++        }
++        .keyboardShortcut(Shortcuts.action(.hideSelection))
++        .disabled(node == nil)
++
++        Button(node.map { view.soloNodes.contains($0) } == true ? "Unsolo Selection" : "Solo Selection") {
++            if let node { view.toggleSolo(node) }
++        }
++        .keyboardShortcut(Shortcuts.action(.soloSelection))
++        .disabled(node == nil)
++
++        Button("Show All Layers") { view.showAll() }
++            .disabled(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
+     }
+ }
+diff --git a/GLTFInspector/App/Shortcuts.swift b/GLTFInspector/App/Shortcuts.swift
+index 07ab087..f7f665e 100644
+--- a/GLTFInspector/App/Shortcuts.swift
++++ b/GLTFInspector/App/Shortcuts.swift
+@@ -6,7 +6,8 @@ import SwiftUI
+ /// (DESIGN.md › menu bar = full command set).
+ enum Shortcuts {
+     enum Action: String, CaseIterable, Sendable {
+-        case orthographic, center, fit, reset, autoRotate, zoomIn, zoomOut, toggleSidebar
++        case orthographic, center, fit, frameSelection, reset, autoRotate, zoomIn, zoomOut, toggleSidebar
++        case hideSelection, soloSelection
+     }
+ 
+     static func viewMode(_ mode: RenderViewMode) -> KeyboardShortcut? {
+@@ -36,11 +37,14 @@ enum Shortcuts {
+         case .orthographic: KeyboardShortcut("5", modifiers: [.command, .option])
+         case .center: KeyboardShortcut("c", modifiers: [.command, .option])
+         case .fit: KeyboardShortcut("9", modifiers: .command)
++        case .frameSelection: KeyboardShortcut("f", modifiers: [.command, .option])
+         case .reset: KeyboardShortcut("0", modifiers: .command)
+         case .autoRotate: KeyboardShortcut("r", modifiers: .command)
+         case .zoomIn: KeyboardShortcut("+", modifiers: .command)
+         case .zoomOut: KeyboardShortcut("-", modifiers: .command)
+         case .toggleSidebar: KeyboardShortcut("b", modifiers: .command)
++        case .hideSelection: KeyboardShortcut("h", modifiers: [.command, .shift])
++        case .soloSelection: KeyboardShortcut("h", modifiers: [.command, .option, .shift])
+         }
+     }
+ 
+diff --git a/GLTFInspector/Canvas/CanvasRegion.swift b/GLTFInspector/Canvas/CanvasRegion.swift
+index cc5c5a5..528d3ae 100644
+--- a/GLTFInspector/Canvas/CanvasRegion.swift
++++ b/GLTFInspector/Canvas/CanvasRegion.swift
+@@ -108,8 +108,13 @@ struct CanvasRegion<Content: View>: View {
+             }
+             // Bottom overlays.
+             .overlay(alignment: .bottomLeading) {
+-                OrientationGizmo()
+-                    .padding(OverlayMetrics.inset)
++                NavigationGizmo(
++                    viewRotation: view.canvas.viewRotation,
++                    activePreset: view.activeCameraPreset,
++                    onSelect: { view.show($0) },
++                    onOrbit: { dx, dy in view.orbit(dx: dx, dy: dy) }
++                )
++                .padding(OverlayMetrics.inset)
+             }
+             .overlay(alignment: .bottomTrailing) {
+                 DimensionsReadout(size: bounds?.size ?? .zero)
+diff --git a/GLTFInspector/Canvas/OrientationGizmo.swift b/GLTFInspector/Canvas/OrientationGizmo.swift
+deleted file mode 100644
+index 0ca0135..0000000
+--- a/GLTFInspector/Canvas/OrientationGizmo.swift
++++ /dev/null
+@@ -1,35 +0,0 @@
+-import SwiftUI
+-
+-/// Bottom-leading corner axes — a fixed isometric triad giving a camera-orientation cue.
+-/// Not glass: the wireframe paints bare strokes over the canvas.
+-struct OrientationGizmo: View {
+-    var body: some View {
+-        ZStack {
+-            Canvas { context, size in
+-                let origin = Self.origin(in: size)
+-                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x + 30, y: origin.y), color: DS.Color.Axis.x)
+-                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x, y: origin.y - 30), color: DS.Color.Axis.y)
+-                OverlayMetrics.strokeAxis(context, from: origin, to: CGPoint(x: origin.x + 18, y: origin.y + 10), color: DS.Color.Axis.z)
+-
+-                OverlayMetrics.drawAxisLabel(context, "X", at: CGPoint(x: origin.x + 33, y: origin.y + 3), color: DS.Color.Axis.x)
+-                OverlayMetrics.drawAxisLabel(context, "Y", at: CGPoint(x: origin.x - 4, y: origin.y - 32), color: DS.Color.Axis.y)
+-                OverlayMetrics.drawAxisLabel(context, "Z", at: CGPoint(x: origin.x + 20, y: origin.y + 15), color: DS.Color.Axis.z)
+-            }
+-
+-            GeometryReader { geo in
+-                Circle()
+-                    .fill(.tertiary)
+-                    .frame(width: 4.8, height: 4.8)
+-                    .position(Self.origin(in: geo.size))
+-            }
+-        }
+-        .frame(width: OverlayMetrics.orientationSize, height: OverlayMetrics.orientationSize)
+-        .allowsHitTesting(false)
+-        .accessibilityElement(children: .ignore)
+-        .accessibilityLabel("Orientation gizmo")
+-    }
+-
+-    private static func origin(in size: CGSize) -> CGPoint {
+-        CGPoint(x: size.width * 0.30, y: size.height * 0.70)
+-    }
+-}
+diff --git a/GLTFInspector/Canvas/OverlayMetrics.swift b/GLTFInspector/Canvas/OverlayMetrics.swift
+index 7e4986c..8a2701f 100644
+--- a/GLTFInspector/Canvas/OverlayMetrics.swift
++++ b/GLTFInspector/Canvas/OverlayMetrics.swift
+@@ -5,7 +5,7 @@ enum OverlayMetrics {
+     static let inset = DS.Spacing.xl
+     /// Slightly under `DS.Metrics.glassControl` so the readout stays compact.
+     static let dimensionsHeight: CGFloat = 30
+-    static let orientationSize: CGFloat = 66
++    static let navigationGizmoSize = DS.Metrics.navigationGizmoSize
+ 
+     static func strokeAxis(
+         _ context: GraphicsContext,
+diff --git a/GLTFInspector/DesignSystem/Components/Content/DSOutlineRow.swift b/GLTFInspector/DesignSystem/Components/Content/DSOutlineRow.swift
+index 4a0315f..58225c0 100644
+--- a/GLTFInspector/DesignSystem/Components/Content/DSOutlineRow.swift
++++ b/GLTFInspector/DesignSystem/Components/Content/DSOutlineRow.swift
+@@ -1,5 +1,18 @@
++import AppKit
+ import SwiftUI
+ 
++/// Whether a layer row draws, and why not. `hiddenByParent` and `hiddenInFile` are read-only
++/// states of the row; `hidden` is the window's own choice.
++enum DSVisibility: Sendable, Equatable {
++    case visible
++    /// Hidden in this window.
++    case hidden
++    /// Its own visibility is fine, but an ancestor is hidden or another node is soloed.
++    case hiddenByParent
++    /// Authored as hidden (`KHR_node_visibility`). Shown, not toggled.
++    case hiddenInFile
++}
++
+ /// One layer-list row: indent, type glyph, title — sized like a design tool's layer list
+ /// (`Font.subheadline`, 11 pt).
+ ///
+@@ -14,7 +27,10 @@ struct DSOutlineRow: View {
+     /// `nil` for a leaf; otherwise whether the row's children are showing.
+     private let isExpanded: Bool?
+     private let isSelected: Bool
++    private let isJoint: Bool
+     private let badge: DSStatus?
++    private let visibility: DSVisibility?
++    private let onVisibility: (_ solo: Bool) -> Void
+     private let onToggle: () -> Void
+ 
+     @State private var isHovered = false
+@@ -27,7 +43,10 @@ struct DSOutlineRow: View {
+         depth: Int = 0,
+         isExpanded: Bool? = nil,
+         isSelected: Bool = false,
++        isJoint: Bool = false,
+         badge: DSStatus? = nil,
++        visibility: DSVisibility? = nil,
++        onVisibility: @escaping (_ solo: Bool) -> Void = { _ in },
+         onToggle: @escaping () -> Void = {}
+     ) {
+         self.title = title
+@@ -35,7 +54,10 @@ struct DSOutlineRow: View {
+         self.depth = depth
+         self.isExpanded = isExpanded
+         self.isSelected = isSelected
++        self.isJoint = isJoint
+         self.badge = badge
++        self.visibility = visibility
++        self.onVisibility = onVisibility
+         self.onToggle = onToggle
+     }
+ 
+@@ -44,7 +66,7 @@ struct DSOutlineRow: View {
+             glyphSlot
+             Text(title)
+                 .font(.subheadline)
+-                .foregroundStyle(.primary)
++                .foregroundStyle(isDimmed ? .secondary : .primary)
+                 .lineLimit(1)
+                 .truncationMode(.middle)
+             Spacer(minLength: 0)
+@@ -54,13 +76,63 @@ struct DSOutlineRow: View {
+                     .foregroundStyle(badge.tint)
+                     .accessibilityLabel(badge == .error ? "Has errors" : "Has warnings")
+             }
++            visibilityControl
+         }
+         .padding(.leading, CGFloat(depth) * indent)
+         .contentShape(Rectangle())
+         .onHover { isHovered = $0 }
+         .accessibilityElement(children: .combine)
+-        .accessibilityAction(named: isExpanded == true ? "Collapse" : "Expand") {
+-            if isExpanded != nil { onToggle() }
++        .modifier(OutlineRowAccessibilityActions(
++            isExpanded: isExpanded,
++            isToggleable: isToggleable,
++            visibility: visibility,
++            onToggle: onToggle,
++            onVisibility: { onVisibility(false) }
++        ))
++    }
++
++    /// Only the window's own state toggles; inherited and authored states are read-only.
++    private var isToggleable: Bool { visibility == .visible || visibility == .hidden }
++
++    private var isDimmed: Bool {
++        guard let visibility else { return false }
++        return visibility != .visible
++    }
++
++    /// Reserves the trailing eye slot whenever `visibility` is set; fades out when visible and not hovered.
++    @ViewBuilder
++    private var visibilityControl: some View {
++        if let visibility {
++            Group {
++                if visibility == .hiddenInFile {
++                    Image(systemName: "eye.slash")
++                        .font(.subheadline)
++                        .foregroundStyle(.secondary)
++                        .help("Hidden in the file (KHR_node_visibility)")
++                        .accessibilityLabel("Hidden in file")
++                } else if visibility == .hiddenByParent {
++                    Image(systemName: "eye.slash")
++                        .font(.subheadline)
++                        .foregroundStyle(.tertiary)
++                        .help("Hidden by a parent layer or by solo")
++                        .accessibilityLabel("Hidden by parent")
++                } else {
++                    Button {
++                        // Option-click solos the node; a plain click toggles it.
++                        let solo = NSApp.currentEvent?.modifierFlags.contains(.option) ?? false
++                        onVisibility(solo)
++                    } label: {
++                        Image(systemName: visibility == .visible ? "eye" : "eye.slash")
++                            .font(.subheadline)
++                            .foregroundStyle(.secondary)
++                    }
++                    .buttonStyle(.plain)
++                    .help(visibility == .visible ? "Hide (Option-click to solo)" : "Show (Option-click to solo)")
++                    .accessibilityLabel(visibility == .visible ? "Hide" : "Show")
++                }
++            }
++            .opacity(visibility == .visible && !isHovered ? 0 : 1)
++            .allowsHitTesting(visibility != .visible || isHovered)
+         }
+     }
+ 
+@@ -82,9 +154,36 @@ struct DSOutlineRow: View {
+             DSTypeIcon(
+                 role,
+                 isGroup: isExpanded != nil,
++                isJoint: isJoint,
+                 isSelected: isSelected,
+                 font: Font.subheadline
+             )
+         }
+     }
+ }
++
++private struct OutlineRowAccessibilityActions: ViewModifier {
++    let isExpanded: Bool?
++    let isToggleable: Bool
++    let visibility: DSVisibility?
++    let onToggle: () -> Void
++    let onVisibility: () -> Void
++
++    func body(content: Content) -> some View {
++        if let isExpanded {
++            if isToggleable, let visibility {
++                content
++                    .accessibilityAction(named: isExpanded ? "Collapse" : "Expand", onToggle)
++                    .accessibilityAction(named: visibility == .visible ? "Hide" : "Show", onVisibility)
++            } else {
++                content
++                    .accessibilityAction(named: isExpanded ? "Collapse" : "Expand", onToggle)
++            }
++        } else if isToggleable, let visibility {
++            content
++                .accessibilityAction(named: visibility == .visible ? "Hide" : "Show", onVisibility)
++        } else {
++            content
++        }
++    }
++}
+diff --git a/GLTFInspector/DesignSystem/Components/Content/DSTypeIcon.swift b/GLTFInspector/DesignSystem/Components/Content/DSTypeIcon.swift
+index 54f9d61..364e032 100644
+--- a/GLTFInspector/DesignSystem/Components/Content/DSTypeIcon.swift
++++ b/GLTFInspector/DesignSystem/Components/Content/DSTypeIcon.swift
+@@ -42,6 +42,7 @@ extension NodeKind {
+ struct DSTypeIcon: View {
+     private let role: NodeKind
+     private let isGroup: Bool
++    private let isJoint: Bool
+     private let isSelected: Bool
+     private let font: Font
+ 
+@@ -49,21 +50,25 @@ struct DSTypeIcon: View {
+ 
+     /// - Parameters:
+     ///   - isGroup: an empty node that holds children — drawn as a folder, like a layer group.
++    ///   - isJoint: a skin joint node — distinct from a plain empty group.
+     ///   - font: glyph size; a compact row passes `Font.subheadline`.
+     init(
+         _ role: NodeKind,
+         isGroup: Bool = false,
++        isJoint: Bool = false,
+         isSelected: Bool = false,
+         font: Font = Font.body
+     ) {
+         self.role = role
+         self.isGroup = isGroup
++        self.isJoint = isJoint
+         self.isSelected = isSelected
+         self.font = font
+     }
+ 
+     private var systemImage: String {
+-        isGroup && role == .empty ? "folder" : role.systemImage
++        if isJoint && role == .empty { return "circle.grid.cross" }
++        return isGroup && role == .empty ? "folder" : role.systemImage
+     }
+ 
+     var body: some View {
+diff --git a/GLTFInspector/DesignSystem/DS.swift b/GLTFInspector/DesignSystem/DS.swift
+index c5e1b51..5e03ed9 100644
+--- a/GLTFInspector/DesignSystem/DS.swift
++++ b/GLTFInspector/DesignSystem/DS.swift
+@@ -27,6 +27,8 @@ enum DS {
+ 
+     enum Metrics {
+         static let hairline: CGFloat = 1
++        /// Rounded-square navigation gizmo on the canvas.
++        static let navigationGizmoSize: CGFloat = 76
+         /// Side of an icon-only glass button.
+         static let glassControl: CGFloat = 32
+         /// Width of a glass button that carries a menu chevron.
+@@ -88,6 +90,8 @@ enum DS {
+             static let x = SwiftUI.Color(red: 0xE2 / 255, green: 0x56 / 255, blue: 0x4A / 255)
+             static let y = SwiftUI.Color(red: 0x34 / 255, green: 0xC7 / 255, blue: 0x59 / 255)
+             static let z = SwiftUI.Color(red: 0x0A / 255, green: 0x84 / 255, blue: 0xFF / 255)
++            /// Negative axis ends on the navigation gizmo.
++            static let negative = SwiftUI.Color.secondary
+         }
+ 
+         /// What the backdrop swatches paint; the same in both appearances.
+diff --git a/GLTFInspector/Document/GLTFDocument+Display.swift b/GLTFInspector/Document/GLTFDocument+Display.swift
+index 43d4e21..19dd4a0 100644
+--- a/GLTFInspector/Document/GLTFDocument+Display.swift
++++ b/GLTFInspector/Document/GLTFDocument+Display.swift
+@@ -27,9 +27,9 @@ extension GLTFDocument {
+         }
+     }
+ 
+-    /// Names of the nodes whose mesh uses material `index`.
++    /// Names of the nodes whose mesh uses material `index` on at least one primitive.
+     func meshNames(usingMaterial index: Int) -> [String] {
+-        nodes.filter { $0.materialIndices.contains(index) }.map { $0.name.displayName(or: "Node \($0.index)") }
++        nodeIndices(usingMaterial: index).map { nodes[$0].name.displayName(or: "Node \($0)") }
+     }
+ }
+ 
+diff --git a/GLTFInspector/Inspector/FactSections.swift b/GLTFInspector/Inspector/FactSections.swift
+index 32c3434..f9108c0 100644
+--- a/GLTFInspector/Inspector/FactSections.swift
++++ b/GLTFInspector/Inspector/FactSections.swift
+@@ -1,4 +1,5 @@
+ import GLTFCore
++import simd
+ import SwiftUI
+ 
+ // Read-only fact blocks for the inspector, one per glTF entry type.
+@@ -69,6 +70,72 @@ struct SkinSection: View {
+     }
+ }
+ 
++struct PrimitivesSection: View {
++    var document: GLTFDocument
++    var node: GLTFDocument.Node
++    var onSelect: ((NodeID) -> Void)?
++
++    var body: some View {
++        FactBlock("Primitives") {
++            ForEach(Array(node.meshPrimitives.enumerated()), id: \.offset) { index, primitive in
++                primitiveRow(index: index, primitive: primitive)
++            }
++        }
++    }
++
++    @ViewBuilder
++    private func primitiveRow(index: Int, primitive: GLTFDocument.MeshPrimitive) -> some View {
++        let label = "Primitive \(index + 1)"
++        if let materialIndex = primitive.materialIndex, document.materials.indices.contains(materialIndex) {
++            let material = document.materials[materialIndex]
++            let materialName = document.displayName(of: NodeID(kind: .material, index: materialIndex))
++            let triLabel = "\(primitive.triangleCount.formatted()) tris"
++            Button {
++                onSelect?(NodeID(kind: .material, index: materialIndex))
++            } label: {
++                DSFactRow(label) {
++                    HStack(spacing: DS.Spacing.s) {
++                        MaterialSwatch(color: swatchColor(for: material), size: 12)
++                        Text("\(materialName) · \(triLabel)")
++                    }
++                }
++            }
++            .buttonStyle(.plain)
++            .accessibilityElement(children: .combine)
++            .accessibilityLabel("\(label), \(materialName), \(triLabel)")
++            .accessibilityAddTraits(.isButton)
++            .accessibilityAction(named: "Select \(materialName)") {
++                onSelect?(NodeID(kind: .material, index: materialIndex))
++            }
++        } else {
++            DSFactRow(label, value: "\(primitive.triangleCount.formatted()) tris")
++        }
++    }
++
++    private func swatchColor(for material: GLTFDocument.Material) -> Color {
++        if let factor = material.baseColorFactor {
++            return Color(.sRGB,
++                         red: Double(simd_clamp(factor.x, 0, 1)),
++                         green: Double(simd_clamp(factor.y, 0, 1)),
++                         blue: Double(simd_clamp(factor.z, 0, 1)))
++        }
++        return Color(.quaternaryLabelColor)
++    }
++}
++
++struct JointOfSection: View {
++    var document: GLTFDocument
++    var skinIndices: [Int]
++
++    var body: some View {
++        FactBlock("Skin") {
++            ForEach(skinIndices, id: \.self) { skinIndex in
++                DSFactRow("Joint of", value: document.displayName(of: NodeID(kind: .skin, index: skinIndex)))
++            }
++        }
++    }
++}
++
+ struct MorphSection: View {
+     var morph: GLTFDocument.Morph
+     var meshName: String
+diff --git a/GLTFInspector/Inspector/GeometrySection.swift b/GLTFInspector/Inspector/GeometrySection.swift
+index 38e9b6c..c85af8c 100644
+--- a/GLTFInspector/Inspector/GeometrySection.swift
++++ b/GLTFInspector/Inspector/GeometrySection.swift
+@@ -24,6 +24,9 @@ struct GeometrySection: View {
+         }
+         if node.hasTangents { items.append("Tangents") }
+         if node.hasVertexColors { items.append("Vertex colors") }
++        if let count = node.gpuInstanceCount, count > 1 {
++            items.append("× \(count.formatted()) instances")
++        }
+         return items
+     }
+ }
+diff --git a/GLTFInspector/Inspector/IdentityRow.swift b/GLTFInspector/Inspector/IdentityRow.swift
+index 403ae73..4cb650b 100644
+--- a/GLTFInspector/Inspector/IdentityRow.swift
++++ b/GLTFInspector/Inspector/IdentityRow.swift
+@@ -33,6 +33,8 @@ struct IdentityRow: View {
+         .padding(.bottom, DS.Spacing.l)
+         .padding(.leading, DS.Spacing.l)
+         .padding(.trailing, DS.Spacing.l)
+-        .accessibilityElement(children: .combine)
++        .accessibilityElement(children: .ignore)
++        .accessibilityLabel("\(name), \(subtitle)")
++        .accessibilityIdentifier("inspector-selection")
+     }
+ }
+diff --git a/GLTFInspector/Inspector/Inspector.swift b/GLTFInspector/Inspector/Inspector.swift
+index 054f6c3..2ee5366 100644
+--- a/GLTFInspector/Inspector/Inspector.swift
++++ b/GLTFInspector/Inspector/Inspector.swift
+@@ -4,12 +4,14 @@ import SwiftUI
+ /// Right column: what the file says about the selected outliner row. Sections are omitted when
+ /// the row's type has no such data (DESIGN.md: hide, don't disable).
+ struct Inspector: View {
++    @Bindable var view: ViewState
+     var document: GLTFDocument
+     var selection: NodeID?
+     var documentState: DocumentState
+     /// File-wide validator report; the inspector shows the issues about the selection.
+     var validation: ValidationResult
+     var documentURL: URL?
++    var onSelect: ((NodeID) -> Void)?
+ 
+     var body: some View {
+         VStack(alignment: .leading, spacing: 0) {
+@@ -49,13 +51,24 @@ struct Inspector: View {
+         case .mesh, .empty, .camera, .light:
+             if document.nodes.indices.contains(index) {
+                 let node = document.nodes[index]
++                if node.isHiddenInFile {
++                    DSFactRow("Visibility", value: "Hidden in file")
++                        .padding(.horizontal, DS.Spacing.l)
++                        .padding(.vertical, DS.Spacing.m)
++                }
+                 TransformSection(node: node)
++                if node.kind == .mesh || node.kind == .empty || node.kind == .camera {
++                    ShapeSection(view: view, selection: id)
++                }
+                 if node.kind == .mesh {
+                     GeometrySection(node: node)
+-                    if let material = node.materialIndices.first, document.materials.indices.contains(material) {
+-                        MaterialSection(document: document, index: material, density: .compact)
++                    if !node.meshPrimitives.isEmpty {
++                        PrimitivesSection(document: document, node: node, onSelect: onSelect)
+                     }
+                 }
++                if !node.jointOfSkinIndices.isEmpty {
++                    JointOfSection(document: document, skinIndices: node.jointOfSkinIndices)
++                }
+                 if node.kind == .camera, let camera = node.cameraIndex, document.cameras.indices.contains(camera) {
+                     CameraSection(camera: document.cameras[camera])
+                 }
+@@ -65,7 +78,7 @@ struct Inspector: View {
+                 sectionEnd
+             }
+         case .material where document.materials.indices.contains(index):
+-            MaterialSection(document: document, index: index, density: .full)
++            MaterialSection(document: document, index: index, density: .full, onSelect: onSelect)
+             sectionEnd
+         case .skin where document.skins.indices.contains(index):
+             SkinSection(skin: document.skins[index])
+diff --git a/GLTFInspector/Inspector/MaterialSection.swift b/GLTFInspector/Inspector/MaterialSection.swift
+index df97409..179d3f1 100644
+--- a/GLTFInspector/Inspector/MaterialSection.swift
++++ b/GLTFInspector/Inspector/MaterialSection.swift
+@@ -17,6 +17,7 @@ struct MaterialSection: View {
+     var document: GLTFDocument
+     var index: Int
+     var density: Density
++    var onSelect: ((NodeID) -> Void)?
+ 
+     private var material: GLTFDocument.Material { document.materials[index] }
+     private var name: String { document.displayName(of: NodeID(kind: .material, index: index)) }
+@@ -91,18 +92,13 @@ struct MaterialSection: View {
+                 }
+             }
+ 
+-            if let usage {
+-                DSFactRow("Used by", value: usage)
++            let users = document.nodeIndices(usingMaterial: index)
++            if !users.isEmpty {
++                UsedBySection(document: document, nodeIndices: users, onSelect: onSelect)
+             }
+         }
+     }
+ 
+-    private var usage: String? {
+-        let names = document.meshNames(usingMaterial: index)
+-        guard !names.isEmpty else { return nil }
+-        return names.count <= 3 ? names.joined(separator: ", ") : "\(names.count) meshes"
+-    }
+-
+     private func mapRow(_ texture: GLTFDocument.TextureSlot) -> some View {
+         HStack(spacing: DS.Spacing.m) {
+             mapThumb(texture)
+@@ -161,8 +157,46 @@ struct MaterialSection: View {
+         }
+         if density == .full {
+             parts += [material.workflowTitle, material.alphaTitle]
+-            if let usage { parts.append("used by \(usage)") }
++            let users = document.nodeIndices(usingMaterial: index)
++            if !users.isEmpty {
++                parts.append("used by \(users.map { document.displayName(of: NodeID(kind: .mesh, index: $0)) }.joined(separator: ", "))")
++            }
+         }
+         return parts.joined(separator: ", ")
+     }
+ }
++
++private struct UsedBySection: View {
++    var document: GLTFDocument
++    var nodeIndices: [Int]
++    var onSelect: ((NodeID) -> Void)?
++
++    var body: some View {
++        VStack(alignment: .leading, spacing: 0) {
++            InspectorSectionHeader("Used by", top: DS.Spacing.m)
++            ForEach(nodeIndices, id: \.self) { nodeIndex in
++                let name = document.displayName(of: NodeID(kind: .mesh, index: nodeIndex))
++                Button {
++                    onSelect?(NodeID(kind: .mesh, index: nodeIndex))
++                } label: {
++                    HStack(spacing: DS.Spacing.m) {
++                        DSTypeIcon(.mesh)
++                        Text(name)
++                            .font(.callout)
++                            .foregroundStyle(.primary)
++                            .lineLimit(1)
++                        Spacer(minLength: DS.Spacing.m)
++                    }
++                    .padding(.vertical, DS.Spacing.xxs)
++                }
++                .buttonStyle(.plain)
++                .accessibilityElement(children: .combine)
++                .accessibilityLabel(name)
++                .accessibilityAddTraits(.isButton)
++                .accessibilityAction(named: "Select \(name)") {
++                    onSelect?(NodeID(kind: .mesh, index: nodeIndex))
++                }
++            }
++        }
++    }
++}
+diff --git a/GLTFInspector/Sidebar/NodeRow.swift b/GLTFInspector/Sidebar/NodeRow.swift
+index 3b7c186..a78a632 100644
+--- a/GLTFInspector/Sidebar/NodeRow.swift
++++ b/GLTFInspector/Sidebar/NodeRow.swift
+@@ -6,12 +6,16 @@ import SwiftUI
+ /// Built for a native `List(selection:)` — the row draws **no** selection of its own.
+ struct NodeRow: View {
+     var item: OutlinerItem
++    var isJoint: Bool = false
+     var isSelected: Bool
+     var depth: Int = 0
+     /// `nil` for a leaf or a flat (non-folding) section.
+     var isExpanded: Bool? = nil
+     /// Worst validator finding on this row, when it is a fault. Notes get no badge.
+     var badge: DSStatus? = nil
++    /// Layer visibility for scene-graph rows; nil for every other row.
++    var visibility: DSVisibility? = nil
++    var onVisibility: (_ solo: Bool) -> Void = { _ in }
+     var onToggle: () -> Void = {}
+ 
+     private var role: NodeKind {
+@@ -25,10 +29,14 @@ struct NodeRow: View {
+             depth: depth,
+             isExpanded: isExpanded,
+             isSelected: isSelected,
++            isJoint: isJoint,
+             badge: badge,
++            visibility: visibility,
++            onVisibility: onVisibility,
+             onToggle: onToggle
+         )
+         .accessibilityLabel("\(item.name), \(item.id.kind.displayTitle)")
++        .accessibilityIdentifier("outliner-\(item.id.kind.rawValue)-\(item.id.index)")
+         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+     }
+ }
+diff --git a/GLTFInspector/Sidebar/OutlinerList.swift b/GLTFInspector/Sidebar/OutlinerList.swift
+index 24c7d18..3f2c9ec 100644
+--- a/GLTFInspector/Sidebar/OutlinerList.swift
++++ b/GLTFInspector/Sidebar/OutlinerList.swift
+@@ -13,6 +13,14 @@ struct OutlinerList: View {
+     @Binding var selection: NodeID?
+     /// Scene / camera side effects. Selection itself is written by the list binding.
+     var onActivate: (OutlinerItem) -> Void
++    /// This window's hidden and soloed scene nodes (glTF node indices).
++    var hiddenNodes: Set<Int> = []
++    var soloNodes: Set<Int> = []
++    var onToggleHidden: (Int) -> Void = { _ in }
++    var onToggleSolo: (Int) -> Void = { _ in }
++    var onShowAll: () -> Void = {}
++    /// Frame the camera on this scene node (also selects it).
++    var onFrame: (Int) -> Void = { _ in }
+ 
+     /// Expanded scene-graph rows. Seeded in `onAppear`, never in `init` (AGENTS.md pitfall 1).
+     @State private var expanded = Set<NodeID>()
+@@ -20,52 +28,98 @@ struct OutlinerList: View {
+     var body: some View {
+         let sections = OutlinerSection.sections(of: document)
+         let foldingRoots = sections.filter(\.folds).flatMap(\.items)
+-        List(selection: listSelection(in: sections)) {
+-            ForEach(sections) { section in
+-                Section {
+-                    if section.folds {
+-                        ForEach(OutlinerTree.visibleRows(section.items, expanded: expanded)) { row in
+-                            NodeRow(
+-                                item: row.item,
+-                                isSelected: selection == row.id,
+-                                depth: row.depth,
+-                                isExpanded: row.item.hasChildren
+-                                    ? expanded.contains(row.id)
+-                                    : nil,
+-                                badge: badge(for: row.id),
+-                                onToggle: { toggle(row.item) }
+-                            )
+-                            .tag(Optional(row.id))
+-                        }
+-                    } else {
+-                        ForEach(section.items) { item in
+-                            NodeRow(item: item, isSelected: selection == item.id, badge: badge(for: item.id))
+-                                .tag(Optional(item.id))
++        let layers = OutlinerTree.layerVisibility(
++            foldingRoots,
++            isHiddenInFile: { document.nodes.indices.contains($0) && document.nodes[$0].isHiddenInFile },
++            hidden: hiddenNodes,
++            solo: soloNodes
++        )
++        ScrollViewReader { proxy in
++            List(selection: listSelection(in: sections)) {
++                ForEach(sections) { section in
++                    Section {
++                        if section.folds {
++                            ForEach(OutlinerTree.visibleRows(section.items, expanded: expanded)) { row in
++                                NodeRow(
++                                    item: row.item,
++                                    isJoint: isJoint(row.id),
++                                    isSelected: selection == row.id,
++                                    depth: row.depth,
++                                    isExpanded: row.item.hasChildren
++                                        ? expanded.contains(row.id)
++                                        : nil,
++                                    badge: badge(for: row.id),
++                                    visibility: layers[row.id],
++                                    onVisibility: { solo in
++                                        if solo { onToggleSolo(row.id.index) } else { onToggleHidden(row.id.index) }
++                                    },
++                                    onToggle: { toggle(row.item) }
++                                )
++                                .id(row.id)
++                                .tag(Optional(row.id))
++                                .contextMenu { layerMenu(for: row.id, state: layers[row.id]) }
++                            }
++                        } else {
++                            ForEach(section.items) { item in
++                                NodeRow(item: item, isJoint: isJoint(item.id),
++                                        isSelected: selection == item.id, badge: badge(for: item.id))
++                                    .id(item.id)
++                                    .tag(Optional(item.id))
++                            }
+                         }
++                    } header: {
++                        DSSectionHeader(section.title)
++                    }
++                }
++            }
++            .listStyle(.sidebar)
++            // Compact rows (11 pt), like a design tool's layer list, whatever the system sidebar size.
++            .environment(\.sidebarRowSize, .small)
++            .focusSection()
++            .onExitCommand { selection = nil }
++            .onKeyPress(.rightArrow) { fold(open: true, in: foldingRoots) }
++            .onKeyPress(.leftArrow) { fold(open: false, in: foldingRoots) }
++            .onKeyPress(.escape) {
++                guard selection != nil else { return .ignored }
++                selection = nil
++                return .handled
++            }
++            .onAppear {
++                if expanded.isEmpty { expanded = OutlinerTree.defaultExpandedIDs(roots: foldingRoots) }
++            }
++            .onChange(of: OutlinerTree.treeIdentity(foldingRoots)) { _, _ in
++                expanded = OutlinerTree.defaultExpandedIDs(roots: foldingRoots)
++            }
++            .onChange(of: selection) { _, newID in
++                guard let newID, newID.kind.isSceneNode else { return }
++                var next = expanded
++                OutlinerTree.reveal(newID, in: foldingRoots, expanded: &next)
++                expanded = next
++                // After expansion, scroll on the next turn so the row exists in the list.
++                DispatchQueue.main.async {
++                    withAnimation(.easeInOut(duration: 0.15)) {
++                        proxy.scrollTo(newID, anchor: .center)
+                     }
+-                } header: {
+-                    DSSectionHeader(section.title)
+                 }
+             }
+         }
+-        .listStyle(.sidebar)
+-        // Compact rows (11 pt), like a design tool's layer list, whatever the system sidebar size.
+-        .environment(\.sidebarRowSize, .small)
+-        .focusSection()
+-        .onExitCommand { selection = nil }
+-        .onKeyPress(.rightArrow) { fold(open: true, in: foldingRoots) }
+-        .onKeyPress(.leftArrow) { fold(open: false, in: foldingRoots) }
+-        .onKeyPress(.escape) {
+-            guard selection != nil else { return .ignored }
+-            selection = nil
+-            return .handled
+-        }
+-        .onAppear {
+-            if expanded.isEmpty { expanded = OutlinerTree.defaultExpandedIDs(roots: foldingRoots) }
+-        }
+-        .onChange(of: OutlinerTree.treeIdentity(foldingRoots)) { _, _ in
+-            expanded = OutlinerTree.defaultExpandedIDs(roots: foldingRoots)
++    }
++
++    @ViewBuilder
++    private func layerMenu(for id: NodeID, state: DSVisibility?) -> some View {
++        let isHidden = hiddenNodes.contains(id.index)
++        let isSoloed = soloNodes.contains(id.index)
++        let hasLayerChanges = !hiddenNodes.isEmpty || !soloNodes.isEmpty
++        Button(isHidden ? "Show" : "Hide") { onToggleHidden(id.index) }
++            .disabled(state == .hiddenInFile || state == .hiddenByParent)
++        Button(isSoloed ? "Unsolo" : "Solo") { onToggleSolo(id.index) }
++        Button("Frame") {
++            selection = id
++            onFrame(id.index)
+         }
++        Divider()
++        Button("Show All") { onShowAll() }
++            .disabled(!hasLayerChanges)
+     }
+ 
+     private func listSelection(in sections: [OutlinerSection]) -> Binding<NodeID?> {
+@@ -80,6 +134,10 @@ struct OutlinerList: View {
+         )
+     }
+ 
++    private func isJoint(_ id: NodeID) -> Bool {
++        id.kind.isSceneNode && document.isJoint(nodeIndex: id.index)
++    }
++
+     /// A fault badge for rows the validator reported on. Infos and hints stay off the outliner.
+     private func badge(for id: NodeID) -> DSStatus? {
+         switch validation.worstSeverity(for: id) {
+diff --git a/GLTFInspector/Sidebar/OutlinerTree.swift b/GLTFInspector/Sidebar/OutlinerTree.swift
+index 78e992c..bceb686 100644
+--- a/GLTFInspector/Sidebar/OutlinerTree.swift
++++ b/GLTFInspector/Sidebar/OutlinerTree.swift
+@@ -78,6 +78,42 @@ enum OutlinerTree {
+         }
+     }
+ 
++    /// The layer state of every scene-graph row, as the renderer will draw it: a node's own
++    /// authored or window hide wins, then any hidden ancestor, then solo (only soloed nodes and
++    /// their subtrees draw). `hidden` and `solo` are glTF node indices.
++    static func layerVisibility(
++        _ roots: [OutlinerItem],
++        isHiddenInFile: (Int) -> Bool,
++        hidden: Set<Int>,
++        solo: Set<Int>
++    ) -> [NodeID: DSVisibility] {
++        var result: [NodeID: DSVisibility] = [:]
++        /// `ancestorHidden`: an ancestor hides its subtree. `soloed`: self or an ancestor is soloed.
++        func walk(_ item: OutlinerItem, ancestorHidden: Bool, soloed: Bool) {
++            let index = item.id.index
++            let ownHiddenInFile = isHiddenInFile(index)
++            let ownHidden = hidden.contains(index)
++            let isSoloed = soloed || solo.contains(index)
++            let state: DSVisibility
++            if ownHiddenInFile {
++                state = .hiddenInFile
++            } else if ownHidden {
++                state = .hidden
++            } else if ancestorHidden || (!solo.isEmpty && !isSoloed) {
++                state = .hiddenByParent
++            } else {
++                state = .visible
++            }
++            result[item.id] = state
++            let childrenHidden = ancestorHidden || ownHidden || ownHiddenInFile
++            for child in item.children {
++                walk(child, ancestorHidden: childrenHidden, soloed: isSoloed)
++            }
++        }
++        roots.forEach { walk($0, ancestorHidden: false, soloed: false) }
++        return result
++    }
++
+     /// Stable identity for “document / fixture tree changed” — reset expansion when this flips.
+     static func treeIdentity(_ roots: [OutlinerItem]) -> [NodeID] {
+         var ids: [NodeID] = []
+@@ -88,4 +124,25 @@ enum OutlinerTree {
+         roots.forEach(walk)
+         return ids
+     }
++
++    /// Root → … → `id`, or nil when `id` is not in the tree. Includes `id` itself.
++    static func path(to id: NodeID, in roots: [OutlinerItem]) -> [NodeID]? {
++        func walk(_ items: [OutlinerItem], trail: [NodeID]) -> [NodeID]? {
++            for item in items {
++                let next = trail + [item.id]
++                if item.id == id { return next }
++                if let found = walk(item.children, trail: next) { return found }
++            }
++            return nil
++        }
++        return walk(roots, trail: [])
++    }
++
++    /// Expands every ancestor of `id` so the row is visible. Leaves unrelated expansion alone.
++    static func reveal(_ id: NodeID, in roots: [OutlinerItem], expanded: inout Set<NodeID>) {
++        guard let path = path(to: id, in: roots), path.count > 1 else { return }
++        for ancestor in path.dropLast() {
++            expanded.insert(ancestor)
++        }
++    }
+ }
+diff --git a/GLTFInspector/Sidebar/Sidebar.swift b/GLTFInspector/Sidebar/Sidebar.swift
+index 60441b9..0d78d8d 100644
+--- a/GLTFInspector/Sidebar/Sidebar.swift
++++ b/GLTFInspector/Sidebar/Sidebar.swift
+@@ -14,7 +14,22 @@ struct Sidebar: View {
+     var body: some View {
+         Group {
+             if documentState.isReady {
+-                OutlinerList(document: document, validation: validation, selection: $view.selection, onActivate: activate)
++                OutlinerList(
++                    document: document,
++                    validation: validation,
++                    selection: $view.selection,
++                    onActivate: activate,
++                    hiddenNodes: view.hiddenNodes,
++                    soloNodes: view.soloNodes,
++                    onToggleHidden: { view.toggleHidden($0) },
++                    onToggleSolo: { view.toggleSolo($0) },
++                    onShowAll: { view.showAll() },
++                    onFrame: { index in
++                        view.selection = document.id(ofNode: index)
++                        view.frameSelection()
++                    }
++                )
++                .documentReadyMarker()
+                 .safeAreaInset(edge: .top, spacing: 0) {
+                     documentCard
+                 }
+diff --git a/GLTFInspector/Toolbar/ViewportCommands.swift b/GLTFInspector/Toolbar/ViewportCommands.swift
+index 4bc0aea..cd19815 100644
+--- a/GLTFInspector/Toolbar/ViewportCommands.swift
++++ b/GLTFInspector/Toolbar/ViewportCommands.swift
+@@ -12,6 +12,9 @@ struct ViewportZoomCommands: View {
+             .keyboardShortcut(Shortcuts.action(.zoomOut))
+         Button("Fit", systemImage: "viewfinder") { view.fit() }
+             .keyboardShortcut(Shortcuts.action(.fit))
++        Button("Frame Selection", systemImage: "viewfinder.rectangular") { view.frameSelection() }
++            .keyboardShortcut(Shortcuts.action(.frameSelection))
++            .disabled(view.selection.map(\.kind.isSceneNode) != true)
+     }
+ }
+ 
+diff --git a/GLTFInspector/Window/DocumentWindow.swift b/GLTFInspector/Window/DocumentWindow.swift
+index 2367053..6d90073 100644
+--- a/GLTFInspector/Window/DocumentWindow.swift
++++ b/GLTFInspector/Window/DocumentWindow.swift
+@@ -101,4 +101,15 @@ extension View {
+             }
+         }
+     }
++
++    /// Accessibility-only: JSON panels and outliner are ready (`GLTFInspectorUITests`).
++    func documentReadyMarker() -> some View {
++        overlay(alignment: .topLeading) {
++            Color.clear
++                .frame(width: 1, height: 1)
++                .allowsHitTesting(false)
++                .accessibilityElement()
++                .accessibilityIdentifier("document-ready")
++        }
++    }
+ }
+diff --git a/GLTFInspector/Window/DocumentWindowModel.swift b/GLTFInspector/Window/DocumentWindowModel.swift
+index f945018..a6e81ef 100644
+--- a/GLTFInspector/Window/DocumentWindowModel.swift
++++ b/GLTFInspector/Window/DocumentWindowModel.swift
+@@ -38,6 +38,10 @@ final class DocumentWindowModel {
+         self.documentURL = documentURL
+         phase = documentURL == nil ? .empty : .loading
+         view = ViewState(settings: settings ?? .shared)
++        view.canvas.onPick = { [weak self] index in
++            guard let self else { return }
++            self.view.selection = index.flatMap { self.document.id(ofNode: $0) }
++        }
+     }
+ 
+     /// The validator's findings, resolved to outliner rows.
+diff --git a/GLTFInspector/Window/ViewState.swift b/GLTFInspector/Window/ViewState.swift
+index 5c9ea1a..479415e 100644
+--- a/GLTFInspector/Window/ViewState.swift
++++ b/GLTFInspector/Window/ViewState.swift
+@@ -20,6 +20,8 @@ final class ViewState {
+     @ObservationIgnored let settings: AppSettings
+     /// The renderer behind the canvas. Outlives SwiftUI remounts of the canvas view.
+     let canvas = ModelCanvasController()
++    /// Orbit preview in the inspector Shape section; one `ModelView` across selection changes.
++    let shapePreview = ShapePreviewController()
+ 
+     private var overrides = StageOverrides()
+ 
+@@ -31,6 +33,7 @@ final class ViewState {
+         get { overrides.showsFloor ?? settings.showsFloor }
+         set { overrides.showsFloor = newValue }
+     }
++    var showsSceneGizmos = false
+     var autoRotates: Bool {
+         get { overrides.autoRotates ?? settings.autoRotates }
+         set { overrides.autoRotates = newValue }
+@@ -64,8 +67,14 @@ final class ViewState {
+             guard sceneIndex != oldValue else { return }
+             if let selection, selection.kind.isSceneNode { self.selection = nil }
+             fileCameraNodeIndex = nil
++            hiddenNodes = []
++            soloNodes = []
+         }
+     }
++    /// Scene-graph nodes hidden in this window (glTF node indices). Hiding a node hides its subtree.
++    var hiddenNodes: Set<Int> = []
++    /// When non-empty, only these nodes' subtrees are drawn.
++    var soloNodes: Set<Int> = []
+     /// `KHR_materials_variants` index, or nil for the file's default materials.
+     var materialVariantIndex: Int?
+     /// The node of the file camera the canvas looks through, or nil for the orbit camera.
+@@ -96,8 +105,13 @@ final class ViewState {
+             materialVariantIndex: materialVariantIndex,
+             sceneIndex: sceneIndex,
+             showsFloor: showsFloor,
++            showsSceneGizmos: showsSceneGizmos,
+             isCentered: isCentered,
+-            selectedNodeIndex: selection.flatMap { $0.kind == .mesh || $0.kind == .empty ? $0.index : nil }
++            selectedNodeIndex: selection.flatMap { $0.kind == .mesh || $0.kind == .empty ? $0.index : nil },
++            gizmoSelectedNodeIndex: selection.flatMap { $0.kind.isSceneNode ? $0.index : nil },
++            selectedSkinIndex: selection.flatMap { $0.kind == .skin ? $0.index : nil },
++            hiddenNodeIndices: hiddenNodes,
++            soloNodeIndices: soloNodes
+         )
+     }
+ 
+@@ -111,6 +125,29 @@ final class ViewState {
+         fileCameraNodeIndex = nil
+         selection = nil
+         activeCameraPreset = nil
++        showAll()
++    }
++
++    // MARK: - Layer visibility
++
++    /// Hide or show one scene node in this window; the file is not touched.
++    func toggleHidden(_ node: Int) {
++        if hiddenNodes.contains(node) {
++            hiddenNodes.remove(node)
++        } else {
++            hiddenNodes.insert(node)
++        }
++    }
++
++    /// Solo one node; soloing the only soloed node clears the solo.
++    func toggleSolo(_ node: Int) {
++        soloNodes = soloNodes == [node] ? [] : [node]
++    }
++
++    /// Clears every hidden and soloed node.
++    func showAll() {
++        hiddenNodes = []
++        soloNodes = []
+     }
+ 
+     // MARK: - Camera commands
+@@ -121,14 +158,28 @@ final class ViewState {
+         canvas.fit()
+     }
+ 
++    /// Frames the selected scene node at the current orbit angle. No-op for non-node rows.
++    func frameSelection() {
++        guard let selection, selection.kind.isSceneNode else { return }
++        fileCameraNodeIndex = nil
++        activeCameraPreset = nil
++        canvas.frame(nodeIndex: selection.index)
++    }
++
+     func zoom(by factor: Double) {
+         activeCameraPreset = nil
+         canvas.zoom(by: factor)
+     }
+ 
++    func orbit(dx: Double, dy: Double) {
++        activeCameraPreset = nil
++        canvas.orbit(dx: dx, dy: dy)
++    }
++
+     func show(_ preset: CameraPreset) {
+         fileCameraNodeIndex = nil
+         activeCameraPreset = preset
++        isOrthographic = preset != .isometric
+         canvas.show(preset)
+     }
+ 
+diff --git a/GLTFInspector/Window/WindowLayout.swift b/GLTFInspector/Window/WindowLayout.swift
+index 603126b..b00f55e 100644
+--- a/GLTFInspector/Window/WindowLayout.swift
++++ b/GLTFInspector/Window/WindowLayout.swift
+@@ -58,11 +58,13 @@ struct WindowLayout<Canvas: View>: View {
+             }
+             .inspector(isPresented: inspectorPresented) {
+                 Inspector(
++                    view: window.view,
+                     document: window.document,
+                     selection: window.view.selection,
+                     documentState: window.phase,
+                     validation: validation,
+-                    documentURL: documentURL
++                    documentURL: documentURL,
++                    onSelect: { window.view.selection = $0 }
+                 )
+                 .inspectorColumnWidth(
+                     min: DS.Metrics.inspectorWidthRange.lowerBound,
+diff --git a/GLTFInspectorTests/GLTFDocumentContentTests.swift b/GLTFInspectorTests/GLTFDocumentContentTests.swift
+index c3c8cfb..896db71 100644
+--- a/GLTFInspectorTests/GLTFDocumentContentTests.swift
++++ b/GLTFInspectorTests/GLTFDocumentContentTests.swift
+@@ -34,6 +34,7 @@ struct GLTFDocumentContentTests {
+         let skin = try #require(document.skins.first)
+         #expect(skin.name == "Leg")
+         #expect(skin.jointNames == ["Hip", "Knee"])
++        #expect(skin.jointNodeIndices == [4, 5])
+ 
+         #expect(document.morphs.map(\.targetNames) == [["Blink"]])
+         #expect(document.materials[0].workflow == .metallicRoughness)
+@@ -103,6 +104,88 @@ struct GLTFDocumentContentTests {
+         #expect(names == ["Red", "Variant 1", "Blue"])
+     }
+ 
++    @Test func meshNodeListsEveryPrimitiveMaterialTopologyAndTris() {
++        let document = GLTFDocumentJSON.makeDocument(json: [
++            "asset": ["version": "2.0"],
++            "accessors": [
++                ["componentType": 5126, "count": 3, "type": "VEC3"],
++                ["componentType": 5126, "count": 4, "type": "VEC3"],
++            ],
++            "materials": [["name": "A"], ["name": "B"]],
++            "meshes": [[
++                "primitives": [
++                    ["attributes": ["POSITION": 0], "material": 0, "mode": 4],
++                    ["attributes": ["POSITION": 1], "material": 1, "mode": 5],
++                ],
++            ]],
++            "nodes": [["name": "Body", "mesh": 0]],
++            "scenes": [["nodes": [0]]],
++            "scene": 0,
++        ])
++        let mesh = document.nodes[0]
++        #expect(mesh.meshPrimitives.count == 2)
++        #expect(mesh.meshPrimitives[0].materialIndex == 0)
++        #expect(mesh.meshPrimitives[0].triangleCount == 1)
++        #expect(mesh.meshPrimitives[0].mode == 4)
++        #expect(mesh.meshPrimitives[1].materialIndex == 1)
++        #expect(mesh.meshPrimitives[1].triangleCount == 2)
++        #expect(mesh.meshPrimitives[1].mode == 5)
++    }
++
++    @Test func materialUsedByListsEachNodeOnceAndSkipsUnusedMaterials() {
++        let document = GLTFDocumentJSON.makeDocument(json: [
++            "asset": ["version": "2.0"],
++            "accessors": [
++                ["componentType": 5126, "count": 3, "type": "VEC3"],
++                ["componentType": 5126, "count": 3, "type": "VEC3"],
++            ],
++            "materials": [["name": "Shared"], ["name": "Lonely"]],
++            "meshes": [
++                ["primitives": [
++                    ["attributes": ["POSITION": 0], "material": 0],
++                    ["attributes": ["POSITION": 1], "material": 0],
++                ]],
++                ["primitives": [["attributes": ["POSITION": 0], "material": 0]]],
++            ],
++            "nodes": [
++                ["name": "A", "mesh": 0],
++                ["name": "B", "mesh": 1],
++            ],
++            "scenes": [["nodes": [0, 1]]],
++            "scene": 0,
++        ])
++        #expect(document.nodeIndices(usingMaterial: 0) == [0, 1])
++        #expect(document.nodeIndices(usingMaterial: 1).isEmpty)
++    }
++
++    @Test func gpuInstancingAndJointMembershipAreDerivedFromJSON() {
++        let document = GLTFDocumentJSON.makeDocument(json: [
++            "asset": ["version": "2.0"],
++            "accessors": [
++                ["componentType": 5126, "count": 3, "type": "VEC3"],
++                ["componentType": 5126, "count": 5, "type": "VEC3"],
++            ],
++            "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
++            "skins": [["name": "Arm", "joints": [1, 2]]],
++            "nodes": [
++                [
++                    "name": "Forest",
++                    "mesh": 0,
++                    "extensions": [
++                        "EXT_mesh_gpu_instancing": ["attributes": ["TRANSLATION": 1]],
++                    ],
++                ],
++                ["name": "Shoulder"],
++                ["name": "Elbow"],
++            ],
++            "scenes": [["nodes": [0]]],
++            "scene": 0,
++        ])
++        #expect(document.nodes[0].gpuInstanceCount == 5)
++        #expect(document.nodes[1].jointOfSkinIndices == [0])
++        #expect(document.nodes[2].jointOfSkinIndices == [0])
++    }
++
+     @Test func textureSlotsAreSizedAndThumbedFromTheFilesOwnImages() throws {
+         let url = try TestGLB.writeTemp(try texturedGLB(), prefix: "texture-slots")
+         defer { try? FileManager.default.removeItem(at: url) }
+diff --git a/GLTFInspectorTests/GLTFDocumentJSONTests.swift b/GLTFInspectorTests/GLTFDocumentJSONTests.swift
+index 9605d2c..443949c 100644
+--- a/GLTFInspectorTests/GLTFDocumentJSONTests.swift
++++ b/GLTFInspectorTests/GLTFDocumentJSONTests.swift
+@@ -91,6 +91,22 @@ struct GLTFDocumentJSONTests {
+         #expect(fallback.scale == SIMD3<Float>(2, 2, 2))
+     }
+ 
++    @Test func nodeVisibilityExtensionMarksHiddenNodesOnly() throws {
++        let data = try JSONSerialization.data(withJSONObject: [
++            "asset": ["version": "2.0"],
++            "nodes": [
++                ["name": "Hidden", "extensions": ["KHR_node_visibility": ["visible": false]]],
++                ["name": "Shown", "extensions": ["KHR_node_visibility": ["visible": true]]],
++                ["name": "Plain"],
++            ],
++            "scenes": [["nodes": [0, 1, 2]]],
++            "scene": 0,
++        ])
++        let parsed = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
++        let document = GLTFDocumentJSON.makeDocument(json: parsed)
++        #expect(document.nodes.map(\.isHiddenInFile) == [true, false, false])
++    }
++
+     @Test func twoSkinsShareOneParentForest() {
+         let document = GLTFDocumentJSON.makeDocument(json: [
+             "asset": ["version": "2.0"],
+@@ -108,7 +124,9 @@ struct GLTFDocumentJSONTests {
+         ])
+         #expect(document.skins.map(\.name) == ["Full", "Tip"])
+         #expect(document.skins[0].jointNames == ["Root", "Mid", "Leaf"])
++        #expect(document.skins[0].jointNodeIndices == [0, 1, 2])
+         #expect(document.skins[1].jointNames == ["Mid", "Leaf"])
++        #expect(document.skins[1].jointNodeIndices == [1, 2])
+     }
+ 
+     @Test func instanceForestIsDeterministicAndRoundTripsJSON() throws {
+diff --git a/GLTFInspectorTests/ModelCanvasTests.swift b/GLTFInspectorTests/ModelCanvasTests.swift
+index e73659b..78af468 100644
+--- a/GLTFInspectorTests/ModelCanvasTests.swift
++++ b/GLTFInspectorTests/ModelCanvasTests.swift
+@@ -162,6 +162,31 @@ struct ModelViewTests {
+     }
+ 
+     /// `UserCamera.zoomBy`, `orbit` and `pan` against values worked from the Khronos source.
++    @Test func unmodifiedClickAtCentrePicksMesh() async throws {
++        let view = try await loaded(TestFixtures.cube)
++        view.frame = NSRect(x: 0, y: 0, width: 512, height: 512)
++        view.layoutSubtreeIfNeeded()
++        // Off-screen fixture window: pick needs a window, but must not steal focus (AGENTS.md).
++        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
++        window.isReleasedWhenClosed = false
++        window.contentView = view
++        view.layoutSubtreeIfNeeded()
++        defer { window.contentView = nil; window.close() }
++
++        var picked: Int?
++        view.onPick = { picked = $0 }
++
++        let centre = NSPoint(x: 256, y: 256)
++        func event(_ type: NSEvent.EventType) -> NSEvent {
++            NSEvent.mouseEvent(with: type, location: centre, modifierFlags: [], timestamp: 0,
++                               windowNumber: window.windowNumber, context: nil, eventNumber: 0,
++                               clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1)!
++        }
++        view.mouseDown(with: event(.leftMouseDown))
++        view.mouseUp(with: event(.leftMouseUp))
++        #expect(picked == 0)
++    }
++
+     @Test func userCameraInputFollowsKhronos() {
+         var camera = MetalUserCamera()
+         camera.fit(extents: (SIMD3(-1, -1, -1), SIMD3(1, 1, 1)), centered: true, aspect: 1)
+diff --git a/GLTFInspectorTests/OutlinerTreeTests.swift b/GLTFInspectorTests/OutlinerTreeTests.swift
+index 8221b15..b096a39 100644
+--- a/GLTFInspectorTests/OutlinerTreeTests.swift
++++ b/GLTFInspectorTests/OutlinerTreeTests.swift
+@@ -66,6 +66,58 @@ struct OutlinerTreeTests {
+         let all = OutlinerTree.visibleRows([root], expanded: [root.id, root.children[0].id])
+         #expect(all.map(\.depth) == [0, 1, 2])
+     }
++
++    /// Group 0 › mesh 1 › mesh 2, and mesh 3 beside the group.
++    private var layers: [OutlinerItem] {
++        let leaf = OutlinerItem(id: NodeID(kind: .mesh, index: 2), name: "Leaf")
++        let mesh = OutlinerItem(id: NodeID(kind: .mesh, index: 1), name: "Mesh", children: [leaf])
++        return [OutlinerItem(id: NodeID(kind: .empty, index: 0), name: "Group", children: [mesh]),
++                OutlinerItem(id: NodeID(kind: .mesh, index: 3), name: "Other")]
++    }
++
++    private func state(_ index: Int, _ map: [NodeID: DSVisibility]) -> DSVisibility? {
++        map.first { $0.key.index == index }?.value
++    }
++
++    @Test func layerVisibilityFollowsHideSoloAndTheFile() {
++        let none = OutlinerTree.layerVisibility(layers, isHiddenInFile: { _ in false }, hidden: [], solo: [])
++        #expect((0...3).allSatisfy { state($0, none) == .visible })
++
++        let hidden = OutlinerTree.layerVisibility(layers, isHiddenInFile: { _ in false }, hidden: [0], solo: [])
++        #expect(state(0, hidden) == .hidden)
++        #expect(state(1, hidden) == .hiddenByParent && state(2, hidden) == .hiddenByParent)
++        #expect(state(3, hidden) == .visible)
++
++        let solo = OutlinerTree.layerVisibility(layers, isHiddenInFile: { _ in false }, hidden: [], solo: [1])
++        #expect(state(0, solo) == .hiddenByParent)
++        #expect(state(1, solo) == .visible && state(2, solo) == .visible)
++        #expect(state(3, solo) == .hiddenByParent)
++
++        let file = OutlinerTree.layerVisibility(layers, isHiddenInFile: { $0 == 1 }, hidden: [], solo: [])
++        #expect(state(1, file) == .hiddenInFile && state(2, file) == .hiddenByParent)
++    }
++
++    @Test func pathToReturnsAncestorsThenSelf() {
++        let leaf = NodeID(kind: .mesh, index: 2)
++        #expect(OutlinerTree.path(to: leaf, in: layers) == [
++            NodeID(kind: .empty, index: 0),
++            NodeID(kind: .mesh, index: 1),
++            leaf,
++        ])
++        let root = NodeID(kind: .empty, index: 0)
++        #expect(OutlinerTree.path(to: root, in: layers) == [root])
++        #expect(OutlinerTree.path(to: NodeID(kind: .mesh, index: 99), in: layers) == nil)
++    }
++
++    @Test func revealExpandsAncestorsWithoutCollapsingOthers() {
++        let leaf = NodeID(kind: .mesh, index: 2)
++        var expanded: Set<NodeID> = [NodeID(kind: .mesh, index: 3)]
++        OutlinerTree.reveal(leaf, in: layers, expanded: &expanded)
++        #expect(expanded.contains(NodeID(kind: .empty, index: 0)))
++        #expect(expanded.contains(NodeID(kind: .mesh, index: 1)))
++        #expect(expanded.contains(NodeID(kind: .mesh, index: 3)))
++        #expect(!expanded.contains(leaf), "leaves are not expansion keys")
++    }
+ }
+ 
+ /// The sidebar's sections, from the parsed document.
+diff --git a/GLTFInspectorTests/TestGLBFixtures.swift b/GLTFInspectorTests/TestGLBFixtures.swift
+index 0f83d62..cd8a079 100644
+--- a/GLTFInspectorTests/TestGLBFixtures.swift
++++ b/GLTFInspectorTests/TestGLBFixtures.swift
+@@ -1,4 +1,6 @@
++import CoreGraphics
+ import Foundation
++import ImageIO
+ 
+ /// GLB bytes for tests, built in the test target: JSON chunk padded with spaces, BIN chunk padded
+ /// with zeros (what `GLBBox.parse` reads).
+@@ -61,6 +63,146 @@ func floatTriangleBin() -> Data {
+     return bin
+ }
+ 
++/// Unit square in the XY plane at z = 0, facing +Z, with UVs 0…1.
++func floatQuadWithUVBin() -> Data {
++    var bin = Data()
++    let positions: [Float] = [
++        -1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0,
++    ]
++    let uvs: [Float] = [0, 0, 1, 0, 1, 1, 0, 1]
++    appendFloats(positions, to: &bin)
++    appendFloats(uvs, to: &bin)
++    let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
++    for index in indices {
++        var bits = index.littleEndian
++        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
++    }
++    return bin
++}
++
++/// RGBA PNG; every pixel uses the same alpha (`opaqueCenter` false → center texel alpha 0).
++func rgbaPNG(width: Int, height: Int, opaqueCenter: Bool = true) -> Data {
++    var pixels = [UInt8](repeating: 255, count: width * height * 4)
++    if !opaqueCenter, width > 2, height > 2 {
++        let cx = width / 2, cy = height / 2
++        let offset = (cy * width + cx) * 4 + 3
++        pixels[offset] = 0
++    }
++    let colorSpace = CGColorSpaceCreateDeviceRGB()
++    guard let context = CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
++                                  space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
++          let image = context.makeImage(),
++          let dest = CFDataCreateMutable(nil, 0),
++          let png = CGImageDestinationCreateWithData(dest, "public.png" as CFString, 1, nil)
++    else { return tinyPNG() }
++    CGImageDestinationAddImage(png, image, nil)
++    guard CGImageDestinationFinalize(png), let data = dest as Data? else { return tinyPNG() }
++    return data
++}
++
++/// Two quads stacked on Z: node 0 at z = -1 (back), node 1 at z = 0 (front).
++func writeTempStackedQuadsGLB(prefix: String = "stacked-quads") throws -> URL {
++    let bin = floatQuadWithUVBin()
++    let json: [String: Any] = [
++        "asset": ["version": "2.0"],
++        "buffers": [["byteLength": bin.count]],
++        "bufferViews": [
++            ["buffer": 0, "byteOffset": 0, "byteLength": 48],
++            ["buffer": 0, "byteOffset": 48, "byteLength": 32],
++            ["buffer": 0, "byteOffset": 80, "byteLength": 12],
++        ],
++        "accessors": [
++            ["bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
++             "min": [-1, -1, 0], "max": [1, 1, 0]],
++            ["bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC2"],
++            ["bufferView": 2, "componentType": 5123, "count": 6, "type": "SCALAR"],
++        ],
++        "meshes": [["primitives": [[
++            "attributes": ["POSITION": 0, "TEXCOORD_0": 1],
++            "indices": 2,
++        ]]]],
++        "nodes": [
++            ["name": "Back", "mesh": 0, "translation": [0, 0, -1]],
++            ["name": "Front", "mesh": 0],
++        ],
++        "scenes": [["nodes": [0, 1]]],
++        "scene": 0,
++    ]
++    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
++}
++
++/// MASK quad in front of an opaque quad; texture center is transparent.
++func writeTempMaskOverOpaqueGLB(prefix: String = "mask-over-opaque") throws -> URL {
++    let meshBin = floatQuadWithUVBin()
++    let png = rgbaPNG(width: 5, height: 5, opaqueCenter: false)
++    var bin = meshBin
++    bin.append(png)
++    let pngOffset = meshBin.count
++    let json: [String: Any] = [
++        "asset": ["version": "2.0"],
++        "buffers": [["byteLength": bin.count]],
++        "bufferViews": [
++            ["buffer": 0, "byteOffset": 0, "byteLength": 48],
++            ["buffer": 0, "byteOffset": 48, "byteLength": 32],
++            ["buffer": 0, "byteOffset": 80, "byteLength": 12],
++            ["buffer": 0, "byteOffset": pngOffset, "byteLength": png.count],
++        ],
++        "accessors": [
++            ["bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
++             "min": [-1, -1, 0], "max": [1, 1, 0]],
++            ["bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC2"],
++            ["bufferView": 2, "componentType": 5123, "count": 6, "type": "SCALAR"],
++        ],
++        "images": [["mimeType": "image/png", "bufferView": 3]],
++        "textures": [["source": 0]],
++        "materials": [
++            ["name": "Opaque", "pbrMetallicRoughness": ["baseColorFactor": [1, 1, 1, 1]]],
++            ["name": "Mask", "alphaMode": "MASK", "alphaCutoff": 0.5,
++             "pbrMetallicRoughness": ["baseColorTexture": ["index": 0]]],
++        ],
++        "meshes": [
++            ["primitives": [["attributes": ["POSITION": 0, "TEXCOORD_0": 1], "indices": 2, "material": 0]]],
++            ["primitives": [["attributes": ["POSITION": 0, "TEXCOORD_0": 1], "indices": 2, "material": 1]]],
++        ],
++        "nodes": [
++            ["name": "Back", "mesh": 0, "translation": [0, 0, -1]],
++            ["name": "MaskFront", "mesh": 1],
++        ],
++        "scenes": [["nodes": [0, 1]]],
++        "scene": 0,
++    ]
++    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
++}
++
++/// Centered quad (node 0) and a perspective camera on node 1 at z = 3.
++func writeTempCameraPickGLB(prefix: String = "camera-pick") throws -> URL {
++    let bin = floatQuadWithUVBin()
++    let json: [String: Any] = [
++        "asset": ["version": "2.0"],
++        "buffers": [["byteLength": bin.count]],
++        "bufferViews": [
++            ["buffer": 0, "byteOffset": 0, "byteLength": 48],
++            ["buffer": 0, "byteOffset": 48, "byteLength": 32],
++            ["buffer": 0, "byteOffset": 80, "byteLength": 12],
++        ],
++        "accessors": [
++            ["bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
++             "min": [-1, -1, 0], "max": [1, 1, 0]],
++            ["bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC2"],
++            ["bufferView": 2, "componentType": 5123, "count": 6, "type": "SCALAR"],
++        ],
++        "cameras": [["type": "perspective", "perspective": ["yfov": 1.0, "znear": 0.1, "zfar": 100]]],
++        "meshes": [["primitives": [["attributes": ["POSITION": 0, "TEXCOORD_0": 1], "indices": 2]]]],
++        "nodes": [
++            ["name": "Mesh", "mesh": 0],
++            ["name": "Cam", "camera": 0, "translation": [0, 0, 3]],
++        ],
++        "scenes": [["nodes": [0, 1]]],
++        "scene": 0,
++    ]
++    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
++}
++
+ func writeTempOneNodeMeshGLB(nodeName: String, prefix: String = "one-node") throws -> URL {
+     let bin = floatTriangleBin()
+     let json: [String: Any] = [
+@@ -81,3 +223,56 @@ func writeTempOneNodeMeshGLB(nodeName: String, prefix: String = "one-node") thro
+     return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
+ }
+ 
++/// Hip → non-joint pivot → knee; skin lists hip and knee only (bone must skip the pivot).
++func writeTempSkinWithPivotGLB(prefix: String = "skin-pivot") throws -> URL {
++    let positions = floatTrianglePositions()
++    var joints = Data()
++    for _ in 0..<3 {
++        for _ in 0..<4 {
++            var bits = UInt16(0).littleEndian
++            Swift.withUnsafeBytes(of: &bits) { joints.append(contentsOf: $0) }
++        }
++    }
++    var weights = Data()
++    appendFloats([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], to: &weights)
++    let identity: [Float] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
++    var ibm = Data()
++    appendFloats(identity + identity, to: &ibm)
++    var bin = Data()
++    appendFloats(positions, to: &bin)
++    bin.append(joints)
++    bin.append(weights)
++    bin.append(ibm)
++    let p = positions.count * MemoryLayout<Float>.size
++    let j = joints.count
++    let w = weights.count
++    let json: [String: Any] = [
++        "asset": ["version": "2.0"],
++        "buffers": [["byteLength": bin.count]],
++        "bufferViews": [
++            ["buffer": 0, "byteOffset": 0, "byteLength": p],
++            ["buffer": 0, "byteOffset": p, "byteLength": j],
++            ["buffer": 0, "byteOffset": p + j, "byteLength": w],
++            ["buffer": 0, "byteOffset": p + j + w, "byteLength": ibm.count],
++        ],
++        "accessors": [
++            ["bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
++             "max": [1, 1, 0], "min": [0, 0, 0]],
++            ["bufferView": 1, "componentType": 5123, "count": 3, "type": "VEC4"],
++            ["bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC4"],
++            ["bufferView": 3, "componentType": 5126, "count": 2, "type": "MAT4"],
++        ],
++        "meshes": [["primitives": [["attributes": ["POSITION": 0, "JOINTS_0": 1, "WEIGHTS_0": 2]]]]],
++        "skins": [["name": "Leg", "joints": [1, 3], "inverseBindMatrices": 3]],
++        "nodes": [
++            ["name": "Mesh", "mesh": 0, "skin": 0, "children": [1]],
++            ["name": "Hip", "children": [2]],
++            ["name": "Pivot", "children": [3], "translation": [0, 0.5, 0]],
++            ["name": "Knee", "translation": [0, 0.5, 0]],
++        ],
++        "scenes": [["nodes": [0]]],
++        "scene": 0,
++    ]
++    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
++}
++
+diff --git a/GLTFInspectorTests/ViewStateTests.swift b/GLTFInspectorTests/ViewStateTests.swift
+index 661641a..8051aba 100644
+--- a/GLTFInspectorTests/ViewStateTests.swift
++++ b/GLTFInspectorTests/ViewStateTests.swift
+@@ -94,6 +94,42 @@ struct ViewStateTests {
+         #expect(view.options.selectedNodeIndex == nil)
+     }
+ 
++    @Test func hideAndSoloReachTheRendererOptions() throws {
++        let view = ViewState(settings: try settings())
++        view.toggleHidden(2)
++        view.toggleHidden(5)
++        view.toggleHidden(5)
++        #expect(view.options.hiddenNodeIndices == [2])
++
++        view.toggleSolo(4)
++        #expect(view.soloNodes == [4] && view.options.soloNodeIndices == [4])
++        view.toggleSolo(7)
++        #expect(view.soloNodes == [7])
++        view.toggleSolo(7)
++        #expect(view.soloNodes.isEmpty)
++    }
++
++    @Test func showAllAndResetClearHiddenAndSoloNodes() throws {
++        let view = ViewState(settings: try settings())
++        view.toggleHidden(1)
++        view.toggleSolo(3)
++        view.showAll()
++        #expect(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
++
++        view.toggleHidden(1)
++        view.toggleSolo(3)
++        view.reset()
++        #expect(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
++    }
++
++    @Test func sceneChangeClearsHiddenAndSoloNodes() throws {
++        let view = ViewState(settings: try settings())
++        view.toggleHidden(1)
++        view.toggleSolo(3)
++        view.sceneIndex = 1
++        #expect(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
++    }
++
+     @Test func optionsCarryTheWindowsLook() throws {
+         let view = ViewState(settings: try settings())
+         view.exposure = 0.5
+diff --git a/GLTFInspectorUITests/DocumentWindowUITests.swift b/GLTFInspectorUITests/DocumentWindowUITests.swift
+index 2fb4650..53ad69d 100644
+--- a/GLTFInspectorUITests/DocumentWindowUITests.swift
++++ b/GLTFInspectorUITests/DocumentWindowUITests.swift
+@@ -40,28 +40,42 @@ final class DocumentWindowUITests: XCTestCase {
+         attachScreenshot(app, named: "shaded-after-reset")
+     }
+ 
+-    // MARK: 3. Outliner selection → inspector
++    // MARK: 3. Canvas click → selection
++
++    func testCanvasPickSelectsMesh() {
++        let app = makeApp(file: UIFixture.cube)
++        app.launch()
++        self.app = app
++        waitForCanvas(in: app)
++        waitForDocument(in: app)
++
++        clickCanvasCentre(in: app)
++
++        let header = inspectorSelection(in: app)
++        XCTAssertTrue(header.waitForExistence(timeout: UIWait.timeout), "inspector does not show Cube")
++        XCTAssertTrue(header.label.contains("Cube"), "expected Cube selection, got \(header.label)")
++        attachScreenshot(app, named: "canvas-pick")
++    }
++
++    // MARK: 4. Outliner selection → inspector
+ 
+     func testOutlinerSelection() {
+         let app = launch()
+         waitForCanvas(in: app)
++        waitForDocument(in: app)
+ 
+-        // `NodeRow` label: "<name>, <kind>". BoxAnimated's nodes are unnamed → "Node <index>".
+         let row = app.descendants(matching: .any)
+             .matching(NSPredicate(format: "label BEGINSWITH %@", "Node 1, "))
+             .firstMatch
+-        XCTAssertTrue(row.waitForExistence(timeout: UIWait.timeout), "outliner row Node 1 missing")
+-        row.click()
++        if row.waitForExistence(timeout: 2) {
++            row.click()
++        } else {
++            clickSidebarOutliner(in: app)
++        }
+ 
+-        let inspector = app.descendants(matching: .any)
+-            .matching(NSPredicate(format: "label == %@", "Inspector"))
+-            .firstMatch
+-        XCTAssertTrue(inspector.waitForExistence(timeout: UIWait.timeout), "inspector missing")
+-        // `NodeHeader` combines name and kind into one text: "Node 1, Group".
+-        let header = inspector.staticTexts
+-            .matching(NSPredicate(format: "value BEGINSWITH %@", "Node 1,"))
+-            .firstMatch
++        let header = inspectorSelection(in: app)
+         XCTAssertTrue(header.waitForExistence(timeout: UIWait.timeout), "inspector does not show Node 1")
++        XCTAssertTrue(header.label.contains("Node 1"), "expected Node 1 selection, got \(header.label)")
+         attachScreenshot(app, named: "selection")
+     }
+ 
+diff --git a/GLTFInspectorUITests/InspectorUITestSupport.swift b/GLTFInspectorUITests/InspectorUITestSupport.swift
+index 51a449d..ed52f7a 100644
+--- a/GLTFInspectorUITests/InspectorUITestSupport.swift
++++ b/GLTFInspectorUITests/InspectorUITestSupport.swift
+@@ -8,6 +8,8 @@ enum UIFixture {
+ 
+     /// Animated box GLB with unnamed nodes (`Node 0` … in the outliner).
+     static let boxAnimated = repoRoot.appendingPathComponent("TestModels/Fixture Models/BoxAnimated/BoxAnimated.glb")
++    /// Single named mesh node (`Cube`) centred in the default view.
++    static let cube = repoRoot.appendingPathComponent("TestModels/Fixture Models/cube/cube.gltf")
+ }
+ 
+ enum UIWait {
+@@ -47,6 +49,45 @@ extension XCTestCase {
+         return marker
+     }
+ 
++    func documentReady(in app: XCUIApplication) -> XCUIElement {
++        app.descendants(matching: .any).matching(identifier: "document-ready").firstMatch
++    }
++
++    @discardableResult
++    func waitForDocument(
++        in app: XCUIApplication,
++        file: StaticString = #filePath,
++        line: UInt = #line
++    ) -> XCUIElement {
++        let marker = documentReady(in: app)
++        XCTAssertTrue(
++            marker.waitForExistence(timeout: UIWait.timeout),
++            "document panels never became ready",
++            file: file,
++            line: line
++        )
++        return marker
++    }
++
++    func inspectorSelection(in app: XCUIApplication) -> XCUIElement {
++        app.descendants(matching: .any).matching(identifier: "inspector-selection").firstMatch
++    }
++
++    /// Clicks the sidebar outliner when rows are not exposed in the accessibility tree.
++    func clickSidebarOutliner(in app: XCUIApplication, normalizedY: CGFloat = 0.42) {
++        let window = app.windows.firstMatch
++        XCTAssertTrue(window.waitForExistence(timeout: UIWait.timeout), "window missing")
++        window.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: normalizedY)).click()
++    }
++
++    /// Clicks the canvas detail area (between sidebar and inspector), near the visual centre.
++    func clickCanvasCentre(in app: XCUIApplication) {
++        let window = app.windows.firstMatch
++        XCTAssertTrue(window.waitForExistence(timeout: UIWait.timeout), "window missing")
++        // Below the title-bar band; past the ~248 pt sidebar on the default 1280 pt window.
++        window.coordinate(withNormalizedOffset: CGVector(dx: 0.62, dy: 0.55)).click()
++    }
++
+     func attachScreenshot(_ app: XCUIApplication, named name: String) {
+         let window = app.windows.firstMatch
+         let screenshot = window.exists ? window.screenshot() : app.screenshot()
+diff --git a/Renderer/MetalOverlays.swift b/Renderer/MetalOverlays.swift
+index ede4295..c8e9ed9 100644
+--- a/Renderer/MetalOverlays.swift
++++ b/Renderer/MetalOverlays.swift
+@@ -1,3 +1,4 @@
++import GLTFKit2
+ import Metal
+ import simd
+ 
+@@ -10,17 +11,58 @@ import simd
+ struct MetalOverlayOptions: Sendable {
+     var floor: Bool
+     var origin: Bool
++    /// When true, draws every authored camera and punctual-light gizmo except `skipCameraNodeIndex`.
++    var sceneGizmos: Bool
+     var selectedNode: Int?
++    /// Index into `asset.skins` when a skin row is selected.
++    var selectedSkinIndex: Int?
++    /// glTF node index of the file camera the canvas looks through; its frustum is omitted.
++    var skipCameraNodeIndex: Int?
++    /// Canvas aspect when a perspective camera has no authored `aspectRatio`.
++    var canvasAspect: Float
++    /// Nodes (or ancestors) whose scene gizmos are omitted unless that node is selected.
++    var hiddenNodeIndices: Set<Int>
+     /// `camera.sceneExtents`: what the viewer sizes the floor and gizmo by. When centring is off it
+     /// includes the origin. Nil uses the scene's drawn bounds.
+     var extents: (min: SIMD3<Float>, max: SIMD3<Float>)?
+-    init(floor: Bool = false, origin: Bool = false, selectedNode: Int? = nil,
+-                extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil) {
+-        self.floor = floor; self.origin = origin; self.selectedNode = selectedNode; self.extents = extents
++    init(floor: Bool = false, origin: Bool = false, sceneGizmos: Bool = false, selectedNode: Int? = nil,
++         selectedSkinIndex: Int? = nil, skipCameraNodeIndex: Int? = nil, canvasAspect: Float = 1,
++         hiddenNodeIndices: Set<Int> = [], extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil) {
++        self.floor = floor
++        self.origin = origin
++        self.sceneGizmos = sceneGizmos
++        self.selectedNode = selectedNode
++        self.selectedSkinIndex = selectedSkinIndex
++        self.skipCameraNodeIndex = skipCameraNodeIndex
++        self.canvasAspect = canvasAspect
++        self.hiddenNodeIndices = hiddenNodeIndices
++        self.extents = extents
+     }
+ }
++
+ struct MetalLineVertex { var position: SIMD4<Float>; var color: SIMD4<Float> }
+ 
++private enum OverlayGizmoColors {
++    /// Selected camera / light frustum (DS warning-adjacent orange).
++    static let selectedScene = SIMD3<Float>(1, 0.65, 0.2)
++    static let mutedScene = SIMD3<Float>(0.45, 0.45, 0.45)
++    static let axisBlue = SIMD3<Float>(0.25, 0.45, 1)
++    static let selectionHighlight = SIMD3<Float>(0.15, 0.75, 1)
++}
++
++private func lightIsHidden(nodeIndex: Int, scene: MetalScene, hidden: Set<Int>) -> Bool {
++    guard !hidden.isEmpty else { return false }
++    return scene.ancestors(ofNode: nodeIndex).contains { hidden.contains($0) }
++}
++
++private func sceneLightGizmoColor(light: GLTFLight, selected: Bool) -> SIMD3<Float> {
++    if selected { return OverlayGizmoColors.selectedScene }
++    var c = SIMD3<Float>(light.color.x, light.color.y, light.color.z)
++    let peak = max(c.x, c.y, c.z, 1e-6)
++    c /= peak
++    return c * 0.5 + SIMD3(repeating: 0.5)
++}
++
+ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalLineVertex] {
+     var vertices: [MetalLineVertex] = []
+     func line(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ color: SIMD3<Float>) {
+@@ -31,6 +73,7 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
+     let low = options.extents?.min ?? scene.boundsMin
+     let high = options.extents?.max ?? scene.boundsMax
+     let extent = simd_max(high - low, SIMD3(repeating: 1e-4))
++    let span = max(extent.x, extent.y, extent.z, 0.05)
+     if options.floor {
+         // `collectPolarFloor`: centred on the world origin, just under the scene.
+         let radius = max(2.7 * max(extent.x, extent.z) * 0.5, 0.001)
+@@ -59,23 +102,351 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
+         let size = 0.18 * max(extent.x, extent.y, extent.z, 0.05)
+         line(.zero, SIMD3(size, 0, 0), SIMD3(1, 0.2, 0.2))
+         line(.zero, SIMD3(0, size, 0), SIMD3(0.2, 1, 0.2))
+-        line(.zero, SIMD3(0, 0, size), SIMD3(0.25, 0.45, 1))
+-    }
+-    if let index = options.selectedNode, let box = scene.bounds(ofNode: index) {
+-        // `collectAABB`: padded by 1% of the longest side.
+-        let size = box.max - box.min
+-        let pad = 0.01 * max(size.x, size.y, size.z, 0.01)
+-        let a = box.min - pad, b = box.max + pad
+-        let corners: [SIMD3<Float>] = [
+-            SIMD3(a.x, a.y, a.z), SIMD3(b.x, a.y, a.z), SIMD3(a.x, b.y, a.z), SIMD3(b.x, b.y, a.z),
+-            SIMD3(a.x, a.y, b.z), SIMD3(b.x, a.y, b.z), SIMD3(a.x, b.y, b.z), SIMD3(b.x, b.y, b.z),
+-        ]
+-        let edges = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
+-        for (i, j) in edges { line(corners[i], corners[j], SIMD3(0.15, 0.75, 1)) }
++        line(.zero, SIMD3(0, 0, size), OverlayGizmoColors.axisBlue)
++    }
++
++    var drawnSceneGizmos = Set<Int>()
++    if options.sceneGizmos {
++        for (index, node) in scene.asset.nodes.enumerated() {
++            guard node.camera != nil || node.light != nil else { continue }
++            if index == options.skipCameraNodeIndex, node.camera != nil { continue }
++            if index != options.selectedNode, lightIsHidden(nodeIndex: index, scene: scene,
++                                                            hidden: options.hiddenNodeIndices) { continue }
++            let selected = index == options.selectedNode
++            collectSceneNodeGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
++                                  selected: selected, line: line)
++            drawnSceneGizmos.insert(index)
++        }
++    }
++    if let index = options.selectedNode, !drawnSceneGizmos.contains(index) {
++        collectSelectionGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
++                              line: line)
+     }
++    collectSkeletonOverlay(scene: scene, selectedSkinIndex: options.selectedSkinIndex,
++                           selectedNode: options.selectedNode, span: span,
++                           hidden: options.hiddenNodeIndices, line: line)
+     return vertices
+ }
+ 
++/// Nearest ancestor glTF node index that is also a joint of the same skin, or nil.
++func nearestJointAncestor(of nodeIndex: Int, jointSet: Set<Int>, nodeParents: [Int]) -> Int? {
++    guard nodeParents.indices.contains(nodeIndex) else { return nil }
++    var current = nodeIndex
++    while nodeParents[current] >= 0 {
++        let parent = nodeParents[current]
++        if jointSet.contains(parent) { return parent }
++        guard nodeParents.indices.contains(parent) else { return nil }
++        current = parent
++    }
++    return nil
++}
++
++private func isSkinJoint(_ nodeIndex: Int, scene: MetalScene) -> Bool {
++    scene.asset.skins.contains { skin in
++        skin.joints.contains { joint in scene.asset.nodes.firstIndex(of: joint) == nodeIndex }
++    }
++}
++
++private func jointNodeIndices(in scene: MetalScene, skin: GLTFSkin) -> [Int] {
++    skin.joints.compactMap { scene.asset.nodes.firstIndex(of: $0) }
++}
++
++private func collectSkeletonOverlay(
++    scene: MetalScene,
++    selectedSkinIndex: Int?,
++    selectedNode: Int?,
++    span: Float,
++    hidden: Set<Int>,
++    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
++) {
++    let resolved: (skin: GLTFSkin, highlightedJoint: Int?)?
++    if let skinIndex = selectedSkinIndex, scene.asset.skins.indices.contains(skinIndex) {
++        resolved = (scene.asset.skins[skinIndex], nil)
++    } else if let nodeIndex = selectedNode, isSkinJoint(nodeIndex, scene: scene),
++              let skinIndex = scene.asset.skins.firstIndex(where: { skin in
++                  jointNodeIndices(in: scene, skin: skin).contains(nodeIndex)
++              }) {
++        resolved = (scene.asset.skins[skinIndex], nodeIndex)
++    } else {
++        resolved = nil
++    }
++    guard let (skin, highlightedJoint) = resolved else { return }
++
++    let joints = jointNodeIndices(in: scene, skin: skin)
++    let jointSet = Set(joints)
++    let cross = span * 0.03
++
++    for jointIndex in joints {
++        if lightIsHidden(nodeIndex: jointIndex, scene: scene, hidden: hidden) { continue }
++        guard let world = scene.worldMatrix(ofNode: jointIndex) else { continue }
++        let p = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
++        let jointColor = jointIndex == highlightedJoint
++            ? OverlayGizmoColors.selectionHighlight
++            : OverlayGizmoColors.mutedScene
++        line(p - SIMD3(cross, 0, 0), p + SIMD3(cross, 0, 0), jointColor)
++        line(p - SIMD3(0, cross, 0), p + SIMD3(0, cross, 0), jointColor)
++        line(p - SIMD3(0, 0, cross), p + SIMD3(0, 0, cross), jointColor)
++
++        guard let parentJoint = nearestJointAncestor(of: jointIndex, jointSet: jointSet,
++                                                     nodeParents: scene.nodeParents),
++              !lightIsHidden(nodeIndex: parentJoint, scene: scene, hidden: hidden),
++              let parentWorld = scene.worldMatrix(ofNode: parentJoint) else { continue }
++        let parentPos = SIMD3(parentWorld.columns.3.x, parentWorld.columns.3.y, parentWorld.columns.3.z)
++        let boneColor = jointIndex == highlightedJoint
++            ? OverlayGizmoColors.selectionHighlight
++            : OverlayGizmoColors.mutedScene
++        line(parentPos, p, boneColor)
++    }
++}
++
++/// Pick segments for camera and light gizmos when `sceneGizmos` is on (same nodes as the global
++/// gizmo overlay pass, not selection-only AABB / skeleton lines).
++func overlayGizmoSegments(scene: MetalScene, options: MetalOverlayOptions) -> [MetalGizmoSegment] {
++    guard options.sceneGizmos else { return [] }
++    var segments: [MetalGizmoSegment] = []
++    let low = options.extents?.min ?? scene.boundsMin
++    let high = options.extents?.max ?? scene.boundsMax
++    let extent = simd_max(high - low, SIMD3(repeating: 1e-4))
++    let span = max(extent.x, extent.y, extent.z, 0.05)
++    for (index, node) in scene.asset.nodes.enumerated() {
++        guard node.camera != nil || node.light != nil else { continue }
++        if index == options.skipCameraNodeIndex, node.camera != nil { continue }
++        if index != options.selectedNode, lightIsHidden(nodeIndex: index, scene: scene,
++                                                        hidden: options.hiddenNodeIndices) { continue }
++        let selected = index == options.selectedNode
++        appendSceneNodeGizmoSegments(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
++                                     selected: selected, into: &segments)
++    }
++    return segments
++}
++
++private func appendSceneNodeGizmoSegments(
++    scene: MetalScene,
++    nodeIndex: Int,
++    span: Float,
++    canvasAspect: Float,
++    selected: Bool,
++    into segments: inout [MetalGizmoSegment]
++) {
++    guard scene.asset.nodes.indices.contains(nodeIndex),
++          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
++    let node = scene.asset.nodes[nodeIndex]
++    func emit(_ a: SIMD3<Float>, _ b: SIMD3<Float>) {
++        segments.append(MetalGizmoSegment(a: a, b: b, nodeIndex: nodeIndex))
++    }
++    if let camera = node.camera {
++        collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
++                             selected: selected, line: { a, b, _ in emit(a, b) })
++        return
++    }
++    if let light = node.light {
++        collectLightGizmo(world: world, light: light, span: span, color: .zero, line: { a, b, _ in emit(a, b) })
++    }
++}
++
++private func collectSceneNodeGizmo(
++    scene: MetalScene,
++    nodeIndex: Int,
++    span: Float,
++    canvasAspect: Float,
++    selected: Bool,
++    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
++) {
++    guard scene.asset.nodes.indices.contains(nodeIndex),
++          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
++    let node = scene.asset.nodes[nodeIndex]
++    if let camera = node.camera {
++        collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
++                             selected: selected, line: line)
++        return
++    }
++    if let light = node.light {
++        collectLightGizmo(world: world, light: light, span: span,
++                          color: sceneLightGizmoColor(light: light, selected: selected), line: line)
++    }
++}
++
++private func collectSelectionGizmo(
++    scene: MetalScene,
++    nodeIndex: Int,
++    span: Float,
++    canvasAspect: Float,
++    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
++) {
++    guard scene.asset.nodes.indices.contains(nodeIndex),
++          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
++    let node = scene.asset.nodes[nodeIndex]
++
++    if let camera = node.camera {
++        collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
++                             selected: true, line: line)
++        return
++    }
++
++    if let light = node.light {
++        collectLightGizmo(world: world, light: light, span: span, color: OverlayGizmoColors.selectedScene, line: line)
++        return
++    }
++
++    if isSkinJoint(nodeIndex, scene: scene) { return }
++
++    if node.mesh == nil, scene.nodeParents.indices.contains(nodeIndex), scene.nodeParents[nodeIndex] >= 0 {
++        let parent = scene.nodeParents[nodeIndex]
++        if let parentWorld = scene.worldMatrix(ofNode: parent) {
++            let a = SIMD3(parentWorld.columns.3.x, parentWorld.columns.3.y, parentWorld.columns.3.z)
++            let b = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
++            line(a, b, OverlayGizmoColors.selectionHighlight)
++            return
++        }
++    }
++
++    guard let box = scene.bounds(ofNode: nodeIndex) else { return }
++    let size = box.max - box.min
++    let pad = 0.01 * max(size.x, size.y, size.z, 0.01)
++    let a = box.min - pad, b = box.max + pad
++    let corners: [SIMD3<Float>] = [
++        SIMD3(a.x, a.y, a.z), SIMD3(b.x, a.y, a.z), SIMD3(a.x, b.y, a.z), SIMD3(b.x, b.y, a.z),
++        SIMD3(a.x, a.y, b.z), SIMD3(b.x, a.y, b.z), SIMD3(a.x, b.y, b.z), SIMD3(b.x, b.y, b.z),
++    ]
++    let edges = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
++    for (i, j) in edges { line(corners[i], corners[j], OverlayGizmoColors.selectionHighlight) }
++}
++
++private func cameraAxes(from world: simd_float4x4) -> (eye: SIMD3<Float>, forward: SIMD3<Float>, up: SIMD3<Float>, right: SIMD3<Float>) {
++    let eye = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
++    let forward = simd_normalize(-SIMD3(world.columns.2.x, world.columns.2.y, world.columns.2.z))
++    let up = simd_normalize(SIMD3(world.columns.1.x, world.columns.1.y, world.columns.1.z))
++    let right = simd_normalize(SIMD3(world.columns.0.x, world.columns.0.y, world.columns.0.z))
++    return (eye, forward, up, right)
++}
++
++private func rectangleCorners(center: SIMD3<Float>, right: SIMD3<Float>, up: SIMD3<Float>,
++                              halfWidth: Float, halfHeight: Float) -> [SIMD3<Float>] {
++    [
++        center - right * halfWidth - up * halfHeight,
++        center + right * halfWidth - up * halfHeight,
++        center + right * halfWidth + up * halfHeight,
++        center - right * halfWidth + up * halfHeight,
++    ]
++}
++
++private func collectCameraFrustum(
++    world: simd_float4x4,
++    camera: GLTFCamera,
++    span: Float,
++    canvasAspect: Float,
++    selected: Bool,
++    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
++) {
++    let (eye, forward, up, right) = cameraAxes(from: world)
++    let znear = camera.zNear
++    let distance = max(znear, 0.15 * span)
++    let color = selected ? OverlayGizmoColors.selectedScene : OverlayGizmoColors.mutedScene
++
++    if let perspective = camera.perspective {
++        let halfHeight = distance * Float(tan(perspective.yFOV / 2))
++        let aspect = perspective.aspectRatio > 0 ? Float(perspective.aspectRatio) : canvasAspect
++        let halfWidth = halfHeight * aspect
++        let center = eye + forward * distance
++        let corners = rectangleCorners(center: center, right: right, up: up, halfWidth: halfWidth, halfHeight: halfHeight)
++        for corner in corners { line(eye, corner, color) }
++        for i in 0..<4 { line(corners[i], corners[(i + 1) % 4], color) }
++        if selected {
++            let topLeft = corners[2], topRight = corners[3]
++            let mid = (topLeft + topRight) * 0.5
++            let edge = simd_distance(topLeft, topRight)
++            let triHalf = edge / 6
++            let baseLeft = mid - right * triHalf
++            let baseRight = mid + right * triHalf
++            let apex = mid + up * triHalf
++            line(baseLeft, baseRight, OverlayGizmoColors.axisBlue)
++            line(baseLeft, apex, OverlayGizmoColors.axisBlue)
++            line(baseRight, apex, OverlayGizmoColors.axisBlue)
++        }
++        return
++    }
++
++    if let orthographic = camera.orthographic {
++        let halfWidth = orthographic.xMag
++        let halfHeight = orthographic.yMag
++        let nearCenter = eye + forward * znear
++        let farCenter = eye + forward * distance
++        let near = rectangleCorners(center: nearCenter, right: right, up: up, halfWidth: halfWidth, halfHeight: halfHeight)
++        let far = rectangleCorners(center: farCenter, right: right, up: up, halfWidth: halfWidth, halfHeight: halfHeight)
++        for i in 0..<4 { line(near[i], near[(i + 1) % 4], color) }
++        for i in 0..<4 { line(far[i], far[(i + 1) % 4], color) }
++        for i in 0..<4 { line(near[i], far[i], color) }
++    }
++}
++
++private func collectLightGizmo(
++    world: simd_float4x4,
++    light: GLTFLight,
++    span: Float,
++    color: SIMD3<Float>,
++    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
++) {
++    let origin = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
++    let emission = world * SIMD4(0, 0, -1, 0)
++    let direction = simd_normalize(SIMD3(emission.x, emission.y, emission.z))
++
++    switch light.type {
++    case .directional:
++        let axis: SIMD3<Float> = abs(direction.y) < 0.9 ? SIMD3(0, 1, 0) : SIMD3(1, 0, 0)
++        let plateRight = simd_normalize(simd_cross(direction, axis))
++        let plateUp = simd_normalize(simd_cross(plateRight, direction))
++        let half = span * 0.02
++        let plate = [
++            origin + plateRight * half + plateUp * half,
++            origin - plateRight * half + plateUp * half,
++            origin - plateRight * half - plateUp * half,
++            origin + plateRight * half - plateUp * half,
++        ]
++        for i in 0..<4 { line(plate[i], plate[(i + 1) % 4], color) }
++        line(origin, origin + direction * span * 0.5, color)
++    case .point:
++        let size = span * 0.03
++        let tips: [SIMD3<Float>] = [
++            origin + SIMD3(size, 0, 0), origin - SIMD3(size, 0, 0),
++            origin + SIMD3(0, size, 0), origin - SIMD3(0, size, 0),
++            origin + SIMD3(0, 0, size), origin - SIMD3(0, 0, size),
++        ]
++        let pairs = [(0, 2), (0, 3), (0, 4), (0, 5), (1, 2), (1, 3), (1, 4), (1, 5), (2, 4), (2, 5), (3, 4), (3, 5)]
++        for (a, b) in pairs { line(tips[a], tips[b], color) }
++    case .spot:
++        let range = light.range > 0 ? light.range : span * 0.25
++        let outerRadius = range * Float(tan(light.outerConeAngle))
++        let innerRadius = range * Float(tan(light.innerConeAngle))
++        let end = origin + direction * range
++        let axis: SIMD3<Float> = abs(direction.y) < 0.9 ? SIMD3(0, 1, 0) : SIMD3(1, 0, 0)
++        let coneRight = simd_normalize(simd_cross(direction, axis))
++        let coneUp = simd_normalize(simd_cross(coneRight, direction))
++        line(origin, origin + direction * (range * 0.92), color)
++        let segments = 32
++        let innerColor = color * 0.55
++        func ring(at center: SIMD3<Float>, r: Float, ringColor: SIMD3<Float>) {
++            var previous: SIMD3<Float>?
++            for i in 0...segments {
++                let a = Double(i) / Double(segments) * .pi * 2
++                let c = Float(cos(a)), s = Float(sin(a))
++                let p = center + coneRight * (c * r) + coneUp * (s * r)
++                if let previous { line(previous, p, ringColor) }
++                previous = p
++            }
++        }
++        ring(at: end, r: outerRadius, ringColor: color)
++        ring(at: end, r: innerRadius, ringColor: innerColor)
++        for i in 0..<4 {
++            let a = Double(i) / 4 * .pi * 2
++            let c = Float(cos(a)), s = Float(sin(a))
++            let edge = end + coneRight * (c * outerRadius) + coneUp * (s * outerRadius)
++            line(origin, edge, color)
++        }
++    @unknown default:
++        break
++    }
++}
++
+ extension MetalRenderer {
+     /// Draws `lines` over the tonemapped `output` the way the viewer draws them over its canvas.
+     /// `viewProjection` is the user camera's WebGL clip transform; `viewport` the Khronos one.
+diff --git a/Renderer/MetalRenderer.swift b/Renderer/MetalRenderer.swift
+index c0b6a8d..4313de2 100644
+--- a/Renderer/MetalRenderer.swift
++++ b/Renderer/MetalRenderer.swift
+@@ -30,6 +30,7 @@ public final class MetalRenderer: @unchecked Sendable {
+     var overlayCopyPipeline: (any MTLRenderPipelineState)?
+     private var presentationPipeline: (any MTLRenderPipelineState)?
+     private var pipelines: [String: any MTLRenderPipelineState] = [:]
++    private var pickPipelineState: (any MTLRenderPipelineState)?
+     private let tonePipeline: any MTLRenderPipelineState
+     private let depthWrite: any MTLDepthStencilState
+     private let depthRead: any MTLDepthStencilState
+@@ -39,11 +40,25 @@ public final class MetalRenderer: @unchecked Sendable {
+     /// Khronos keeps its drawable lists across frames and re-sorts them in place, so depth ties
+     /// keep the previous frame's order. Rebuilt on every load, like `prepareScene` on new nodes.
+     private var drawLists = MetalDrawLists(draws: [])
++    /// The draw mask of the last filter, so an idle filter is not re-resolved every frame. The
++    /// scene identifier is only meaningful while that scene is alive, so `load` clears this.
++    private var drawVisibility: (filter: MetalDrawFilter, scene: ObjectIdentifier, visible: [Bool])?
+ 
+-    public init() throws {
+-        guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
+-            throw MetalRendererError.unavailable
+-        }
++    public convenience init() throws {
++        guard let device = MTLCreateSystemDefaultDevice() else { throw MetalRendererError.unavailable }
++        try self.init(device: device)
++    }
++
++    /// A second renderer for the same loaded scene (e.g. an inspector preview): shared GPU
++    /// buffers, its own draw lists, pipelines and material resources.
++    public convenience init(sharing scene: MetalScene) throws {
++        guard let draw = scene.draws.first else { throw MetalRendererError.noScene }
++        try self.init(device: draw.vertexBuffer.device)
++        try adopt(scene)
++    }
++
++    private init(device: any MTLDevice) throws {
++        guard let queue = device.makeCommandQueue() else { throw MetalRendererError.unavailable }
+         self.device = device
+         self.queue = queue
+         library = try device.makeDefaultLibrary(bundle: Bundle(for: MetalRenderer.self))
+@@ -62,12 +77,21 @@ public final class MetalRenderer: @unchecked Sendable {
+         depthRead = read
+     }
+ 
+-    /// `sceneIndex` nil draws the file's default scene.
+-    public func load(url: URL, sceneIndex: Int? = nil, materialVariantIndex: Int? = nil) async throws {
++    /// Points at an already-loaded scene and rebuilds draw lists. Pipelines and per-renderer
++    /// material caches stay on this instance; `MetalEnvironment.shared` is unchanged.
++    public func adopt(_ loaded: MetalScene) throws {
++        guard let draw = loaded.draws.first else { throw MetalRendererError.noScene }
++        guard draw.vertexBuffer.device === device else { throw MetalRendererError.resource("device mismatch") }
+         materialResources.removeAll()
+-        let loaded = try await MetalSceneLoader.load(url: url, device: device, sceneIndex: sceneIndex, materialVariantIndex: materialVariantIndex)
+         scene = loaded
+         drawLists = MetalDrawLists(draws: loaded.draws)
++        drawVisibility = nil
++    }
++
++    /// `sceneIndex` nil draws the file's default scene.
++    public func load(url: URL, sceneIndex: Int? = nil, materialVariantIndex: Int? = nil) async throws {
++        let loaded = try await MetalSceneLoader.load(url: url, device: device, sceneIndex: sceneIndex, materialVariantIndex: materialVariantIndex)
++        try adopt(loaded)
+     }
+ 
+     /// One frame read back as straight-alpha sRGB. `extents` sizes the floor and origin gizmo
+@@ -100,6 +124,56 @@ public final class MetalRenderer: @unchecked Sendable {
+ 
+     /// `centerOffset` moves the orbit camera's projection centre by that many pixels (x right,
+     /// y up); the live canvas uses it to centre the model beside the sidebar and inspector.
++    /// User-camera view-projection and letterbox aspect for overlay-aligned gizmo hit tests.
++    func gizmoPickFrame(options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
++                        centerOffset: SIMD2<Float> = .zero) throws -> (viewProjection: simd_float4x4, viewportAspect: Float?) {
++        guard scene != nil else { throw MetalRendererError.noScene }
++        let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
++                                        centerOffset: centerOffset, scene: scene!)
++        return (setup.camera.openGLProjectionMatrix * setup.camera.viewMatrix, setup.viewportAspect)
++    }
++
++    /// glTF node index under `point` (x right, y down), or nil for background / mask holes.
++    func pick(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
++              centerOffset: SIMD2<Float> = .zero, point: SIMD2<Int>) throws -> Int? {
++        guard let scene else { throw MetalRendererError.noScene }
++        guard width > 0, height > 0, width <= 16384, height <= 16384 else {
++            throw MetalRendererError.resource("invalid image size")
++        }
++        let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
++                                        centerOffset: centerOffset, scene: scene)
++        let pickTarget = try texture(.r32Uint, width, height, [.renderTarget, .shaderRead])
++        let depth = try texture(.depth32Float, width, height, [.renderTarget])
++        guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
++        command.label = "Khronos pick"
++        let pass = MTLRenderPassDescriptor()
++        pass.colorAttachments[0].texture = pickTarget
++        pass.colorAttachments[0].loadAction = .clear
++        pass.colorAttachments[0].storeAction = .store
++        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
++        pass.depthAttachment.texture = depth
++        pass.depthAttachment.loadAction = .clear
++        pass.depthAttachment.storeAction = .store
++        pass.depthAttachment.clearDepth = 1
++        try encodePick(command: command, pass: pass, frame: setup.frame, scene: scene,
++                       draws: setup.mainDraws, viewport: setup.viewport)
++        let x = min(max(point.x, 0), width - 1)
++        let y = min(max(point.y, 0), height - 1)
++        let readback = try texture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
++        guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("pick blit") }
++        blit.copy(from: pickTarget, sourceSlice: 0, sourceLevel: 0,
++                  sourceOrigin: MTLOrigin(x: x, y: y, z: 0), sourceSize: MTLSize(width: 1, height: 1, depth: 1),
++                  to: readback, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
++        blit.endEncoding()
++        command.commit()
++        command.waitUntilCompleted()
++        if let error = command.error { throw MetalRendererError.gpu(error.localizedDescription) }
++        var drawID: UInt32 = 0
++        readback.getBytes(&drawID, bytesPerRow: 4, from: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0)
++        guard drawID > 0, Int(drawID) <= scene.draws.count else { return nil }
++        return scene.draws[Int(drawID) - 1].nodeIndex
++    }
++
+     func renderTexture(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                        extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
+                        transmissionResolution: Int = 1024,
+@@ -108,39 +182,25 @@ public final class MetalRenderer: @unchecked Sendable {
+         guard width > 0, height > 0, width <= 16384, height <= 16384 else {
+             throw MetalRendererError.resource("invalid image size")
+         }
+-        let look = options.look
+-        let orthographic = options.isOrthographic
+         let wireframe = options.viewMode == .wireframe
+-        let overlays = MetalOverlayOptions(floor: options.showsFloor, origin: !options.isCentered,
+-                                           selectedNode: options.selectedNodeIndex, extents: extents)
+-        if environmentID != look.environment {
+-            environment = try MetalEnvironment.shared(device: device, environment: look.environment)
+-            environmentID = look.environment
+-        }
+-        var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
+-        if centerOffset != .zero {
+-            // NDC spans the orbit camera's viewport: the whole canvas, or its square in ortho.
+-            let cameraViewport = khronosViewport(width: width, height: height, aspect: orthographic ? 1 : nil)
+-            camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
+-        }
+-        var frame = GPUFrame(viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix,
+-                             cameraPosition: SIMD4(camera.eye, 1),
+-                             environment: SIMD4(Float((90 + look.environmentYawDegrees) * .pi / 180),
+-                                                Float(look.environmentIntensity) * (environment?.intensityScale ?? 1),
+-                                                Float(pow(2, look.exposureEV)), 4),
+-                             options: SIMD4(toneMap(look.toneMapping), debugOutput(options.viewMode), environment == nil ? 0 : 1, UInt32(scene.lights.count)),
+-                             viewport: SIMD4(Float(width), Float(height), 0, 0))
+-        var view = camera.viewMatrix
+-        // Khronos letterboxes to the camera's own aspect: the user camera's square ortho, or a
+-        // file camera's aspectRatio / xmag÷ymag.
+-        var viewportAspect: Float? = orthographic ? 1 : nil
+-        if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
+-            frame.viewProjection = fileCamera.viewProjection
+-            frame.cameraPosition = SIMD4(fileCamera.eye, 1)
+-            view = fileCamera.view
+-            viewportAspect = fileCamera.viewportAspect
+-        }
+-        let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
++        let overlays = MetalOverlayOptions(
++            floor: options.showsFloor,
++            origin: !options.isCentered,
++            sceneGizmos: options.showsSceneGizmos,
++            selectedNode: options.gizmoSelectedNodeIndex ?? options.selectedNodeIndex,
++            selectedSkinIndex: options.selectedSkinIndex,
++            skipCameraNodeIndex: options.fileCameraNodeIndex,
++            canvasAspect: Float(width) / Float(height),
++            hiddenNodeIndices: options.hiddenNodeIndices,
++            extents: extents
++        )
++        let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
++                                        centerOffset: centerOffset, scene: scene)
++        var frame = setup.frame
++        let viewportAspect = setup.viewportAspect
++        let viewport = setup.viewport
++        let lights = setup.lights
++        let order = MetalDrawLists.Frame(transmissionPrepass: setup.transmissionPrepass, main: setup.mainDraws)
+         let hdr = try texture(.rgba16Float, width, height, [.renderTarget, .shaderRead])
+         let flags = try texture(.r8Uint, width, height, [.renderTarget, .shaderRead])
+         // Stored for overlay soft depth: floor / gizmo / AABB must sit behind the model.
+@@ -165,13 +225,13 @@ public final class MetalRenderer: @unchecked Sendable {
+         let black = try texture(.rgba8Unorm, 1, 1, [.shaderRead], storage: .shared)
+         var clear: UInt32 = 0
+         black.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &clear, bytesPerRow: 4)
+-        let order = drawLists.frame(draws: scene.draws, view: view)
+         var background: any MTLTexture = black
+         if let prepass = order.transmissionPrepass {
+             background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass,
+-                                                    fallback: black, wireframe: wireframe, resolution: transmissionResolution)
++                                                    lights: lights, fallback: black, wireframe: wireframe,
++                                                    resolution: transmissionResolution)
+         }
+-        try encodeScene(command: command, pass: pass, frame: frame, scene: scene,
++        try encodeScene(command: command, pass: pass, frame: frame, scene: scene, lights: lights,
+                         draws: order.main, background: background, wireframe: wireframe, viewport: viewport)
+         let tone = MTLRenderPassDescriptor()
+         tone.colorAttachments[0].texture = output
+@@ -191,7 +251,7 @@ public final class MetalRenderer: @unchecked Sendable {
+         if !lines.isEmpty {
+             // Overlays always use the user camera; only occlude when that camera also drew the model.
+             try encodeOverlays(lines, command: command, output: output,
+-                               viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix, viewport: viewport,
++                               viewProjection: setup.camera.openGLProjectionMatrix * setup.camera.viewMatrix, viewport: viewport,
+                                sceneDepth: depth, occlude: options.fileCameraNodeIndex == nil)
+         }
+         command.commit()
+@@ -201,6 +261,69 @@ public final class MetalRenderer: @unchecked Sendable {
+         return output
+     }
+ 
++    private struct SceneFrameSetup {
++        var frame: GPUFrame
++        var view: simd_float4x4
++        var viewport: MTLViewport
++        var viewportAspect: Float?
++        var lights: [MetalPunctualLight]
++        var mainDraws: [Int]
++        var transmissionPrepass: [Int]?
++        var camera: MetalCamera
++    }
++
++    private func sceneFrameSetup(options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
++                                 centerOffset: SIMD2<Float>, scene: MetalScene) throws -> SceneFrameSetup {
++        let look = options.look
++        let orthographic = options.isOrthographic
++        if environmentID != look.environment {
++            environment = try MetalEnvironment.shared(device: device, environment: look.environment)
++            environmentID = look.environment
++        }
++        var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
++        if centerOffset != .zero {
++            let cameraViewport = khronosViewport(width: width, height: height, aspect: orthographic ? 1 : nil)
++            camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
++        }
++        let filter = MetalDrawFilter(options)
++        let lights = filter.visibleLights(in: scene)
++        var frame = GPUFrame(viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix,
++                             cameraPosition: SIMD4(camera.eye, 1),
++                             environment: SIMD4(Float((90 + look.environmentYawDegrees) * .pi / 180),
++                                                Float(look.environmentIntensity) * (environment?.intensityScale ?? 1),
++                                                Float(pow(2, look.exposureEV)), 4),
++                             options: SIMD4(toneMap(look.toneMapping), debugOutput(options.viewMode), environment == nil ? 0 : 1, UInt32(lights.count)),
++                             viewport: SIMD4(Float(width), Float(height), 0, 0))
++        var view = camera.viewMatrix
++        var viewportAspect: Float? = orthographic ? 1 : nil
++        if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
++            frame.viewProjection = fileCamera.viewProjection
++            frame.cameraPosition = SIMD4(fileCamera.eye, 1)
++            view = fileCamera.view
++            viewportAspect = fileCamera.viewportAspect
++        }
++        let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
++        var order = drawLists.frame(draws: scene.draws, view: view)
++        if !filter.isEmpty {
++            let visible = visibility(of: filter, in: scene)
++            order.main = order.main.filter { visible[$0] }
++            order.transmissionPrepass = order.transmissionPrepass?.filter { visible[$0] }
++        }
++        return SceneFrameSetup(frame: frame, view: view, viewport: viewport, viewportAspect: viewportAspect,
++                               lights: lights, mainDraws: order.main, transmissionPrepass: order.transmissionPrepass,
++                               camera: camera)
++    }
++
++    private func visibility(of filter: MetalDrawFilter, in scene: MetalScene) -> [Bool] {
++        let identifier = ObjectIdentifier(scene)
++        if let cached = drawVisibility, cached.filter == filter, cached.scene == identifier {
++            return cached.visible
++        }
++        let visible = filter.visibleDraws(in: scene)
++        drawVisibility = (filter, identifier, visible)
++        return visible
++    }
++
+     func present(_ texture: any MTLTexture, on drawable: any CAMetalDrawable) throws {
+         if presentationPipeline == nil {
+             let d = MTLRenderPipelineDescriptor()
+@@ -228,7 +351,7 @@ public final class MetalRenderer: @unchecked Sendable {
+     }
+ 
+     private func transmissionBackground(command: any MTLCommandBuffer, frame: GPUFrame,
+-                                        scene: MetalScene, draws: [Int],
++                                        scene: MetalScene, draws: [Int], lights: [MetalPunctualLight],
+                                         fallback: any MTLTexture, wireframe: Bool = false,
+                                         resolution requested: Int = 1024) throws -> any MTLTexture {
+         // Khronos's prepass is 1024². Thumbnail stills pass a smaller edge; never grow past 1024.
+@@ -268,7 +391,7 @@ public final class MetalRenderer: @unchecked Sendable {
+         pass.depthAttachment.clearDepth = 1
+         var preFrame = frame
+         preFrame.options.z |= 2
+-        try encodeScene(command: command, pass: pass, frame: preFrame, scene: scene,
++        try encodeScene(command: command, pass: pass, frame: preFrame, scene: scene, lights: lights,
+             draws: draws, background: fallback, samples: 4, format: .rgba8Unorm, wireframe: wireframe)
+         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("transmission mips") }
+         blit.generateMipmaps(for: resolved)
+@@ -278,7 +401,7 @@ public final class MetalRenderer: @unchecked Sendable {
+ 
+     private func encodeScene(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor,
+                              frame inputFrame: GPUFrame, scene: MetalScene,
+-                             draws: [Int], background: any MTLTexture,
++                             lights: [MetalPunctualLight], draws: [Int], background: any MTLTexture,
+                              samples: Int = 1, format: MTLPixelFormat = .rgba16Float,
+                              wireframe: Bool = false, viewport: MTLViewport? = nil) throws {
+         var frame = inputFrame
+@@ -289,9 +412,9 @@ public final class MetalRenderer: @unchecked Sendable {
+         if wireframe { encoder.setTriangleFillMode(.lines) }
+         environment?.bind(encoder)
+         encoder.setFragmentTexture(background, index: 30)
+-        var lights = scene.lights.map(GPULight.init)
+-        if lights.isEmpty { lights = [GPULight.zero] }
+-        lights.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 4) }
++        var gpuLights = lights.map(GPULight.init)
++        if gpuLights.isEmpty { gpuLights = [GPULight.zero] }
++        gpuLights.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 4) }
+         for index in draws {
+             let draw = scene.draws[index]
+             let blend = draw.material.alphaMode == 2
+@@ -317,6 +440,53 @@ public final class MetalRenderer: @unchecked Sendable {
+         encoder.endEncoding()
+     }
+ 
++    private func encodePick(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor, frame inputFrame: GPUFrame,
++                            scene: MetalScene, draws: [Int], viewport: MTLViewport) throws {
++        var frame = inputFrame
++        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw MetalRendererError.resource("pick encoder") }
++        encoder.setViewport(viewport)
++        encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
++        encoder.setFragmentBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
++        let pipeline = try pickPipeline()
++        for drawIndex in draws {
++            let draw = scene.draws[drawIndex]
++            let blend = draw.material.alphaMode == 2
++            encoder.setRenderPipelineState(pipeline)
++            encoder.setDepthStencilState(blend ? depthRead : depthWrite)
++            encoder.setCullMode(draw.material.doubleSided ? .none : .back)
++            encoder.setFrontFacing(draw.negativeScale ? .clockwise : .counterClockwise)
++            var uniforms = GPUDraw(model: draw.worldTransform, normalMatrix: draw.worldTransform.inverse.transpose)
++            encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
++            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
++            var material = GPUMaterial(draw.material)
++            encoder.setFragmentBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
++            encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
++            let resourceKey = ObjectIdentifier(draw.vertexBuffer)
++            if materialResources[resourceKey] == nil {
++                materialResources[resourceKey] = try MetalMaterialResources(draw.material, device: device, library: library)
++            }
++            materialResources[resourceKey]?.bind(encoder)
++            var drawID = UInt32(drawIndex + 1)
++            encoder.setFragmentBytes(&drawID, length: MemoryLayout<UInt32>.stride, index: 6)
++            encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
++            encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
++                                          indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
++        }
++        encoder.endEncoding()
++    }
++
++    private func pickPipeline() throws -> any MTLRenderPipelineState {
++        if let pickPipelineState { return pickPipelineState }
++        let descriptor = MTLRenderPipelineDescriptor()
++        descriptor.vertexFunction = library.makeFunction(name: "khronos_vertex")
++        descriptor.fragmentFunction = library.makeFunction(name: "khronos_pick_fragment")
++        descriptor.colorAttachments[0].pixelFormat = .r32Uint
++        descriptor.depthAttachmentPixelFormat = .depth32Float
++        let made = try device.makeRenderPipelineState(descriptor: descriptor)
++        pickPipelineState = made
++        return made
++    }
++
+     private func pipeline(blend: Bool, samples: Int = 1, format: MTLPixelFormat = .rgba16Float) throws -> any MTLRenderPipelineState {
+         let key = "\(blend)-\(samples)-\(format.rawValue)"
+         if let cached = pipelines[key] { return cached }
+diff --git a/Renderer/ModelCanvas.swift b/Renderer/ModelCanvas.swift
+index 899fc57..d58e6a7 100644
+--- a/Renderer/ModelCanvas.swift
++++ b/Renderer/ModelCanvas.swift
+@@ -2,6 +2,7 @@ import AppKit
+ import GLTFCore
+ import Observation
+ import SwiftUI
++import simd
+ 
+ /// The live model canvas of the document window and the Quick Look preview.
+ ///
+@@ -46,10 +47,17 @@ public final class ModelCanvasController {
+     }
+ 
+     public private(set) var phase: Phase = .loading
++    /// Increments after each successful file load or reload on the canvas view.
++    public private(set) var sceneGeneration: Int = 0
++    /// The loaded scene on the live canvas, for a preview view to adopt.
++    public var scene: MetalScene? { view?.renderer.scene }
+     /// Camera zoom against the last fit (100 = fitted). Nil before the first model is framed.
+     public private(set) var zoomPercent: Int?
++    /// Rotation of the current view matrix; updates when the camera moves.
++    public private(set) var viewRotation = matrix_identity_float3x3
+ 
+     @ObservationIgnored private(set) var view: ModelView?
++    @ObservationIgnored private var reportedViewRotation = matrix_identity_float3x3
+     /// The file and options SwiftUI last asked for; `sync` brings the view there.
+     @ObservationIgnored private var wanted: (url: URL, options: ViewOptions)?
+     @ObservationIgnored private var loadedURL: URL?
+@@ -58,14 +66,20 @@ public final class ModelCanvasController {
+     @ObservationIgnored public var contentInsets = NSEdgeInsets() {
+         didSet { view?.contentInsets = contentInsets }
+     }
++    /// Forwards to the live `ModelView` when mounted.
++    @ObservationIgnored public var onPick: ((Int?) -> Void)? {
++        didSet { view?.onPick = onPick }
++    }
+ 
+     public init() {}
+ 
+     // MARK: - Camera commands
+ 
+     public func fit() { readyView?.fit() }
++    public func frame(nodeIndex: Int) { readyView?.frame(nodeIndex: nodeIndex) }
+     public func show(_ preset: CameraPreset) { readyView?.show(preset) }
+     public func zoom(by factor: Double) { readyView?.zoom(by: factor) }
++    public func orbit(dx: Double, dy: Double) { readyView?.orbit(dx: dx, dy: dy) }
+ 
+     /// One frame at the canvas's pixel size. The caller writes the file.
+     public func snapshot() throws -> CGImage {
+@@ -84,6 +98,12 @@ public final class ModelCanvasController {
+                 let view = ModelView(renderer: try MetalRenderer())
+                 view.onZoom = { [weak self] in self?.zoomPercent = $0 }
+                 view.onFailure = { [weak self] in self?.fail($0) }
++                view.onPick = onPick
++                view.onOrientation = { [weak self] rotation in
++                    guard let self, rotation != reportedViewRotation else { return }
++                    reportedViewRotation = rotation
++                    viewRotation = rotation
++                }
+                 view.contentInsets = contentInsets
+                 self.view = view
+             } catch {
+@@ -125,11 +145,16 @@ public final class ModelCanvasController {
+                     try await view.load(wanted.url, options: wanted.options)
+                     guard self.wanted?.url == wanted.url else { continue }
+                     phase = .ready
++                    sceneGeneration += 1
+                     AppLog.info(AppLog.renderer, "canvas ready \(wanted.url.lastPathComponent) in \(started.duration(to: .now))")
+                 } else if case .failed = phase {
+                     return
+                 } else if view.options != wanted.options {
++                    let before = view.renderer.scene.map { ObjectIdentifier($0) }
+                     try await view.apply(wanted.options)
++                    if view.renderer.scene.map({ ObjectIdentifier($0) }) != before {
++                        sceneGeneration += 1
++                    }
+                 } else {
+                     return
+                 }
+diff --git a/Renderer/ModelView.swift b/Renderer/ModelView.swift
+index 574d8f1..cee8807 100644
+--- a/Renderer/ModelView.swift
++++ b/Renderer/ModelView.swift
+@@ -19,8 +19,14 @@ public final class ModelView: NSView {
+     public var onZoom: ((Int) -> Void)?
+     /// A live frame failed to draw. The view stops drawing; its owner shows the failure.
+     public var onFailure: ((Error) -> Void)?
++    /// Unmodified left-click pick: glTF node index under the pointer, or nil for background.
++    public var onPick: ((Int?) -> Void)?
++    /// Upper-left 3×3 of the view matrix used for the last draw (orbit or file camera).
++    public var onOrientation: ((simd_float3x3) -> Void)?
+ 
+     let renderer: MetalRenderer
++    /// Transmission prepass size for live draws and snapshots from this view.
++    public var transmissionResolution = 1024
+     private(set) var camera = MetalUserCamera()
+     private var modelURL: URL?
+     /// Distance of the last front-view fit: 100% on the zoom readout.
+@@ -76,16 +82,21 @@ public final class ModelView: NSView {
+         redraw()
+     }
+ 
++    /// Draws an already-loaded scene (shared GPU buffers); frames and redraws like `load`.
++    public func show(scene: MetalScene, options next: ViewOptions? = nil) throws {
++        if let next { applyOptions(next) }
++        modelURL = nil
++        try renderer.adopt(scene)
++        drawFailed = false
++        fitCamera()
++        redraw()
++    }
++
+     /// Cheap values are assigned; a scene or variant change reloads the model, and a scene or
+     /// centring change refits, as the Khronos viewer does.
+     public func apply(_ next: ViewOptions) async throws {
+         let previous = options
+-        options = next
+-        if previous.fieldOfView != next.fieldOfView { camera.yfov = next.fieldOfView * .pi / 180 }
+-        camera.isOrthographic = next.isOrthographic
+-        let color = next.look.background
+-        metalLayer.backgroundColor = CGColor(srgbRed: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
+-        updateDisplayLink()
++        applyOptions(next)
+         let sceneChanged = previous.sceneIndex != next.sceneIndex
+         if let modelURL, sceneChanged || previous.materialVariantIndex != next.materialVariantIndex {
+             try await renderer.load(url: modelURL, sceneIndex: next.sceneIndex == 0 ? nil : next.sceneIndex,
+@@ -99,6 +110,16 @@ public final class ModelView: NSView {
+         redraw()
+     }
+ 
++    private func applyOptions(_ next: ViewOptions) {
++        let previous = options
++        options = next
++        if previous.fieldOfView != next.fieldOfView { camera.yfov = next.fieldOfView * .pi / 180 }
++        camera.isOrthographic = next.isOrthographic
++        let color = next.look.background
++        metalLayer.backgroundColor = CGColor(srgbRed: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
++        updateDisplayLink()
++    }
++
+     // MARK: - Camera commands
+ 
+     /// Frames the model from the front.
+@@ -110,6 +131,27 @@ public final class ModelView: NSView {
+         redraw()
+     }
+ 
++    /// Frames one node's subtree at the current orbit angles (selection framing).
++    public func frame(nodeIndex: Int) {
++        guard let scene = renderer.scene,
++              let box = scene.bounds(ofNode: nodeIndex) else { return }
++        camera.isOrthographic = options.isOrthographic
++        let extents = (SIMD3<Double>(box.min), SIMD3<Double>(box.max))
++        if let fitted = camera.fit(extents: extents, centered: options.isCentered, aspect: canvasAspect) {
++            fitDistance = fitted
++        }
++        redraw()
++    }
++
++    /// Front view fitted to one node's bounds.
++    public func fit(nodeIndex: Int) {
++        guard renderer.scene != nil else { return }
++        frame(nodeIndex: nodeIndex)
++        orbit(azimuth: 0, elevation: 0)
++        fitDistance = camera.distance
++        redraw()
++    }
++
+     /// Frames the model from a canned angle.
+     public func show(_ preset: CameraPreset) {
+         guard renderer.scene != nil else { return }
+@@ -139,6 +181,14 @@ public final class ModelView: NSView {
+         camera.applyProjection()
+     }
+ 
++    /// Khronos pointer orbit in view points (`UserCamera.orbit`).
++    public func orbit(dx: Double, dy: Double) {
++        guard renderer.scene != nil else { return }
++        camera.orbit(dx, dy)
++        camera.applyProjection()
++        redraw()
++    }
++
+     /// Khronos `fitCamera` at the canvas aspect, for the current scene.
+     private func fitCamera() {
+         guard let scene = renderer.scene, let index = scene.gltfSceneIndex(for: options.sceneIndex) else { return }
+@@ -178,7 +228,8 @@ public final class ModelView: NSView {
+     /// One frame at the live canvas's pixel size (Export PNG).
+     public func snapshot() throws -> CGImage {
+         let size = metalLayer.drawableSize
+-        return try image(width: max(Int(size.width), 1), height: max(Int(size.height), 1))
++        return try image(width: max(Int(size.width), 1), height: max(Int(size.height), 1),
++                         transmissionResolution: transmissionResolution)
+     }
+ 
+     /// Khronos `drawScene` records the canvas aspect on the orbit camera for every frame it draws.
+@@ -196,11 +247,13 @@ public final class ModelView: NSView {
+ 
+     private func redraw() {
+         reportZoom()
++        reportOrientation()
+         guard window != nil, renderer.scene != nil, !drawFailed, let drawable = metalLayer.nextDrawable() else { return }
+         do {
+             let width = drawable.texture.width, height = drawable.texture.height
+             let texture = try renderer.renderTexture(options, pose: pose(width: width, height: height),
+                                                      width: width, height: height, extents: extents,
++                                                     transmissionResolution: transmissionResolution,
+                                                      centerOffset: centerOffset(pixelWidth: width))
+             try renderer.present(texture, on: drawable)
+         } catch {
+@@ -218,6 +271,41 @@ public final class ModelView: NSView {
+         onZoom?(Int(percent))
+     }
+ 
++    private var reportedOrientation: simd_float3x3?
++
++    private func reportOrientation() {
++        guard renderer.scene != nil else { return }
++        let size = metalLayer.drawableSize
++        let width = max(Int(size.width), 1), height = max(Int(size.height), 1)
++        let rotation = Self.rotation3x3(from: viewMatrix(width: width, height: height))
++        guard rotation != reportedOrientation else { return }
++        reportedOrientation = rotation
++        onOrientation?(rotation)
++    }
++
++    private func viewMatrix(width: Int, height: Int) -> simd_float4x4 {
++        if let index = options.fileCameraNodeIndex, let scene = renderer.scene,
++           let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
++            return fileCamera.view
++        }
++        var camera = MetalCamera(pose: pose(width: width, height: height), isOrthographic: options.isOrthographic,
++                                 aspect: Float(width) / Float(height))
++        if centerOffset(pixelWidth: width) != .zero {
++            let cameraViewport = khronosViewport(width: width, height: height, aspect: options.isOrthographic ? 1 : nil)
++            let offset = centerOffset(pixelWidth: width)
++            camera.centerShift = 2 * offset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
++        }
++        return camera.viewMatrix
++    }
++
++    static func rotation3x3(from viewMatrix: simd_float4x4) -> simd_float3x3 {
++        simd_float3x3(columns: (
++            SIMD3(viewMatrix.columns.0.x, viewMatrix.columns.0.y, viewMatrix.columns.0.z),
++            SIMD3(viewMatrix.columns.1.x, viewMatrix.columns.1.y, viewMatrix.columns.1.z),
++            SIMD3(viewMatrix.columns.2.x, viewMatrix.columns.2.y, viewMatrix.columns.2.z)
++        ))
++    }
++
+     override public func setFrameSize(_ newSize: NSSize) {
+         super.setFrameSize(newSize)
+         updateDrawableSize()
+@@ -265,6 +353,10 @@ public final class ModelView: NSView {
+     /// Window-space pointer position at the last drag step; nil when no drag started in this
+     /// view. `event.deltaX/Y` is screen motion, which also moves with a dragged window.
+     private var dragAnchor: NSPoint?
++    /// Window-space press location for click-vs-drag; unchanged while orbiting.
++    private var pointerDownStart: NSPoint?
++    private var pointerDownModifiers: NSEvent.ModifierFlags = []
++    private var dragExceededClickThreshold = false
+     private var isPanning = false
+ 
+     override public var acceptsFirstResponder: Bool { true }
+@@ -302,20 +394,84 @@ public final class ModelView: NSView {
+     override public func otherMouseDown(with event: NSEvent) { beginDrag(event, pan: event.buttonNumber == 2) }
+     override public func mouseDragged(with event: NSEvent) { drag(event) }
+     override public func otherMouseDragged(with event: NSEvent) { drag(event) }
+-    override public func mouseUp(with event: NSEvent) { dragAnchor = nil }
+-    override public func otherMouseUp(with event: NSEvent) { dragAnchor = nil }
++    override public func mouseUp(with event: NSEvent) {
++        performPickIfClick(with: event)
++        dragAnchor = nil
++        pointerDownStart = nil
++    }
++    override public func otherMouseUp(with event: NSEvent) {
++        dragAnchor = nil
++        pointerDownStart = nil
++    }
+ 
+     private func beginDrag(_ event: NSEvent, pan: Bool) {
+-        dragAnchor = event.locationInWindow
++        let location = event.locationInWindow
++        dragAnchor = location
++        pointerDownStart = location
++        pointerDownModifiers = event.modifierFlags
++        dragExceededClickThreshold = false
+         isPanning = pan
+     }
+ 
++    private static let pickModifierMask: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
++
++    private func performPickIfClick(with event: NSEvent) {
++        guard let start = pointerDownStart, renderer.scene != nil, window != nil else { return }
++        guard pointerDownModifiers.intersection(Self.pickModifierMask).isEmpty else { return }
++        let end = event.locationInWindow
++        guard !dragExceededClickThreshold, ModelViewPick.isClick(start: start, end: end) else { return }
++        let viewPoint = convert(end, from: nil)
++        let yDown = isFlipped ? viewPoint.y : bounds.height - viewPoint.y
++        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
++        let width = max(Int((bounds.width * scale).rounded()), 1)
++        let height = max(Int((bounds.height * scale).rounded()), 1)
++        let point = SIMD2(min(max(Int(viewPoint.x * scale), 0), width - 1),
++                          min(max(Int(yDown * scale), 0), height - 1))
++        let pointPoints = SIMD2(Float(viewPoint.x), Float(yDown))
++        do {
++            if options.showsSceneGizmos, let scene = renderer.scene {
++                let center = centerOffset(pixelWidth: width)
++                let frame = try renderer.gizmoPickFrame(options: options, pose: pose(width: width, height: height),
++                                                        width: width, height: height, centerOffset: center)
++                let overlayOptions = MetalOverlayOptions(
++                    floor: options.showsFloor,
++                    origin: !options.isCentered,
++                    sceneGizmos: true,
++                    selectedNode: options.gizmoSelectedNodeIndex ?? options.selectedNodeIndex,
++                    selectedSkinIndex: options.selectedSkinIndex,
++                    skipCameraNodeIndex: options.fileCameraNodeIndex,
++                    canvasAspect: Float(width) / Float(height),
++                    hiddenNodeIndices: options.hiddenNodeIndices,
++                    extents: extents
++                )
++                let segments = overlayGizmoSegments(scene: scene, options: overlayOptions)
++                let hitViewport = GizmoHitViewport(viewWidthPoints: Float(bounds.width),
++                                                   viewHeightPoints: Float(bounds.height),
++                                                   contentAspect: frame.viewportAspect)
++                if let node = gizmoHit(at: pointPoints, segments: segments, viewProjection: frame.viewProjection,
++                                       viewport: hitViewport) {
++                    onPick?(node)
++                    return
++                }
++            }
++            let index = try renderer.pick(options, pose: pose(width: width, height: height),
++                                          width: width, height: height,
++                                          centerOffset: centerOffset(pixelWidth: width),
++                                          point: point)
++            onPick?(index)
++        } catch {
++            AppLog.error(AppLog.renderer, "pick failed: \(error.localizedDescription)")
++        }
++    }
++
+     /// `UserCamera.orbit(dx, dy)` or `pan(-dx, dy)`, in view points with y down.
+     private func drag(_ event: NSEvent) {
+         guard let start = dragAnchor, renderer.scene != nil else { return }
+         let location = event.locationInWindow
+         dragAnchor = location
+         let dx = Double(location.x - start.x), dy = Double(start.y - location.y)
++        if let press = pointerDownStart,
++           !ModelViewPick.isClick(start: press, end: location) { dragExceededClickThreshold = true }
+         if isPanning { camera.pan(-dx, dy) } else { camera.orbit(dx, dy) }
+         redraw()
+     }
+diff --git a/Renderer/Scene/MetalScene.swift b/Renderer/Scene/MetalScene.swift
+index 049d7f0..21b4674 100644
+--- a/Renderer/Scene/MetalScene.swift
++++ b/Renderer/Scene/MetalScene.swift
+@@ -107,6 +107,8 @@ public struct MetalPunctualLight {
+     public let range: Float
+     public let innerConeCos: Float
+     public let outerConeCos: Float
++    /// glTF node index in `asset.nodes`, or -1 if unknown.
++    public let nodeIndex: Int
+ }
+ 
+ /// CPU and Metal objects are immutable after the detached load completes.
+@@ -115,6 +117,8 @@ public final class MetalScene: @unchecked Sendable {
+     public let boundsMin: SIMD3<Float>
+     public let boundsMax: SIMD3<Float>
+     public let lights: [MetalPunctualLight]
++    /// Parent node index for each index in `asset.nodes`, or -1 for a root.
++    public let nodeParents: [Int]
+     let asset: GLTFAsset
+ 
+     init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight], asset: GLTFAsset) {
+@@ -123,6 +127,20 @@ public final class MetalScene: @unchecked Sendable {
+         self.boundsMax = boundsMax
+         self.lights = lights
+         self.asset = asset
++        let indices = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
++        nodeParents = asset.nodes.map { node in node.parent.flatMap { indices[ObjectIdentifier($0)] } ?? -1 }
++    }
++
++    /// The node itself, then its parent, grandparent and so on up to a root. Empty for an index
++    /// outside `asset.nodes`; the walk stops after `nodeParents.count` steps if the file has a cycle.
++    public func ancestors(ofNode index: Int) -> [Int] {
++        var chain: [Int] = []
++        var current = index
++        while nodeParents.indices.contains(current), chain.count < nodeParents.count {
++            chain.append(current)
++            current = nodeParents[current]
++        }
++        return chain
+     }
+ }
+ 
+@@ -144,10 +162,15 @@ extension MetalScene {
+         return asset.scenes.isEmpty ? nil : 0
+     }
+ 
+-    private func worldMatrix(_ node: GLTFNode) -> simd_float4x4 {
++    func worldMatrix(_ node: GLTFNode) -> simd_float4x4 {
+         (node.parent.map(worldMatrix) ?? matrix_identity_float4x4) * node.matrix
+     }
+ 
++    public func worldMatrix(ofNode index: Int) -> simd_float4x4? {
++        guard asset.nodes.indices.contains(index) else { return nil }
++        return worldMatrix(asset.nodes[index])
++    }
++
+     /// Expands `box` by the eight transformed corners of each POSITION accessor's min/max. With
+     /// `sphere`, each primitive contributes the cube around its box's bounding sphere instead, as
+     /// Khronos `getExtentsFromAccessor` does for the camera.
+diff --git a/Renderer/Scene/MetalSceneLoader.swift b/Renderer/Scene/MetalSceneLoader.swift
+index 3bbb773..a877041 100644
+--- a/Renderer/Scene/MetalSceneLoader.swift
++++ b/Renderer/Scene/MetalSceneLoader.swift
+@@ -117,7 +117,7 @@ private final class Builder {
+                 let p = transform * SIMD4<Float>(0, 0, 0, 1)
+                 let d = transform * SIMD4<Float>(0, 0, -1, 0)
+                 // Map GLTFKit2 light types (1...3) to the shader types (0...2).
+-                lights.append(MetalPunctualLight(type: Int(light.type.rawValue) - 1, position: SIMD3(p.x,p.y,p.z), direction: simd_normalize(SIMD3(d.x,d.y,d.z)), color: light.color, intensity: light.intensity, range: light.range, innerConeCos: cos(light.innerConeAngle), outerConeCos: cos(light.outerConeAngle)))
++                lights.append(MetalPunctualLight(type: Int(light.type.rawValue) - 1, position: SIMD3(p.x,p.y,p.z), direction: simd_normalize(SIMD3(d.x,d.y,d.z)), color: light.color, intensity: light.intensity, range: light.range, innerConeCos: cos(light.innerConeAngle), outerConeCos: cos(light.outerConeAngle), nodeIndex: asset.nodes.firstIndex(of: node) ?? -1))
+             }
+             if let mesh = node.mesh {
+                 let instances = node.meshInstances
+diff --git a/Renderer/Shaders/pbr.metal b/Renderer/Shaders/pbr.metal
+index 849a9ee..05642f9 100644
+--- a/Renderer/Shaders/pbr.metal
++++ b/Renderer/Shaders/pbr.metal
+@@ -339,3 +339,16 @@ fragment float4 khronos_line_fragment(LineVaryings in [[stage_in]],
+ fragment float4 khronos_overlay_copy_fragment(FullscreenVaryings in [[stage_in]],texture2d<float> image [[texture(0)]]) {
+     return image.read(uint2(in.position.xy));
+ }
++
++fragment uint khronos_pick_fragment(MetalVaryings in [[stage_in]],
++    constant MetalFrameUniforms &frame [[buffer(1)]],
++    constant MetalDrawUniforms &draw [[buffer(2)]],
++    constant MetalMaterialUniforms &m [[buffer(3)]],
++    constant MaterialTextureArguments &materialTextures [[buffer(5)]],
++    constant uint &drawID [[buffer(6)]]) {
++    float4 base=m.baseColor*in.color;
++    if(m.flags.x&1u) base*=materialTextures.maps[0].sample(materialTextures.samplers[0],materialUV(in,m,0));
++    if(m.flags.y==0) base.a=1;
++    if(m.flags.y==1 && base.a<m.surface.w) discard_fragment();
++    return drawID;
++}
+diff --git a/Renderer/ViewOptions.swift b/Renderer/ViewOptions.swift
+index f70d0f8..adee476 100644
+--- a/Renderer/ViewOptions.swift
++++ b/Renderer/ViewOptions.swift
+@@ -18,10 +18,24 @@ public struct ViewOptions: Equatable, Sendable {
+     /// Scene index; 0 keeps the file's default scene.
+     public var sceneIndex: Int
+     public var showsFloor: Bool
++    /// Draws authored camera and punctual-light gizmos in the viewport.
++    public var showsSceneGizmos: Bool
+     /// False frames the authored origin too and draws the origin gizmo.
+     public var isCentered: Bool
++    /// glTF node index for mesh / camera / light / joint selection gizmos.
++    public var gizmoSelectedNodeIndex: Int?
++    /// Index into `skins` when the outliner selection is a skin row.
++    public var selectedSkinIndex: Int?
+     /// glTF node index whose bounding box is outlined.
+     public var selectedNodeIndex: Int?
++    /// glTF node indices hidden in this window. A hidden node hides its whole subtree, draws and
++    /// punctual lights alike.
++    public var hiddenNodeIndices: Set<Int>
++    /// When non-empty, only draws under these nodes are drawn. Lights are not affected.
++    public var soloNodeIndices: Set<Int>
++    /// Draws only this node: its own draws when it has any, otherwise its whole subtree. Lights
++    /// are not affected.
++    public var isolatedNodeIndex: Int?
+ 
+     public init(
+         look: RenderLook = .standard,
+@@ -33,8 +47,14 @@ public struct ViewOptions: Equatable, Sendable {
+         materialVariantIndex: Int? = nil,
+         sceneIndex: Int = 0,
+         showsFloor: Bool = false,
++        showsSceneGizmos: Bool = false,
+         isCentered: Bool = true,
+-        selectedNodeIndex: Int? = nil
++        selectedNodeIndex: Int? = nil,
++        gizmoSelectedNodeIndex: Int? = nil,
++        selectedSkinIndex: Int? = nil,
++        hiddenNodeIndices: Set<Int> = [],
++        soloNodeIndices: Set<Int> = [],
++        isolatedNodeIndex: Int? = nil
+     ) {
+         self.look = look
+         self.viewMode = viewMode
+@@ -45,8 +65,14 @@ public struct ViewOptions: Equatable, Sendable {
+         self.materialVariantIndex = materialVariantIndex
+         self.sceneIndex = sceneIndex
+         self.showsFloor = showsFloor
++        self.showsSceneGizmos = showsSceneGizmos
+         self.isCentered = isCentered
+         self.selectedNodeIndex = selectedNodeIndex
++        self.gizmoSelectedNodeIndex = gizmoSelectedNodeIndex
++        self.selectedSkinIndex = selectedSkinIndex
++        self.hiddenNodeIndices = hiddenNodeIndices
++        self.soloNodeIndices = soloNodeIndices
++        self.isolatedNodeIndex = isolatedNodeIndex
+     }
+ 
+     /// The look Settings stored in the App Group. Quick Look and the Finder thumbnail have no
