@@ -32,9 +32,10 @@ thumbnail, all drawn by one Metal port of the Khronos glTF Sample Renderer.
 
 - **One renderer** for window, Quick Look and thumbnail. No renderer setting, no second renderer.
 - **Settings** only through the App Group (`AppGroupSettings`). Only the app writes it.
-- **Reference images** in `TestModels/References/` come from the Khronos renderer; ours must
-  match. A missing sample fails. Regenerate only for a new sample or a deliberate renderer
-  change, and look at the PNGs. Diffs land in `/tmp/GLTFInspector-pixel-diff/`.
+- **Reference images** in `TestModels/References/` (rest stills, `Features/`, `Animated/`) come
+  from the Khronos renderer; ours must match. A missing sample fails. Regenerate only for a new
+  sample or a deliberate renderer change, and look at the PNGs. Diffs land in
+  `/tmp/GLTFInspector-pixel-diff/`.
 - **SwiftUI `init`** only assigns; sync state in `onAppear` or actions. Under `@Observable`, don't
   assign a property in its own `didSet`.
 - **Failed loads** end in `.failed(message)`, never a spinner.

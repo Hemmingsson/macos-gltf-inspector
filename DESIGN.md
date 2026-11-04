@@ -22,7 +22,8 @@ disagree, the code wins.
 
 ## Non-goals
 
-- Not an editor. Nothing writes the file. Hide/solo, picking, gizmos and the skeleton overlay are
-  per-window view state; Quick Look and thumbnails show the rest pose with nothing hidden.
+- Not an editor. Nothing writes the file. Hide/solo, picking, gizmos, skeleton overlay and
+  animation playback are per-window view state; Quick Look and thumbnails stay at rest with
+  nothing hidden.
 - No renderer setting, no duplicate settings, no control the renderer cannot drive (morph weight
   sliders, double-sided override, custom environment).

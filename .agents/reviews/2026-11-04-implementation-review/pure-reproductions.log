@@ -1,7 +1,0 @@
-STEP exact middle expected10 actual [0.0]
-STEP held endpoint expected20 actual [10.0]
-FRAME point near/far expectednonzeroordered actual 0.0 0.0
-FRAME point finiteprojection expectedtrue actual false
-FRAME selection center expected(10.5,0.5,0.5) actual SIMD3<Double>(5.5, 0.5, 0.5)
-GIZMO crossing viewport expected7 actual nil
-GIZMO beyond far clip expectednil actual Optional(8)

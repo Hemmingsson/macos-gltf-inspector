@@ -5,17 +5,12 @@ being added and verified as the review proceeds. This is a review, not a patch o
 
 ## Review scope and evidence
 
-- Baseline: main HEAD `dbc169fc21a23d4ca63e6a32c3d11001ca60f302` plus uncommitted work captured in
-  `.worktrees/implementation-review` (`codex/implementation-review`).
-- Snapshot provenance, captured backlog, and logs:
-  [review evidence](2026-11-04-implementation-review/).
+- Baseline at review time: main around `dbc169fc` plus in-progress scene-interaction work.
+  Findings below still apply unless noted fixed. Scratch logs/patches from the probe worktree
+  were removed after the epic landed on `main` (`1cbee80`); this file is the durable record.
 - Completed work under review: visibility/filtering, GPU picking, click routing, reveal/frame,
-  navigation gizmo, camera/light gizmos and hit testing, skeletons, shared scenes, animation sampler.
-- Shared-scene preview, inspector facts, and clip/pose work were also present but actively being
-  implemented. Their observations are provisional and must be checked against their finished code.
-- Historical tickets for removed renderers are not current implementations. Worktree-only TDD
-  tests remain separate from main's implemented features.
-- Product sources on main have not been changed by this review.
+  navigation gizmo, camera/light gizmos and hit testing, skeletons, shared scenes, animation
+  sampler through GPU skin/morph, playback, timeline, and silhouette outline.
 
 ## Summary for the handoff (priority order)
 
@@ -75,9 +70,8 @@ For keys `[0,1,2]` and values `[0,10,20]`, sampling at `1` returns `0`; sampling
 10-second clip clamps to the final key and returns `10`, so the channel never holds its final
 value. This violates exact-key and endpoint behavior.
 
-**Verified:** compiled the real sampler source in a standalone Swift harness; output is in
-[pure-reproductions.log](2026-11-04-implementation-review/pure-reproductions.log).
-The [glTF interpolation specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#interpolation)
+**Verified:** compiled the real sampler source in a standalone Swift harness (probe logs removed
+after shipping). The [glTF interpolation specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#interpolation)
 requires exact key timestamps to use their associated values.
 
 **Fix direction:** handle exact keys/endpoints before interpolation, or choose the last key at or
@@ -238,11 +232,10 @@ its descendant mesh, not just a line between node origins. Preserve the true-joi
 
 ## Continuation pass — main working tree (2026-11-04, afternoon)
 
-Main has moved since the snapshot: `MetalOverlays`, `MetalRenderer`, `ModelView`, `ViewOptions`,
-`ViewState`, `DocumentWindowModel`, the inspector sections and several tests differ from
-`.worktrees/implementation-review`. This pass reads **main's current working tree** (read-only).
-Main keeps changing during the review (e.g. `ModelView.frame(nodeIndices:)` was added mid-pass);
-line numbers are as read and may drift by a few lines — function names are the stable anchor.
+Main had moved since the early snapshot: `MetalOverlays`, `MetalRenderer`, `ModelView`,
+`ViewOptions`, `ViewState`, `DocumentWindowModel`, the inspector sections and several tests
+differed from the probe worktree. This pass read **main's working tree** (read-only). Line
+numbers may drift — function names are the stable anchor.
 R1–R8 were re-checked against it and still hold unchanged: `AnimationSampler.swift:48–57,111–120`,
 `GizmoHit.swift:57–86`, `ModelView.swift:77,102,135–143`, `MetalScene.swift:159–163,232–246`,
 `MetalOverlays.swift:114–123,220–229,302–310`.
@@ -405,19 +398,15 @@ rendered image contains the far mesh's pixels.
 Main is under active edit, so its working tree was copied (rsync, no `.git` changes) to a scratch
 checkout and built there with its own DerivedData; nothing on main was built or modified.
 
-- `CriticalReviewRegressionTests` (7 probes, R4/R6/R7×2/R8/R10/R12): **all 7 fail as predicted**.
-  Existing `GizmoHitTests`, `AnimationSamplerTests`, `FrameSelectionTests`: 16/16 pass — they do not
-  cover these cases. Log: [main-tree-probes-1.log](2026-11-04-implementation-review/main-tree-probes-1.log).
+- `CriticalReviewRegressionTests` (7 probes, R4/R6/R7×2/R8/R10/R12): **all 7 fail as predicted** at
+  review time. Existing `GizmoHitTests`, `AnimationSamplerTests`, `FrameSelectionTests`: 16/16
+  pass — they do not cover these cases.
 - `CriticalReviewRegressionTests2` (6 probes, R1/R2/R3/R5/R9/R15): **all 6 fail as predicted**; the
   R9 control (mesh pick returns the front quad) passes. Measured: STEP at t = 1 returns 0 and at
   t = 7 returns 10; R5 target `(5.5, 0, 0)` instead of `(10.5, 0, 0)`; R15 values above.
-  Log: [main-tree-probes-2.log](2026-11-04-implementation-review/main-tree-probes-2.log).
-- Both probe files live in `.worktrees/implementation-review/GLTFInspectorTests/`
-  (`CriticalReviewRegressionTests.swift`, `CriticalReviewRegressionTests2.swift`). Each expectation
-  states the correct behaviour, so they are the red half of red → green for the fixes. Move them
-  into the owning task's branch when fixing; they are not on main.
-- The earlier snapshot build blocker (`GLTFAccessor.type`, missing `try`) no longer reproduces:
-  main's current tree compiles the test target.
+- Probe sources lived in a throwaway worktree (`CriticalReviewRegressionTests*.swift`); they were
+  not merged to main. Reintroduce per-finding when fixing.
+- The earlier snapshot build blocker (`GLTFAccessor.type`, missing `try`) no longer reproduces.
 
 ## App layer (sidebar, inspector, navigation gizmo, window state)
 
