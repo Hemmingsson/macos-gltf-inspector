@@ -3,8 +3,8 @@ import Foundation
 @testable import GLTFInspector
 import Testing
 
-/// Host validation must start after the canvas is ready / first paint — not beside the renderer's load
-/// load and compile (`GLTFValidator` says call after first paint).
+/// Validation starts once the canvas shows the model, not beside the renderer's load
+/// (`GLTFValidator` is CPU heavy).
 @MainActor
 struct DocumentWindowValidationTests {
     @Test

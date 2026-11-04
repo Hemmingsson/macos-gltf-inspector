@@ -2,8 +2,8 @@ import Foundation
 @testable import GLTFCore
 import Testing
 
-/// The sidebar document read from the file (`GLTFDocumentJSON`, as the document window builds it).
-struct SessionDocumentTests {
+/// `GLTFDocument` read from GLB files built in memory, as the document window reads a file.
+struct GLTFDocumentGLBTests {
     /// The document the window builds: original JSON plus the file for binary payloads.
     private func fileDocument(_ url: URL) throws -> GLTFDocument {
         GLTFDocumentJSON.makeDocument(json: try GLBBox.peekDocumentJSON(from: url), fileURL: url)

@@ -3,8 +3,8 @@ import Foundation
 import simd
 import Testing
 
-/// The sidebar document is parsed from the glTF JSON, so it describes the *file* as authored.
-struct SceneModelFromJSONTests {
+/// `GLTFDocument` is parsed from the glTF JSON, so it describes the *file* as authored.
+struct GLTFDocumentContentTests {
     @Test func documentParsesHierarchyAndTypedNodesFromJSONAlone() throws {
         let document = GLTFDocumentJSON.makeDocument(json: mixedKindsJSON())
 

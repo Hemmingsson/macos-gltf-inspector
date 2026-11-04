@@ -97,6 +97,7 @@ targets:
           - Shaders/THIRD_PARTY_NOTICES.txt
           - Scene/MetalLoadKernels.c
           - Environments
+          - Shaders/ShaderTypes.metalh
         headerVisibility: public
       - path: Renderer/Scene/MetalLoadKernels.c
         compilerFlags: [-O2]
