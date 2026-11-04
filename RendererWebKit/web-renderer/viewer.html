@@ -297,21 +297,92 @@ function includeOriginInFraming() {
 
 let overlayProgram = null;
 let overlayBuffer = null;
+/** Detached copy of `mainDepthTexture` — WebKit returns the clear value when sampling a depth
+ *  texture that is still attached to `mainFramebuffer`. */
+let overlayDepthTex = null;
+let overlayDepthFbo = null;
+let overlayDepthW = 0;
+let overlayDepthH = 0;
+
+function copySceneDepthForOverlays() {
+    const src = view.renderer?.mainFramebuffer;
+    if (!src) return null;
+    const w = canvas.width, h = canvas.height;
+    if (w < 1 || h < 1) return null;
+    if (!overlayDepthTex || overlayDepthW !== w || overlayDepthH !== h) {
+        if (overlayDepthTex) gl.deleteTexture(overlayDepthTex);
+        if (overlayDepthFbo) gl.deleteFramebuffer(overlayDepthFbo);
+        overlayDepthTex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, overlayDepthTex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+        overlayDepthFbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, overlayDepthFbo);
+        gl.drawBuffers([gl.NONE]);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, overlayDepthTex, 0);
+        const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        if (status !== gl.FRAMEBUFFER_COMPLETE) {
+            throw new Error(`overlay depth framebuffer incomplete: 0x${status.toString(16)}`);
+        }
+        overlayDepthW = w;
+        overlayDepthH = h;
+    }
+    // READ and DRAW differ, so attachment calls must name DRAW_FRAMEBUFFER. A depth-only
+    // target stays complete only while DRAW_BUFFER0 is NONE (set at creation).
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, src);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, overlayDepthFbo);
+    gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, overlayDepthTex, 0);
+    while (gl.getError() !== gl.NO_ERROR) {}
+    gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.DEPTH_BUFFER_BIT, gl.NEAREST);
+    const blitError = gl.getError();
+    // Detach before sampling — WebKit returns the clear depth while the texture stays attached.
+    gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, null, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    if (blitError !== gl.NO_ERROR) throw new Error(`overlay depth blit: 0x${blitError.toString(16)}`);
+    return overlayDepthTex;
+}
+
+function compileOverlayShader(type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader) || "overlay shader compile failed");
+    }
+    return shader;
+}
 
 function compileOverlayProgram() {
     if (overlayProgram) return overlayProgram;
-    const vs = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vs, `attribute vec3 a_pos; attribute vec3 a_color; uniform mat4 u_vp;
-        varying vec3 v_color; void main() { gl_Position = u_vp * vec4(a_pos, 1.0); v_color = a_color; }`);
-    gl.compileShader(vs);
-    const fs = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fs, `precision mediump float; varying vec3 v_color;
-        void main() { gl_FragColor = vec4(v_color, 1.0); }`);
-    gl.compileShader(fs);
+    // Soft depth against the main pass: tonemap leaves the default FB without scene depth, and
+    // the antialiased canvas cannot accept a depth blit from the single-sample mainFramebuffer.
+    const vs = compileOverlayShader(gl.VERTEX_SHADER, `#version 300 es
+        layout(location=0) in vec3 a_pos; layout(location=1) in vec3 a_color;
+        uniform mat4 u_vp; out vec3 v_color;
+        void main() { gl_Position = u_vp * vec4(a_pos, 1.0); v_color = a_color; }`);
+    const fs = compileOverlayShader(gl.FRAGMENT_SHADER, `#version 300 es
+        precision highp float; in vec3 v_color; out vec4 fragColor;
+        uniform highp sampler2D u_depth; uniform int u_occlude;
+        void main() {
+            if (u_occlude != 0) {
+                float scene = texelFetch(u_depth, ivec2(gl_FragCoord.xy), 0).r;
+                if (gl_FragCoord.z > scene) discard;
+            }
+            fragColor = vec4(v_color, 1.0);
+        }`);
     const program = gl.createProgram();
     gl.attachShader(program, vs);
     gl.attachShader(program, fs);
     gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program) || "overlay program link failed");
+    }
     overlayProgram = program;
     overlayBuffer = gl.createBuffer();
     return program;
@@ -527,9 +598,9 @@ function drawOverlays() {
     if (!lines.length) return;
 
     const aspect = canvas.width / Math.max(1, canvas.height);
-    const view = state.userCamera.getViewMatrix(state.gltf);
+    const cameraView = state.userCamera.getViewMatrix(state.gltf);
     const proj = state.userCamera.getProjectionMatrix(aspect);
-    const vp = mulMat4(proj, view);
+    const vp = mulMat4(proj, cameraView);
 
     gl.useProgram(program);
     gl.bindBuffer(gl.ARRAY_BUFFER, overlayBuffer);
@@ -541,10 +612,21 @@ function drawOverlays() {
     gl.enableVertexAttribArray(col);
     gl.vertexAttribPointer(col, 3, gl.FLOAT, false, 24, 12);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "u_vp"), false, vp);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
+    // Soft-test against a detached copy of the main depth. Skip when a file camera drew the
+    // model — overlays still use the user camera, so the depths would not match. The sampler
+    // is statically used, so the copy stays bound even when the test is off.
+    const depthTex = copySceneDepthForOverlays();
+    const occlude = state.cameraNodeIndex == null && depthTex;
+    gl.activeTexture(gl.TEXTURE0);
+    const previousTexture = gl.getParameter(gl.TEXTURE_BINDING_2D);
+    if (depthTex) gl.bindTexture(gl.TEXTURE_2D, depthTex);
+    gl.uniform1i(gl.getUniformLocation(program, "u_depth"), 0);
+    gl.uniform1i(gl.getUniformLocation(program, "u_occlude"), occlude ? 1 : 0);
+    // Tonemap re-enables the hardware test on a depth buffer that does not hold the scene.
+    gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.drawArrays(gl.LINES, 0, lines.length / 6);
+    gl.bindTexture(gl.TEXTURE_2D, previousTexture);
 }
 
 /**

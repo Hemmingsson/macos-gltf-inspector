@@ -322,7 +322,17 @@ vertex LineVaryings khronos_line_vertex(uint id [[vertex_id]],device const LineV
     clip.z=(clip.z+clip.w)*0.5f;
     return {clip,vertices[id].color};
 }
-fragment float4 khronos_line_fragment(LineVaryings in [[stage_in]]) { return in.color; }
+// Soft depth against the scene's stored depth: the overlay pass is 4× MSAA colour over a
+// tonemapped frame, so a hardware depth attachment cannot share sample count with the scene.
+// Discard when the line is farther than the model (Metal: larger z is farther).
+fragment float4 khronos_line_fragment(LineVaryings in [[stage_in]],
+    depth2d<float> sceneDepth [[texture(0)]],constant uint &occlude [[buffer(0)]]) {
+    if (occlude != 0u) {
+        float scene = sceneDepth.read(uint2(in.position.xy));
+        if (in.position.z > scene) discard_fragment();
+    }
+    return in.color;
+}
 
 // Seeds every sample of the overlay MSAA target with the tonemapped frame, as the page's
 // tonemap quad fills its antialiased canvas before the overlay lines are drawn.

@@ -142,7 +142,8 @@ public final class MetalRenderer: @unchecked Sendable {
         let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
         let hdr = try texture(.rgba16Float, width, height, [.renderTarget, .shaderRead])
         let flags = try texture(.r8Uint, width, height, [.renderTarget, .shaderRead])
-        let depth = try texture(.depth32Float, width, height, [.renderTarget])
+        // Stored for overlay soft depth: floor / gizmo / AABB must sit behind the model.
+        let depth = try texture(.depth32Float, width, height, [.renderTarget, .shaderRead])
         let output = try texture(.rgba8Unorm, width, height, [.renderTarget, .shaderRead], storage: .shared)
         guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
         command.label = "Khronos still"
@@ -158,7 +159,7 @@ public final class MetalRenderer: @unchecked Sendable {
         pass.colorAttachments[1].clearColor = MTLClearColorMake(1, 0, 0, 0)
         pass.depthAttachment.texture = depth
         pass.depthAttachment.loadAction = .clear
-        pass.depthAttachment.storeAction = .dontCare
+        pass.depthAttachment.storeAction = .store
         pass.depthAttachment.clearDepth = 1
         let black = try texture(.rgba8Unorm, 1, 1, [.shaderRead], storage: .shared)
         var clear: UInt32 = 0
@@ -187,8 +188,10 @@ public final class MetalRenderer: @unchecked Sendable {
         finish.endEncoding()
         let lines = overlayVertices(scene: scene, options: overlays)
         if !lines.isEmpty {
+            // Overlays always use the user camera; only occlude when that camera also drew the model.
             try encodeOverlays(lines, command: command, output: output,
-                               viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix, viewport: viewport)
+                               viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix, viewport: viewport,
+                               sceneDepth: depth, occlude: fileCameraNodeIndex == nil)
         }
         command.commit()
         command.waitUntilCompleted()

@@ -3,9 +3,10 @@ import simd
 
 /// Inspector chrome viewer.html draws after the Khronos frame (`drawOverlays`): the polar floor,
 /// the authored-origin gizmo and the selected subtree's box. Same geometry, colours and pass:
-/// opaque 1-pixel lines, no depth occlusion (the canvas depth is cleared and the tonemap quad
-/// writes none), the user camera even while a file camera draws the model, and the page's
-/// antialiased canvas — 4× MSAA, seeded with the tonemapped frame.
+/// opaque 1-pixel lines, soft-tested against the scene depth so the floor sits under the model
+/// (tonemap leaves the canvas without depth; the page blits a detached copy of the main
+/// framebuffer depth and samples that). The user camera is used even while a file camera draws
+/// the model, on the page's antialiased canvas — 4× MSAA, seeded with the tonemapped frame.
 public struct MetalOverlayOptions: Sendable {
     public var floor: Bool
     public var origin: Bool
@@ -78,8 +79,12 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
 extension MetalRenderer {
     /// Draws `lines` over the tonemapped `output` the way the page draws them over its canvas.
     /// `viewProjection` is the user camera's WebGL clip transform; `viewport` the Khronos one.
+    /// `sceneDepth` is the stored main-pass depth. When `occlude` is true, lines behind the model
+    /// are discarded — skip that when a file camera drew the model (overlays still use the user
+    /// camera, so the depths would not match).
     func encodeOverlays(_ lines: [MetalLineVertex], command: any MTLCommandBuffer, output: any MTLTexture,
-                        viewProjection: simd_float4x4, viewport: MTLViewport) throws {
+                        viewProjection: simd_float4x4, viewport: MTLViewport,
+                        sceneDepth: any MTLTexture, occlude: Bool) throws {
         let samples = 4
         if overlayPipeline == nil || overlayCopyPipeline == nil {
             let line = MTLRenderPipelineDescriptor()
@@ -143,6 +148,9 @@ extension MetalRenderer {
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         var matrix = viewProjection
         encoder.setVertexBytes(&matrix, length: MemoryLayout<simd_float4x4>.stride, index: 1)
+        var occludeFlag: UInt32 = occlude ? 1 : 0
+        encoder.setFragmentBytes(&occludeFlag, length: MemoryLayout<UInt32>.stride, index: 0)
+        encoder.setFragmentTexture(sceneDepth, index: 0)
         encoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: lines.count)
         encoder.endEncoding()
     }
