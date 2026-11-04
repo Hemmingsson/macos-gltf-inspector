@@ -23,6 +23,19 @@ struct PerfBench {
     /// Load + first still on a new renderer (cold) and on one reused renderer (warm), pipeline
     /// specialisation on the warm one, and a 1080p frame's GPU time. In-process, so "cold" is a
     /// fresh renderer, not a fresh extension process.
+    @Test func loadManyNodeScan() async throws {
+        let url = try writeManyNodeScanGLB(nodeCount: 10_000)
+        defer { try? FileManager.default.removeItem(at: url) }
+        var samples: [Double] = []
+        for _ in 0..<Self.runs {
+            let start = ContinuousClock.now
+            let renderer = try MetalRenderer()
+            try await renderer.load(url: url)
+            samples.append(milliseconds(since: start))
+        }
+        row("load", "10k-node-scan", "total", samples)
+    }
+
     @Test func loadAndFirstStill() async throws {
         let manifest = try PixelDiffManifest.load()
         let options = ViewOptions(look: try PixelDiffMetal.renderLook(manifest.look))
@@ -56,6 +69,27 @@ struct PerfBench {
                 print("bench|process|\(name)|footprint MB|\(String(format: "%.1f", footprint))|test process|1")
             }
         }
+    }
+
+    private func writeManyNodeScanGLB(nodeCount: Int) throws -> URL {
+        let bin = floatTriangleBin()
+        let nodes = (0..<nodeCount).map { index in
+            ["name": "Node\(index)", "mesh": 0] as [String: Any]
+        }
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+            "accessors": [[
+                "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                "max": [1, 1, 0], "min": [0, 0, 0],
+            ]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+            "nodes": nodes,
+            "scenes": [["nodes": Array(0..<nodeCount)]],
+            "scene": 0,
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "perf-10k")
     }
 
     private func row(_ section: String, _ file: String, _ metric: String, _ samples: [Double]) {

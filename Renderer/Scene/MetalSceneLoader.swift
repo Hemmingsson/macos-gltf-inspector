@@ -31,8 +31,28 @@ private final class Builder {
     var maximum = SIMD3<Float>(repeating: -.infinity)
     var world: [ObjectIdentifier: simd_float4x4] = [:]
     var skins: [MetalSkin] = []
+    var nodeIndexByIdentity: [ObjectIdentifier: Int] = [:]
+    var meshIndexByIdentity: [ObjectIdentifier: Int] = [:]
+    var skinIndexByIdentity: [ObjectIdentifier: Int] = [:]
+    var materialIndexByIdentity: [ObjectIdentifier: Int] = [:]
+    var primitiveIndexByIdentity: [ObjectIdentifier: Int] = [:]
     let sourceURL: URL
     init(asset: GLTFAsset, device: any MTLDevice, sourceURL: URL) { self.asset = asset; self.device = device; self.sourceURL = sourceURL }
+
+    func buildIdentityIndexMaps() {
+        nodeIndexByIdentity = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        meshIndexByIdentity = Dictionary(asset.meshes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        skinIndexByIdentity = Dictionary(asset.skins.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        materialIndexByIdentity = Dictionary(asset.materials.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        primitiveIndexByIdentity = [:]
+        for mesh in asset.meshes {
+            for (index, primitive) in mesh.primitives.enumerated() {
+                primitiveIndexByIdentity[ObjectIdentifier(primitive)] = index
+            }
+        }
+    }
+
+    func nodeIndex(_ node: GLTFNode) -> Int { nodeIndexByIdentity[ObjectIdentifier(node)] ?? -1 }
     /// The source file's JSON (GLB chunk or .gltf), for extension fields GLTFKit2 parses incorrectly.
     lazy var rawJSON: [String: Any]? = {
         guard let data = try? Data(contentsOf: sourceURL) else { return nil }
@@ -91,6 +111,7 @@ private final class Builder {
             scene = asset.scenes[sceneIndex]
         } else { scene = asset.defaultScene ?? asset.scenes.first }
         guard let scene else { throw MetalSceneError.invalid("The glTF has no scene") }
+        buildIdentityIndexMaps()
         try rejectParentCycles()
         let variant: GLTFMaterialVariant?
         if let materialVariantIndex, let variants = asset.materialVariants {
@@ -100,7 +121,8 @@ private final class Builder {
         var inSceneNodes = Set<Int>()
         var visibleNodes = Set<Int>()
         func collect(_ node: GLTFNode, _ parent: simd_float4x4) {
-            if let index = asset.nodes.firstIndex(of: node) { inSceneNodes.insert(index) }
+            let index = nodeIndex(node)
+            if index >= 0 { inSceneNodes.insert(index) }
             let transform = parent * node.matrix
             world[ObjectIdentifier(node)] = transform
             for child in node.childNodes { collect(child, transform) }
@@ -118,13 +140,14 @@ private final class Builder {
         func visit(_ node: GLTFNode, visible: Bool) throws {
             let authoredVisibility = (node.extensions["KHR_node_visibility"] as? [String: Any])?["visible"] as? Bool ?? true
             guard visible && authoredVisibility else { return }
-            if let index = asset.nodes.firstIndex(of: node) { visibleNodes.insert(index) }
+            let index = nodeIndex(node)
+            if index >= 0 { visibleNodes.insert(index) }
             let transform = world[ObjectIdentifier(node)] ?? matrix_identity_float4x4
             if let light = node.light {
                 let p = transform * SIMD4<Float>(0, 0, 0, 1)
                 let d = transform * SIMD4<Float>(0, 0, -1, 0)
                 // Map GLTFKit2 light types (1...3) to the shader types (0...2).
-                lights.append(MetalPunctualLight(type: Int(light.type.rawValue) - 1, position: SIMD3(p.x,p.y,p.z), direction: simd_normalize(SIMD3(d.x,d.y,d.z)), color: light.color, intensity: light.intensity, range: light.range, innerConeCos: cos(light.innerConeAngle), outerConeCos: cos(light.outerConeAngle), nodeIndex: asset.nodes.firstIndex(of: node) ?? -1))
+                lights.append(MetalPunctualLight(type: Int(light.type.rawValue) - 1, position: SIMD3(p.x,p.y,p.z), direction: simd_normalize(SIMD3(d.x,d.y,d.z)), color: light.color, intensity: light.intensity, range: light.range, innerConeCos: cos(light.innerConeAngle), outerConeCos: cos(light.outerConeAngle), nodeIndex: nodeIndex(node)))
             }
             if let mesh = node.mesh {
                 let instances = node.meshInstances
@@ -143,8 +166,11 @@ private final class Builder {
         }
         try MetalImageLoader.generateMipmaps(pendingMips, device: device)
         pendingMips.removeAll()
+        let skinJointNodeIndices = skins.map(\.jointNodeIndices)
+        let jointNodeSet = Set(skinJointNodeIndices.flatMap { $0 })
         return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset,
-                          nodeRests: nodeRests(), skins: skins, inSceneNodes: inSceneNodes, visibleNodes: visibleNodes)
+                          nodeRests: nodeRests(), skins: skins, inSceneNodes: inSceneNodes, visibleNodes: visibleNodes,
+                          skinJointNodeIndices: skinJointNodeIndices, jointNodeSet: jointNodeSet)
     }
 
     func rejectParentCycles() throws {
@@ -243,12 +269,12 @@ private final class Builder {
         let centroid = SIMD3<Float>(sum.indices.map { Float(Double(sum[$0]) / Double(indices.count)) })
         // Khronos opaque instancing groups: skins, morph targets, GPU instancing and the
         // attribute limit (glAttributes + 4 > 16 on Apple WebGL2) each get their own group.
-        let meshIndex = node.mesh.flatMap { mesh in asset.meshes.firstIndex { $0 === mesh } } ?? -1
-        let primitiveIndex = node.mesh?.primitives.firstIndex { $0 === primitive } ?? -1
+        let meshIndex = node.mesh.flatMap { meshIndexByIdentity[ObjectIdentifier($0)] } ?? -1
+        let primitiveIndex = primitiveIndexByIdentity[ObjectIdentifier(primitive)] ?? -1
         let winding = simd_determinant(model) > 0 ? 1 : (simd_determinant(model) < 0 ? -1 : 0)
         var opaqueGroup = "\(meshIndex)_\(winding)_\(primitiveIndex)"
         if node.skin != nil || !primitive.targets.isEmpty || node.meshInstances != nil || primitive.attributes.count + 4 > 16 {
-            opaqueGroup += "_node\(asset.nodes.firstIndex(of: node) ?? -1)"
+            opaqueGroup += "_node\(nodeIndex(node))"
         }
         let topology: MTLPrimitiveType
         switch primitive.primitiveType.rawValue - 1 {
@@ -294,7 +320,7 @@ private final class Builder {
         var restWeights = [Float](repeating: 0, count: targetCount)
         let authored = (node.weights ?? node.mesh?.weights ?? []).map(\.floatValue)
         for index in 0..<min(targetCount, authored.count) { restWeights[index] = authored[index] }
-        let skinIndex = node.skin.flatMap { skin in asset.skins.firstIndex { $0 === skin } }
+        let skinIndex = node.skin.flatMap { skinIndexByIdentity[ObjectIdentifier($0)] }
         let hasJoints1 = joints1 != nil && weights1 != nil
         let skinVerts: [MetalSkinVertex]
         if let skinIndex, let joints0, let weights0 {
@@ -368,13 +394,13 @@ private final class Builder {
             skinBuffer = buffer
         } else { skinBuffer = nil }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
-        let gltfMaterialIndex = material.flatMap { mat in asset.materials.firstIndex { $0 === mat } }
+        let gltfMaterialIndex = material.flatMap { materialIndexByIdentity[ObjectIdentifier($0)] }
         var m = try convert(material)
         m.hasTexCoord0 = uv0 != nil
         m.hasNormal = normal != nil
         // MikkTSpace above fills TANGENT when the mesh has UVs but no authored tangent.
         m.hasTangent = tangent != nil || (uv0 != nil && topology == .triangle)
-        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,gltfMaterialIndex:gltfMaterialIndex,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
+        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,gltfMaterialIndex:gltfMaterialIndex,nodeIndex:nodeIndex(node),negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
     }
 
     func makeSkins() throws -> [MetalSkin] {

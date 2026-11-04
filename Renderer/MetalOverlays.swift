@@ -202,9 +202,7 @@ func nearestJointAncestor(of nodeIndex: Int, jointSet: Set<Int>, nodeParents: [I
 }
 
 private func isSkinJoint(_ nodeIndex: Int, scene: MetalScene) -> Bool {
-    scene.asset.skins.contains { skin in
-        skin.joints.contains { joint in scene.asset.nodes.firstIndex(of: joint) == nodeIndex }
-    }
+    scene.isSkinJoint(nodeIndex)
 }
 
 /// Screen-space silhouette replaces the AABB for mesh nodes; groups and non-mesh selections keep the box.
@@ -222,7 +220,7 @@ func silhouetteOutlineNodeIndices(options: MetalOverlayOptions, scene: MetalScen
 }
 
 private func jointNodeIndices(in scene: MetalScene, skin: GLTFSkin) -> [Int] {
-    skin.joints.compactMap { scene.asset.nodes.firstIndex(of: $0) }
+    scene.jointNodeIndices(skin: skin)
 }
 
 private func collectSkeletonOverlay(
@@ -237,9 +235,7 @@ private func collectSkeletonOverlay(
     if let skinIndex = selectedSkinIndex, scene.asset.skins.indices.contains(skinIndex) {
         resolved = (scene.asset.skins[skinIndex], nil)
     } else if let nodeIndex = selectedNode, isSkinJoint(nodeIndex, scene: scene),
-              let skinIndex = scene.asset.skins.firstIndex(where: { skin in
-                  jointNodeIndices(in: scene, skin: skin).contains(nodeIndex)
-              }) {
+              let skinIndex = scene.skinJointNodeIndices.firstIndex(where: { $0.contains(nodeIndex) }) {
         resolved = (scene.asset.skins[skinIndex], nodeIndex)
     } else {
         resolved = nil

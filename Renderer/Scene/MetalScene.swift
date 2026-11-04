@@ -182,11 +182,16 @@ public final class MetalScene: @unchecked Sendable {
     let inSceneNodes: Set<Int>
     /// Subset of `inSceneNodes` that are not under an authored-hidden ancestor (`KHR_node_visibility`).
     let visibleNodes: Set<Int>
+    /// glTF node indices for each skin's joints, parallel to `asset.skins`.
+    let skinJointNodeIndices: [[Int]]
+    /// Every node index that is a joint of some skin.
+    let jointNodeSet: Set<Int>
     let asset: GLTFAsset
 
     init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight],
          asset: GLTFAsset, nodeRests: [MetalNodeRest], skins: [MetalSkin],
-         inSceneNodes: Set<Int>, visibleNodes: Set<Int>) {
+         inSceneNodes: Set<Int>, visibleNodes: Set<Int>,
+         skinJointNodeIndices: [[Int]], jointNodeSet: Set<Int>) {
         self.draws = draws
         self.boundsMin = boundsMin
         self.boundsMax = boundsMax
@@ -196,6 +201,8 @@ public final class MetalScene: @unchecked Sendable {
         self.skins = skins
         self.inSceneNodes = inSceneNodes
         self.visibleNodes = visibleNodes
+        self.skinJointNodeIndices = skinJointNodeIndices
+        self.jointNodeSet = jointNodeSet
         let indices = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
         nodeParents = asset.nodes.map { node in node.parent.flatMap { indices[ObjectIdentifier($0)] } ?? -1 }
         var children = Array(repeating: [Int](), count: nodeParents.count)
@@ -203,6 +210,14 @@ public final class MetalScene: @unchecked Sendable {
             children[parent].append(index)
         }
         nodeChildren = children
+    }
+
+    public func isSkinJoint(_ nodeIndex: Int) -> Bool { jointNodeSet.contains(nodeIndex) }
+
+    public func jointNodeIndices(skin: GLTFSkin) -> [Int] {
+        guard let index = asset.skins.firstIndex(where: { $0 === skin }) else { return [] }
+        guard skinJointNodeIndices.indices.contains(index) else { return [] }
+        return skinJointNodeIndices[index]
     }
 
     /// The node itself, then its parent, grandparent and so on up to a root. Empty for an index
