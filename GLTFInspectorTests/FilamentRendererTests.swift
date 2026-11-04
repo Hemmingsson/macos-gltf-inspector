@@ -58,4 +58,38 @@ struct FilamentRendererTests {
         let frame = try await canvas.snapshot()
         #expect(frame.width > 1)
     }
+
+    /// Moving the window must not move the camera. A title-band drag over the full-bleed canvas
+    /// moves the window *with* the pointer: screen deltas are large, window-space motion is zero.
+    @Test
+    func windowDragDoesNotOrbit() async throws {
+        let host = FilamentRendererHost(mode: .live)
+        let view = try #require(host.view as? FilamentMetalView)
+        let start = try await host.camera(.get).pose.azimuth
+
+        // A drag the view never saw start (the window took the mouse-down) does not orbit.
+        view.mouseDragged(with: try drag(at: CGPoint(x: 100, y: 100), screenDeltaX: 40))
+        #expect(try await host.camera(.get).pose.azimuth == start)
+
+        // The pointer stays put in the window while the window travels under it.
+        view.mouseDown(with: try mouse(.leftMouseDown, at: CGPoint(x: 100, y: 100)))
+        view.mouseDragged(with: try drag(at: CGPoint(x: 100, y: 100), screenDeltaX: 40))
+        #expect(try await host.camera(.get).pose.azimuth == start)
+
+        // A real in-window drag still orbits.
+        view.mouseDragged(with: try drag(at: CGPoint(x: 130, y: 100), screenDeltaX: 30))
+        #expect(try await host.camera(.get).pose.azimuth != start)
+        view.mouseUp(with: try mouse(.leftMouseUp, at: CGPoint(x: 130, y: 100)))
+    }
+
+    private func mouse(_ type: CGEventType, at point: CGPoint) throws -> NSEvent {
+        let event = try #require(CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left))
+        return try #require(NSEvent(cgEvent: event))
+    }
+
+    private func drag(at point: CGPoint, screenDeltaX: Int64) throws -> NSEvent {
+        let event = try #require(CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: point, mouseButton: .left))
+        event.setIntegerValueField(.mouseEventDeltaX, value: screenDeltaX)
+        return try #require(NSEvent(cgEvent: event))
+    }
 }

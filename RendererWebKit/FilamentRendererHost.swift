@@ -358,8 +358,28 @@ final class FilamentMetalView: NSView {
 
     // MARK: Input
 
+    /// Window-space pointer position at the last orbit step; nil when no orbit drag is active.
+    private var orbitAnchor: NSPoint?
+
+    override func mouseDown(with event: NSEvent) {
+        orbitAnchor = event.locationInWindow
+        super.mouseDown(with: event)
+    }
+
+    /// Orbits by the pointer's motion *within the window*. `event.deltaX/Y` is screen motion, so a
+    /// title-band drag over the full-bleed canvas — which moves the window with the pointer — used
+    /// to spin the camera too. Only a drag this view saw start orbits.
     override func mouseDragged(with event: NSEvent) {
-        host?.orbit(byX: Double(event.deltaX), y: Double(event.deltaY))
+        guard let anchor = orbitAnchor else { return }
+        let location = event.locationInWindow
+        orbitAnchor = location
+        // Window space is y-up; `orbit` takes the y-down deltas `NSEvent.deltaY` reports.
+        host?.orbit(byX: Double(location.x - anchor.x), y: Double(anchor.y - location.y))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        orbitAnchor = nil
+        super.mouseUp(with: event)
     }
 
     override func scrollWheel(with event: NSEvent) {
