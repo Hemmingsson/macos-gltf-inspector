@@ -433,6 +433,12 @@ public final class ModelView: NSView {
         return (isFlipped ? point.y : bounds.height - point.y) < contentInsets.top
     }
 
+    private func isInSideInset(_ event: NSEvent) -> Bool {
+        guard contentInsets.left > 0 || contentInsets.right > 0 else { return false }
+        let point = convert(event.locationInWindow, from: nil)
+        return point.x < contentInsets.left || point.x > bounds.width - contentInsets.right
+    }
+
     /// What the title bar does: drag moves the window, double-click runs the system action.
     private func titleBarPress(_ event: NSEvent) {
         guard let window else { return }
@@ -667,7 +673,9 @@ public final class ModelView: NSView {
 
     override public func mouseMoved(with event: NSEvent) {
         super.mouseMoved(with: event)
-        guard onHover != nil, renderer.scene != nil, !isInTitleBarBand(event) else { return clearHover() }
+        if isInTitleBarBand(event) { return clearHover() }
+        if isInSideInset(event) { return clearHover(notifyEvenWhenIdle: true) }
+        guard onHover != nil, renderer.scene != nil else { return clearHover() }
         hoverPoint = event.locationInWindow
         let isBusy = dragAnchor != nil || options.autoRotates || isPlaybackRunning || retargetTask != nil
         guard !hoverPending, let delay = hoverThrottle.delay(at: CACurrentMediaTime(), isBusy: isBusy) else {
@@ -697,9 +705,9 @@ public final class ModelView: NSView {
         redraw()
     }
 
-    private func clearHover() {
+    private func clearHover(notifyEvenWhenIdle: Bool = false) {
         hoverPoint = nil
-        guard hoveredNode != nil else { return }
+        guard hoveredNode != nil || notifyEvenWhenIdle else { return }
         hoveredNode = nil
         onHover?(nil, nil)
         redraw()

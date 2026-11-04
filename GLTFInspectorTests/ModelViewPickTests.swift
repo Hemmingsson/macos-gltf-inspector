@@ -62,6 +62,43 @@ struct ModelViewPickTests {
         #expect(try pickNode(in: view, at: center, window: window) == 1)
     }
 
+    @Test func hoverClearsWhenPointerIsInLeftContentInset() async throws {
+        let view = ModelView(renderer: try MetalRenderer())
+        view.frame = NSRect(x: 0, y: 0, width: 200, height: 200)
+        view.contentInsets = NSEdgeInsets(top: 0, left: 40, bottom: 0, right: 0)
+        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        defer { window.contentView = nil; window.close() }
+        try await view.load(TestFixtures.cube)
+        var lastHover: (Int?, CGPoint?) = (nil, nil)
+        view.onHover = { node, point in lastHover = (node, point) }
+        view.mouseMoved(with: try testMouseEvent(.mouseMoved, NSPoint(x: 10, y: 100), in: window))
+        #expect(lastHover.0 == nil)
+        #expect(lastHover.1 == nil)
+    }
+
+    @Test func hoverStillWorksInModelAreaWithSideInsets() async throws {
+        let view = ModelView(renderer: try MetalRenderer())
+        view.frame = NSRect(x: 0, y: 0, width: 200, height: 200)
+        view.contentInsets = NSEdgeInsets(top: 0, left: 40, bottom: 0, right: 0)
+        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        defer { window.contentView = nil; window.close() }
+        try await view.load(TestFixtures.cube)
+        var lastHover: Int?
+        let modelMove = try testMouseEvent(.mouseMoved, NSPoint(x: 100, y: 100), in: window)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            view.onHover = { node, _ in
+                lastHover = node
+                if node == 0 { done.resume() }
+            }
+            view.mouseMoved(with: modelMove)
+        }
+        #expect(lastHover == 0)
+    }
+
     @Test func lightInFrontOfQuadStillWins() async throws {
         // Default orbit eye is at z = +distance; the light sits closer on the view axis than the quad.
         let light: [String: Any] = ["name": "Lamp", "translation": [0, 0, 2],
