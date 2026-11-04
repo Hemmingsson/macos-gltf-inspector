@@ -40,10 +40,10 @@ public struct AnimationSampler: Sendable {
         guard !input.isEmpty, componentCount > 0 else { return [] }
 
         let valueStride = outputStride
+        guard output.count == input.count * valueStride else { return [] }
         if input.count == 1 {
             return singleKeyValue()
         }
-        precondition(output.count == input.count * valueStride, "output count must match key count × stride")
 
         let t = wrappedAndClampedTime(rawTime)
         let nextKey = nextKeyframeIndex(for: t)

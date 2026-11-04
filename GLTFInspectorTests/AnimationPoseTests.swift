@@ -219,4 +219,94 @@ struct AnimationPoseTests {
         let pose = AnimationPose(clips: [short], at: 7)
         #expect(abs((pose.nodeOverrides[0]?.translation?.x ?? 0) - 1) < 1e-5)
     }
+
+    /// Mesh with two morph targets and no `weights` anywhere, plus a LINEAR weights channel on it.
+    private func morphWeightsGLB(channelInterpolation: String = "LINEAR") throws -> URL {
+        var bin = floatTriangleBin()
+        appendFloats([0, 1], to: &bin)
+        appendFloats([0, 0, 1, 1], to: &bin)
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [
+                ["buffer": 0, "byteOffset": 0, "byteLength": 36],
+                ["buffer": 0, "byteOffset": 36, "byteLength": 8],
+                ["buffer": 0, "byteOffset": 44, "byteLength": 16],
+            ],
+            "accessors": [
+                ["bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                 "min": [0, 0, 0], "max": [1, 1, 0]],
+                ["bufferView": 1, "componentType": 5126, "count": 2, "type": "SCALAR",
+                 "min": [0], "max": [1]],
+                ["bufferView": 2, "componentType": 5126, "count": 4, "type": "SCALAR"],
+            ],
+            "meshes": [["primitives": [[
+                "attributes": ["POSITION": 0],
+                "targets": [["POSITION": 0], ["POSITION": 0]],
+            ]]]],
+            "nodes": [["mesh": 0]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+            "animations": [[
+                "channels": [["sampler": 0, "target": ["node": 0, "path": "weights"]]],
+                "samplers": [["input": 1, "output": 2, "interpolation": channelInterpolation]],
+            ]],
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "morph-default")
+    }
+
+    @Test func morphWeightsWithoutAuthoredDefaultsStillAnimate() throws {
+        let url = try morphWeightsGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let clips = try loadClips(url)
+        let pose = AnimationPose(clips: clips, at: 0.5)
+        let weights = pose.meshWeights[0] ?? []
+        #expect(weights.count == 2, "component count comes from the mesh's two targets")
+        #expect(weights.count == 2 && abs(weights[0] - 0.5) < 1e-5 && abs(weights[1] - 0.5) < 1e-5)
+    }
+
+    @Test func samplerWithMismatchedOutputCountThrows() throws {
+        // Three keys but only two VEC3 outputs: the output accessor cannot match the key count.
+        var bin = Data()
+        appendFloats([0, 1, 2], to: &bin)
+        appendFloats([0, 0, 0, 1, 1, 1], to: &bin)
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [
+                ["buffer": 0, "byteOffset": 0, "byteLength": 12],
+                ["buffer": 0, "byteOffset": 12, "byteLength": 24],
+            ],
+            "accessors": [
+                ["bufferView": 0, "componentType": 5126, "count": 3, "type": "SCALAR",
+                 "min": [0], "max": [2]],
+                ["bufferView": 1, "componentType": 5126, "count": 2, "type": "VEC3"],
+            ],
+            "nodes": [["name": "N"]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+            "animations": [[
+                "channels": [["sampler": 0, "target": ["node": 0, "path": "translation"]]],
+                "samplers": [["input": 0, "output": 1, "interpolation": "LINEAR"]],
+            ]],
+        ]
+        let url = try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "mismatched-sampler")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        #expect(throws: AnimationClipError.mismatchedSampler) {
+            try loadClips(url)
+        }
+    }
+
+    @Test func evaluateWithShortOutputReturnsEmptyInsteadOfTrapping() {
+        let sampler = AnimationSampler(
+            input: [0, 1, 2],
+            output: [0, 1],
+            componentCount: 1,
+            interpolation: .linear,
+            clipMaxTime: 2
+        )
+        #expect(sampler.evaluate(at: 1).isEmpty)
+    }
 }
