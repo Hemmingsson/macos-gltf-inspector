@@ -8,7 +8,8 @@ import UniformTypeIdentifiers
 import simd
 
 /// Native hand port behind the same seam used by window, Quick Look, and thumbnails.
-/// Selected only with GLTF_RENDERER=metal until the unchanged Khronos pixel gate passes.
+/// The default renderer for all three surfaces (`CanvasRenderer.makeHost`); `GLTF_RENDERER`
+/// selects Filament or the WebKit page instead.
 @MainActor
 public final class KhronosMetalRendererHost: CanvasRendererHost {
     private let mode: WebRendererMode
@@ -33,8 +34,14 @@ public final class KhronosMetalRendererHost: CanvasRendererHost {
         metalView.host = self
     }
     public func start() async throws {
-        guard renderer == nil else { return }
-        renderer = try MetalRenderer()
+        // A broken host starts over, so the canvas's one restart per model can redraw it.
+        guard renderer == nil || isBroken else { return }
+        do {
+            renderer = try MetalRenderer()
+        } catch {
+            throw WebRendererError.navigationFailed(error.localizedDescription)
+        }
+        isBroken = false
         metalView.metalLayer.device = renderer?.device
     }
     public func apply(_ look: WebPreviewCanvas.Look) async throws {
@@ -52,8 +59,15 @@ public final class KhronosMetalRendererHost: CanvasRendererHost {
         try await start()
         guard let renderer else { throw WebRendererError.notReady }
         let began = CFAbsoluteTimeGetCurrent()
-        try await renderer.load(url: url, sceneIndex: look.sceneIndex == 0 ? nil : look.sceneIndex,
-                                materialVariantIndex: look.materialVariantIndex)
+        do {
+            try await renderer.load(url: url, sceneIndex: look.sceneIndex == 0 ? nil : look.sceneIndex,
+                                    materialVariantIndex: look.materialVariantIndex)
+        } catch let error as WebRendererError {
+            throw error
+        } catch {
+            // Same user-facing copy as the other backends for a file the renderer rejects.
+            throw WebRendererError.callFailed("open: \(error.localizedDescription)")
+        }
         modelURL = url
         fit()
         redraw()
@@ -81,7 +95,16 @@ public final class KhronosMetalRendererHost: CanvasRendererHost {
     }
     public func renderStill(size: Int? = nil) async throws -> CGImage {
         guard let renderer else { throw WebRendererError.notReady }
-        return try renderer.still(look: look.render, pose: pose, size: size ?? self.size,
+        // No size: a live canvas exports at its drawable size (Export PNG), a still at `self.size`.
+        let drawable = metalView.metalLayer.drawableSize
+        let (width, height) = if let size {
+            (size, size)
+        } else if mode == .live, drawable.width >= 1, drawable.height >= 1 {
+            (Int(drawable.width), Int(drawable.height))
+        } else {
+            (self.size, self.size)
+        }
+        return try renderer.image(look: look.render, pose: pose, width: width, height: height,
                                   orthographic: look.isOrthographic, debugOutput: debugOutput,
                                   wireframe: look.viewMode == .wireframe,
                                   overlays: MetalOverlayOptions(floor: look.showsFloor, origin: !look.isCentered, selectedNode: look.selectedNodeIndex), fileCameraNodeIndex: look.fileCameraNodeIndex)
@@ -198,6 +221,7 @@ private final class KhronosMetalView: NSView {
         metalLayer.drawableSize = CGSize(width: max(bounds.width * scale, 1), height: max(bounds.height * scale, 1))
         host?.redraw()
     }
+    override func viewDidChangeBackingProperties() { super.viewDidChangeBackingProperties(); needsLayout = true }
     override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); updateLink(); host?.redraw() }
     private func updateLink() {
         link?.invalidate(); link = nil

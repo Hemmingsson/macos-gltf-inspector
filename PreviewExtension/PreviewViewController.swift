@@ -4,9 +4,10 @@ import QuickLookUI
 import RendererWebKit
 import SwiftUI
 
-/// Quick Look principal class: the page loads the file itself, since Quick Look's process is cold
-/// on every spacebar press. The live host starts in `loadView` so the page compiles while Quick
-/// Look builds its chrome; `present` hands that same host to the canvas.
+/// Quick Look principal class: the renderer loads the file itself, since Quick Look's process is
+/// cold on every spacebar press. The live host (`CanvasRenderer`, the window's backend) starts in
+/// `loadView` so it warms up while Quick Look builds its chrome; `present` hands that same host
+/// to the canvas.
 class PreviewViewController: NSViewController, QLPreviewingController {
     private var hostingView: NSHostingView<QuickLookWebView>!
     private var prestartedHost: (any CanvasRendererHost)?
@@ -44,7 +45,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         hostingView.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         guard let host = prestartedHost else {
             hostingView.rootView = QuickLookWebView(
-                state: .failed("Couldn't start the web renderer"),
+                state: .failed("Couldn't start the renderer"),
                 isDark: dark
             )
             return
@@ -92,13 +93,13 @@ private final class QuickLookHostingView<Content: View>: NSHostingView<Content> 
     }
 }
 
-/// The web canvas once a file is presented, else a spinner or the failure message — including
-/// the page's own load failure (`WebCanvasController.phase`).
+/// The model canvas once a file is presented, else a spinner or the failure message — including
+/// the renderer's own load failure (`WebCanvasController.phase`).
 struct QuickLookWebView: View {
     enum State {
         case loading
         case failed(String)
-        /// Cached Finder poster under the web view until `load` unhides it.
+        /// Cached Finder poster under the live view until the model is drawn.
         case web(
             url: URL,
             look: WebPreviewCanvas.Look,
