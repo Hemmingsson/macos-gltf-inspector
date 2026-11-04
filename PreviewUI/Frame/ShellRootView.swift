@@ -82,6 +82,7 @@ public struct ShellRootView<
                     RightInspector(
                         selection: selection,
                         documentState: documentState,
+                        validation: model.validation,
                         openInMenu: openInMenu
                     )
                     .inspectorColumnWidth(

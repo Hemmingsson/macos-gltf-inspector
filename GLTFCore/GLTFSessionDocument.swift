@@ -14,6 +14,10 @@ public struct GLTFSessionDocument: Sendable, Equatable {
     public var skins: [Skin] = []
     public var morphs: [Morph] = []
     public var animations: [Animation] = []
+    /// Material index of every primitive, per mesh (`meshPrimitiveMaterials[mesh][primitive]`).
+    /// Nil for a primitive with no material. Lets a validator pointer such as
+    /// `/meshes/0/primitives/1` reach the material that primitive uses.
+    public var meshPrimitiveMaterials: [[Int?]] = []
 
     public init() {}
 
@@ -105,6 +109,10 @@ public struct GLTFSessionDocument: Sendable, Equatable {
 
         public var kind: Kind
         public var texCoord: Int = 0
+        /// glTF `textures` index this slot binds. Nil when the binding carries none.
+        public var textureIndex: Int?
+        /// glTF `images` index behind that texture, once resolved against the file.
+        public var imageIndex: Int?
         public var width: Int?
         public var height: Int?
         public var thumbnailPNG: Data?

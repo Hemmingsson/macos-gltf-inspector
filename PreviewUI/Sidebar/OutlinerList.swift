@@ -49,13 +49,14 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
                                 isExpanded: row.item.hasChildren
                                     ? expandedBinding.wrappedValue.contains(row.id)
                                     : nil,
+                                badge: badge(for: row.id),
                                 onToggle: { toggle(row.item) }
                             )
                             .tag(Optional(row.id))
                         }
                     } else {
                         ForEach(section.items) { item in
-                            NodeRow(item: item, isSelected: selection.selected == item.id)
+                            NodeRow(item: item, isSelected: selection.selected == item.id, badge: badge(for: item.id))
                                 .tag(Optional(item.id))
                         }
                     }
@@ -95,6 +96,15 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
                 }
             }
         )
+    }
+
+    /// A fault badge for rows the validator reported on. Infos and hints stay off the outliner.
+    private func badge(for id: NodeID) -> DSStatus? {
+        switch model.validation.worstSeverity(for: id) {
+        case .error: .error
+        case .warning: .warning
+        case .info, .hint, nil: nil
+        }
     }
 
     /// Plain click folds one row; Option-click folds or unfolds the whole subtree.

@@ -53,6 +53,13 @@ public enum GLTFDocumentJSON {
         document.cameras = camerasJSON.map(makeCamera)
         document.lights = lightsJSON.map(makeLight)
         document.materials = materialsJSON.map(makeMaterial)
+        document.meshPrimitiveMaterials = meshesJSON.map { mesh in
+            (mesh["primitives"] as? [[String: Any]] ?? []).map { primitive in
+                GLTFJSON.int(primitive["material"]).flatMap {
+                    materialsJSON.indices.contains($0) ? $0 : nil
+                }
+            }
+        }
         if !skinsJSON.isEmpty {
             document.skins = AppLog.signposter.withIntervalSignpost("json.document.skins") {
                 skinsJSON.enumerated().map { index, skin in

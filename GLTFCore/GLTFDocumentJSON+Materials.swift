@@ -63,7 +63,8 @@ extension GLTFDocumentJSON {
         textureRefs(material).map { ref in
             GLTFSessionDocument.TextureSlot(
                 kind: ref.kind,
-                texCoord: GLTFJSON.int(ref.params["texCoord"]) ?? 0
+                texCoord: GLTFJSON.int(ref.params["texCoord"]) ?? 0,
+                textureIndex: GLTFJSON.int(ref.params["index"])
             )
         }
     }
@@ -113,7 +114,7 @@ extension GLTFDocumentJSON {
     ) {
         let textures = json["textures"] as? [[String: Any]] ?? []
         let images = json["images"] as? [[String: Any]] ?? []
-        guard !textures.isEmpty, !images.isEmpty else { return }
+        guard !textures.isEmpty else { return }
 
         var previews: [Int: (size: (width: Int, height: Int)?, thumb: Data?)] = [:]
         func preview(forImage index: Int) -> (size: (width: Int, height: Int)?, thumb: Data?) {
@@ -135,6 +136,7 @@ extension GLTFDocumentJSON {
                       textures.indices.contains(textureIndex),
                       let imageIndex = imageIndex(for: textures[textureIndex])
                 else { continue }
+                slots[slotIndex].imageIndex = imageIndex
                 let built = preview(forImage: imageIndex)
                 slots[slotIndex].width = built.size?.width
                 slots[slotIndex].height = built.size?.height

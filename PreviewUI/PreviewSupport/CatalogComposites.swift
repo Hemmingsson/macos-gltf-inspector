@@ -71,11 +71,13 @@ public enum CatalogComposites {
     public static func inspector(
         selection: some SelectionModel,
         documentState: ShellDocumentState = .ready,
+        validation: ValidationResult = ValidationResult(),
         openInMenu: AnyView
     ) -> some View {
         RightInspector(
             selection: selection,
             documentState: documentState,
+            validation: validation,
             openInMenu: openInMenu
         )
         .frame(width: DS.Metrics.inspectorWidth)

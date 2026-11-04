@@ -18,6 +18,8 @@ struct EngineSceneModel: SceneModel {
     var materialVariantNames: [String]
     var dimensions: Dimensions
     var validation: ValidationResult
+    /// Kept so a validation report that lands later can resolve its pointers to outliner rows.
+    private let document: GLTFSessionDocument
 
     /// Pass `validation: nil` while the Khronos run is pending.
     init(summary: GLTFDocumentSummary, fileName: String, validation: GLTFValidationState? = nil) {
@@ -40,7 +42,8 @@ struct EngineSceneModel: SceneModel {
         let displayName = fileName.isEmpty ? "Model" : fileName
         self.fileName = displayName
         self.materialVariantNames = materialVariantNames
-        self.validation = Self.mapValidation(validation)
+        self.document = document
+        self.validation = Self.mapValidation(validation, document: document)
 
         let scenes = Self.mapScenes(document)
         self.scenes = scenes
@@ -62,7 +65,7 @@ struct EngineSceneModel: SceneModel {
     /// Re-snapshot with a resolved validation outcome (same document / dimensions).
     func replacingValidation(_ state: GLTFValidationState?) -> EngineSceneModel {
         var copy = self
-        copy.validation = Self.mapValidation(state)
+        copy.validation = Self.mapValidation(state, document: document)
         return copy
     }
 }
@@ -70,7 +73,10 @@ struct EngineSceneModel: SceneModel {
 // MARK: - Mapping
 
 extension EngineSceneModel {
-    static func mapValidation(_ state: GLTFValidationState?) -> ValidationResult {
+    static func mapValidation(
+        _ state: GLTFValidationState?,
+        document: GLTFSessionDocument
+    ) -> ValidationResult {
         guard let state else {
             return ValidationResult(status: .pending)
         }
@@ -81,7 +87,10 @@ extension EngineSceneModel {
                     ValidationResult.Issue(
                         severity: mapSeverity(message.severity),
                         message: message.message,
-                        pointer: message.pointer
+                        pointer: message.pointer,
+                        subjects: GLTFIssueResolver
+                            .subjects(forPointer: message.pointer, in: document)
+                            .compactMap { nodeID(for: $0, in: document) }
                     )
                 },
                 status: .ready
@@ -93,6 +102,19 @@ extension EngineSceneModel {
                 ],
                 status: .unavailable
             )
+        }
+    }
+
+    /// The outliner row a validator subject is drawn on. Nil when the row does not exist.
+    private static func nodeID(for subject: GLTFIssueSubject, in document: GLTFSessionDocument) -> NodeID? {
+        switch subject {
+        case .node(let index):
+            document.nodes.first { $0.index == index }
+                .map { NodeID(kind: nodeKind($0.kind), index: index) }
+        case .material(let index): NodeID(kind: .material, index: index)
+        case .scene(let index): NodeID(kind: .scene, index: index)
+        case .skin(let index): NodeID(kind: .skin, index: index)
+        case .animation(let index): NodeID(kind: .animation, index: index)
         }
     }
 

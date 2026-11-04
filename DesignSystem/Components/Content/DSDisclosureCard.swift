@@ -50,10 +50,14 @@ public struct DSDisclosureCard<Content: View>: View {
 public struct DSDisclosureMessage: Identifiable, Hashable, Sendable {
     public var id: String
     public var text: String
+    /// Glyph and tint for this row. Nil takes the card's own status, so a card that mixes
+    /// warnings with notes can still tell them apart.
+    public var status: DSStatus?
 
-    public init(id: String, text: String) {
+    public init(id: String, text: String, status: DSStatus? = nil) {
         self.id = id
         self.text = text
+        self.status = status
     }
 }
 
@@ -90,9 +94,9 @@ public struct DSDisclosureMessageList: View {
                     Divider()
                 }
                 HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.m) {
-                    Image(systemName: status.systemImage)
+                    Image(systemName: (message.status ?? status).systemImage)
                         .font(DS.Font.caption)
-                        .foregroundStyle(status.tint)
+                        .foregroundStyle((message.status ?? status).tint)
                         .accessibilityHidden(true)
                     Text(message.text)
                         .font(DS.Font.callout)
@@ -164,7 +168,7 @@ private struct DSDisclosureCardBody: View {
 
 private let previewMessages = [
     DSDisclosureMessage(id: "accessor", text: "Accessor min length must be a multiple of component size"),
-    DSDisclosureMessage(id: "extension", text: "Unused extension KHR_materials_unlit"),
+    DSDisclosureMessage(id: "extension", text: "Unused extension KHR_materials_unlit", status: .note),
 ]
 
 #Preview("Disclosure card") {

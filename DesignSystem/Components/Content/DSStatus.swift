@@ -11,6 +11,8 @@ public enum DSStatus: Sendable, Hashable, CaseIterable {
     case error
     /// Not known yet (validation still running). Neutral secondary, no colour.
     case pending
+    /// Worth knowing, not a fault (a validator info or hint). Neutral secondary, no colour.
+    case note
 
     /// SF Symbol for the status. Shape differs per status, so it never relies on colour alone.
     public var systemImage: String {
@@ -19,6 +21,7 @@ public enum DSStatus: Sendable, Hashable, CaseIterable {
         case .warning: "exclamationmark.triangle"
         case .error: "xmark.octagon"
         case .pending: "ellipsis.circle"
+        case .note: "info.circle"
         }
     }
 
@@ -28,7 +31,7 @@ public enum DSStatus: Sendable, Hashable, CaseIterable {
         case .valid: AnyShapeStyle(DS.Color.success)
         case .warning: AnyShapeStyle(DS.Color.warning)
         case .error: AnyShapeStyle(DS.Color.error)
-        case .pending: AnyShapeStyle(DS.Color.textSecondary)
+        case .pending, .note: AnyShapeStyle(DS.Color.textSecondary)
         }
     }
 
@@ -38,7 +41,7 @@ public enum DSStatus: Sendable, Hashable, CaseIterable {
         case .valid: AnyShapeStyle(DS.Color.successFill)
         case .warning: AnyShapeStyle(DS.Color.warningFill)
         case .error: AnyShapeStyle(DS.Color.errorFill)
-        case .pending: AnyShapeStyle(DS.Color.cardFill)
+        case .pending, .note: AnyShapeStyle(DS.Color.cardFill)
         }
     }
 }
