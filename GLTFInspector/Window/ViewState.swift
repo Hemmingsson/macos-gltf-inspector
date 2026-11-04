@@ -267,12 +267,12 @@ final class ViewState {
         guard let anchor, let anchorRank = ranks[anchor] else {
             return added.max(by: { outlinerOrder($0, $1, document: document) })
         }
-        if added.contains(where: { (ranks[$0] ?? 0) > anchorRank }) {
-            return added.max(by: { (ranks[$0] ?? 0) < (ranks[$1] ?? 0) })
+        return added.max { a, b in
+            let da = abs((ranks[a] ?? anchorRank) - anchorRank)
+            let db = abs((ranks[b] ?? anchorRank) - anchorRank)
+            if da != db { return da < db }
+            return outlinerOrder(a, b, document: document)
         }
-        return added.filter { (ranks[$0] ?? 0) < anchorRank }
-            .max(by: { (ranks[$0] ?? 0) < (ranks[$1] ?? 0) })
-            ?? added.max(by: { outlinerOrder($0, $1, document: document) })
     }
 
     private static func outlinerRanks(in document: GLTFDocument) -> [NodeID: Int] {

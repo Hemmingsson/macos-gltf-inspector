@@ -222,13 +222,33 @@ struct ViewStateTests {
         let meshB = NodeID(kind: .mesh, index: 3)
         let root = NodeID(kind: .empty, index: 0)
         let group = NodeID(kind: .empty, index: 1)
+        // Equal distance up to Group and down to Mesh B keeps the later row.
         view.selection = meshA
-        view.selectedIDs = [root, group, meshA, meshB]
+        view.selectedIDs = [group, meshA, meshB]
         #expect(view.selection == meshB)
-
+        // Upward to the root: the click is the empty at the far end, not the row beside Mesh B.
         view.selection = meshB
         view.selectedIDs = [root, group, meshA, meshB]
-        #expect(view.selection == meshA)
+        #expect(view.selection == root)
+
+        let flat = ViewState(settings: try settings())
+        flat.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "scenes": [["nodes": [0, 1, 2]]],
+            "nodes": [["name": "Mesh A", "mesh": 0], ["name": "Gap"], ["name": "Mesh B", "mesh": 0]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "Shared"]],
+        ])
+        let left = NodeID(kind: .mesh, index: 0)
+        let gap = NodeID(kind: .empty, index: 1)
+        let right = NodeID(kind: .mesh, index: 2)
+        flat.selection = left
+        flat.selectedIDs = [left, gap, right]
+        #expect(flat.selection == right)
+        flat.selection = right
+        flat.selectedIDs = [left, gap, right]
+        #expect(flat.selection == left)
     }
 
     @Test func resetClearsSceneGizmosAndPickMemory() throws {
