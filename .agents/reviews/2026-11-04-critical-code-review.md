@@ -22,6 +22,10 @@ being added and verified as the review proceeds. This is a review, not a patch o
 | ID | P | Defect | Probe |
 |----|---|--------|-------|
 | R15 | P1 | Frame Selection re-measures the scene: rest of model far-clipped, floor/gizmos resize | red |
+| M01 | P1 | Morph deltas applied after the CPU skin bake (spec: morph then skin) | traced + math |
+| M02 | P1 | Click/hover picking uses the rest pose during animation (also V04) | traced |
+| V01 | P1 | Scroll/pinch zoom dead in axis (ortho) views; next orbit jumps | replay |
+| V02 | P1 | Orbit-around-selection re-aims on every pick, breaking click-cycle | traced |
 | R4 | P1 | Framing a camera/light/joint/empty gives a non-finite projection | red |
 | R9 | P2 | Occluded camera/light gizmos win clicks over the visible mesh | red |
 | R10 | P2 | BLEND picks by draw order; transparent texels pickable | red |
@@ -39,16 +43,20 @@ being added and verified as the review proceeds. This is a review, not a patch o
 | R11 | P2 | Per-frame full-size GPU allocations + main-thread GPU wait | traced |
 | A4 | P2 | `CanvasRegion` body and subtree bounds recomputed every camera frame | traced |
 | P-A1, P-A2 | P2 | (in progress) morph weights dropped without mesh defaults; malformed sampler traps | traced |
-| R13, R14, A5–A8, P-A3 | P3 | O(n) index lookups, cycle guards, preview resync/retention, range primary, gizmo while loading, pointer keys | traced |
+| M03–M06, M08 | P2 | Overlays/bounds/lights on rest pose; frozen generated normals; dense morph memory; highlight ignores variants; clips parsed on main | traced |
+| V03, V05, V06 | P2 | Ortho retarget tilts view; turntable reads live camera; failed export destroys file | replay / traced |
+| R13, R14, A5–A8, P-A3, M07, M09, M10, V07–V11 | P3 | lookups, cycle guards, preview, range primary, pointer keys, highlight extent, skinned node transform, turntable pose, X-ray order, hover cost/insets, dimensions, totals | traced |
 
 Common roots worth fixing once rather than per finding:
+0. **The animation pose reaches only `drawTransforms`** (M02, M03, M10, V04): picking, overlays,
+   bounds, lights, file cameras and export all read rest matrices. Publish posed node worlds once per frame.
 1. **No single "active scene membership + effective visibility" resolution** (R6, R7, A3, part of R12).
    Build it once in `MetalScene` and reuse for draws, overlays, picking, outliner and inspector.
 2. **`MetalUserCamera.fit` serves both whole-scene fit and selection framing** (R4, R5, R15).
    Split target/distance framing from scene measurement and clip-plane fitting.
 3. **Picking does not share the render's visibility rules** (R2, R3, R9, R10). Give the pick pass
    depth for every draw and test gizmo hits against it.
-4. **Camera state changes in `ModelView` are invisible to `ViewState`** (A1, A7) and **every redraw
+4. **Camera state changes in `ModelView` are invisible to `ViewState`** (A1, A7, V03) and **every redraw
    re-renders from scratch and invalidates SwiftUI** (R11, A4).
 
 ## Confirmed findings
@@ -531,6 +539,305 @@ shows no interactive preview.
 Lower confidence, not written up: ⌘↑/⌘↓ (Select Parent/Children) override the List's own ⌘-arrow
 navigation; menu Hide Selection stays enabled for `hiddenByParent`/`hiddenInFile` rows while the
 context-menu Hide is disabled; nothing shows which node is soloed.
+
+## Pass 3 — animation transforms, GPU morph, material highlight (completed 13:39–14:34)
+
+Leaves: `rc2v1tsr` clips/pose, `q9fppsgo` per-frame node transforms, `z8bzuhwz` GPU morph,
+`g7bd2y5a` material highlight; `bi329hbl`/`huj04ed6` read as provisional. Read-only on main; pure
+math replayed in a scratch script. M01 and M02 re-checked against source by the review lead
+(skin bake `MetalSceneLoader.swift:184` precedes `gatherMorph` `:264`; `MetalRenderer.pick` at `:139`
+has no `animationPose` parameter).
+
+Checked and correct: `T*R*S` composition (exact vs gl-matrix), dirty re-derivation of children and
+off-scene joints, matrix-authored nodes, inverse-transpose normals under non-uniform scale,
+per-frame `negativeScale` with front-face flip in draw and pick, all-zero weights take the rigid
+path, MSL morph indexing matches `gatherMorph`, sparse morph accessors via GLTFKit2.
+
+### M01 · P1 · Morph deltas are applied after the CPU skin bake (spec: morph, then skin)
+
+**Location:** `MetalSceneLoader.swift:184–206` (skin bake), `:264` (`gatherMorph` on raw deltas),
+`pbr.metal:45–51` (deltas added to skinned position/normal/tangent); `boundsVertices` `:269–279`.
+
+The old loader baked morph before skinning; the new one removed that, so deltas are never skinned.
+Joint rotated 90° about Z, vertex (1,0,0), delta (0,1,0), weight 1: spec R·(v+d) = (−1,1,0), new
+R·v+d = (0,2,0). Every skinned character with blendshapes (facial rigs, VRM) is wrong whenever a
+weight is non-zero, including at rest with non-zero default weights.
+
+**Fix direction:** skin after morph on the GPU (huj04ed6), or until then bake each delta through
+the per-vertex blended matrix (w = 0; inverse-transpose for normal deltas). Don't ship 6.3b alone.
+
+**Required regression:** one joint at 90°, one target at weight 1 → captured vertex = R·(v+d).
+
+### M02 · P1 · Picking ignores the animation pose
+
+**Location:** `MetalRenderer.pick` (`:139`, no pose → rest transforms), `encodePick`
+(`morphWeights(for:pose: nil)`), `ModelView` click path.
+
+With playback wired (`ModelCanvas.swift:246`), pause BoxAnimated at t = 0.5: clicking the drawn inner
+box hits background; clicking its rest position selects it. Morphed silhouettes pick at rest weights.
+
+**Fix direction:** thread `animationPose` through `pick`/`gizmoPickFrame` → `sceneFrameSetup` →
+`encodePick`, fed from `animationPoseProvider`.
+
+**Required regression:** BoxAnimated at 0.5: posed pixel → inner node; rest pixel → not inner node.
+
+### M03 · P2 · Overlays, bounds, framing, gizmos, file cameras and lights stay on the rest pose
+
+**Location:** `MetalScene.worldMatrix`/`bounds(ofNode:)`/`fileCamera` (walk `node.matrix`); lights baked
+once in the loader; consumers in `MetalOverlays` and `ModelView.frame(nodeIndices:)`.
+
+During playback the selection, hover and material boxes, skeleton lines and gizmos stay put while
+the mesh moves; Frame Selection frames the rest position; animated file cameras and lights (or ones
+under animated parents) don't move. Same root as M02: only `drawTransforms` sees the pose.
+
+**Fix direction:** compute posed node worlds once per frame (reuse the `drawTransforms` walk) and
+route overlays, bounds, gizmo hits, file cameras and per-frame light positions through it.
+
+**Required regression:** pose at 0.5 → selected AABB moves by the animated translation; a light
+under an animated node changes position in the GPU light array.
+
+### M04 · P2 · Generated normals/tangents are frozen at the unmorphed shape; a test locks it in
+
+**Location:** `MetalSceneLoader.swift:241–258` (face normals, MikkTSpace from rest positions),
+`pbr.metal:143` (derivative fallback only for a zero normal), `MetalMorphTests.swift:112–113`.
+
+`morph-triangle.gltf` has no NORMAL: at weight 1 the moved vertex keeps the rest normal. Khronos
+uses screen-space derivatives without `HAS_NORMAL`, which follow the morph. Files with non-zero
+default weights and no NORMAL now shade differently from before the change (regression at rest).
+
+**Fix direction:** with POSITION targets and no NORMAL (or TANGENT), emit zero vectors so the shader
+takes the derivative path; invert the test.
+
+**Required regression:** morph-triangle at weight 1 → shaded normal equals the morphed face normal;
+pixel reference with non-zero defaults and no NORMAL matches pre-change output.
+
+### M05 · P2 · Morph buffers are dense per de-indexed vertex and per instance; shader loops every target
+
+**Location:** `MetalSceneLoader.swift:312–345` (`slots × targets × emittedVertices` float4),
+`:121–124` (`append` per GPU instance), `pbr.metal:24–30` (`morph_sum` over all targets),
+`MetalRenderer.swift:603–605` (`makeBuffer` per draw per frame above 4 KB of weights).
+
+A 20k-vertex face de-indexed to 120k corners with 52 POSITION+NORMAL targets needs ≈ 200 MB
+(arithmetic, not measured) versus ~25 MB of source; instancing multiplies it and allocation failure
+now fails files that loaded before. Every vertex reads targets × slots even with one weight set.
+
+**Fix direction:** store deltas per source vertex indexed through `sourceOf`; share across instances;
+pass a compact active-target list; ring-buffer large weight arrays.
+
+**Required regression:** `morphBuffer.length == slots × targets × sourceVertexCount × 16`; two
+instances share one buffer (`===`).
+
+### M06 · P2 · Material highlight ignores variants, the active scene and hide/solo
+
+**Location:** `GLTFDocument.swift:212–219` (base `primitive.material` only), `ViewState.swift:367–370`,
+`MetalOverlays.swift:158–161`.
+
+With a `KHR_materials_variants` variant active, the variant material outlines nothing and the base
+material outlines meshes that no longer use it. Nodes from other scenes get floating boxes; hidden
+or solo'd-out meshes still get boxes. Same family as R7/A3.
+
+**Fix direction:** resolve users through the active variant mapping; restrict to drawn-scene,
+visible, non-hidden nodes.
+
+**Required regression:** variant selected → highlight reflects the mapped material; hidden and
+other-scene nodes emit no AABB vertices.
+
+### M07 · P3 · Material-highlight box covers the whole subtree, not the primitives using the material
+
+**Location:** `MetalOverlays.swift:344–350` → `bounds(ofNode:)` (subtree).
+
+Body uses X, child wheels use Y: highlighting X boxes body + wheels; parent and child both on X give
+nested boxes; a multi-material mesh is boxed whole.
+
+**Fix direction:** node-local `bounds(ofNode:primitivesUsing:)` from per-primitive accessor min/max.
+
+**Required regression:** parent/child with different materials → box equals the parent's own primitive bounds.
+
+### M08 · P2 · (provisional, bi329hbl) Clips re-parse the file on the main actor and skip meshopt decoding
+
+**Location:** `ModelCanvas.swift:214–237` (called from `sync()` `:347`, `@MainActor`);
+`AnimationClip.matrixAuthoredNodeIndices` reads the whole file, twice.
+
+A second full `GLTFAsset(url:)` parse plus raw reads run on the main thread after load (UI stall).
+The clip loader bypasses `MetalMeshoptPreprocessor`, so `gltfpack -cc` files with compressed samplers
+lose their animation or sample garbage.
+
+**Fix direction:** build clips in `MetalSceneLoader` from the same decoded asset, off-main; take
+matrix flags from the JSON the loader already holds.
+
+**Required regression:** gltfpack-compressed animated fixture → clips equal the uncompressed file's.
+
+### M09 · P3 · (provisional) Animating a skinned mesh's own node moves the baked skin
+
+**Location:** `MetalPose.swift:84–91` applies `worlds[node]` to every draw; skin bake used
+`inverse(model_rest)·J·IB`.
+
+The spec ignores a skinned mesh node's transform. Animating that node (or a non-shared ancestor)
+draws `model_posed·model_rest⁻¹·J·IB`; the common shared-armature case cancels, hiding the bug.
+
+**Fix direction:** keep skinned draws on the rest model now; identity + `J_posed·IB` in huj04ed6.
+
+**Required regression:** animate the mesh node of a skinned fixture → draw transform unchanged.
+
+### M10 · P3 · (provisional) Turntable ignores the pose; paused t = 0 shows rest, not the first key
+
+**Location:** `ModelView.swift:270` (`turntable` → `renderer.image` without pose),
+`ModelCanvas.swift:181` (`if !isPlaying, time == 0 { return nil }`).
+
+Pausing mid-clip and exporting a turntable renders the rest pose (PNG export does pass the pose).
+Scrubbing to 0 shows rest TRS, so the frame jumps between 0 and 0.001.
+
+**Fix direction:** pass the pose provider in `turntable`; use an explicit stopped flag.
+
+**Required regression:** turntable frame 0 equals `snapshot()` when paused at 0.5.
+
+**Done-when status:** `rc2v1tsr` met (no new defects). `q9fppsgo` met for drawing; pose does not reach
+pick/overlays/bounds (M02/M03). `z8bzuhwz` only partly met: its Result says pixel refs are "pending
+confirm", and the old-bake parity holds for positions only (M01, M04). `g7bd2y5a` unit tests met; no
+on-screen check recorded; M06/M07 gaps.
+
+## Pass 4 — Viewer essentials (`3pk4ibv6`, completed 14:13; committed in `c40b96a`)
+
+Main committed the scene-interaction work as `c40b96a` and `e8b67d2` during this pass; line numbers
+are for that HEAD. Camera math replayed standalone; the rest traced. V01 re-checked by the review
+lead (`ModelView.wheel` `:636–646`: orthographic takes plain `zoomBy`, no `applyProjection`).
+
+### V01 · P1 · Wheel/pinch zoom does nothing in axis views, then the next orbit jumps
+
+**Location:** `ModelView.swift:636–646`, `MetalUserCamera.zoomBy` `:85–93`, `applyProjection`.
+
+`zoomBy` changes `distance` but not `orthographic.magnitude`, and the ortho path never calls
+`applyProjection`. Since `ggq8r9uj` makes every axis click orthographic: click Front, scroll — image
+unchanged, zoom % climbs; next orbit returns to perspective at the accumulated distance (often inside
+the model). Replayed: ten `zoomBy(-5)` → magnitude stays 2.071, distance 5 → 0.156.
+
+**Fix direction:** in ortho, restate/scale the magnitude after the dolly and apply the same pointer
+shift so zoom-toward-pointer works there too.
+
+**Required regression:** Front preset + wheel step → magnitude shrinks; orbit → perspective distance
+matches the zoomed framing.
+
+### V02 · P1 · Orbit-around-selection (default on) re-aims the camera on every selection and breaks click-cycle
+
+**Location:** `ModelView.swift:121–124,570–598` (`retarget`), `ViewState.pick` `:185–198`.
+
+Each primary-selection change glides the selected box centre to screen centre with the eye fixed,
+so the clicked part slides from under the pointer. A second click at the same pixel hits something
+else, `lastPick.hit == nodeIndex` fails and the parent walk never happens; a click within 0.25 s
+cancels the glide half-way; ⌘/⇧ toggles re-aim at each added node.
+
+**Fix direction:** keep a pivot and orbit around it only when a drag starts (Blender); at minimum
+don't retarget for canvas picks or toggles.
+
+**Required regression:** `orbitsAroundSelection` on, two clicks on the same point over an off-centre
+child → parent selected and the view matrix unchanged by selection.
+
+### V03 · P2 · Selecting in an axis/ortho view tilts it off-axis and rescales it, preset still shown
+
+**Location:** `MetalUserCamera.retargetKeepingEye` `:99–111`, `ModelView.swift:580–593`, `ViewState.swift:330–337`.
+
+Front view, click a part at (4,0,4): azimuth 0° → −33.7°, magnitude 4.14 → 2.99 (replayed). The
+gizmo and View menu still say Front; auto-ortho stays on. Same "camera changes invisible to
+ViewState" root as A1.
+
+**Fix direction:** in ortho keep magnitude and look direction and pan the target, or skip retarget;
+report camera moves so the preset clears.
+
+**Required regression:** ortho retarget keeps `orthographic.magnitude` and the axis-aligned look direction.
+
+**V04** (hover/click pick and turntable ignore the animation pose) is the same defect as M02/M10;
+see there. Hover makes it visible while paused.
+
+### V05 · P2 · Turntable re-reads the live camera each frame; selection boxes are baked in
+
+**Location:** `ModelView.swift:263–266`, `ViewState.swift:345–353`.
+
+Angles are captured once but `distance`/`target` are re-read after each `await` while the UI stays
+interactive, so a zoom, pan, selection (which starts a glide) or an in-flight glide bends the rest of
+the orbit. Full `options` are used, so selection/highlight boxes appear in every frame. No progress, no cancel.
+
+**Fix direction:** snapshot pose and pose provider before the loop; strip selection/highlight/hover
+from export options; progress with Cancel; block canvas input during export.
+
+**Required regression:** change the canvas camera between frame callbacks → frames still form one orbit.
+
+### V06 · P2 · A failed turntable export deletes the old file, leaves a partial one, and says nothing
+
+**Location:** `TurntableExport.swift:43` (`try? removeItem` before rendering), `:72–75` (log only);
+`MP4Encoder` has no `cancelWriting`.
+
+Overwrite `x.mp4`, a frame fails (GPU error, `noScene` after reload): the original is gone, a corrupt
+partial file remains, the writer is dropped mid-write, and the user sees nothing. PNG export also only logs.
+
+**Fix direction:** write to a temp file beside the destination and replace atomically; on error
+`cancelWriting()` and remove the temp; show an alert.
+
+**Required regression:** encoder throws mid-stream → destination keeps its original bytes, no temp left.
+
+### V07 · P3 · X-ray depends on file order; Mask and transmission wrong under X-ray; clay keeps vertex colour
+
+**Location:** `MetalRenderer.swift:713` (opaque list unsorted), `:447–458`, `MetalDrawStyle.swift:48–52`.
+
+X-ray blends every draw without depth writes but leaves opaque draws in file order, so a far mesh
+listed later draws over a near one. `flags.y = 2` drops the Mask cutoff (cut-out cards become faint
+quads). The transmission prepass still uses normal shading. Clay multiplies by COLOR_0.
+
+**Fix direction:** sort all draws back-to-front in X-ray, keep the Mask discard, pass the style to the
+prepass (or skip it); ignore vertex colour in clay.
+
+**Required regression:** two overlapping quads in reversed file order → identical X-ray image.
+
+### V08 · P3 · Every hover pick allocates full-size GPU targets and waits on the main thread
+
+**Location:** `MetalRenderer.swift:147–171`, `ModelView.swift:665–695`, `:536–560` (`pointerWorldPoint`).
+
+Up to 15 hover picks/s, each a full-resolution r32Uint + depth32 (~59 MB at 5K) and a full render with
+`waitUntilCompleted`; gizmos add a second `sceneFrameSetup`; every wheel event runs one just for the
+view-projection. Extends R11.
+
+**Fix direction:** cache pick targets or render a 1×1 region (scissor + projection jitter); compute the
+view-projection from `MetalCamera` directly.
+
+**Required regression:** pick reuses its textures (allocation count), or 1×1 pick equals full-size pick.
+
+### V09 · P3 · Hover may pick through the glass sidebar and inspector (needs on-screen check)
+
+**Location:** `ModelView.swift:667` excludes only the title-bar band, not `contentInsets.left/right`.
+
+The canvas runs full-bleed under both panes with an `.inVisibleRect` tracking area, so moving over the
+outliner can hover-pick the mesh behind it, tinting another row and showing a tooltip under glass.
+
+**Fix direction:** clear and skip hover inside the side insets.
+
+**Required regression:** non-zero `contentInsets.left`, move inside it → `onHover(nil, nil)`.
+
+### V10 · P3 · Dimensions readout overstates rotated parts and ignores multi-select
+
+**Location:** `CanvasRegion.swift:122–129`, `MetalScene.bounds(ofNode:)`.
+
+World-axis box of transformed corners: a 2×1×1 part rotated 45° about Y reads 2.12×1×2.12. With
+several nodes selected, only the primary is measured while F frames the union.
+
+**Fix direction:** local box × world scale for one node (or label it "world bounds"); union for a selection.
+
+**Required regression:** 45° child → 2×1×1 (or an explicit world label); two-node selection → union.
+
+### V11 · P3 · Totals double-count vertices when primitives share a POSITION accessor
+
+**Location:** `GLTFDocumentJSON.swift:357`, summed in `GLTFDocumentTotals.swift:64`.
+
+`POSITION.count` is added per primitive; exporters that split by material while sharing one POSITION
+accessor get that count once per primitive.
+
+**Fix direction:** count distinct POSITION accessors per mesh.
+
+**Required regression:** two primitives sharing one POSITION → `vertexCount` equals the accessor count.
+
+**Done-when status:** met — `1cxtu56y` (world bounds, V10), `advg8yaq` (V07), `cm2j1flm` (no problems),
+`mdleya4f` (V11), `vn4trm11` (consistent; V02 side effect), `yel6vru3` (V04/V08/V09). Literal only —
+`ggq8r9uj` (V01, V03). Partly — `lf9s93sq` (perspective zoom-to-pointer correct, ortho fails; V02/V03).
+**Not met with defaults** — `lusha0c3` (V02). `swrmm3ku`: frame count/duration tested, Quick Look
+playback never checked; V05/V06.
 
 ## Provisional — animation clip/pose (in progress, not yet wired to the renderer)
 
