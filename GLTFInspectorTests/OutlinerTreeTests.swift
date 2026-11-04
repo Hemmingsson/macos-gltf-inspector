@@ -1,5 +1,6 @@
-import PreviewUI
+@testable import GLTFCore
 import Testing
+@testable import GLTFInspector
 
 struct OutlinerTreeTests {
     private let root = OutlinerItem(
@@ -64,5 +65,28 @@ struct OutlinerTreeTests {
 
         let all = OutlinerTree.visibleRows([root], expanded: [root.id, root.children[0].id])
         #expect(all.map(\.depth) == [0, 1, 2])
+    }
+}
+
+/// The sidebar's sections, from the parsed document.
+struct OutlinerSectionTests {
+    @Test func clipsWithoutADurationAreLeftOutButKeepTheirIndex() {
+        var document = GLTFDocument()
+        document.animations = [.init(name: "Junk", duration: 0), .init(name: "Walk", duration: 1.5)]
+        let animations = OutlinerSection.sections(of: document).first { $0.title == "Animations" }
+        #expect(animations?.items.map(\.id) == [NodeID(kind: .animation, index: 1)])
+        #expect(animations?.items.map(\.name) == ["Walk"])
+    }
+
+    @Test func sceneGraphListsEveryScenesRootsOnceWithChildren() {
+        let document = GLTFDocumentJSON.makeDocument(json: [
+            "scenes": [["nodes": [0]], ["nodes": [0, 2]]],
+            "nodes": [["name": "Root", "children": [1]], ["mesh": 0], ["name": "Lamp"]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+        ])
+        let graph = OutlinerSection.sections(of: document).first { $0.title == "Scene" }
+        #expect(graph?.items.map(\.name) == ["Root", "Lamp"])
+        #expect(graph?.items.first?.children.map(\.id) == [NodeID(kind: .mesh, index: 1)])
+        #expect(graph?.items.first?.children.first?.name == "Node 1")
     }
 }

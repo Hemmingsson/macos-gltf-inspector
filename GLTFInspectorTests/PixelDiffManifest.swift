@@ -22,7 +22,7 @@ enum PixelDiffPaths {
 /// The pinned sample set and the committed description of every reference render.
 ///
 /// This one file is the sample list (`scripts/fetch-test-models.sh` downloads exactly these
-/// entries at `samples.commit`), the look the page is asked for, the comparison budget, and one
+/// entries at `samples.commit`), the pinned look, the comparison budget, and one
 /// complete camera pose per model. Nothing that affects the output is left as
 /// a constant in a test file, so changing an assertion means changing a file someone reviews.
 struct PixelDiffManifest: Codable, Sendable {
@@ -44,18 +44,17 @@ struct PixelDiffManifest: Codable, Sendable {
         var commit: String
     }
 
-    /// Everything about the look, pinned explicitly rather than inherited from a page default.
-    /// Values are in the page's terms.
+    /// Everything about the look, pinned explicitly rather than inherited from a default.
+    /// Values are in the Khronos Sample Renderer's terms.
     struct Look: Codable, Sendable, Equatable {
-        /// Square canvas edge, in pixels. Fixed rather than derived — still mode sets
-        /// `canvas.width` directly, so `devicePixelRatio` never enters into it.
+        /// Square image edge, in pixels.
         var canvasSize: Int
         /// Bundled `.hdr` stem.
         var environment: String
-        /// The page's `environmentRotation`. 90 is the Khronos Sample Viewer default view — the
-        /// value the goldens have always been rendered at, and what `RenderLook` yaw 0 maps to.
+        /// Khronos `environmentRotation`. 90 is the Sample Viewer default view — the value the
+        /// references have always been rendered at, and what `RenderLook` yaw 0 maps to.
         var environmentRotationDegrees: Double
-        /// Camera exposure in stops (0 = the page's linear 1).
+        /// Camera exposure in stops (0 = linear 1).
         var exposureEV: Double
         var toneMapping: String
         /// `[r, g, b, a]` in 0-1. Transparent: both sides are flattened onto
@@ -88,9 +87,8 @@ struct PixelDiffManifest: Codable, Sendable {
         }
     }
 
-    /// One complete orbit camera, in the page's terms. Field for field the page's `CameraPose`,
-    /// kept here so the manifest decodes without `RendererWebKit`. Angles are degrees, `yfov` is
-    /// radians.
+    /// One complete orbit camera (`MetalCameraPose` without the orthographic snapshot). Angles
+    /// are degrees, `yfov` is radians.
     struct Camera: Codable, Sendable, Equatable {
         var azimuth: Double
         var elevation: Double

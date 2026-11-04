@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import Testing
 
-/// The loops of the pixel-diff harness (`PixelDiffWebKitTests.swift`), given a render function.
+/// The loops of the pixel-diff harness (`PixelDiffMetalTests.swift`), given a render function.
 /// Generation and verification both go through ``Render``. If they did not, a
 /// difference between the two paths — a host reused in one and not the other, a command sent in
 /// a different order — would show up as every model failing, and the natural response would be

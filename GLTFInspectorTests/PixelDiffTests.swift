@@ -2,7 +2,7 @@ import Foundation
 import Testing
 
 /// The pixel-diff tests that render nothing: the comparator and the manifest. Rendering and the
-/// goldens are checked in `PixelDiffWebKitTests.swift`.
+/// goldens are checked in `PixelDiffMetalTests.swift`.
 
 // MARK: - The comparator itself
 

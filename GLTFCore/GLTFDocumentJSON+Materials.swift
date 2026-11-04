@@ -4,12 +4,12 @@ import Foundation
 extension GLTFDocumentJSON {
     private static let specGlossExtension = "KHR_materials_pbrSpecularGlossiness"
 
-    static func makeMaterial(_ material: [String: Any]) -> GLTFSessionDocument.Material {
+    static func makeMaterial(_ material: [String: Any]) -> GLTFDocument.Material {
         let extensions = material["extensions"] as? [String: Any] ?? [:]
         let specGloss = extensions[specGlossExtension] as? [String: Any]
         let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
 
-        let workflow: GLTFSessionDocument.Material.Workflow
+        let workflow: GLTFDocument.Material.Workflow
         if extensions["KHR_materials_unlit"] != nil {
             workflow = .unlit
         } else if specGloss != nil {
@@ -18,7 +18,7 @@ extension GLTFDocumentJSON {
             workflow = .metallicRoughness
         }
 
-        let alphaMode: GLTFSessionDocument.Material.AlphaMode
+        let alphaMode: GLTFDocument.Material.AlphaMode
         switch (material["alphaMode"] as? String)?.uppercased() {
         case "MASK": alphaMode = .mask
         case "BLEND": alphaMode = .blend
@@ -33,9 +33,8 @@ extension GLTFDocumentJSON {
         let isSpecGloss = workflow == .specularGlossiness
         let emissiveStrengthExt = extensions["KHR_materials_emissive_strength"] as? [String: Any]
 
-        return GLTFSessionDocument.Material(
+        return GLTFDocument.Material(
             name: material["name"] as? String ?? "",
-            maps: MaterialMapPresence.from(json: material),
             workflow: workflow,
             alphaMode: alphaMode,
             isDoubleSided: material["doubleSided"] as? Bool ?? false,
@@ -59,9 +58,10 @@ extension GLTFDocumentJSON {
     }
 
     /// Authored map bindings in inspector order.
-    private static func textureSlots(_ material: [String: Any]) -> [GLTFSessionDocument.TextureSlot] {
-        textureRefs(material).map { ref in
-            GLTFSessionDocument.TextureSlot(
+    private static func textureSlots(_ material: [String: Any]) -> [GLTFDocument.TextureSlot] {
+        let refs = textureRefs(material)
+        return GLTFDocument.TextureSlot.Kind.allCases.compactMap { kind in refs.first { $0.kind == kind } }.map { ref in
+            GLTFDocument.TextureSlot(
                 kind: ref.kind,
                 texCoord: GLTFJSON.int(ref.params["texCoord"]) ?? 0,
                 textureIndex: GLTFJSON.int(ref.params["index"])
@@ -69,19 +69,19 @@ extension GLTFDocumentJSON {
         }
     }
 
-    /// Every authored texture binding on a material, in the order the inspector lists them.
-    /// The one binding table: `MaterialMapPresence.from(json:)` reads it too.
+    /// Every authored texture binding on a material: the one binding table, which the view-mode
+    /// scan (`ViewModeAvailability`) reads too.
     static func textureRefs(
         _ material: [String: Any]
-    ) -> [(kind: GLTFSessionDocument.TextureSlot.Kind, params: [String: Any])] {
+    ) -> [(kind: GLTFDocument.TextureSlot.Kind, params: [String: Any])] {
         let extensions = material["extensions"] as? [String: Any] ?? [:]
         let specGloss = extensions[specGlossExtension] as? [String: Any] ?? [:]
         let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
         let specular = extensions["KHR_materials_specular"] as? [String: Any] ?? [:]
         let clearcoat = extensions["KHR_materials_clearcoat"] as? [String: Any] ?? [:]
 
-        var refs: [(kind: GLTFSessionDocument.TextureSlot.Kind, params: [String: Any])] = []
-        func append(_ kind: GLTFSessionDocument.TextureSlot.Kind, _ candidates: [Any?]) {
+        var refs: [(kind: GLTFDocument.TextureSlot.Kind, params: [String: Any])] = []
+        func append(_ kind: GLTFDocument.TextureSlot.Kind, _ candidates: [Any?]) {
             for candidate in candidates {
                 if let params = candidate as? [String: Any] {
                     refs.append((kind, params))
@@ -107,7 +107,7 @@ extension GLTFDocumentJSON {
 
     /// Pixel size + PNG thumb per bound map, decoded straight from the file's images.
     static func stampTexturePreviews(
-        _ document: inout GLTFSessionDocument,
+        _ document: inout GLTFDocument,
         json: [String: Any],
         materialsJSON: [[String: Any]],
         binary: GLTFBinaryStore
@@ -161,8 +161,8 @@ extension GLTFDocumentJSON {
 
     private static func textureBindings(
         _ material: [String: Any]
-    ) -> [GLTFSessionDocument.TextureSlot.Kind: Int] {
-        var bindings: [GLTFSessionDocument.TextureSlot.Kind: Int] = [:]
+    ) -> [GLTFDocument.TextureSlot.Kind: Int] {
+        var bindings: [GLTFDocument.TextureSlot.Kind: Int] = [:]
         for ref in textureRefs(material) {
             guard let index = GLTFJSON.int(ref.params["index"]) else { continue }
             bindings[ref.kind] = index

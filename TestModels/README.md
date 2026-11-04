@@ -7,7 +7,7 @@ Local corpus for glTF Inspector. Open these in the app; tests resolve them via
 |---|---|---|
 | `Fixture Models/` | yes | Tiny hand-authored / generated glTF. Regen: `python3 scripts/testdata/make_fixtures.py` |
 | `Khronos samples/` | no | Pinned Khronos Sample Assets (list + commit: `References/manifest.json`). Fetch: `./scripts/fetch-test-models.sh` |
-| `References/` | yes | Pixel-diff goldens of the page, one PNG per pinned sample. See [`References/README.md`](References/README.md) |
+| `References/` | yes | Reference images rendered by the Khronos Sample Renderer, which the Metal renderer is tested against. See [`References/README.md`](References/README.md) |
 
 Khronos catalogue: https://github.khronos.org/glTF-Assets/ (`#testing`). Referee:
 [Sample Viewer](https://github.khronos.org/glTF-Sample-Viewer-Release/). Skip Sketchfab

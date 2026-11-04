@@ -1,5 +1,5 @@
 /// The lighting look applied to a model: what Settings stores and the window's lighting popover
-/// edits. `RendererWebKit/WebRendererLook.swift` maps it onto the page in one place (`PageLook`).
+/// edits, in the Khronos Sample Renderer's terms.
 public struct RenderLook: Sendable, Hashable, Codable {
     /// Exposure compensation in EV (stops). Scales all light before tone mapping.
     public var exposureEV: Double
@@ -7,8 +7,8 @@ public struct RenderLook: Sendable, Hashable, Codable {
     public var environmentIntensity: Double
     /// Environment rotation about +Y in degrees. 0 is the Khronos sample viewer's default view.
     public var environmentYawDegrees: Double
-    /// Which bundled Khronos environment.
-    public var environment: KhronosEnvironments
+    /// Which bundled lighting environment.
+    public var environment: LightingEnvironment
     public var toneMapping: ToneMapping
     public var background: Color
 
@@ -25,7 +25,7 @@ public struct RenderLook: Sendable, Hashable, Codable {
         exposureEV: Double,
         environmentIntensity: Double,
         environmentYawDegrees: Double,
-        environment: KhronosEnvironments,
+        environment: LightingEnvironment,
         toneMapping: ToneMapping,
         background: Color
     ) {
@@ -38,12 +38,23 @@ public struct RenderLook: Sendable, Hashable, Codable {
     }
 
     /// Tone-mapping curve. Raw values are the Khronos sample renderer's names, which is also how
-    /// Settings stores them.
-    public enum ToneMapping: String, Sendable, Hashable, Codable, CaseIterable {
+    /// Settings stores them. PBR Neutral is the review default; ACES is offered for DCC parity.
+    public enum ToneMapping: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
         case pbrNeutral = "Khronos PBR Neutral"
         case acesHill = "ACES Filmic Tone Mapping (Hill)"
         case acesNarkowicz = "ACES Filmic Tone Mapping (Narkowicz)"
         case none = "None (Linear mapping, clamped at 1.0)"
+
+        public var id: Self { self }
+
+        public var title: String {
+            switch self {
+            case .pbrNeutral: "Neutral"
+            case .acesHill: "ACES"
+            case .acesNarkowicz: "ACES Fast"
+            case .none: "Linear"
+            }
+        }
     }
 
     /// Straight (not premultiplied) sRGB colour, 0...1.

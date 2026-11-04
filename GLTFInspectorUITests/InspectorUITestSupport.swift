@@ -26,7 +26,7 @@ extension XCTestCase {
         return app
     }
 
-    /// Host `CanvasReadyMarker`: exists only while the canvas shows the model.
+    /// `canvasReadyMarker`: exists only while the canvas shows the model.
     func canvasReady(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: "canvas-ready").firstMatch
     }

@@ -75,27 +75,27 @@ public struct ViewModeAvailability: Sendable, Equatable {
             let extensions = material["extensions"] as? [String: Any] ?? [:]
             let unlit = extensions["KHR_materials_unlit"] != nil
             let specGloss = extensions["KHR_materials_pbrSpecularGlossiness"] != nil
-            let maps = MaterialMapPresence.from(json: material)
+            let maps = Set(GLTFDocumentJSON.textureRefs(material).map(\.kind))
             let alphaMode = material["alphaMode"] as? String
             let emissiveFactor = GLTFJSON.float3(material["emissiveFactor"])
             let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
             let metalRough = !unlit && !specGloss
             let clearcoat = extensions["KHR_materials_clearcoat"] as? [String: Any] ?? [:]
 
-            hasSpecular = hasSpecular || maps.specular || specGloss || extensions["KHR_materials_specular"] != nil
+            hasSpecular = hasSpecular || maps.contains(.specular) || specGloss || extensions["KHR_materials_specular"] != nil
             hasAlpha = hasAlpha || alphaMode == "MASK" || alphaMode == "BLEND"
-            hasNormals = hasNormals || maps.normal
-            hasAO = hasAO || maps.occlusion
-            hasEmissive = hasEmissive || maps.emissive || !nearZero(emissiveFactor ?? .zero)
+            hasNormals = hasNormals || maps.contains(.normal)
+            hasAO = hasAO || maps.contains(.occlusion)
+            hasEmissive = hasEmissive || maps.contains(.emissive) || !nearZero(emissiveFactor ?? .zero)
             hasMetallic = hasMetallic
-                || (metalRough && (maps.metallicRoughness || hasNonDefault(pbr["metallicFactor"], default: 1)))
+                || (metalRough && (maps.contains(.metallicRoughness) || hasNonDefault(pbr["metallicFactor"], default: 1)))
             hasRoughness = hasRoughness
-                || (metalRough && (maps.metallicRoughness || hasNonDefault(pbr["roughnessFactor"], default: 1)))
-            hasClearcoat = hasClearcoat || maps.clearcoat
+                || (metalRough && (maps.contains(.metallicRoughness) || hasNonDefault(pbr["roughnessFactor"], default: 1)))
+            hasClearcoat = hasClearcoat || maps.contains(.clearcoat)
                 || hasNonDefault(clearcoat["clearcoatFactor"], default: 0)
-            hasClearcoatRoughness = hasClearcoatRoughness || maps.clearcoatRoughness
+            hasClearcoatRoughness = hasClearcoatRoughness || maps.contains(.clearcoatRoughness)
                 || hasNonDefault(clearcoat["clearcoatRoughnessFactor"], default: 0)
-            hasClearcoatNormal = hasClearcoatNormal || maps.clearcoatNormal
+            hasClearcoatNormal = hasClearcoatNormal || maps.contains(.clearcoatNormal)
         }
     }
 

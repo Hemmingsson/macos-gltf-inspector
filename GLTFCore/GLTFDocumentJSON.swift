@@ -1,18 +1,18 @@
 import Foundation
 import simd
 
-/// Builds `GLTFSessionDocument` from the glTF JSON itself — no renderer in the call path.
+/// Builds `GLTFDocument` from the glTF JSON itself, no renderer in the call path.
 ///
 /// The sidebar is an inspector: it describes **the file** as authored (spec-gloss stays
 /// spec-gloss, an instanced mesh stays one node).
 public enum GLTFDocumentJSON {
     /// `fileURL` is only needed for binary payloads (texture thumbs, keyframe times when an
     /// animation input accessor omits `min`/`max`). Structure parses without it.
-    public static func makeDocument(json: [String: Any], fileURL: URL? = nil) -> GLTFSessionDocument {
+    public static func makeDocument(json: [String: Any], fileURL: URL? = nil) -> GLTFDocument {
         makeDocument(json: json, binary: GLTFBinaryStore(json: json, fileURL: fileURL))
     }
 
-    static func makeDocument(json: [String: Any], binary: GLTFBinaryStore) -> GLTFSessionDocument {
+    static func makeDocument(json: [String: Any], binary: GLTFBinaryStore) -> GLTFDocument {
         let interval = AppLog.signposter.beginInterval("json.document")
         defer { AppLog.signposter.endInterval("json.document", interval) }
 
@@ -24,10 +24,13 @@ public enum GLTFDocumentJSON {
         let geometryByMesh = meshesJSON.map { meshGeometry($0, accessors: accessors) }
         let materialsByMesh = meshesJSON.map { boundMaterialIndices($0, materialCount: materialsJSON.count) }
 
-        var document = GLTFSessionDocument()
+        var document = GLTFDocument()
         document.defaultSceneIndex = GLTFJSON.int(json["scene"]) ?? 0
+        document.bounds = ModelBounds.from(json: json)
+        document.materialVariantNames = materialVariantNames(json: json)
+        document.viewModes = ViewModeAvailability(json: json).viewModes
         document.scenes = (json["scenes"] as? [[String: Any]] ?? []).map { scene in
-            GLTFSessionDocument.Scene(
+            GLTFDocument.Scene(
                 name: scene["name"] as? String ?? "",
                 rootNodeIndices: GLTFJSON.ints(scene["nodes"]).filter { nodesJSON.indices.contains($0) }
             )
@@ -70,7 +73,7 @@ public enum GLTFDocumentJSON {
         document.morphs = meshesJSON.enumerated().compactMap { index, mesh in
             makeMorph(mesh, meshIndex: index)
         }
-        document.animations = (json["animations"] as? [[String: Any]] ?? []).compactMap { animation in
+        document.animations = (json["animations"] as? [[String: Any]] ?? []).map { animation in
             makeAnimation(animation, accessors: accessors, binary: binary)
         }
         AppLog.signposter.withIntervalSignpost("json.document.textures") {
@@ -112,7 +115,7 @@ public enum GLTFDocumentJSON {
         counts: Counts,
         geometryByMesh: [MeshGeometry],
         materialsByMesh: [[Int]]
-    ) -> [GLTFSessionDocument.Node] {
+    ) -> [GLTFDocument.Node] {
         let count = nodesJSON.count
         guard count > 0 else { return [] }
         if count < parallelNodeThreshold {
@@ -126,7 +129,7 @@ public enum GLTFDocumentJSON {
                 )
             }
         }
-        return [GLTFSessionDocument.Node](unsafeUninitializedCapacity: count) { buffer, initialized in
+        return [GLTFDocument.Node](unsafeUninitializedCapacity: count) { buffer, initialized in
             let base = buffer.baseAddress!
             DispatchQueue.concurrentPerform(iterations: count) { index in
                 base.advanced(by: index).initialize(
@@ -163,7 +166,7 @@ public enum GLTFDocumentJSON {
         counts: Counts,
         geometryByMesh: [MeshGeometry],
         materialsByMesh: [[Int]]
-    ) -> GLTFSessionDocument.Node {
+    ) -> GLTFDocument.Node {
         let dict = node as NSDictionary
         func reference(_ value: Any?, limit: Int) -> Int? {
             guard let index = GLTFJSON.int(value), index >= 0, index < limit else { return nil }
@@ -179,12 +182,12 @@ public enum GLTFDocumentJSON {
         let skinIndex = counts.skins == 0 ? nil : reference(dict.object(forKey: NodeKey.skin), limit: counts.skins)
         let transform = decomposedTransform(dict)
         let geometry = meshIndex.map { geometryByMesh[$0] } ?? MeshGeometry()
-        return GLTFSessionDocument.Node(
+        return GLTFDocument.Node(
             index: index,
             name: dict.object(forKey: NodeKey.name) as? String ?? "",
             children: GLTFJSON.ints(dict.object(forKey: NodeKey.children))
                 .filter { $0 >= 0 && $0 < counts.nodes },
-            kind: GLTFSessionDocument.Node.inferredKind(
+            kind: GLTFDocument.Node.inferredKind(
                 meshIndex: meshIndex,
                 cameraIndex: cameraIndex,
                 lightIndex: lightIndex,
@@ -305,7 +308,7 @@ public enum GLTFDocumentJSON {
         return indices
     }
 
-    private static func makeMorph(_ mesh: [String: Any], meshIndex: Int) -> GLTFSessionDocument.Morph? {
+    private static func makeMorph(_ mesh: [String: Any], meshIndex: Int) -> GLTFDocument.Morph? {
         let primitives = mesh["primitives"] as? [[String: Any]] ?? []
         let targetCount = primitives.map { ($0["targets"] as? [Any])?.count ?? 0 }.max() ?? 0
         guard targetCount > 0 else { return nil }
@@ -314,7 +317,7 @@ public enum GLTFDocumentJSON {
             if index < named.count, !named[index].isEmpty { return named[index] }
             return "Morph\(index)"
         }
-        return GLTFSessionDocument.Morph(
+        return GLTFDocument.Morph(
             meshIndex: meshIndex,
             meshName: mesh["name"] as? String ?? "Mesh\(meshIndex)",
             targetNames: targetNames
@@ -323,11 +326,11 @@ public enum GLTFDocumentJSON {
 
     // MARK: - Cameras and lights
 
-    private static func makeCamera(_ camera: [String: Any]) -> GLTFSessionDocument.Camera {
+    private static func makeCamera(_ camera: [String: Any]) -> GLTFDocument.Camera {
         let name = camera["name"] as? String ?? ""
         if let ortho = camera["orthographic"] as? [String: Any],
            (camera["type"] as? String) != "perspective" {
-            return GLTFSessionDocument.Camera(
+            return GLTFDocument.Camera(
                 name: name,
                 type: "orthographic",
                 yfov: nil,
@@ -338,7 +341,7 @@ public enum GLTFDocumentJSON {
             )
         }
         let perspective = camera["perspective"] as? [String: Any] ?? [:]
-        return GLTFSessionDocument.Camera(
+        return GLTFDocument.Camera(
             name: name,
             type: "perspective",
             yfov: GLTFJSON.float(perspective["yfov"]),
@@ -357,12 +360,12 @@ public enum GLTFDocumentJSON {
         return punctual["lights"] as? [[String: Any]] ?? []
     }
 
-    private static func makeLight(_ light: [String: Any]) -> GLTFSessionDocument.Light {
+    private static func makeLight(_ light: [String: Any]) -> GLTFDocument.Light {
         let type = (light["type"] as? String)?.lowercased() ?? "directional"
         let isSpot = type == "spot"
         let spot = light["spot"] as? [String: Any] ?? [:]
         let range = GLTFJSON.float(light["range"])
-        return GLTFSessionDocument.Light(
+        return GLTFDocument.Light(
             name: light["name"] as? String ?? "",
             type: ["point", "spot", "directional"].contains(type) ? type : "directional",
             color: GLTFJSON.float3(light["color"]) ?? .one,
@@ -381,14 +384,14 @@ public enum GLTFDocumentJSON {
         _ skin: [String: Any],
         index: Int,
         nodes: [[String: Any]]
-    ) -> GLTFSessionDocument.Skin {
+    ) -> GLTFDocument.Skin {
         let joints = GLTFJSON.ints(skin["joints"]).filter { nodes.indices.contains($0) }
         let jointNames = joints.enumerated().map { offset, nodeIndex in
             let name = nodes[nodeIndex]["name"] as? String ?? ""
             return name.isEmpty ? "joint-\(offset)" : name
         }
         let rawName = skin["name"] as? String ?? ""
-        return GLTFSessionDocument.Skin(
+        return GLTFDocument.Skin(
             name: rawName.isEmpty ? "Skin\(index)" : rawName,
             jointNames: jointNames
         )
@@ -399,13 +402,13 @@ public enum GLTFDocumentJSON {
     /// Shortest span that still counts as a clip.
     private static let minimumClipDuration: Float = 1e-4
 
-    /// A clip needs more than one keyframe and a non-trivial span, so one-keyframe
-    /// "Default Take" junk never reaches the sidebar.
+    /// A clip needs more than one keyframe and a non-trivial span; one-keyframe "Default Take"
+    /// junk gets duration 0, which the outliner leaves out.
     private static func makeAnimation(
         _ animation: [String: Any],
         accessors: [[String: Any]],
         binary: GLTFBinaryStore
-    ) -> GLTFSessionDocument.Animation? {
+    ) -> GLTFDocument.Animation {
         var minTime = Float.infinity
         var maxTime = -Float.infinity
         var sampleCount = 0
@@ -418,15 +421,10 @@ public enum GLTFDocumentJSON {
             if range.minTime.isFinite { minTime = min(minTime, range.minTime) }
             if range.maxTime.isFinite { maxTime = max(maxTime, range.maxTime) }
         }
-        guard minTime.isFinite, maxTime.isFinite,
-              sampleCount > 1,
-              maxTime - minTime > minimumClipDuration
-        else { return nil }
-        let duration = Double(max(maxTime, 0))
-        guard duration > 0 else { return nil }
-        return GLTFSessionDocument.Animation(
+        let isClip = minTime.isFinite && maxTime.isFinite && sampleCount > 1 && maxTime - minTime > minimumClipDuration
+        return GLTFDocument.Animation(
             name: animation["name"] as? String ?? "",
-            duration: duration
+            duration: isClip ? Double(max(maxTime, 0)) : 0
         )
     }
 

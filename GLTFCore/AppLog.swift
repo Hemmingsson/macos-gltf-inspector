@@ -12,11 +12,12 @@ public enum AppLog {
     public static let subsystem = "lol.mattias.gltf-inspector"
 
     public static let thumbnail = Logger(subsystem: subsystem, category: "thumbnail")
-    public static let lighting = Logger(subsystem: subsystem, category: "lighting")
-    public static let host = Logger(subsystem: subsystem, category: "host")
-    /// Everything rendered through WebKit — host, bridge and resource serving.
-    public static let webRenderer = Logger(subsystem: subsystem, category: "webrenderer")
-    /// Open-pipeline intervals (parse, page, still, first frame) for Instruments ›
+    public static let settings = Logger(subsystem: subsystem, category: "settings")
+    /// The app: opening documents, panels, validation, export.
+    public static let app = Logger(subsystem: subsystem, category: "app")
+    /// The Metal renderer and the canvas that hosts it.
+    public static let renderer = Logger(subsystem: subsystem, category: "renderer")
+    /// JSON parse intervals for Instruments ›
     /// Points of Interest. Free when nobody is recording; never a substitute for a log line.
     public static let signposter = OSSignposter(subsystem: subsystem, category: .pointsOfInterest)
 

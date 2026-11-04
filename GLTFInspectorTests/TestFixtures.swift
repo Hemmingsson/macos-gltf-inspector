@@ -39,21 +39,4 @@ enum TestFixtures {
 
 enum TestModels {
     static let khronosDirectory = TestFixtures.url("TestModels/Khronos samples")
-
-    static var hasKhronosSamples: Bool {
-        !khronosGLBs.isEmpty
-    }
-
-    static var khronosGLBs: [URL] {
-        let fm = FileManager.default
-        guard let enumerator = fm.enumerator(
-            at: khronosDirectory,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ) else { return [] }
-        return enumerator.compactMap { item in
-            guard let url = item as? URL, url.pathExtension.lowercased() == "glb" else { return nil }
-            return url
-        }.sorted { $0.path < $1.path }
-    }
 }

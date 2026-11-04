@@ -1,7 +1,7 @@
 import Foundation
 import simd
 import Testing
-@testable import RendererMetal
+@testable import Renderer
 
 struct MetalCameraTests {
     private func camera(azimuth: Double = 0, elevation: Double = 0) -> MetalCamera {
@@ -26,35 +26,36 @@ struct MetalCameraTests {
         #expect(simd_distance(targetInView, SIMD4(0, 0, -5, 1)) < 0.00001)
     }
 
-    @Test(arguments: [MetalCamera.Projection.perspective, .orthographic])
-    func depthRangeMapsNearToZeroAndFarToOne(_ projection: MetalCamera.Projection) {
+    /// WebGL clip space: the near plane maps to -1 and the far plane to +1.
+    @Test(arguments: [false, true])
+    func depthRangeMapsNearToMinusOneAndFarToOne(_ isOrthographic: Bool) {
         var camera = camera()
-        camera.projection = projection
-        let near = camera.projectionMatrix * SIMD4<Float>(0, 0, -0.5, 1)
-        let far = camera.projectionMatrix * SIMD4<Float>(0, 0, -100, 1)
-        #expect(abs(near.z / near.w) < 0.00001)
-        #expect(abs(far.z / far.w - 1) < 0.00001)
+        camera.isOrthographic = isOrthographic
+        let near = camera.openGLProjectionMatrix * SIMD4<Float>(0, 0, -0.5, 1)
+        let far = camera.openGLProjectionMatrix * SIMD4<Float>(0, 0, -100, 1)
+        #expect(abs(near.z / near.w + 1) < 0.0001)
+        #expect(abs(far.z / far.w - 1) < 0.0001)
     }
 
     @Test func orthographicMagnificationMatchesPerspectiveAtTargetDistance() {
         var perspective = camera()
         perspective.aspect = 1.5
         var orthographic = perspective
-        orthographic.projection = .orthographic
+        orthographic.isOrthographic = true
         let point = SIMD4<Float>(0, 1, -5, 1)
-        let p = perspective.projectionMatrix * point
-        let o = orthographic.projectionMatrix * point
+        let p = perspective.openGLProjectionMatrix * point
+        let o = orthographic.openGLProjectionMatrix * point
         #expect(abs(p.y / p.w - o.y / o.w) < 0.00001)
-        // This apparently unusual aspect rule is part of the page's pinned projection.
-        #expect(orthographic.projectionMatrix.columns.0.x == orthographic.projectionMatrix.columns.1.y)
+        // The Khronos viewer assigns the same xmag and ymag, whatever the canvas aspect.
+        #expect(orthographic.openGLProjectionMatrix.columns.0.x == orthographic.openGLProjectionMatrix.columns.1.y)
     }
 
     @Test func perspectiveCanReplayAnInfiniteFarPlane() {
         var camera = camera()
         camera.pose.zfar = .infinity
-        let near = camera.projectionMatrix * SIMD4<Float>(0, 0, -0.5, 1)
-        #expect(abs(near.z / near.w) < 0.00001)
-        #expect(camera.projectionMatrix.columns.2.z == -1)
-        #expect(camera.projectionMatrix.columns.3.z == -0.5)
+        let near = camera.openGLProjectionMatrix * SIMD4<Float>(0, 0, -0.5, 1)
+        #expect(abs(near.z / near.w + 1) < 0.0001)
+        #expect(camera.openGLProjectionMatrix.columns.2.z == -1)
+        #expect(camera.openGLProjectionMatrix.columns.3.z == -1)
     }
 }

@@ -1,7 +1,7 @@
 import XCTest
 
 /// Launch and open-to-first-content timings (3 iterations each). Open-to-content = launch with a
-/// file until the host's `canvas-ready` marker appears (the page reports the model on screen).
+/// file until the app's `canvas-ready` marker appears (the renderer has the model on screen).
 final class LaunchMetricsUITests: XCTestCase {
     private var options: XCTMeasureOptions {
         let options = XCTMeasureOptions()
