@@ -22,14 +22,14 @@ enum DocumentOpening {
         }
         _ = provider.loadObject(ofClass: URL.self) { url, error in
             if let error {
-                AppLog.error(AppLog.host, "drop URL load failed \(error)")
+                AppLog.error(AppLog.app, "drop URL load failed \(error)")
             }
             guard let url, isGLTFFile(url) else { return }
             Task { @MainActor in
                 do {
                     try await openDocument(at: url)
                 } catch {
-                    AppLog.error(AppLog.host, "openDocument failed \(error.localizedDescription)")
+                    AppLog.error(AppLog.app, "openDocument failed \(error.localizedDescription)")
                 }
             }
         }
@@ -47,10 +47,6 @@ enum WelcomeWindow {
     static let id = "welcome"
 }
 
-enum DesignSystemWindow {
-    static let id = "design-system"
-}
-
 @MainActor
 private final class RecentMenuTarget: NSObject {
     static let shared = RecentMenuTarget()
@@ -59,7 +55,7 @@ private final class RecentMenuTarget: NSObject {
         guard let url = sender.representedObject as? URL else { return }
         NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
             if let error {
-                AppLog.error(AppLog.host, "open recent failed \(error.localizedDescription)")
+                AppLog.error(AppLog.app, "open recent failed \(error.localizedDescription)")
             }
         }
     }

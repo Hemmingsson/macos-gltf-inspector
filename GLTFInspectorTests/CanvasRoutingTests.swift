@@ -1,6 +1,5 @@
 import Foundation
 @testable import GLTFInspector
-import PreviewUI
 import Renderer
 import Testing
 
@@ -10,31 +9,31 @@ import Testing
 struct CanvasRoutingTests {
     private let url = URL(fileURLWithPath: "/tmp/model.glb")
 
-    @Test func panelFailureDoesNotHideTheWebCanvas() {
+    @Test func panelFailureDoesNotHideTheCanvas() {
         #expect(
-            DocumentWindow.canvasState(webCanvasURL: url, webPhase: .ready, panels: .failed("json"))
+            DocumentWindow.canvasState(canvasURL: url, canvasPhase: .ready, panels: .failed("json"))
                 == .ready
         )
         #expect(
-            DocumentWindow.canvasState(webCanvasURL: url, webPhase: .loading, panels: .failed("json"))
+            DocumentWindow.canvasState(canvasURL: url, canvasPhase: .loading, panels: .failed("json"))
                 == .ready
         )
     }
 
-    @Test func webCanvasMountsBeforeThePanelsLand() {
-        #expect(DocumentWindow.canvasState(webCanvasURL: url, webPhase: .loading, panels: .loading) == .ready)
+    @Test func canvasMountsBeforeThePanelsLand() {
+        #expect(DocumentWindow.canvasState(canvasURL: url, canvasPhase: .loading, panels: .loading) == .ready)
     }
 
-    @Test func webFailureFailsTheCanvas() {
+    @Test func rendererFailureFailsTheCanvas() {
         #expect(
-            DocumentWindow.canvasState(webCanvasURL: url, webPhase: .failed("bad glb"), panels: .loading)
+            DocumentWindow.canvasState(canvasURL: url, canvasPhase: .failed("bad glb"), panels: .loading)
                 == .failed("bad glb")
         )
     }
 
-    @Test func withoutAPageTheCanvasFollowsThePanels() {
+    @Test func withoutAFileTheCanvasFollowsThePanels() {
         #expect(
-            DocumentWindow.canvasState(webCanvasURL: nil, webPhase: .loading, panels: .failed("x")) == .failed("x")
+            DocumentWindow.canvasState(canvasURL: nil, canvasPhase: .loading, panels: .failed("x")) == .failed("x")
         )
     }
 }

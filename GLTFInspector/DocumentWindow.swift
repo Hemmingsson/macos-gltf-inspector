@@ -1,21 +1,17 @@
 import AppKit
 import GLTFCore
-import PreviewUI
 import Renderer
 import SwiftUI
 
-/// Document window: the renderer loads and draws the file itself, and the panels come from the
-/// file's JSON (`DocumentWindowModel.openSummary`). Scene, variant, file camera and selection go
-/// to the renderer through `ViewOptions`.
+/// Document window root. The renderer loads and draws the file itself while the panels read its
+/// JSON (`DocumentWindowModel.openSummary`); both start on open.
 struct DocumentWindow: View {
     let documentURL: URL?
     /// The launch window is itself the welcome scene, so it must not dismiss that scene.
     var closesWelcome = true
 
     @State private var window: DocumentWindowModel
-    /// Outlives a canvas remount (`DocumentShell` ids the canvas by load generation) so the
-    /// renderer started on open keeps drawing. Replaced only after it failed, for the next document.
-    @State private var webCanvas = ModelCanvasController()
+    @Environment(\.dismissWindow) private var dismissWindow
 
     init(documentURL: URL?, closesWelcome: Bool = true) {
         self.documentURL = documentURL
@@ -24,75 +20,68 @@ struct DocumentWindow: View {
     }
 
     var body: some View {
-        DocumentShell(window: window, canvasState: canvasState, closesWelcome: closesWelcome) {
+        ShellRootView(window: window, canvasState: canvasState) {
             canvas
+                // A new document remounts the canvas only; the split view keeps its identity.
+                .id(window.loadGeneration)
         }
+        .focusedSceneValue(\.documentWindow, window.phase.isReady || window.view.canvas.phase == .ready ? window : nil)
         .focusedSceneValue(\.documentFileURL, documentURL)
         .onAppear {
-            if let documentURL {
-                loadDocument(documentURL)
-            }
+            if closesWelcome { dismissWindow(id: WelcomeWindow.id) }
+            if let documentURL { loadDocument(documentURL) }
         }
         .onChange(of: documentURL) { _, url in
             window.documentURL = url
-            if let url {
-                loadDocument(url)
-            }
+            if let url { loadDocument(url) }
         }
     }
 
-    /// The document the page draws. Nil while the window is empty, or when the open path rejected
-    /// the file; the canvas then follows the panels.
-    private var webCanvasURL: URL? {
+    /// The file the canvas draws. Nil while the window is empty or the open path rejected the
+    /// file; the canvas region then follows the panels.
+    private var canvasURL: URL? {
         guard let url = window.loadingURL ?? documentURL, DocumentOpening.isGLTFFile(url) else { return nil }
         return url
     }
 
     private var canvasState: ShellDocumentState {
-        Self.canvasState(webCanvasURL: webCanvasURL, webPhase: webCanvas.phase, panels: window.phase)
+        Self.canvasState(canvasURL: canvasURL, canvasPhase: window.view.canvas.phase, panels: window.phase)
     }
 
-    /// Only the page's own failure fails the canvas region; the panels may still be loading, or
-    /// have failed, while the page draws. Without a page (rejected file, missing URL) the canvas
-    /// follows the panels.
+    /// Only the renderer's own failure fails the canvas region: the panels may still be loading,
+    /// or have failed, while the model draws. Without a file the canvas follows the panels.
     static func canvasState(
-        webCanvasURL: URL?,
-        webPhase: ModelCanvasController.Phase,
+        canvasURL: URL?,
+        canvasPhase: ModelCanvasController.Phase,
         panels: ShellDocumentState
     ) -> ShellDocumentState {
-        guard webCanvasURL != nil else { return panels }
-        if case .failed(let message) = webPhase { return .failed(message) }
+        guard canvasURL != nil else { return panels }
+        if case .failed(let message) = canvasPhase { return .failed(message) }
         return .ready
     }
 
-    /// Mounted by `CanvasRegion` only while `canvasState` is `.ready`, i.e. with a page URL whose
-    /// page has not failed; loading and failure are drawn by PreviewUI's status view.
+    /// Mounted by `CanvasRegion` only while `canvasState` is `.ready`; loading and failure are
+    /// drawn by `ShellStatusView`.
     @ViewBuilder
     private var canvas: some View {
-        if let webCanvasURL {
-            ModelCanvas(
-                url: webCanvasURL,
-                options: ViewOptions(window.engineViewport, sidebar: window.sidebar),
-                controller: webCanvas
-            )
-            .canvasReadyMarker(isReady: webCanvas.phase == .ready)
-            .onAppear {
-                window.engineViewport.commands = .canvas(webCanvas)
-                if webCanvas.phase == .ready { window.noteCanvasReady() }
-            }
-            .onChange(of: webCanvas.phase) { _, phase in
-                if phase == .ready { window.noteCanvasReady() }
-            }
+        if let canvasURL {
+            ModelCanvas(url: canvasURL, options: window.view.options, controller: window.view.canvas)
+                .canvasReadyMarker(isReady: window.view.canvas.phase == .ready)
+                .onChange(of: window.view.canvas.phase, initial: true) { _, phase in
+                    if phase == .ready { window.noteCanvasReady() }
+                }
         }
     }
 
     private func loadDocument(_ url: URL) {
         guard case .started(let generation) = window.beginOpen(url) else { return }
-        if case .failed = webCanvas.phase {
-            webCanvas = ModelCanvasController()
-        }
-        Task {
-            await window.openSummary(url, generation: generation)
-        }
+        Task { await window.openSummary(url, generation: generation) }
     }
+}
+
+extension FocusedValues {
+    /// The key document window, for the View and File menus. Nil until it has a document.
+    @Entry var documentWindow: DocumentWindowModel?
+    /// The focused document window's file, for Share. Nil in an empty window.
+    @Entry var documentFileURL: URL?
 }

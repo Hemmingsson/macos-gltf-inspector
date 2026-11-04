@@ -1,7 +1,6 @@
 import Foundation
 @testable import GLTFCore
 @testable import GLTFInspector
-import PreviewUI
 import Testing
 
 /// Host mapping of file materials — JSON document → `MaterialInfo`.

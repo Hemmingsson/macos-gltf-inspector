@@ -13,7 +13,8 @@ public enum AppLog {
 
     public static let thumbnail = Logger(subsystem: subsystem, category: "thumbnail")
     public static let settings = Logger(subsystem: subsystem, category: "settings")
-    public static let host = Logger(subsystem: subsystem, category: "host")
+    /// The app: opening documents, panels, validation, export.
+    public static let app = Logger(subsystem: subsystem, category: "app")
     /// The Metal renderer and the canvas that hosts it.
     public static let renderer = Logger(subsystem: subsystem, category: "renderer")
     /// Open-pipeline intervals (parse, page, still, first frame) for Instruments ›

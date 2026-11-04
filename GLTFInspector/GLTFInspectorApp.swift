@@ -1,6 +1,5 @@
 import AppKit
 import GLTFCore
-import PreviewUI
 import Sparkle
 import SwiftUI
 
@@ -8,16 +7,12 @@ private let staleWelcomeFrameAutosaveKey = "NSWindow Frame welcome-AppWindow-1"
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard !PreviewRuntime.isActive else { return }
         #if DEBUG
         DevLaunch.bootstrap()
         #else
         AppLog.configureFileSink()
         #endif
-        AppAppearance.apply(
-            AppGroupSettings.defaults.string(forKey: AppGroupSettings.Key.appearance)
-                ?? AppAppearance.system.rawValue
-        )
+        AppSettings.shared.appearance.apply()
         UserDefaults.standard.set("preferred", forKey: "AppleWindowTabbingMode")
         UserDefaults.standard.removeObject(forKey: staleWelcomeFrameAutosaveKey)
         if wasLaunchedToOpenDocuments() {
@@ -49,14 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct GLTFInspectorApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let updaterController: SPUStandardUpdaterController?
+    private let updaterController: SPUStandardUpdaterController
 
     init() {
-        guard !PreviewRuntime.isActive else {
-            updaterController = nil
-            return
-        }
-        AppGroupSettings.registerDefaults()
         // AppKit reads this from the app's own domain, not the group suite.
         UserDefaults.standard.register(defaults: ["NSQuitAlwaysKeepsWindows": false])
         updaterController = SPUStandardUpdaterController(
@@ -89,12 +79,10 @@ struct GLTFInspectorApp: App {
             // `CommandMenu("View")`.
             SidebarCommands()
             CommandGroup(after: .sidebar) {
-                HostViewMenuCommands()
+                ViewMenuCommands()
             }
             CommandGroup(after: .appInfo) {
-                if let updaterController {
-                    CheckForUpdatesView(updater: updaterController.updater)
-                }
+                CheckForUpdatesView(updater: updaterController.updater)
             }
             CommandGroup(replacing: .newItem) {
                 NewWindowCommand()
@@ -105,22 +93,12 @@ struct GLTFInspectorApp: App {
                 DocumentFileCommands()
             }
             CommandGroup(after: .importExport) {
-                HostFileMenuCommands()
+                ExportPNGCommand()
             }
         }
 
-        // Same pages as the Design Catalog app. The scene title is the Window menu item; choosing
-        // it again brings this window forward.
-        Window("Design System", id: DesignSystemWindow.id) {
-            CatalogRootView()
-        }
-        .defaultSize(width: 1320, height: 900)
-        .windowResizability(.contentMinSize)
-        .windowToolbarStyle(.unified)
-        .restorationBehavior(.disabled)
-
         Settings {
-            PreviewSettingsRoot(store: AppDefaultsStore.appGroup)
+            SettingsView(settings: .shared)
         }
     }
 }

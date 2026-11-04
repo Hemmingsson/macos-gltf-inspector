@@ -1,7 +1,6 @@
 import Foundation
 @testable import GLTFCore
 @testable import GLTFInspector
-@testable import PreviewUI
 import Testing
 
 /// Validator findings land on the outliner rows they are about, and the inspector reads them back

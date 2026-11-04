@@ -28,17 +28,6 @@ schemes:
         targets:
           - GLTFInspectorUITests
 
-    PreviewUI:
-      build:
-        targets:
-          PreviewUI: all
-
-    DesignCatalog:
-      build:
-        targets:
-          DesignCatalog: all
-      run:
-
 # Shared across every target so signing and versions live in one place.
 settings:
   base:
@@ -61,55 +50,6 @@ packages:
     from: "2.9.6"
 
 targets:
-  # DS tokens + components (Liquid Glass wrappers).
-  DesignSystem:
-    type: framework
-    platform: macOS
-    sources:
-      - DesignSystem
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.DesignSystem
-        GENERATE_INFOPLIST_FILE: YES
-        APPLICATION_EXTENSION_API_ONLY: YES
-
-  PreviewUI:
-    type: framework
-    platform: macOS
-    sources:
-      - PreviewUI
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.PreviewUI
-        GENERATE_INFOPLIST_FILE: YES
-      configs:
-        Debug:
-          ENABLE_DEBUG_DYLIB: YES
-    dependencies:
-      - target: DesignSystem
-        embed: false
-
-  # Showcase app for the design system: every token, DS component and PreviewUI composite
-  # rendered with real Liquid Glass over light / dark canvas and the checkerboard.
-  # `./scripts/dev.sh catalog` builds and launches it in the background.
-  DesignCatalog:
-    type: application
-    platform: macOS
-    sources:
-      - DesignCatalog
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.design-catalog
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Design Catalog
-        INFOPLIST_KEY_NSPrincipalClass: NSApplication
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-    dependencies:
-      - target: DesignSystem
-        embed: true
-      - target: PreviewUI
-        embed: true
-
   # Extension-safe core: what the file contains (JSON summary, validator, stats), the look
   # vocabulary and the App Group settings. Linked by the host (embedded once), both extensions
   # and the tests. No AppKit or SwiftUI.
@@ -184,10 +124,6 @@ targets:
     platform: macOS
     sources:
       - GLTFInspector
-      # The catalog's pages, opened from the Window menu. The catalog app keeps its own @main.
-      - path: DesignCatalog
-        excludes:
-          - App/DesignCatalogApp.swift
       - path: assets/ICON.icon
         type: file
         buildPhase: resources
@@ -271,13 +207,9 @@ targets:
           CODE_SIGN_IDENTITY: "Developer ID Application"
     dependencies:
       - package: GLTFKit2
-      - target: DesignSystem
-        embed: true
       - target: GLTFCore
         embed: true
       - target: Renderer
-        embed: true
-      - target: PreviewUI
         embed: true
       - target: PreviewExtension
         embed: true
@@ -390,10 +322,6 @@ targets:
       - target: GLTFCore
         embed: false
       - target: Renderer
-        embed: false
-      - target: DesignSystem
-        embed: false
-      - target: PreviewUI
         embed: false
 
   # Real-window flows over accessibility only (open, view modes, outliner → inspector,

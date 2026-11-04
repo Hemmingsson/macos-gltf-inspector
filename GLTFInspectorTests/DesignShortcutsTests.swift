@@ -1,6 +1,7 @@
-import DesignSystem
+import Renderer
 import SwiftUI
 import Testing
+@testable import GLTFInspector
 
 struct DesignShortcutsTests {
     /// Standard macOS shortcuts the table must never claim
@@ -40,9 +41,8 @@ struct DesignShortcutsTests {
     }
 
     @Test func all_coversEveryCase() {
-        let presetsWithShortcut = DS.Shortcuts.CameraPreset.allCases.filter { DS.Shortcuts.cameraPreset($0) != nil }
-        #expect(DS.Shortcuts.all.count
-            == DS.Shortcuts.ViewMode.allCases.count + presetsWithShortcut.count + DS.Shortcuts.Action.allCases.count)
+        let presetsWithShortcut = CameraPreset.allCases.filter { DS.Shortcuts.cameraPreset($0) != nil }
+        #expect(DS.Shortcuts.all.count == 2 + presetsWithShortcut.count + DS.Shortcuts.Action.allCases.count)
         #expect(DS.Shortcuts.cameraPreset(.isometric) == nil)
     }
 }

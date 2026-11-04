@@ -62,7 +62,7 @@ enum DevLaunch {
         guard let url = FixtureCatalog.url(id: fixture, repoRoot: repoRoot),
               FileManager.default.fileExists(atPath: url.path)
         else {
-            AppLog.error(AppLog.host, "dev fixture missing \(fixture)")
+            AppLog.error(AppLog.app, "dev fixture missing \(fixture)")
             return
         }
 
@@ -70,7 +70,7 @@ enum DevLaunch {
             NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
                 if let error {
                     AppLog.error(
-                        AppLog.host,
+                        AppLog.app,
                         "dev fixture open failed \(url.lastPathComponent): \(error.localizedDescription)"
                     )
                 }

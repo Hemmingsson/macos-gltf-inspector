@@ -1,0 +1,34 @@
+import SwiftUI
+
+/// Per-node geometry chips — only facts that exist (DESIGN.md: hide what the node lacks).
+struct GeometrySection: View {
+    var geometry: GeometryInfo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            InspectorSectionHeader("Geometry")
+
+            FlexibleChipRow(items: chips)
+                .padding(.horizontal, DS.Spacing.l)
+                .padding(.top, DS.Spacing.xxs)
+                .padding(.bottom, DS.Spacing.m)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Geometry: \(chips.joined(separator: ", "))")
+    }
+
+    private var chips: [String] {
+        // Tris / verts / UV always; extra authored attributes appear only when present, so a
+        // missing-tangents warning in Validation still has a geometry counterpart.
+        var items = [
+            "\(geometry.triangleCount.formatted()) tris",
+            "\(geometry.vertexCount.formatted()) verts"
+        ]
+        if geometry.uvSetCount > 0 {
+            items.append(geometry.uvSetCount == 1 ? "1 UV set" : "\(geometry.uvSetCount) UV sets")
+        }
+        if geometry.hasTangents { items.append("Tangents") }
+        if geometry.hasVertexColors { items.append("Vertex colors") }
+        return items
+    }
+}

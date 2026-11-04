@@ -2,8 +2,8 @@
 /// bundled bake (`Renderer/Environments/<raw>.metalibl`) and is the stored Settings value
 /// (`AppGroupSettings.Key.environment`).
 public enum KhronosEnvironments: String, CaseIterable, Sendable, Codable {
-    case field = "field"
     case studioNeutral = "neutral"
+    case field = "field"
     case colorfulStudio = "Colorful_Studio"
 
     public static var defaultLook: Self { .studioNeutral }

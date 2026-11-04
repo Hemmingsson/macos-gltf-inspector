@@ -1,10 +1,10 @@
 import Foundation
 import GLTFCore
 import Observation
-import PreviewUI
 
-/// Per-window state: sidebar, settings overlay, viewport, the open / validation lifecycle and the
-/// chrome snapshot. The web page controller lives in the window root (`DocumentWindow`).
+/// One document window: which file it shows, the panels read from that file's JSON, its
+/// validation, and how it is shown (`view`). The renderer loads the file itself, in parallel
+/// with the panels (`DocumentWindow`).
 @MainActor
 @Observable
 final class DocumentWindowModel {
@@ -18,59 +18,37 @@ final class DocumentWindowModel {
     }
 
     var documentURL: URL?
-    /// Panel state (sidebar / inspector); `DocumentWindow` decides the canvas region's.
+    /// The panels' state. The canvas region has its own (`DocumentWindow.canvasState`).
     private(set) var phase: ShellDocumentState
-    private(set) var sidebar: HostSidebarModel? {
-        didSet {
-            selection = EngineSelectionModel(sidebar: activeSidebar)
-            engineViewport.sidebar = activeSidebar
-        }
-    }
-    let placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
-    /// Window-owned selection adapter over `activeSidebar`, rebuilt only when the sidebar is
-    /// replaced (open / adopt / failure) — never in a view body, so `ShellRootView` keeps it.
-    /// The viewport follows the same sidebar.
-    private(set) var selection: EngineSelectionModel
+    /// The file's contents for the outliner and inspector. Nil until the JSON is read.
+    private(set) var contents: EngineSceneModel?
+    private(set) var validation: GLTFValidationState?
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
+    let view: ViewState
     let panels = ShellPanelChrome()
-    /// Per-window lazy overlay — not seed-once `@State` from UserDefaults.
-    let settings = EngineSettingsStore()
-    let previewSession: PreviewSession
-    let engineViewport: EngineViewportController
-    private(set) var validation: GLTFValidationState?
-    @ObservationIgnored private var validationGeneration = 0
     @ObservationIgnored private var validationTask: Task<Void, Never>?
-    /// Built once per loaded document, not per render; async validation is folded in by
-    /// `sceneModel`.
-    private var loadedSceneModel: EngineSceneModel?
 
-    init(documentURL: URL?) {
-        self.documentURL = documentURL
-        phase = documentURL == nil ? .empty : .loading
-        selection = EngineSelectionModel(sidebar: placeholderSidebar)
-        previewSession = PreviewSession(settings: settings)
-        engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
-        engineViewport.saveScreenshot = { [weak self] image in
-            await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
-        }
+    /// Tests replace this so scheduling can be asserted without running JavaScriptCore.
+    @ObservationIgnored
+    var validateFile: @Sendable (URL) async throws -> GLTFValidationReport = {
+        try await GLTFValidator.validate(fileAt: $0)
     }
 
-    var activeSidebar: HostSidebarModel { sidebar ?? placeholderSidebar }
+    init(documentURL: URL?, settings: AppSettings? = nil) {
+        self.documentURL = documentURL
+        phase = documentURL == nil ? .empty : .loading
+        view = ViewState(settings: settings ?? .shared)
+    }
 
-    var hasLoadedDocument: Bool { loadedSceneModel != nil }
-
+    /// The panels' snapshot, with validation folded in; an empty one while the file opens.
     var sceneModel: EngineSceneModel {
-        if let loadedSceneModel {
-            return loadedSceneModel.replacingValidation(validation)
-        }
-        let fileName = (loadingURL ?? documentURL)?.lastPathComponent ?? "Model"
-        return EngineSceneModel(
-            fileName: fileName,
+        let base = contents ?? EngineSceneModel(
+            fileName: (loadingURL ?? documentURL)?.lastPathComponent ?? "Model",
             document: GLTFSessionDocument(),
-            dimensions: Dimensions(width: 0, height: 0, depth: 0, authoredOrigin: .zero),
-            validation: validation
+            dimensions: Dimensions(width: 0, height: 0, depth: 0)
         )
+        return base.replacingValidation(validation)
     }
 
     var exportName: String {
@@ -78,51 +56,30 @@ final class DocumentWindowModel {
     }
 
     /// Resets the window for `url`; the caller then loads the panels with `openSummary`.
-    /// Validation starts from `noteCanvasReady` after first paint — not here.
+    /// Validation starts from `noteCanvasReady` after first paint, not here.
     func beginOpen(_ url: URL) -> OpenStart {
         guard DocumentOpening.isGLTFFile(url) else {
-            AppLog.error(AppLog.host, "open rejected \(url.lastPathComponent)")
+            AppLog.error(AppLog.app, "open rejected \(url.lastPathComponent)")
             phase = .failed("Not a .glb / .gltf file")
-            sidebar = nil
+            contents = nil
             loadingURL = url
-            loadedSceneModel = nil
             return .rejected
         }
-        if loadingURL == url, case .loading = phase, loadGeneration > 0 { return .unchanged }
-        if case .ready = phase, loadingURL == url, sidebar != nil { return .unchanged }
+        if loadingURL == url, phase == .loading || phase == .ready, loadGeneration > 0 { return .unchanged }
 
         phase = .loading
-        sidebar = nil
+        contents = nil
         validation = nil
-        loadedSceneModel = nil
-        previewSession.viewModes = [.shaded]
         loadingURL = url
         loadGeneration += 1
-        // New document in this window: drop session overrides and re-track defaults.
-        settings.clearSession()
-        engineViewport.applySession()
-        AppLog.info(AppLog.host, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(AppLog.uptimeMs())")
+        view.reset()
         validationTask?.cancel()
+        validationTask = nil
+        AppLog.info(AppLog.app, "open start \(url.lastPathComponent) bytes=\(fileSize(url)) uptimeMs=\(AppLog.uptimeMs())")
         return .started(generation: loadGeneration)
     }
 
-    /// Khronos validation is CPU-heavy (new JSContext + whole-file base64). Call once the
-    /// page reports `.ready`, so it does not compete with the first frame.
-    func noteCanvasReady() {
-        guard let url = loadingURL, validation == nil else { return }
-        startValidation(of: url, generation: loadGeneration)
-    }
-
-    private func finish(_ phase: ShellDocumentState) {
-        if case .failed = phase {
-            sidebar = nil
-            loadedSceneModel = nil
-        }
-        self.phase = phase
-    }
-
-    /// Panels from the file's JSON alone (`GLTFDocumentSummary`); the page loads the file itself.
-    /// `load` is injectable for tests.
+    /// Panels from the file's JSON alone (`GLTFDocumentSummary`). `load` is injectable for tests.
     func openSummary(
         _ url: URL,
         generation: Int,
@@ -131,62 +88,45 @@ final class DocumentWindowModel {
         do {
             let summary = try await load(url)
             guard generation == loadGeneration else { return }
-            let modelSidebar = HostSidebarModel(document: summary.document)
-            sidebar = modelSidebar
-            previewSession.viewModes = summary.viewModes.isEmpty ? [.shaded] : summary.viewModes
-            engineViewport.setViewMode(.shaded)
-            loadedSceneModel = EngineSceneModel(
-                summary: summary,
-                fileName: url.lastPathComponent,
-                validation: validation
-            )
+            contents = EngineSceneModel(summary: summary, fileName: url.lastPathComponent)
+            view.sceneIndex = summary.document.defaultSceneIndex
+            view.viewModes = summary.viewModes.isEmpty ? [.shaded] : summary.viewModes
+            phase = .ready
             let size = summary.bounds.map { "\($0.size.x)x\($0.size.y)x\($0.size.z)" } ?? "empty"
             AppLog.info(
-                AppLog.host,
+                AppLog.app,
                 "open ready \(url.lastPathComponent) nodes=\(summary.document.nodes.count) cameras=\(summary.document.cameras.count) triangles=\(summary.stats.triangleCount) bounds=\(size) uptimeMs=\(AppLog.uptimeMs())"
             )
-            finish(.ready)
         } catch {
             guard generation == loadGeneration else { return }
-            AppLog.error(AppLog.host, "open failed \(url.lastPathComponent): \(error.localizedDescription)")
-            finish(.failed(error.localizedDescription))
+            AppLog.error(AppLog.app, "open failed \(url.lastPathComponent): \(error.localizedDescription)")
+            contents = nil
+            phase = .failed(error.localizedDescription)
         }
     }
 
-    /// Tests replace this so scheduling can be asserted without running JavaScriptCore.
-    @ObservationIgnored
-    var validateFile: @Sendable (URL) async throws -> GLTFValidationReport = {
-        try await GLTFValidator.validate(fileAt: $0)
-    }
-
-    private func startValidation(of url: URL, generation: Int) {
-        if validationTask != nil, validationGeneration == generation { return }
-        validationTask?.cancel()
-        validationGeneration = generation
-        let validationGen = validationGeneration
+    /// Khronos validation is CPU-heavy (a JSContext and the whole file as base64), so it starts
+    /// once the canvas shows the model and does not compete with the first frame.
+    func noteCanvasReady() {
+        guard let url = loadingURL, validation == nil, validationTask == nil else { return }
+        let generation = loadGeneration
         validationTask = Task {
+            let state: GLTFValidationState
             do {
                 let report = try await validateFile(url)
-                try Task.checkCancellation()
-                guard generation == loadGeneration, validationGen == validationGeneration else { return }
-                validation = .success(report)
-                AppLog.info(
-                    AppLog.host,
-                    "validation \(url.lastPathComponent) errors=\(report.errorCount) warnings=\(report.warningCount) validator=\(report.validatorVersion)"
-                )
+                state = .success(report)
+                AppLog.info(AppLog.app, "validation \(url.lastPathComponent) errors=\(report.errorCount) warnings=\(report.warningCount) validator=\(report.validatorVersion)")
             } catch is CancellationError {
                 return
+            } catch let error as GLTFValidator.Error where error.isSoftSkip {
+                state = .skipped("Validation skipped: \(error.localizedDescription)")
+                AppLog.info(AppLog.app, "validation skipped \(url.lastPathComponent): \(error.localizedDescription)")
             } catch {
-                guard !Task.isCancelled else { return }
-                guard generation == loadGeneration, validationGen == validationGeneration else { return }
-                if let error = error as? GLTFValidator.Error, error.isSoftSkip {
-                    validation = .skipped("Validation skipped: \(error.localizedDescription)")
-                    AppLog.info(AppLog.host, "validation skipped \(url.lastPathComponent): \(error.localizedDescription)")
-                } else {
-                    validation = .failed("Validation unavailable: \(error.localizedDescription)")
-                    AppLog.error(AppLog.host, "validation failed \(url.lastPathComponent): \(error.localizedDescription)")
-                }
+                state = .failed("Validation unavailable: \(error.localizedDescription)")
+                AppLog.error(AppLog.app, "validation failed \(url.lastPathComponent): \(error.localizedDescription)")
             }
+            guard !Task.isCancelled, generation == loadGeneration else { return }
+            validation = state
         }
     }
 }
