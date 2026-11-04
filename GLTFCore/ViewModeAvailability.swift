@@ -70,63 +70,32 @@ public struct ViewModeAvailability: Sendable, Equatable {
     }
 
     private mutating func scanMaterials(_ materials: [[String: Any]]) {
-        if !materials.isEmpty {
-            hasBase = true
-        }
+        hasBase = hasBase || !materials.isEmpty
         for material in materials {
             let extensions = material["extensions"] as? [String: Any] ?? [:]
             let unlit = extensions["KHR_materials_unlit"] != nil
             let specGloss = extensions["KHR_materials_pbrSpecularGlossiness"] != nil
             let maps = MaterialMapPresence.from(json: material)
-
-            if maps.specular || extensions["KHR_materials_specular"] != nil || specGloss {
-                hasSpecular = true
-            }
-            if let alpha = material["alphaMode"] as? String,
-               alpha == "MASK" || alpha == "BLEND" {
-                hasAlpha = true
-            }
-            if maps.normal {
-                hasNormals = true
-            }
-            if maps.occlusion {
-                hasAO = true
-            }
-            if maps.emissive {
-                hasEmissive = true
-            }
-            if let emissive = GLTFJSON.float3(material["emissiveFactor"]), !nearZero(emissive) {
-                hasEmissive = true
-            }
-
+            let alphaMode = material["alphaMode"] as? String
+            let emissiveFactor = GLTFJSON.float3(material["emissiveFactor"])
+            let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
             let metalRough = !unlit && !specGloss
-            if metalRough {
-                let pbr = material["pbrMetallicRoughness"] as? [String: Any] ?? [:]
-                if maps.metallicRoughness || hasNonDefault(pbr["metallicFactor"], default: 1) {
-                    hasMetallic = true
-                }
-                if maps.metallicRoughness || hasNonDefault(pbr["roughnessFactor"], default: 1) {
-                    hasRoughness = true
-                }
-            }
+            let clearcoat = extensions["KHR_materials_clearcoat"] as? [String: Any] ?? [:]
 
-            if maps.clearcoat {
-                hasClearcoat = true
-            }
-            if maps.clearcoatRoughness {
-                hasClearcoatRoughness = true
-            }
-            if maps.clearcoatNormal {
-                hasClearcoatNormal = true
-            }
-            if let clearcoat = extensions["KHR_materials_clearcoat"] as? [String: Any] {
-                if hasNonDefault(clearcoat["clearcoatFactor"], default: 0) {
-                    hasClearcoat = true
-                }
-                if hasNonDefault(clearcoat["clearcoatRoughnessFactor"], default: 0) {
-                    hasClearcoatRoughness = true
-                }
-            }
+            hasSpecular = hasSpecular || maps.specular || specGloss || extensions["KHR_materials_specular"] != nil
+            hasAlpha = hasAlpha || alphaMode == "MASK" || alphaMode == "BLEND"
+            hasNormals = hasNormals || maps.normal
+            hasAO = hasAO || maps.occlusion
+            hasEmissive = hasEmissive || maps.emissive || !nearZero(emissiveFactor ?? .zero)
+            hasMetallic = hasMetallic
+                || (metalRough && (maps.metallicRoughness || hasNonDefault(pbr["metallicFactor"], default: 1)))
+            hasRoughness = hasRoughness
+                || (metalRough && (maps.metallicRoughness || hasNonDefault(pbr["roughnessFactor"], default: 1)))
+            hasClearcoat = hasClearcoat || maps.clearcoat
+                || hasNonDefault(clearcoat["clearcoatFactor"], default: 0)
+            hasClearcoatRoughness = hasClearcoatRoughness || maps.clearcoatRoughness
+                || hasNonDefault(clearcoat["clearcoatRoughnessFactor"], default: 0)
+            hasClearcoatNormal = hasClearcoatNormal || maps.clearcoatNormal
         }
     }
 
