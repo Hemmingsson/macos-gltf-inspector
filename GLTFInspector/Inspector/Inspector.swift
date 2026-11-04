@@ -14,7 +14,14 @@ struct Inspector: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if documentState.isReady, let selection {
-                IdentityRow(name: document.displayName(of: selection), kind: selection.kind)
+                IdentityRow(
+                    name: document.displayName(of: selection),
+                    kind: selection.kind,
+                    systemImage: document.systemImage(for: selection),
+                    assetImage: document.assetImage(for: selection),
+                    swatchColor: document.swatchColor(for: selection),
+                    subtitle: document.displayKindTitle(of: selection)
+                )
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         IssuesSection(issues: validation.issues(for: selection))

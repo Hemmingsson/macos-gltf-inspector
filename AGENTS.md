@@ -7,6 +7,12 @@ together: [`docs/architecture.md`](docs/architecture.md).
 
 **New features, UX, or chrome:** [`DESIGN.md`](DESIGN.md) (principles, not layout; code wins).
 
+**Icons:** Prefer a mapped custom glyph when we have one (Blender UI SVGs under
+`GLTFInspector/DesignSystem/Icons/BlenderIcons.xcassets` for lights — GPL, see
+`BlenderIcons.NOTICE.md`). **SF Symbols are always the fallback** when no catalog image is
+mapped (`DSTypeIcon` / `systemImage(for:)`). Do not invent new SF-only mappings that fight a
+Blender/Spline reference we already decided to ship as custom art.
+
 ## Layout
 
 | Path | Role |

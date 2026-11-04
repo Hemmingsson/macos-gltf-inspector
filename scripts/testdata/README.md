@@ -23,6 +23,7 @@ Native Khronos Sample Assets (not committed): `./scripts/fetch-test-models.sh` â
 | Fixture | `TestFixtures` | Contents | Exercises (UI state) |
 |---|---|---|---|
 | `tiny.glb` | `.tiny` | flat 1-triangle GLB | plain static mesh (smallest load) |
+| `ui-showcase.glb` | â€” (`dev.sh run uiShowcase`) | every sidebar section + outliner glyph case | empty groups, typed parents with children, meshes, cameras, lights, materials, skin, morph, animations, two scenes. Regen: `python3 scripts/testdata/make_ui_showcase.py` |
 | `cube/cube.gltf` (+bin+png) | `.cube` | textured unit cube, `.gltf` sidecar | plain mesh with a sidecar buffer and image |
 | `BoxAnimated/BoxAnimated.glb` | `.boxAnimated` | Khronos animated box | Animations section |
 | `invalid/unresolved-mesh.gltf` | `.invalid` | parseable but semantically invalid | validation errors |

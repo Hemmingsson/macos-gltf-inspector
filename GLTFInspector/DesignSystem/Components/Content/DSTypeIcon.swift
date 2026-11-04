@@ -1,16 +1,15 @@
 import SwiftUI
 
 extension NodeKind {
-    /// SF Symbol for the role. SF Symbols only — no bundled art — so weight and appearance track
-    /// the system font.
+    /// SF Symbol fallback when no catalog image or material swatch is mapped.
     var systemImage: String {
         switch self {
         case .scene: "square.stack.3d.up"
         case .mesh: "cube"
         case .camera: "video"
-        case .light: "sun.max"
+        case .light: "lamp.desk"
         case .material: "circle.lefthalf.filled"
-        case .animation: "waveform.path"
+        case .animation: "stopwatch"
         case .skin: "point.3.connected.trianglepath.dotted"
         case .morph: "slider.horizontal.3"
         case .empty: "circle.dotted"
@@ -30,47 +29,85 @@ extension NodeKind {
     }
 }
 
-/// The glTF-type glyph: one monochrome SF Symbol tinted with its role colour, in a fixed square
-/// box (`DS.Metrics.typeIcon`, scaled with the text size) so row titles line up down a column.
-///
-/// DESIGN.md — colour is meaning: a reader learns the hues once (camera blue, light amber,
-/// material purple, animation green, mesh graphite) and scans the outliner without reading. Every
-/// type glyph comes from here. Pass `isSelected` on a selected row so the glyph uses the label
-/// colour, which turns light on the system highlight. A fixed role colour, mesh graphite
-/// included, fails contrast on that blue. Hidden from VoiceOver: the row's label already names
-/// the type.
+/// Type glyph in a fixed square (`DS.Metrics.typeIcon`). Prefers a material colour swatch, then a
+/// catalog image (Blender / Spline), then an SF Symbol. Pass `isSelected` so the glyph reads on
+/// the system highlight. Hidden from VoiceOver — the row already names the type.
 struct DSTypeIcon: View {
     private let role: NodeKind
-    private let isGroup: Bool
+    private let systemImage: String
+    private let assetImage: String?
+    private let swatchColor: Color?
     private let isSelected: Bool
     private let font: Font
 
     @ScaledMetric(relativeTo: .body) private var side = DS.Metrics.typeIcon
 
-    /// - Parameters:
-    ///   - isGroup: an empty node that holds children — drawn as a folder, like a layer group.
-    ///   - font: glyph size; a compact row passes `Font.subheadline`.
     init(
         _ role: NodeKind,
-        isGroup: Bool = false,
+        systemImage: String? = nil,
+        assetImage: String? = nil,
+        swatchColor: Color? = nil,
         isSelected: Bool = false,
         font: Font = Font.body
     ) {
         self.role = role
-        self.isGroup = isGroup
+        self.systemImage = systemImage ?? role.systemImage
+        self.assetImage = assetImage ?? (swatchColor == nil ? SplineIcons.nodeKind(role) : nil)
+        self.swatchColor = swatchColor
         self.isSelected = isSelected
         self.font = font
     }
 
-    private var systemImage: String {
-        isGroup && role == .empty ? "folder" : role.systemImage
+    private var ink: AnyShapeStyle {
+        isSelected
+            ? AnyShapeStyle(HierarchicalShapeStyle.primary)
+            : AnyShapeStyle(role.tint)
     }
 
     var body: some View {
-        Image(systemName: systemImage)
-            .font(font)
-            .foregroundStyle(isSelected ? AnyShapeStyle(HierarchicalShapeStyle.primary) : AnyShapeStyle(role.tint))
-            .frame(width: side, height: side)
-            .accessibilityHidden(true)
+        Group {
+            if let swatchColor {
+                // Material ball: tinted sphere (radial highlight), not a flat SF glyph.
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                swatchColor.mix(with: .white, by: 0.35),
+                                swatchColor,
+                                swatchColor.mix(with: .black, by: 0.25),
+                            ],
+                            center: .init(x: 0.32, y: 0.28),
+                            startRadius: 0,
+                            endRadius: side * 0.75
+                        )
+                    )
+                    .overlay {
+                        Circle().strokeBorder(.primary.opacity(isSelected ? 0.35 : 0.18), lineWidth: 0.5)
+                    }
+                    .opacity(isSelected ? 0.92 : 1)
+            } else if let assetImage {
+                // Blender SVGs are white-on-transparent templates; Spline PNGs/SVGs stay original.
+                if assetImage.hasPrefix("blender.") {
+                    Image(assetImage)
+                        .renderingMode(.template)
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .foregroundStyle(ink)
+                } else {
+                    Image(assetImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .opacity(isSelected ? 0.92 : 1)
+                }
+            } else {
+                Image(systemName: systemImage)
+                    .font(font)
+                    .foregroundStyle(ink)
+            }
+        }
+        .frame(width: side, height: side)
+        .accessibilityHidden(true)
     }
 }

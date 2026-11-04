@@ -5,16 +5,29 @@ struct IdentityRow: View {
     var name: String
     var subtitle: String
     var role: NodeKind
+    var systemImage: String?
+    var assetImage: String?
+    var swatchColor: Color?
 
-    init(name: String, kind: NodeKind) {
+    init(
+        name: String,
+        kind: NodeKind,
+        systemImage: String? = nil,
+        assetImage: String? = nil,
+        swatchColor: Color? = nil,
+        subtitle: String? = nil
+    ) {
         self.name = name
-        self.subtitle = kind.displayTitle
+        self.subtitle = subtitle ?? kind.displayTitle
         self.role = kind
+        self.systemImage = systemImage
+        self.assetImage = assetImage
+        self.swatchColor = swatchColor
     }
 
     var body: some View {
         HStack(alignment: .center, spacing: DS.Spacing.m) {
-            DSTypeIcon(role)
+            DSTypeIcon(role, systemImage: systemImage, assetImage: assetImage, swatchColor: swatchColor)
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(name)

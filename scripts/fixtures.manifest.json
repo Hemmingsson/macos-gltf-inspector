@@ -2,6 +2,7 @@
   "fixtures": [
     { "id": "cube", "label": "Cube", "path": "TestModels/Fixture Models/cube/cube.gltf" },
     { "id": "tiny", "label": "Tiny GLB", "path": "TestModels/Fixture Models/tiny.glb" },
+    { "id": "uiShowcase", "label": "UI showcase", "path": "TestModels/Fixture Models/ui-showcase.glb" },
     { "id": "boxAnimated", "label": "Box Animated", "path": "TestModels/Fixture Models/BoxAnimated/BoxAnimated.glb" },
     { "id": "rigged", "label": "Rigged skin", "path": "TestModels/Fixture Models/rigged/two-joint-skin.gltf" },
     { "id": "morph", "label": "Morph", "path": "TestModels/Fixture Models/morph/morph-triangle.gltf" },

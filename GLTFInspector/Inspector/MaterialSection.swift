@@ -41,14 +41,26 @@ struct MaterialSection: View {
     private var compactBody: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.m) {
             HStack(spacing: DS.Spacing.m) {
-                DSTypeIcon(.material)
+                DSTypeIcon(
+                    .material,
+                    swatchColor: document.swatchColor(for: NodeID(kind: .material, index: index))
+                )
                 Text(name)
                     .font(.body)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
             }
             if !material.textures.isEmpty {
-                FlexibleChipRow(items: material.textures.map(\.kind.shortTitle))
+                HStack(spacing: DS.Spacing.s) {
+                    ForEach(material.textures, id: \.kind) { texture in
+                        Image(SplineIcons.textureSlot(texture.kind))
+                            .resizable()
+                            .interpolation(.high)
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 18, height: 18)
+                            .accessibilityLabel(texture.kind.title)
+                    }
+                }
             }
         }
     }
@@ -135,7 +147,12 @@ struct MaterialSection: View {
                     .interpolation(.medium)
                     .clipShape(shape)
             } else {
-                shape.fill(.quinary)
+                Image(SplineIcons.textureSlot(texture.kind))
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .padding(4)
+                    .background(shape.fill(.quinary))
             }
         }
         .frame(width: 28, height: 28)

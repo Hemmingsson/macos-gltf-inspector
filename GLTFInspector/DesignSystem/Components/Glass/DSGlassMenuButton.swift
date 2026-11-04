@@ -30,6 +30,7 @@ struct DSGlassMenuButton<MenuContent: View>: View {
 
     private let title: String
     private let systemImage: String
+    private let assetImage: String?
     private let style: Style
     private let isEngaged: Bool
     private let help: String?
@@ -38,7 +39,8 @@ struct DSGlassMenuButton<MenuContent: View>: View {
     /// - Parameters:
     ///   - title: What the menu picks ("Camera presets", "View mode"): accessibility label and,
     ///     unless `help` is given, the tooltip.
-    ///   - systemImage: SF Symbol name.
+    ///   - systemImage: SF Symbol name (used when `assetImage` is nil).
+    ///   - assetImage: Catalog image name; drawn instead of the SF Symbol when set.
     ///   - style: Label style. Defaults to `.icon`.
     ///   - isEngaged: Tints the control while the menu holds a non-default choice.
     ///   - help: Tooltip override (e.g. "Camera presets — Front · Top · Isometric…").
@@ -47,6 +49,7 @@ struct DSGlassMenuButton<MenuContent: View>: View {
     init(
         _ title: String,
         systemImage: String,
+        assetImage: String? = nil,
         style: Style = .icon,
         isEngaged: Bool = false,
         help: String? = nil,
@@ -54,6 +57,7 @@ struct DSGlassMenuButton<MenuContent: View>: View {
     ) {
         self.title = title
         self.systemImage = systemImage
+        self.assetImage = assetImage
         self.style = style
         self.isEngaged = isEngaged
         self.help = help
@@ -79,23 +83,34 @@ struct DSGlassMenuButton<MenuContent: View>: View {
     }
 
     @ViewBuilder
+    private var glyph: some View {
+        if let assetImage {
+            Image(assetImage)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 14, height: 14)
+        } else {
+            Image(systemName: systemImage)
+        }
+    }
+
+    @ViewBuilder
     private var label: some View {
         switch style {
         case .icon:
-            Image(systemName: systemImage)
+            glyph
                 .dsGlassControlLabel(.circle, isHighlighted: isEngaged)
         case .iconWithChevron:
             HStack(spacing: DS.Spacing.xs) {
-                Image(systemName: systemImage)
-                    .dsGlassPrimaryGlyph(isHighlighted: isEngaged)
+                glyph.dsGlassPrimaryGlyph(isHighlighted: isEngaged)
                 DSGlassChevron()
             }
             .dsGlassControlLabel(.wide, isHighlighted: isEngaged)
         case .titled(let value), .text(let value):
             HStack(spacing: DS.Spacing.s) {
                 if case .titled = style {
-                    Image(systemName: systemImage)
-                        .dsGlassPrimaryGlyph(isHighlighted: isEngaged)
+                    glyph.dsGlassPrimaryGlyph(isHighlighted: isEngaged)
                 }
                 Text(value)
                     .font(.body)

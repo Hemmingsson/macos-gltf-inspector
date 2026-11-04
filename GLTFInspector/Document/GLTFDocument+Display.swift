@@ -1,5 +1,6 @@
 import GLTFCore
 import simd
+import SwiftUI
 
 // How the outliner and inspector name and format what the file says: fallback names for unnamed
 // entries, degrees for angles, Euler rotation for quaternions. The document itself stays as
@@ -9,6 +10,79 @@ extension GLTFDocument {
     /// The outliner row for a node, typed by what it carries.
     func id(ofNode index: Int) -> NodeID? {
         nodes.indices.contains(index) ? NodeID(kind: NodeKind(nodes[index].kind), index: index) : nil
+    }
+
+    /// How many nodes reference each mesh index. Pass into `assetImage(for:meshRefs:)` so shared
+    /// (instanced) meshes can use the component glyph without rescanning per row.
+    func meshReferenceCounts() -> [Int: Int] {
+        var counts: [Int: Int] = [:]
+        for node in nodes {
+            guard let meshIndex = node.meshIndex else { continue }
+            counts[meshIndex, default: 0] += 1
+        }
+        return counts
+    }
+
+    /// SF Symbol for an outliner / inspector glyph. Light rows follow `KHR_lights_punctual` type;
+    /// the file's default scene uses `house`.
+    func systemImage(for id: NodeID) -> String {
+        if id.kind == .light,
+           nodes.indices.contains(id.index),
+           let lightIndex = nodes[id.index].lightIndex,
+           lights.indices.contains(lightIndex) {
+            return lights[lightIndex].systemImage
+        }
+        if id.kind == .scene, id.index == defaultSceneIndex {
+            return "house"
+        }
+        return id.kind.systemImage
+    }
+
+    /// Catalog image for an outliner / inspector glyph (Blender lights, Spline shared mesh, …).
+    /// `nil` → material swatch or SF Symbol from `systemImage(for:)`.
+    func assetImage(for id: NodeID, meshRefs: [Int: Int]? = nil) -> String? {
+        if id.kind == .light,
+           nodes.indices.contains(id.index),
+           let lightIndex = nodes[id.index].lightIndex,
+           lights.indices.contains(lightIndex) {
+            return BlenderIcons.lightType(lights[lightIndex].type)
+        }
+        // Material rows draw a base-color swatch instead of catalog art.
+        if id.kind == .material { return nil }
+        if id.kind == .mesh,
+           nodes.indices.contains(id.index),
+           let meshIndex = nodes[id.index].meshIndex {
+            let refs = meshRefs ?? meshReferenceCounts()
+            if refs[meshIndex, default: 0] > 1 {
+                return SplineIcons.sharedMesh
+            }
+        }
+        return SplineIcons.nodeKind(id.kind)
+    }
+
+    /// Material ball tint from `baseColorFactor` (always authored-or-default by the JSON reader).
+    func swatchColor(for id: NodeID) -> Color? {
+        guard id.kind == .material,
+              materials.indices.contains(id.index),
+              let factor = materials[id.index].baseColorFactor else { return nil }
+        return Color(
+            .sRGB,
+            red: Double(factor.x),
+            green: Double(factor.y),
+            blue: Double(factor.z),
+            opacity: Double(factor.w)
+        )
+    }
+
+    /// VoiceOver / inspector subtype title for a light row; other kinds use `NodeKind.displayTitle`.
+    func displayKindTitle(of id: NodeID) -> String {
+        if id.kind == .light,
+           nodes.indices.contains(id.index),
+           let lightIndex = nodes[id.index].lightIndex,
+           lights.indices.contains(lightIndex) {
+            return lights[lightIndex].displayTypeTitle
+        }
+        return id.kind.displayTitle
     }
 
     /// The name shown for any outliner row.
@@ -169,4 +243,26 @@ private extension SIMD4<Float> {
 extension ModelBounds {
     /// Where the authored glTF origin sits relative to the box centre the canvas frames.
     var authoredOrigin: SIMD3<Float> { -center }
+}
+
+extension GLTFDocument.Light {
+    /// SF Symbol fallback when Blender light glyphs are unavailable.
+    var systemImage: String {
+        switch type {
+        case "directional": "lamp.desk"
+        case "point": "ring.light"
+        case "spot": "light.overhead.right"
+        default: "lamp.desk"
+        }
+    }
+
+    /// Subtype label for the inspector and VoiceOver.
+    var displayTypeTitle: String {
+        switch type {
+        case "directional": "Directional Light"
+        case "point": "Point Light"
+        case "spot": "Spot Light"
+        default: "Light"
+        }
+    }
 }

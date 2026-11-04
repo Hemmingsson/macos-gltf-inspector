@@ -10,19 +10,37 @@ struct ViewModeMenu: View {
         DSGlassMenuButton(
             "View mode",
             systemImage: view.viewMode.systemImage,
+            assetImage: SplineIcons.viewMode(view.viewMode),
             style: .titled(view.viewMode.title),
             isEngaged: view.viewMode != .shaded
         ) {
             Picker("View mode", selection: $view.viewMode) {
                 ForEach(view.viewModes, id: \.self) { mode in
-                    Text(mode.title)
-                        .tag(mode)
-                        .keyboardShortcutIfAvailable(Shortcuts.viewMode(mode))
+                    Label {
+                        Text(mode.title)
+                    } icon: {
+                        viewModeGlyph(mode)
+                    }
+                    .tag(mode)
+                    .keyboardShortcutIfAvailable(Shortcuts.viewMode(mode))
                 }
             }
             .pickerStyle(.inline)
             .labelsHidden()
         }
         .contentTransition(.identity)
+    }
+
+    @ViewBuilder
+    private func viewModeGlyph(_ mode: RenderViewMode) -> some View {
+        if let asset = SplineIcons.viewMode(mode) {
+            Image(asset)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 14, height: 14)
+        } else {
+            Image(systemName: mode.systemImage)
+        }
     }
 }

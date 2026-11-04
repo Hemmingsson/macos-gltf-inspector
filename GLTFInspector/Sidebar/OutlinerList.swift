@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Native sidebar outliner: `List(selection:)` + `.listStyle(.sidebar)`, one `Section` per
 /// SCENE / MATERIALS / …. The scene graph is flattened to its visible rows with an indent, so each
-/// row's glyph slot carries its own fold chevron (on hover) instead of a system disclosure column.
+/// row's glyph slot carries its own fold chevron instead of a system disclosure column.
 ///
 /// S1f: native list selection — `NodeRow` draws no selection of its own.
 struct OutlinerList: View {
@@ -20,6 +20,7 @@ struct OutlinerList: View {
     var body: some View {
         let sections = OutlinerSection.sections(of: document)
         let foldingRoots = sections.filter(\.folds).flatMap(\.items)
+        let meshRefs = document.meshReferenceCounts()
         List(selection: listSelection(in: sections)) {
             ForEach(sections) { section in
                 Section {
@@ -33,14 +34,26 @@ struct OutlinerList: View {
                                     ? expanded.contains(row.id)
                                     : nil,
                                 badge: badge(for: row.id),
+                                systemImage: document.systemImage(for: row.id),
+                                assetImage: document.assetImage(for: row.id, meshRefs: meshRefs),
+                                swatchColor: document.swatchColor(for: row.id),
+                                kindTitle: document.displayKindTitle(of: row.id),
                                 onToggle: { toggle(row.item) }
                             )
                             .tag(Optional(row.id))
                         }
                     } else {
                         ForEach(section.items) { item in
-                            NodeRow(item: item, isSelected: selection == item.id, badge: badge(for: item.id))
-                                .tag(Optional(item.id))
+                            NodeRow(
+                                item: item,
+                                isSelected: selection == item.id,
+                                badge: badge(for: item.id),
+                                systemImage: document.systemImage(for: item.id),
+                                assetImage: document.assetImage(for: item.id, meshRefs: meshRefs),
+                                swatchColor: document.swatchColor(for: item.id),
+                                kindTitle: document.displayKindTitle(of: item.id)
+                            )
+                            .tag(Optional(item.id))
                         }
                     }
                 } header: {

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""One GLB that fills every sidebar section.
+"""One GLB that fills every sidebar section and every outliner glyph case.
 
-File → two scenes → a group tree of meshes, cameras and lights, plus materials,
-a skin, morph targets and an animation clip. Geometry is one triangle so the
-renderer can draw it. Regen: python3 scripts/testdata/make_ui_showcase.py
+File → two scenes → empty groups, empty leaves, meshes / cameras / lights (leaves
+and typed parents with children), materials, a skin, morph targets and animation
+clips. Geometry is one triangle so the renderer can draw it.
+
+Regen: python3 scripts/testdata/make_ui_showcase.py
+Run:   ./scripts/dev.sh run uiShowcase
 """
 import json
 import struct
@@ -82,16 +85,50 @@ def build():
     ibm_acc = blob.accessor(blob.view(ibms), 2, "MAT4", FLOAT)
 
     light = lambda index: {"KHR_lights_punctual": {"light": index}}
+
+    # Node index map (keep comments in sync when editing):
+    #  0 Stage          empty group
+    #  1 Props          empty group
+    #  2 Body           mesh + children  ← typed parent (cube until hover)
+    #  3 Body Pivot     empty leaf under Body
+    #  4 Blob           morph mesh leaf
+    #  5 Marker         empty leaf
+    #  6 Rig            empty group
+    #  7 Shoulder       empty group
+    #  8 Upper Arm      empty leaf (joint)
+    #  9 Forearm        empty leaf (joint)
+    # 10 Arm            skinned mesh leaf
+    # 11 Cameras        empty group
+    # 12 Main Camera    camera + child  ← typed parent
+    # 13 Focus          empty leaf under Main Camera
+    # 14 Top Camera     camera leaf
+    # 15 Lights            empty group
+    # 16 Directional Light light + child ← typed parent (sun.max)
+    # 17 Aim               empty leaf under Directional Light
+    # 18 Point Light       point leaf (lightbulb)
+    # 19 Spot Light        spot leaf (lamp.desk)
+    # 20 Hero              mesh (Close-up scene only)
     doc = {
         "asset": {"version": "2.0", "generator": "glb-preview make_ui_showcase.py"},
         "extensionsUsed": ["KHR_lights_punctual"],
         "extensions": {
             "KHR_lights_punctual": {
                 "lights": [
-                    {"name": "Sun", "type": "directional", "color": [1, 0.96, 0.9], "intensity": 3},
-                    {"name": "Lamp", "type": "point", "color": [1, 0.85, 0.6], "intensity": 20, "range": 6},
                     {
-                        "name": "Spot",
+                        "name": "Directional Light",
+                        "type": "directional",
+                        "color": [1, 0.96, 0.9],
+                        "intensity": 3,
+                    },
+                    {
+                        "name": "Point Light",
+                        "type": "point",
+                        "color": [1, 0.85, 0.6],
+                        "intensity": 20,
+                        "range": 6,
+                    },
+                    {
+                        "name": "Spot Light",
                         "type": "spot",
                         "color": [0.7, 0.8, 1],
                         "intensity": 40,
@@ -105,15 +142,35 @@ def build():
         "bufferViews": blob.views,
         "accessors": blob.accessors,
         "materials": [
-            {"name": "Clay", "pbrMetallicRoughness": {"baseColorFactor": [0.8, 0.45, 0.3, 1], "roughnessFactor": 0.8}},
-            {"name": "Metal", "pbrMetallicRoughness": {"baseColorFactor": [0.7, 0.72, 0.75, 1], "metallicFactor": 1, "roughnessFactor": 0.25}},
+            {
+                "name": "Clay",
+                "pbrMetallicRoughness": {
+                    "baseColorFactor": [0.8, 0.45, 0.3, 1],
+                    "roughnessFactor": 0.8,
+                },
+            },
+            {
+                "name": "Metal",
+                "pbrMetallicRoughness": {
+                    "baseColorFactor": [0.7, 0.72, 0.75, 1],
+                    "metallicFactor": 1,
+                    "roughnessFactor": 0.25,
+                },
+            },
         ],
         "meshes": [
-            {"name": "Body", "primitives": [{"attributes": {"POSITION": position}, "indices": index, "material": 0}]},
+            {
+                "name": "Body",
+                "primitives": [{"attributes": {"POSITION": position}, "indices": index, "material": 0}],
+            },
             {
                 "name": "Arm",
                 "primitives": [{
-                    "attributes": {"POSITION": position, "JOINTS_0": joint_acc, "WEIGHTS_0": weight_acc},
+                    "attributes": {
+                        "POSITION": position,
+                        "JOINTS_0": joint_acc,
+                        "WEIGHTS_0": weight_acc,
+                    },
                     "indices": index,
                     "material": 1,
                 }],
@@ -131,44 +188,76 @@ def build():
             },
         ],
         "cameras": [
-            {"name": "Main Camera", "type": "perspective", "perspective": {"yfov": 0.6, "znear": 0.1, "zfar": 50}},
-            {"name": "Top Camera", "type": "orthographic", "orthographic": {"xmag": 2, "ymag": 2, "znear": 0.1, "zfar": 20}},
+            {
+                "name": "Main Camera",
+                "type": "perspective",
+                "perspective": {"yfov": 0.6, "znear": 0.1, "zfar": 50},
+            },
+            {
+                "name": "Top Camera",
+                "type": "orthographic",
+                "orthographic": {"xmag": 2, "ymag": 2, "znear": 0.1, "zfar": 20},
+            },
         ],
-        "skins": [{"name": "Armature", "joints": [6, 7], "inverseBindMatrices": ibm_acc, "skeleton": 6}],
+        "skins": [{"name": "Armature", "joints": [8, 9], "inverseBindMatrices": ibm_acc, "skeleton": 8}],
         "nodes": [
-            {"name": "Stage", "children": [1, 4, 9, 12]},          # 0 group
-            {"name": "Props", "children": [2, 3]},                  # 1 group
-            {"name": "Body", "mesh": 0, "translation": [-0.6, 0, 0]},  # 2 mesh
-            {"name": "Blob", "mesh": 2, "translation": [0.8, 0, 0]},   # 3 morph mesh
-            {"name": "Rig", "children": [5, 8]},                    # 4 group
-            {"name": "Shoulder", "children": [6, 7], "translation": [1.4, 0.2, 0]},  # 5 group
-            {"name": "Upper Arm", "translation": [0, 0.4, 0]},     # 6 joint
-            {"name": "Forearm", "translation": [0, 0.8, 0]},        # 7 joint
-            {"name": "Arm", "mesh": 1, "skin": 0},                  # 8 skinned mesh
-            {"name": "Cameras", "children": [10, 11]},              # 9 group
-            {"name": "Main Camera", "camera": 0, "translation": [0, 0.6, 3]},
+            {"name": "Stage", "children": [1, 5, 6, 11, 15]},
+            {"name": "Props", "children": [2, 4]},
+            {
+                "name": "Body",
+                "mesh": 0,
+                "children": [3],
+                "translation": [-0.6, 0, 0],
+            },
+            {"name": "Body Pivot"},
+            {"name": "Blob", "mesh": 2, "translation": [0.8, 0, 0]},
+            {"name": "Marker"},
+            {"name": "Rig", "children": [7, 10]},
+            {"name": "Shoulder", "children": [8], "translation": [1.4, 0.2, 0]},
+            # Joint chain: Upper Arm → Forearm (skeleton root must be a common ancestor).
+            {"name": "Upper Arm", "children": [9], "translation": [0, 0.4, 0]},
+            {"name": "Forearm", "translation": [0, 0.4, 0]},
+            {"name": "Arm", "mesh": 1, "skin": 0},
+            {"name": "Cameras", "children": [12, 14]},
+            {
+                "name": "Main Camera",
+                "camera": 0,
+                "children": [13],
+                "translation": [0, 0.6, 3],
+            },
+            {"name": "Focus"},
             {"name": "Top Camera", "camera": 1, "translation": [0, 3, 0]},
-            {"name": "Lights", "children": [13, 14, 15]},           # 12 group
-            {"name": "Sun", "extensions": light(0), "translation": [0, 2, 2]},
-            {"name": "Lamp", "extensions": light(1), "translation": [-1, 1.5, 1]},
-            {"name": "Spot", "extensions": light(2), "translation": [1, 1.5, 1]},
-            {"name": "Hero", "mesh": 2},                            # 16 close-up only
+            {"name": "Lights", "children": [16, 18, 19]},
+            {
+                "name": "Directional Light",
+                "extensions": light(0),
+                "children": [17],
+                "translation": [0, 2, 2],
+            },
+            {"name": "Aim"},
+            {"name": "Point Light", "extensions": light(1), "translation": [-1, 1.5, 1]},
+            {"name": "Spot Light", "extensions": light(2), "translation": [1, 1.5, 1]},
+            {"name": "Hero", "mesh": 2},
         ],
         "animations": [
             {
                 "name": "Bounce",
-                "samplers": [{"input": time_acc, "output": translation_acc, "interpolation": "LINEAR"}],
+                "samplers": [
+                    {"input": time_acc, "output": translation_acc, "interpolation": "LINEAR"}
+                ],
                 "channels": [{"sampler": 0, "target": {"node": 2, "path": "translation"}}],
             },
             {
                 "name": "Squash",
-                "samplers": [{"input": time_acc, "output": weight_anim, "interpolation": "LINEAR"}],
-                "channels": [{"sampler": 0, "target": {"node": 3, "path": "weights"}}],
+                "samplers": [
+                    {"input": time_acc, "output": weight_anim, "interpolation": "LINEAR"}
+                ],
+                "channels": [{"sampler": 0, "target": {"node": 4, "path": "weights"}}],
             },
         ],
         "scenes": [
             {"name": "Studio", "nodes": [0]},
-            {"name": "Close-up", "nodes": [16]},
+            {"name": "Close-up", "nodes": [20]},
         ],
         "scene": 0,
     }

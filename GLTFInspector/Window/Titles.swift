@@ -13,12 +13,12 @@ extension RenderViewMode {
         }
     }
 
-    /// One glyph per family: the shaded sphere, a grid for wireframe, the cube for any channel.
+    /// SF Symbol fallback when no Spline catalog glyph is mapped.
     var systemImage: String {
         switch self {
         case .shaded: "circle.lefthalf.filled"
         case .wireframe: "grid"
-        case .channel: "cube"
+        case .channel(let channel): channel.systemImage
         }
     }
 }
@@ -39,6 +39,24 @@ extension RenderViewMode.Channel {
         case .clearcoat: "Clearcoat"
         case .clearcoatRoughness: "Clearcoat Roughness"
         case .clearcoatNormal: "Clearcoat Normal"
+        }
+    }
+
+    /// Per-channel SF Symbol when the Spline asset is unavailable.
+    var systemImage: String {
+        switch self {
+        case .baseColor: "paintpalette"
+        case .metallic: "circle.bottomhalf.filled"
+        case .roughness: "cloud"
+        case .normals, .clearcoatNormal: "arrow.up.and.down.and.arrow.left.and.right"
+        case .tangents: "arrow.left.and.right"
+        case .textureCoordinates: "square.grid.3x3"
+        case .ambientOcclusion: "circle.dashed"
+        case .emissive: "sun.max"
+        case .alpha: "square.split.2x2"
+        case .specular: "sparkle"
+        case .clearcoat: "circle.circle"
+        case .clearcoatRoughness: "circle.circle.fill"
         }
     }
 }

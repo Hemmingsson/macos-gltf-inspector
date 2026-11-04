@@ -11,8 +11,9 @@ When this doc and the app disagree, **code wins**.
 
 ## macOS-native
 
-- **System first** — glass, SF Symbols, system typography, light/dark and accessibility settings
-  from the OS (Reduced Motion, Increase Contrast, …).
+- **System first** — glass, system typography, light/dark and accessibility settings from the OS
+  (Reduced Motion, Increase Contrast, …). Icons: prefer a mapped custom glyph (Blender UI icons
+  for typed lights, etc.); **SF Symbols are the fallback** when nothing is mapped.
 - **Menu bar = the full command set** — every action has a shortcut there. In-window controls are
   the *discoverable* subset; same actions, same shortcuts, one storage path.
 - **Distributed, not crammed** — stage / look / camera are different jobs; don't pile unrelated
