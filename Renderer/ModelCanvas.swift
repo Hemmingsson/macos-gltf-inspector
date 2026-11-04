@@ -324,6 +324,16 @@ public final class ModelCanvasController {
         return view?.renderer.scene?.bounds(ofNode: index)
     }
 
+    public func localMeshSize(ofNode index: Int) -> SIMD3<Float>? {
+        _ = sceneGeneration
+        return view?.renderer.scene?.localMeshSize(ofNode: index)
+    }
+
+    public func worldScale(ofNode index: Int) -> SIMD3<Float>? {
+        _ = sceneGeneration
+        return view?.renderer.scene?.worldScale(ofNode: index)
+    }
+
     /// One frame at the canvas's pixel size. The caller writes the file.
     public func snapshot() throws -> CGImage {
         guard let view = readyView else { throw MetalRendererError.noScene }

@@ -4,6 +4,7 @@ import simd
 import Testing
 @testable import Renderer
 
+@Suite(.serialized)
 struct AnimationPoseTests {
     private func loadAsset(_ url: URL) throws -> GLTFAsset {
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"

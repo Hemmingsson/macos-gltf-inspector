@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import Metal
 import simd
 import Testing
@@ -42,6 +43,66 @@ struct FrameSelectionTests {
             "scene": 0,
         ]
         return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "frame-selection")
+    }
+
+    private func rotatedBoxGLB() throws -> URL {
+        var bin = Data()
+        appendFloats([0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 1], to: &bin)
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+            "accessors": [[
+                "bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
+                "min": [0, 0, 0], "max": [2, 1, 1],
+            ]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+            "nodes": [[
+                "name": "Box", "mesh": 0,
+                "rotation": [0, 0.38268343, 0, 0.9238795],
+            ]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "rotated-box")
+    }
+
+    @Test func rotatedMeshReadoutUsesLocalScaledSize() async throws {
+        let url = try rotatedBoxGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ViewState(settings: try settings())
+        let document = try await GLTFDocument.load(from: url)
+        view.document = document
+        view.selection = NodeID(kind: .mesh, index: 0)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: url, options: view.options)
+        try #require(try await waitUntil { view.canvas.phase == .ready })
+        defer { view.canvas.view?.removeFromSuperview() }
+        let readout = SelectionDimensions.readout(view: view, fileBounds: document.bounds)
+        #expect(abs(readout.size.x - 2) < 0.05)
+        #expect(abs(readout.size.y - 1) < 0.05)
+        #expect(abs(readout.size.z - 1) < 0.05)
+    }
+
+    @Test func multiSelectionReadoutUsesUnionBounds() async throws {
+        let url = try offsetChildGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ViewState(settings: try settings())
+        let document = try await GLTFDocument.load(from: url)
+        view.document = document
+        view.selection = NodeID(kind: .mesh, index: 1)
+        view.selectedIDs.formUnion([
+            NodeID(kind: .empty, index: 0),
+            NodeID(kind: .mesh, index: 1),
+            NodeID(kind: .mesh, index: 2),
+        ])
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: url, options: view.options)
+        try #require(try await waitUntil { view.canvas.phase == .ready })
+        defer { view.canvas.view?.removeFromSuperview() }
+        let readout = SelectionDimensions.readout(view: view, fileBounds: document.bounds)
+        #expect(readout.size.x > 10)
+        #expect(readout.size.y > 0.5)
     }
 
     @Test func frameNodeMovesTargetToSubtreeCentreAndKeepsOrbit() async throws {

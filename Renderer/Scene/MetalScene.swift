@@ -290,6 +290,44 @@ extension MetalScene {
         return box
     }
 
+    /// Axis-aligned mesh bounds in the node's local space (POSITION accessor min/max).
+    func localMeshSize(ofNode index: Int) -> SIMD3<Float>? {
+        guard asset.nodes.indices.contains(index), let mesh = asset.nodes[index].mesh else { return nil }
+        var lo = SIMD3<Float>(repeating: .infinity)
+        var hi = SIMD3<Float>(repeating: -.infinity)
+        for primitive in mesh.primitives {
+            guard let accessor = primitive.attribute(forName: "POSITION")?.accessor,
+                  accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { continue }
+            func value(_ number: NSNumber) -> Float {
+                let raw = number.floatValue
+                guard accessor.isNormalized else { return raw }
+                switch accessor.componentType {
+                case .byte: return Swift.max(raw / 127, -1)
+                case .unsignedByte: return raw / 255
+                case .short: return Swift.max(raw / 32767, -1)
+                case .unsignedShort: return raw / 65535
+                default: return raw
+                }
+            }
+            let cornerLo = SIMD3(value(accessor.minValues[0]), value(accessor.minValues[1]), value(accessor.minValues[2]))
+            let cornerHi = SIMD3(value(accessor.maxValues[0]), value(accessor.maxValues[1]), value(accessor.maxValues[2]))
+            lo = min(lo, cornerLo)
+            hi = max(hi, cornerHi)
+        }
+        guard lo.x.isFinite else { return nil }
+        return hi - lo
+    }
+
+    /// Absolute scale extracted from the node's world matrix column lengths.
+    func worldScale(ofNode index: Int) -> SIMD3<Float>? {
+        guard let matrix = worldMatrix(ofNode: index) else { return nil }
+        return SIMD3(
+            simd_length(SIMD3(matrix.columns.0.x, matrix.columns.0.y, matrix.columns.0.z)),
+            simd_length(SIMD3(matrix.columns.1.x, matrix.columns.1.y, matrix.columns.1.z)),
+            simd_length(SIMD3(matrix.columns.2.x, matrix.columns.2.y, matrix.columns.2.z))
+        )
+    }
+
     /// `subtreeAABB`: the node's subtree, or its world origin when it has no mesh.
     func bounds(ofNode index: Int) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
         guard asset.nodes.indices.contains(index) else { return nil }

@@ -100,8 +100,12 @@ public struct AnimationSampler: Sendable {
         guard maxTime > 0, !input.isEmpty else { return input.first ?? 0 }
 
         var t = rawTime.truncatingRemainder(dividingBy: maxTime)
-        if t < 0 || (t == 0 && rawTime != 0) {
+        if t < 0 {
             t += maxTime
+        } else if t == 0, rawTime != 0 {
+            // Khronos: an exact multiple of clip max is the end pose on odd cycles and the start on even ones.
+            let cycles = Int(round(rawTime / maxTime))
+            t = cycles.isMultiple(of: 2) ? 0 : maxTime
         }
         return clampedTime(t)
     }

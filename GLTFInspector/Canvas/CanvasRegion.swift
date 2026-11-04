@@ -144,12 +144,7 @@ struct CanvasRegion<Content: View>: View {
 
     /// The selected scene node's drawn box when it has one, otherwise the whole model.
     private var readout: (size: SIMD3<Float>, name: String?) {
-        // A camera, light or empty without drawn geometry has no size of its own.
-        if let id = view.selection, id.kind.isSceneNode, let box = view.canvas.bounds(ofNode: id.index),
-           (box.max - box.min).max() > 0 {
-            return (box.max - box.min, view.document.displayName(of: id))
-        }
-        return (bounds?.size ?? .zero, nil)
+        SelectionDimensions.readout(view: view, fileBounds: bounds)
     }
 
     private var stageLeadingInset: CGFloat {
