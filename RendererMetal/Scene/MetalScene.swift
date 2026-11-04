@@ -58,6 +58,8 @@ public struct MetalMaterial {
     public var iridescenceThicknessMax: Float = 400
     public var anisotropy: Float = 0
     public var anisotropyRotation: Float = 0
+    /// `KHR_materials_transmission` is present. Khronos groups draws by the extension, not its factor.
+    public var hasTransmission = false
     public var transmission: Float = 0
     public var thickness: Float = 0
     public var attenuationDistance = Float.infinity
@@ -79,6 +81,12 @@ public struct MetalDraw {
     public let material: MetalMaterial
     public let nodeIndex: Int
     public let negativeScale: Bool
+    /// Khronos `Primitive.computeCentroid`: mean of the authored POSITIONs over the authored indices
+    /// (before morph, skin and topology conversion), accumulated in Float32. Used for depth sorting.
+    public var centroid = SIMD3<Float>(repeating: 0)
+    /// Khronos opaque instancing key (`${mesh}_${winding}_${primitiveIndex}`, made unique for skins,
+    /// morph targets, GPU instancing and attribute-limit fallbacks). Equal keys draw consecutively.
+    public var opaqueGroup = ""
 }
 
 public struct MetalPunctualLight {
@@ -147,7 +155,7 @@ extension MetalScene {
 }
 
 extension MetalScene {
-    func fileCamera(at index: Int, aspect: Float) -> (viewProjection: simd_float4x4, eye: SIMD3<Float>)? {
+    func fileCamera(at index: Int, aspect: Float) -> (viewProjection: simd_float4x4, view: simd_float4x4, eye: SIMD3<Float>)? {
         guard asset.nodes.indices.contains(index), let camera = asset.nodes[index].camera else { return nil }
         func world(_ node: GLTFNode) -> simd_float4x4 {
             (node.parent.map(world) ?? matrix_identity_float4x4) * node.matrix
@@ -167,6 +175,6 @@ extension MetalScene {
                 SIMD4(1 / p.xMag, 0, 0, 0), SIMD4(0, 1 / p.yMag, 0, 0),
                 SIMD4(0, 0, 2 / (near - far), 0), SIMD4(0, 0, (near + far) / (near - far), 1)))
         } else { return nil }
-        return (projection * transform.inverse, SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z))
+        return (projection * transform.inverse, transform.inverse, SIMD3(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z))
     }
 }

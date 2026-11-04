@@ -35,6 +35,9 @@ public final class MetalRenderer: @unchecked Sendable {
     private var environment: MetalEnvironment?
     private var materialResources: [ObjectIdentifier: MetalMaterialResources] = [:]
     private var environmentID: KhronosEnvironments?
+    /// Khronos keeps its drawable lists across frames and re-sorts them in place, so depth ties
+    /// keep the previous frame's order. Rebuilt on every load, like `prepareScene` on new nodes.
+    private var drawLists = MetalDrawLists(draws: [])
 
     public init() throws {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
@@ -60,7 +63,9 @@ public final class MetalRenderer: @unchecked Sendable {
 
     public func load(url: URL, sceneIndex: Int? = nil, materialVariantIndex: Int? = nil) async throws {
         materialResources.removeAll()
-        scene = try await MetalSceneLoader.load(url: url, device: device, sceneIndex: sceneIndex, materialVariantIndex: materialVariantIndex)
+        let loaded = try await MetalSceneLoader.load(url: url, device: device, sceneIndex: sceneIndex, materialVariantIndex: materialVariantIndex)
+        scene = loaded
+        drawLists = MetalDrawLists(draws: loaded.draws)
     }
 
     public static func still(url: URL, look: RenderLook, pose: MetalCameraPose, size: Int) async throws -> CGImage {
@@ -117,9 +122,11 @@ public final class MetalRenderer: @unchecked Sendable {
                                                 Float(look.environmentIntensity) * (environment?.intensityScale ?? 1),
                                                 Float(pow(2, look.exposureEV)), 4),
                              options: SIMD4(toneMap(look.toneMapping), UInt32(debugOutput), environment == nil ? 0 : 1, UInt32(scene.lights.count)))
+        var view = camera.viewMatrix
         if let index = fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
             frame.viewProjection = fileCamera.viewProjection
             frame.cameraPosition = SIMD4(fileCamera.eye, 1)
+            view = fileCamera.view
         }
         let hdr = try texture(.rgba16Float, width, height, [.renderTarget, .shaderRead])
         let flags = try texture(.r8Uint, width, height, [.renderTarget, .shaderRead])
@@ -132,9 +139,11 @@ public final class MetalRenderer: @unchecked Sendable {
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].storeAction = .store
         pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        // clearFrame: the tonemap flag attachment clears to 1 (linear to sRGB).
         pass.colorAttachments[1].texture = flags
         pass.colorAttachments[1].loadAction = .clear
         pass.colorAttachments[1].storeAction = .store
+        pass.colorAttachments[1].clearColor = MTLClearColorMake(1, 0, 0, 0)
         pass.depthAttachment.texture = depth
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.storeAction = .dontCare
@@ -142,12 +151,13 @@ public final class MetalRenderer: @unchecked Sendable {
         let black = try texture(.rgba8Unorm, 1, 1, [.shaderRead], storage: .shared)
         var clear: UInt32 = 0
         black.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &clear, bytesPerRow: 4)
+        let order = drawLists.frame(draws: scene.draws, view: view)
         var background: any MTLTexture = black
-        if scene.draws.contains(where: { $0.material.transmission > 0 }) {
-            background = try transmissionBackground(command: command, frame: frame, camera: camera, scene: scene, fallback: black)
+        if let prepass = order.transmissionPrepass {
+            background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass, fallback: black)
         }
-        try encodeScene(command: command, pass: pass, frame: frame, camera: camera, scene: scene,
-                        sourceDraws: scene.draws, background: background, wireframe: wireframe)
+        try encodeScene(command: command, pass: pass, frame: frame, scene: scene,
+                        draws: order.main, background: background, wireframe: wireframe)
         let tone = MTLRenderPassDescriptor()
         tone.colorAttachments[0].texture = output
         tone.colorAttachments[0].loadAction = .dontCare
@@ -215,7 +225,7 @@ public final class MetalRenderer: @unchecked Sendable {
     }
 
     private func transmissionBackground(command: any MTLCommandBuffer, frame: GPUFrame,
-                                        camera: MetalCamera, scene: MetalScene,
+                                        scene: MetalScene, draws: [Int],
                                         fallback: any MTLTexture) throws -> any MTLTexture {
         let resolution = 1024
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
@@ -241,6 +251,8 @@ public final class MetalRenderer: @unchecked Sendable {
         pass.colorAttachments[0].texture = color
         pass.colorAttachments[0].resolveTexture = resolved
         pass.colorAttachments[0].loadAction = .clear
+        // clearFrame clears opaqueFramebufferMSAA to clearColor^2.2; the page's clearColor is [0, 0, 0, 0].
+        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
         pass.colorAttachments[0].storeAction = .storeAndMultisampleResolve
         pass.colorAttachments[1].texture = flag
         pass.colorAttachments[1].loadAction = .clear
@@ -251,9 +263,8 @@ public final class MetalRenderer: @unchecked Sendable {
         pass.depthAttachment.clearDepth = 1
         var preFrame = frame
         preFrame.options.z |= 2
-        try encodeScene(command: command, pass: pass, frame: preFrame, camera: camera, scene: scene,
-            sourceDraws: scene.draws.filter { $0.material.transmission == 0 }, background: fallback,
-            samples: 4, format: .rgba8Unorm)
+        try encodeScene(command: command, pass: pass, frame: preFrame, scene: scene,
+            draws: draws, background: fallback, samples: 4, format: .rgba8Unorm)
         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("transmission mips") }
         blit.generateMipmaps(for: resolved)
         blit.endEncoding()
@@ -261,8 +272,8 @@ public final class MetalRenderer: @unchecked Sendable {
     }
 
     private func encodeScene(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor,
-                             frame inputFrame: GPUFrame, camera: MetalCamera, scene: MetalScene,
-                             sourceDraws: [MetalDraw], background: any MTLTexture,
+                             frame inputFrame: GPUFrame, scene: MetalScene,
+                             draws: [Int], background: any MTLTexture,
                              samples: Int = 1, format: MTLPixelFormat = .rgba16Float,
                              wireframe: Bool = false) throws {
         var frame = inputFrame
@@ -275,16 +286,8 @@ public final class MetalRenderer: @unchecked Sendable {
         var lights = scene.lights.map(GPULight.init)
         if lights.isEmpty { lights = [GPULight.zero] }
         lights.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 4) }
-        // Opaque first, then stable back-to-front blend ordering.
-        let draws = sourceDraws.sorted {
-            if ($0.material.alphaMode == 2) != ($1.material.alphaMode == 2) { return $0.material.alphaMode != 2 }
-            if $0.material.alphaMode == 2 {
-                return simd_length_squared(SIMD3($0.worldTransform.columns.3.x, $0.worldTransform.columns.3.y, $0.worldTransform.columns.3.z) - camera.eye)
-                    > simd_length_squared(SIMD3($1.worldTransform.columns.3.x, $1.worldTransform.columns.3.y, $1.worldTransform.columns.3.z) - camera.eye)
-            }
-            return false
-        }
-        for draw in draws {
+        for index in draws {
+            let draw = scene.draws[index]
             let blend = draw.material.alphaMode == 2
             encoder.setRenderPipelineState(try pipeline(blend: blend, samples: samples, format: format))
             encoder.setDepthStencilState(blend ? depthRead : depthWrite)
@@ -340,6 +343,102 @@ public final class MetalRenderer: @unchecked Sendable {
         d.storageMode = storage
         guard let texture = device.makeTexture(descriptor: d) else { throw MetalRendererError.resource("texture \(format)") }
         return texture
+    }
+}
+
+/// Port of the Khronos drawable lists: `prepareScene` grouping and `drawScene` ordering.
+struct MetalDrawLists {
+    /// Opaque and mask drawables without `KHR_materials_transmission`, in `Object.groupBy` order.
+    private(set) var opaque: [Int]
+    /// `alphaMode` BLEND without `KHR_materials_transmission`.
+    private(set) var transparent: [Int]
+    /// Every drawable whose material has `KHR_materials_transmission`, whatever its alpha mode.
+    private(set) var transmission: [Int]
+
+    struct Frame: Equatable {
+        /// Opaque then sorted transparent drawables; nil when the scene has no transmission drawables.
+        var transmissionPrepass: [Int]?
+        /// Opaque, then sorted transmission, then sorted transparent drawables in front of the camera.
+        var main: [Int]
+    }
+
+    init(draws: [MetalDraw]) {
+        var groups: [String: [Int]] = [:], keys: [String] = []
+        var transparent: [Int] = [], transmission: [Int] = []
+        for (index, draw) in draws.enumerated() {
+            if draw.material.hasTransmission {
+                transmission.append(index)
+            } else if draw.material.alphaMode == 2 {
+                transparent.append(index)
+            } else {
+                // Group keys always contain "_", so the object keeps insertion order.
+                if groups[draw.opaqueGroup] == nil { keys.append(draw.opaqueGroup) }
+                groups[draw.opaqueGroup, default: []].append(index)
+            }
+        }
+        // Each instancing group is one instanced draw at its first member's position.
+        opaque = keys.flatMap { groups[$0] ?? [] }
+        self.transparent = transparent
+        self.transmission = transmission
+    }
+
+    /// One `drawScene`. The lists are re-sorted in place, as upstream does every frame.
+    mutating func frame(draws: [MetalDraw], view: simd_float4x4) -> Frame {
+        var prepass: [Int]?
+        var transparentDepths: [Float] = []
+        if !transmission.isEmpty {
+            (transparent, transparentDepths) = Self.sortedByDepth(transparent, draws: draws, view: view)
+            prepass = opaque + transparent
+        }
+        let transmissionDepths: [Float]
+        (transmission, transmissionDepths) = Self.sortedByDepth(transmission, draws: draws, view: view)
+        (transparent, transparentDepths) = Self.sortedByDepth(transparent, draws: draws, view: view)
+        // `filter((a) => a.depth <= 0)`: drawables whose centroid is behind the camera are skipped.
+        let front = { (list: [Int], depths: [Float]) in zip(list, depths).filter { $0.1 <= 0 }.map(\.0) }
+        return Frame(transmissionPrepass: prepass,
+                     main: opaque + front(transmission, transmissionDepths) + front(transparent, transparentDepths))
+    }
+
+    /// `Camera.sortPrimitivesByDepth`: the view-space Z of the primitive centroid, ascending
+    /// (farthest first), with `Array.prototype.sort`'s stability.
+    static func sortedByDepth(_ list: [Int], draws: [MetalDraw], view: simd_float4x4) -> ([Int], [Float]) {
+        var items = list.map { ($0, viewDepth(of: draws[$0], view: view)) }
+        // Stable merge sort; the right item moves first only when `a.depth - b.depth > 0`.
+        var buffer = items
+        var width = 1
+        while width < items.count {
+            var start = 0
+            while start < items.count {
+                let middle = min(start + width, items.count), end = min(start + 2 * width, items.count)
+                var left = start, right = middle, out = start
+                while left < middle && right < end {
+                    if items[left].1 - items[right].1 > 0 { buffer[out] = items[right]; right += 1 }
+                    else { buffer[out] = items[left]; left += 1 }
+                    out += 1
+                }
+                while left < middle { buffer[out] = items[left]; left += 1; out += 1 }
+                while right < end { buffer[out] = items[right]; right += 1; out += 1 }
+                start = end
+            }
+            swap(&items, &buffer)
+            width *= 2
+        }
+        return (items.map(\.0), items.map(\.1))
+    }
+
+    /// gl-matrix `multiply(view, world)` then `transformMat4(centroid)`: double arithmetic,
+    /// Float32 storage, divided by w (or 1 when w is 0).
+    static func viewDepth(of draw: MetalDraw, view: simd_float4x4) -> Float {
+        let world = draw.worldTransform
+        func modelView(_ column: Int, _ row: Int) -> Double {
+            var sum = 0.0
+            for k in 0..<4 { sum += Double(world[column][k]) * Double(view[k][row]) }
+            return Double(Float(sum))
+        }
+        let x = Double(draw.centroid.x), y = Double(draw.centroid.y), z = Double(draw.centroid.z)
+        var w = modelView(0, 3) * x + modelView(1, 3) * y + modelView(2, 3) * z + modelView(3, 3)
+        if w == 0 || w.isNaN { w = 1 }
+        return Float((modelView(0, 2) * x + modelView(1, 2) * y + modelView(2, 2) * z + modelView(3, 2)) / w)
     }
 }
 

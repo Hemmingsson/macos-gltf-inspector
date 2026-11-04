@@ -182,6 +182,19 @@ private final class Builder {
         }
         var indices = try primitive.indices.map { try indexValues($0) } ?? (0..<count).map(UInt32.init)
         guard indices.allSatisfy({ $0 < count }) else { throw MetalSceneError.invalid("Index outside vertex buffer") }
+        // Khronos Primitive.computeCentroid: Float32 accumulation over the authored indices and POSITIONs.
+        var sum = SIMD3<Float>(repeating: 0)
+        for index in indices { let i = Int(index) * 3; sum += SIMD3(positions[i], positions[i+1], positions[i+2]) }
+        let centroid = SIMD3<Float>(sum.indices.map { Float(Double(sum[$0]) / Double(indices.count)) })
+        // Khronos opaque instancing groups: skins, morph targets, GPU instancing and the
+        // attribute limit (glAttributes + 4 > 16 on Apple WebGL2) each get their own group.
+        let meshIndex = node.mesh.flatMap { mesh in asset.meshes.firstIndex { $0 === mesh } } ?? -1
+        let primitiveIndex = node.mesh?.primitives.firstIndex { $0 === primitive } ?? -1
+        let winding = simd_determinant(model) > 0 ? 1 : (simd_determinant(model) < 0 ? -1 : 0)
+        var opaqueGroup = "\(meshIndex)_\(winding)_\(primitiveIndex)"
+        if node.skin != nil || !primitive.targets.isEmpty || node.meshInstances != nil || primitive.attributes.count + 4 > 16 {
+            opaqueGroup += "_node\(asset.nodes.firstIndex(of: node) ?? -1)"
+        }
         let topology: MTLPrimitiveType
         switch primitive.primitiveType.rawValue - 1 {
         case 0: topology = .point
@@ -231,7 +244,7 @@ private final class Builder {
         guard let vb = device.makeBuffer(bytes: vertices, length: vertices.count*MemoryLayout<MetalVertex>.stride, options: .storageModeShared), let ib = device.makeBuffer(bytes:indices,length:indices.count*4,options:.storageModeShared) else { throw MetalSceneError.invalid("Metal buffer allocation failed") }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
         let m = try convert(material)
-        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0))
+        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup))
     }
 
     func values(_ accessor: GLTFAccessor, components: Int) throws -> [Float] {
@@ -277,7 +290,7 @@ private extension Builder {
         if let p = source.sheen { m.sheenColor = p.sheenColorFactor; m.sheenRoughness = p.sheenRoughnessFactor; try add(.sheenColor,p.sheenColorTexture); try add(.sheenRoughness,p.sheenRoughnessTexture) }
         if let p = source.iridescence { m.iridescence = p.iridescenceFactor; m.iridescenceIOR = p.iridescenceIndexOfRefraction; m.iridescenceThicknessMin = p.iridescenceThicknessMinimum; m.iridescenceThicknessMax = p.iridescenceThicknessMaximum; try add(.iridescence,p.iridescenceTexture); try add(.iridescenceThickness,p.iridescenceThicknessTexture) }
         if let p = source.anisotropy { m.anisotropy = p.strength; m.anisotropyRotation = p.rotation; try add(.anisotropy,p.anisotropyTexture) }
-        if let p = source.transmission { m.transmission = p.transmissionFactor; try add(.transmission,p.transmissionTexture ?? authoredTransmissionTexture(source)) }
+        if let p = source.transmission { m.hasTransmission = true; m.transmission = p.transmissionFactor; try add(.transmission,p.transmissionTexture ?? authoredTransmissionTexture(source)) }
         if let p = source.volume { m.thickness = p.thicknessFactor; m.attenuationDistance = p.attenuationDistance; m.attenuationColor = p.attenuationColor; try add(.thickness,p.thicknessTexture) }
         if let p = source.diffuseTransmission { m.diffuseTransmission = p.diffuseTransmissionFactor; m.diffuseTransmissionColor = p.diffuseTransmissionColorFactor; try add(.diffuseTransmission,p.diffuseTransmissionTexture); try add(.diffuseTransmissionColor,p.diffuseTransmissionColorTexture) }
         materialCache[key] = m

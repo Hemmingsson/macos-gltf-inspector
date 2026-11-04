@@ -32,8 +32,14 @@ All native-port changes are **uncommitted**. Backlog task **`hc7w6r13`** is star
 >   passes ChronographWatchWebP, and CompareVolume's bad pixels drop from 0.094% to 0.005%.
 > - The unused prepass environment shader entry was removed.
 >
-> Still open from the notes below: view-space centroid sorting and opaque → transmission → blend
-> grouping (not needed for parity yet), clear colour of the prepass, the derivative-tangent path for
+> - **Draw order (later):** `MetalDrawLists` in `MetalRenderer.swift` ports `prepareScene` grouping
+>   (opaque instancing groups; transmission by extension presence) and `sortPrimitivesByDepth`
+>   (indexed-centroid view Z, ascending, stable, re-sorted in place per frame). Main pass: opaque →
+>   transmission → transparent, both filtered to depth ≤ 0; prepass: opaque → all transparent.
+>   Prepass clears to the page's `[0,0,0,0]`; unlit prepass draws write `toneMapInverse`.
+>   Pixel numbers unchanged on all 33; `MetalDrawOrderTests` covers the order.
+>
+> Still open from the notes below: the derivative-tangent path for
 > primitives without NORMAL, all control/overlay verification, bench, the three surfaces, cutover.
 > `./scripts/dev.sh test` had one failure, which the port did not cause: `GLTFValidatorCorpusTests`
 > reports `ui-showcase.glb: SKIN_SKELETON_INVALID`. Neither that fixture nor the validator has
