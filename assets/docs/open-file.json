@@ -1,0 +1,12 @@
+{"type":"sequence","title":"Opening a file","numbered":true,"participants":[
+ {"id":"win","label":"DocumentWindow"},
+ {"id":"model","label":"DocumentWindowModel","sub":"panels"},
+ {"id":"canvas","label":"ModelCanvasController","sub":"canvas","focal":true},
+ {"id":"view","label":"ModelView","sub":"MetalRenderer"},
+ {"id":"val","label":"GLTFValidator","kind":"external"}],
+ "messages":[["win","model","beginOpen · openSummary"],["model","model","read JSON off main"],
+  ["win","canvas","mount with ViewOptions","primary"],["canvas","view","load(url)","primary"],
+  ["view","canvas","first frame","reply"],["model","win","open ready","reply"],
+  ["win","model","noteCanvasReady"],["model","val","validate","async"],["val","model","findings → outliner rows","reply"]],
+ "fragments":[{"kind":"par","label":"panels and canvas load in parallel","from":0,"to":5}],
+ "notes":[{"at":6,"over":["win","model"],"text":"validation waits for the first frame"}]}

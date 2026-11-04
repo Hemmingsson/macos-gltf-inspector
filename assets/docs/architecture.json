@@ -1,0 +1,12 @@
+{"type":"architecture","title":"glTF Inspector modules","dir":"LR","nodes":[
+ {"id":"file","label":".glb / .gltf","kind":"input","row":1,"col":0},
+ {"id":"core","label":"GLTFCore","sub":"document · validator","row":0,"col":1},
+ {"id":"renderer","label":"Renderer","sub":"Metal Khronos port","focal":true,"row":1,"col":1},
+ {"id":"settings","label":"App Group","sub":"settings","kind":"store","row":2,"col":1},
+ {"id":"app","label":"App window","sub":"GLTFInspector","row":0,"col":2},
+ {"id":"ql","label":"Quick Look","sub":"PreviewExtension","row":1,"col":2},
+ {"id":"thumb","label":"Finder thumbnail","sub":"ThumbnailExtension","row":2,"col":2}],
+ "edges":[["file","core","JSON"],["file","renderer","load","primary"],
+  ["core","app","GLTFDocument"],["renderer","app","ModelCanvas","primary"],
+  ["renderer","ql","ModelCanvas","primary"],["renderer","thumb","PNG","primary"],
+  ["app","settings","writes"],["settings","renderer","stored look","async"]]}

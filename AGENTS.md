@@ -3,7 +3,7 @@
 macOS 26+ viewer for `.glb` / `.gltf`: document window, Quick Look preview and Finder
 thumbnail, all drawn by one Metal port of the Khronos glTF Sample Renderer.
 
-- How it fits together: [`docs/architecture.md`](docs/architecture.md)
+- How it fits together: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - Product and UX principles: [`DESIGN.md`](DESIGN.md)
 
 ## Layout

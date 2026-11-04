@@ -6,6 +6,8 @@ Quick Look preview and the Finder thumbnail.
 
 ## Modules
 
+![Modules: one Renderer feeds the app window, Quick Look and Finder thumbnails](assets/docs/architecture.svg)
+
 | Target | Owns | Linked by |
 | --- | --- | --- |
 | `GLTFCore` (framework) | What a file contains: `GLTFDocument` parsed from the JSON (`GLTFDocumentJSON`), the glTF-Validator (`GLTFValidator`, the Khronos validator in a `JSContext`), the look vocabulary (`RenderLook`, `RenderViewMode`, `LightingEnvironment`) and the App Group settings (`AppGroupSettings`). | everything |
@@ -20,17 +22,7 @@ the extensions find them (and the GLTFKit2 package framework) through their
 
 ## Opening a file in a window
 
-```mermaid
-flowchart LR
-  file[".glb / .gltf"] --> json["GLTFDocument.load (JSON only)"]
-  file --> renderer["ModelView.load (MetalRenderer)"]
-  json --> model["DocumentWindowModel.document"]
-  model --> panels["Sidebar · Inspector"]
-  state["ViewState.options"] --> renderer
-  renderer --> canvas["ModelCanvasController.phase"]
-  canvas -->|ready| validate["GLTFValidator (after first frame)"]
-  validate --> model
-```
+![Opening a file: panels and canvas load in parallel; validation waits for the first frame](assets/docs/open-file.svg)
 
 1. `DocumentWindow` calls `DocumentWindowModel.beginOpen` (logs `open start`) and starts
    `openSummary`, which reads the JSON into a `GLTFDocument` off the main thread
@@ -62,11 +54,13 @@ extensions can read it, and only the app writes it.
 
 ## Accuracy and speed
 
+![Reference-image tests: the Metal renderer is compared with images from the Khronos renderer](assets/docs/reference-tests.svg)
+
 `TestModels/References/` holds images rendered by the Khronos Sample Renderer itself: one per
 pinned Khronos sample (`manifest.json`), and `Features/` for overlays, view modes, file cameras,
 scenes and the lighting options. `./scripts/dev.sh test` renders all of them with the Metal
 renderer and compares them (`PixelDiffMetalTests`); see
-[`TestModels/References/README.md`](../TestModels/References/README.md).
+[`TestModels/References/README.md`](TestModels/References/README.md).
 
 `./scripts/dev.sh bench` prints load, first-still and GPU frame times for three samples.
 
@@ -80,3 +74,5 @@ renderer and compares them (`PixelDiffMetalTests`); see
   `canvas ready` or `canvas failed`, then a `validation` line.
 - Pixel-diff failures write `-actual`, `-expected` and `-diff` PNGs to
   `/tmp/GLTFInspector-pixel-diff/`.
+
+Diagrams are rendered with seecode from the specs in `assets/docs/*.json`.

@@ -1,0 +1,9 @@
+{"type":"architecture","title":"Reference-image tests","dir":"LR","nodes":[
+ {"id":"samples","label":"Khronos samples","sub":"manifest.json","kind":"input","row":0,"col":0},
+ {"id":"khronos","label":"Khronos renderer","sub":"Sample Renderer","kind":"external","row":0,"col":1},
+ {"id":"metal","label":"Metal renderer","sub":"Renderer/","focal":true,"row":1,"col":1},
+ {"id":"refs","label":"References","sub":"TestModels/References","kind":"store","row":0,"col":2},
+ {"id":"diff","label":"PixelDiffMetalTests","sub":"dev.sh test","row":1,"col":2},
+ {"id":"out","label":"Diff PNGs","sub":"/tmp/…-pixel-diff","kind":"muted","row":1,"col":3}],
+ "edges":[["samples","khronos","render once"],["samples","metal","render","primary"],
+  ["khronos","refs","expected"],["refs","diff","compare"],["metal","diff","actual","primary"],["diff","out","on failure","async"]]}

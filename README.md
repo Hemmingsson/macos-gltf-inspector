@@ -32,9 +32,14 @@
   </tr>
 </table>
 
-The same renderer draws the model in the app, in Quick Look and in Finder. There is no renderer
-setting. Lighting, cameras and view mode change the picture; the geometry is shown as authored, in
-its rest pose.
+The same native Metal renderer draws the model in the app, in Quick Look and in Finder. The
+geometry is shown as authored, in its rest pose. In the app window you can also:
+
+- browse the scene in an outliner and read each node, mesh and material in the inspector
+- see the Khronos glTF-Validator's findings, linked to the outliner rows they concern
+- hide, solo and click-select nodes; frame the selection
+- switch lighting, file cameras and view modes (Shaded, Clay, X-Ray, Wireframe, or one material channel such as normals or roughness)
+- export a PNG, or a turntable as MP4 or GIF
 
 ## Install
 
@@ -50,7 +55,7 @@ Requires macOS 26+ on Apple Silicon, Xcode, and [XcodeGen](https://github.com/yo
 1. `brew install xcodegen`
 2. `./scripts/build.sh`
 
-This generates the Xcode project, builds, installs to `/Applications`, and checks that the Quick Look extensions registered.
+This generates the Xcode project, builds, installs to `/Applications`, opens the app and checks that the Quick Look extensions registered.
 
 ```bash
 ./scripts/dev.sh test
@@ -62,6 +67,8 @@ samples fail rather than skip. See
 
 ## How it works
 
+![One Metal renderer feeds the app window, Quick Look and Finder thumbnails](assets/docs/architecture.svg)
+
 The renderer is a native Metal port of the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
 (`Renderer/`). The window and Quick Look draw it live; Finder thumbnails render one frame off
 screen. Its output is tested against images rendered by the Khronos renderer itself
@@ -70,11 +77,11 @@ screen. Its output is tested against images rendered by the Khronos renderer its
 The outliner and inspector describe the **file**: they read its glTF JSON (`GLTFDocument`), not
 what the renderer kept, and the Khronos glTF-Validator reports problems in it.
 
-Settings (lighting defaults, backdrop, floor) live in an App Group so the sandboxed Quick Look and
-thumbnail extensions read the same values as the app.
+Settings (environment, tone mapping, background, floor) live in an App Group so the sandboxed
+Quick Look and thumbnail extensions read the same values as the app.
 
-Details: [`docs/architecture.md`](docs/architecture.md).
+Details: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## License
 
-Released under the [MIT License](LICENSE). [Sparkle](https://github.com/sparkle-project/Sparkle) is MIT-licensed. The Metal port of the [Khronos glTF Sample Renderer](Renderer/Shaders) is Apache-2.0. The [Khronos glTF-Validator](Vendor/gltf-validator) and IBL environments carry their own licenses in-tree.
+Released under the [MIT License](LICENSE). [Sparkle](https://github.com/sparkle-project/Sparkle) is MIT-licensed. The Metal port of the [Khronos glTF Sample Renderer](Renderer/Shaders) is Apache-2.0. The [Khronos glTF-Validator](Vendor/gltf-validator), the other libraries in [`Vendor/`](Vendor), the [IBL environments](Renderer/Environments/LICENSES.md) and the [Blender UI icons](GLTFInspector/DesignSystem/Icons/BlenderIcons.NOTICE.md) (GPL) carry their own licenses in-tree.
