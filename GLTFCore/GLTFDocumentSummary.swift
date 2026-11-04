@@ -12,35 +12,19 @@ public struct GLTFDocumentSummary {
     public var materialVariantNames: [String]
     public var viewModes: [RenderViewMode]
 
-    public init(
-        document: GLTFSessionDocument,
-        stats: PreviewStats,
-        bounds: ModelBounds?,
-        materialVariantNames: [String],
-        viewModes: [RenderViewMode]
-    ) {
-        self.document = document
-        self.stats = stats
-        self.bounds = bounds
-        self.materialVariantNames = materialVariantNames
-        self.viewModes = viewModes
-    }
-
     public init(json: [String: Any], fileURL: URL, fileSizeBytes: Int64?) {
         let binary = GLTFBinaryStore(json: json, fileURL: fileURL)
         let document = GLTFDocumentJSON.makeDocument(json: json, binary: binary)
-        self.init(
-            document: document,
-            stats: PreviewStats.from(
-                json: json,
-                animationCount: document.animations.filter { $0.duration > 0 }.count,
-                fileSizeBytes: fileSizeBytes,
-                binary: binary
-            ),
-            bounds: ModelBounds.from(json: json),
-            materialVariantNames: GLTFDocumentJSON.materialVariantNames(json: json),
-            viewModes: ViewModeAvailability(json: json).viewModes
+        self.document = document
+        stats = PreviewStats.from(
+            json: json,
+            animationCount: document.animations.filter { $0.duration > 0 }.count,
+            fileSizeBytes: fileSizeBytes,
+            binary: binary
         )
+        bounds = ModelBounds.from(json: json)
+        materialVariantNames = GLTFDocumentJSON.materialVariantNames(json: json)
+        viewModes = ViewModeAvailability(json: json).viewModes
     }
 
     /// Reads the `.gltf` JSON or the GLB JSON chunk (plus texture headers for the inspector).

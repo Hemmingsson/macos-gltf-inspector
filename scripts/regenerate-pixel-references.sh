@@ -19,18 +19,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REFS="$ROOT/TestModels/References"
 
 # One xcodebuild run per renderer, WebKit first: it re-records the camera poses every renderer
-# replays, so RealityKit must render after it. A renderer whose test folder is gone is skipped.
+# replays, so RealityKit must render after it.
 suite() {
   case "$1" in
     webkit) echo "PixelDiffWebKitRegeneration" ;;
     realitykit) echo "PixelDiffRealityKitRegeneration" ;;
     *) echo "unknown renderer: $1 (webkit|realitykit)" >&2; exit 2 ;;
-  esac
-}
-folder() {
-  case "$1" in
-    webkit) echo "$ROOT/GLTFInspectorTests/WebKit" ;;
-    realitykit) echo "$ROOT/GLTFInspectorTests/RealityKit" ;;
   esac
 }
 
@@ -46,10 +40,6 @@ trap 'rm -f "$SENTINEL"' EXIT
 status=0
 for renderer in "${RENDERERS[@]}"; do
   test_suite="$(suite "$renderer")"
-  if [[ ! -d "$(folder "$renderer")" ]]; then
-    echo "skip $renderer: renderer removed"
-    continue
-  fi
   echo "$renderer" >"$SENTINEL"
   LOG="$(mktemp -t pixel-references)"
   "$ROOT/scripts/dev.sh" test "-only-testing:GLTFInspectorTests/$test_suite" >"$LOG" 2>&1 || status=$?

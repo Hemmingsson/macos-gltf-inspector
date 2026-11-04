@@ -103,10 +103,6 @@ public final class WebCanvasController {
 
             let view = host.view
             view.removeFromSuperview()
-            // Visible under the loading chrome so the canvas gets a real size.
-            // Alpha 0 made the first `renderFrame` 1×1; revealing then resized
-            // (cleared) and the GPU frame ran on an empty screen.
-            view.alphaValue = 1
             Self.pin(view, in: container)
             if let loadingHost {
                 container.addSubview(loadingHost, positioned: .above, relativeTo: view)
@@ -245,7 +241,6 @@ public final class WebCanvasController {
     private func revealLive(host: WebRendererHost) {
         didRevealLive = true
         phase = .ready
-        host.view.alphaValue = 1
         placeholderView?.isHidden = true
         loadingHost?.isHidden = true
     }

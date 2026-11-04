@@ -41,6 +41,7 @@ public enum GLTFValidator {
     /// Above this we soft-skip: Dart validator expands the asset via `atob` into a `Uint8Array`
     /// (~4/3 of raw size as base64 string, then another full copy as bytes), which can OOM.
     public static let maxRawAssetBytes = 48 * 1024 * 1024
+    private static let maxIssues = 100
 
     public enum Error: Swift.Error, LocalizedError, Equatable {
         case scriptMissing
@@ -77,18 +78,17 @@ public enum GLTFValidator {
         }
     }
 
-    public static func validate(fileAt url: URL, maxIssues: Int = 100) async throws -> GLTFValidationReport {
+    public static func validate(fileAt url: URL) async throws -> GLTFValidationReport {
         try rejectIfTooLarge(url: url)
         let data = try Data(contentsOf: url)
         let base = url.deletingLastPathComponent()
-        return try await validate(data: data, uri: url.lastPathComponent, externalBase: base, maxIssues: maxIssues)
+        return try await validate(data: data, uri: url.lastPathComponent, externalBase: base)
     }
 
     public static func validate(
         data: Data,
         uri: String,
-        externalBase: URL?,
-        maxIssues: Int = 100
+        externalBase: URL?
     ) async throws -> GLTFValidationReport {
         try rejectIfTooLarge(byteCount: data.count)
         try Task.checkCancellation()
@@ -100,8 +100,7 @@ public enum GLTFValidator {
                     let report = try validateSync(
                         data: data,
                         uri: uri,
-                        externalBase: externalBase,
-                        maxIssues: maxIssues
+                        externalBase: externalBase
                     )
                     continuation.resume(returning: report)
                 } catch {
@@ -127,8 +126,7 @@ public enum GLTFValidator {
     private static func validateSync(
         data: Data,
         uri: String,
-        externalBase: URL?,
-        maxIssues: Int
+        externalBase: URL?
     ) throws -> GLTFValidationReport {
         guard let ctx = JSContext() else { throw Error.contextFailed }
         var lastException: String?

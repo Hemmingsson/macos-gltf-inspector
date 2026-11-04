@@ -110,7 +110,7 @@ const state = view.createState();
 const resources = view.createResourceLoader(undefined, undefined, "libs/");
 
 state.renderingParameters.toneMap = GltfState.ToneMaps.KHR_PBR_NEUTRAL;
-// First paint uses Khronos key+fill. HDR IBL is optional until `setEnvironment`
+// First paint uses Khronos key+fill. HDR IBL is optional until the look's environment
 // lands — `useIBL` stays off so the first frame is a lit silhouette, not a black clear.
 state.renderingParameters.useIBL = false;
 state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
@@ -724,7 +724,6 @@ window.__viewer = {
         showFloor = next.floor;
         showWireframe = next.wireframe;
         selectedNodeIndex = Number.isInteger(next.selectedNode) ? next.selectedNode : null;
-        state.cameraNodeIndex = next.cameraNodeIndex ?? undefined;
         state.variant = next.variant ?? undefined;
         if (look.yfov !== next.yfov) state.userCamera.perspective.yfov = next.yfov * Math.PI / 180;
 

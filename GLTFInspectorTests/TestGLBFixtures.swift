@@ -1,7 +1,7 @@
 import Foundation
 
 /// GLB bytes for tests, built in the test target so fixtures need no renderer. The same
-/// container `GLBBox.serialize` (RealityKit write side) produces: JSON chunk padded with spaces,
+/// container the RealityKit write side produces: JSON chunk padded with spaces,
 /// BIN chunk padded with zeros.
 enum TestGLB {
     struct InvalidJSON: Error {}
