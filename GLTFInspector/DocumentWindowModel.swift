@@ -29,7 +29,7 @@ final class DocumentWindowModel {
     }
     let placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
     /// From the mounted renderer's `RendererFeature.nodeVisibility`.
-    let canHideNodes: Bool
+    var canHideNodes: Bool { features.contains(.nodeVisibility) }
     /// Mounted renderer's capabilities. The View menu and `RendererAvailability` both read this.
     let features: Set<RendererFeature>
     /// Window-owned selection adapter over `activeSidebar`, rebuilt only when the sidebar is
@@ -52,13 +52,11 @@ final class DocumentWindowModel {
 
     init(
         documentURL: URL?,
-        canHideNodes: Bool? = nil,
         features: Set<RendererFeature> = Set(RendererFeature.allCases)
     ) {
         self.documentURL = documentURL
         self.features = features
-        self.canHideNodes = canHideNodes ?? features.contains(.nodeVisibility)
-        selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: self.canHideNodes)
+        selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: features.contains(.nodeVisibility))
         previewSession = PreviewSession(settings: settings)
         engineViewport = EngineViewportController(
             sidebar: placeholderSidebar,
