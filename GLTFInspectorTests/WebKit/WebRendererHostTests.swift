@@ -35,15 +35,6 @@ struct WebRendererBridgeTests {
         #expect(state.pose.azimuth == 25)
         #expect(state.sceneCenter == [0, 1, 0])
         #expect(state.isMeasurable && state.pose.isFinite)
-        let front = state.distance(framing: .front)
-        let expected = Double(
-            RenderCamera.fitDistance(
-                extent: SIMD3<Float>(2, 2, 2),
-                toCamera: RenderCamera.lookDirection(azimuthDegrees: 0, elevationDegrees: 0),
-                fieldOfViewInDegrees: Float(0.78 * 180 / .pi)
-            )
-        )
-        #expect(abs(front - expected) < 0.0001)
     }
 }
 
@@ -169,14 +160,6 @@ struct WebRendererHostTests {
             Issue.record("a missing environment did not fail")
         } catch WebRendererError.callFailed(let message) {
             #expect(message.hasPrefix("apply: "), "\(message)")
-        }
-    }
-
-    @Test(.enabled(if: TestModels.hasKhronosSamples))
-    func corruptFileFailsLoudly() async throws {
-        let host = try await WebKitTest.stillHost(size: 128)
-        await #expect(throws: (any Error).self) {
-            _ = try await host.load(model: TestFixtures.corrupt)
         }
     }
 

@@ -15,8 +15,6 @@ extension WebPreviewCanvas {
         var isOrthographic: Bool
         /// Vertical field of view in degrees.
         var fieldOfView: Double
-        /// Camera authored in the file, or nil for the user camera.
-        var fileCameraIndex: Int?
         /// `KHR_materials_variants` index, or nil for the file default.
         var materialVariantIndex: Int?
         /// Scene index; 0 keeps the file's default scene.
@@ -33,7 +31,6 @@ extension WebPreviewCanvas {
             autoRotates: Bool = false,
             isOrthographic: Bool = false,
             fieldOfView: Double = 45,
-            fileCameraIndex: Int? = nil,
             materialVariantIndex: Int? = nil,
             sceneIndex: Int = 0,
             showsFloor: Bool = false,
@@ -45,7 +42,6 @@ extension WebPreviewCanvas {
             self.autoRotates = autoRotates
             self.isOrthographic = isOrthographic
             self.fieldOfView = fieldOfView
-            self.fileCameraIndex = fileCameraIndex
             self.materialVariantIndex = materialVariantIndex
             self.sceneIndex = sceneIndex
             self.showsFloor = showsFloor
@@ -84,8 +80,8 @@ struct PageLook: Encodable, Equatable {
     /// Khronos default: `environmentRotation` 90 is the Sample Viewer's view, and yaw 0 means that.
     static let khronosDefaultRotation = 90.0
 
-    /// HDR URL; nil only for instrumentation that wants no IBL at all (look probes).
-    var environment: String?
+    /// HDR URL.
+    var environment: String
     var toneMap: String
     var exposure: Double
     var environmentRotation: Double
@@ -96,7 +92,6 @@ struct PageLook: Encodable, Equatable {
     var autoRotate: Bool
     var orthographic: Bool
     var yfov: Double
-    var cameraNodeIndex: Int?
     var variant: Int?
     var sceneIndex: Int
     var floor: Bool
@@ -117,7 +112,6 @@ struct PageLook: Encodable, Equatable {
         autoRotate = look.autoRotates
         orthographic = look.isOrthographic
         yfov = look.fieldOfView
-        cameraNodeIndex = look.fileCameraIndex
         variant = look.materialVariantIndex
         sceneIndex = look.sceneIndex
         floor = look.showsFloor

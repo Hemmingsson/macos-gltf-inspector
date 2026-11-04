@@ -10,27 +10,7 @@ import ImageIO
 /// (environment / tone / whether the env map is on). Pixel size is not part of the key — the
 /// last Finder icon for that identity overwrites.
 public enum FirstPixelPreview {
-    public static let folderName = "posters"
-
-    public enum Surface: Equatable, Sendable {
-        case cachedPoster(URL)
-        /// No stored PNG. Bounds are from the JSON header when `POSITION` min/max exist.
-        case noPoster(ModelBounds?)
-    }
-
-    /// Cache hit is the stored PNG path; a miss carries authored bounds for callers that want
-    /// them, but `image` stays nil.
-    public static func surface(
-        for url: URL,
-        renderer: RendererKind,
-        look: RenderLook = AppGroupSettings.rendererLook(),
-        container: URL = AppGroupSettings.containerURL
-    ) -> Surface {
-        if let stored = storedURL(for: url, renderer: renderer, look: look, container: container) {
-            return .cachedPoster(stored)
-        }
-        return .noPoster(bounds(for: url))
-    }
+    private static let folderName = "posters"
 
     /// Cached Finder poster, if one exists. Nil on a miss — do not invent geometry.
     public static func image(
@@ -39,10 +19,7 @@ public enum FirstPixelPreview {
         look: RenderLook = AppGroupSettings.rendererLook(),
         container: URL = AppGroupSettings.containerURL
     ) -> CGImage? {
-        guard case .cachedPoster(let stored) = surface(
-            for: url, renderer: renderer, look: look, container: container
-        ) else { return nil }
-        return loadPNG(at: stored)
+        storedURL(for: url, renderer: renderer, look: look, container: container).flatMap(loadPNG)
     }
 
     /// Cache file location for `url`, with its directory created.
@@ -91,7 +68,7 @@ public enum FirstPixelPreview {
         return destination
     }
 
-    public static func storedURL(
+    private static func storedURL(
         for url: URL,
         renderer: RendererKind,
         look: RenderLook,
@@ -101,7 +78,7 @@ public enum FirstPixelPreview {
         return FileManager.default.fileExists(atPath: stored.path) ? stored : nil
     }
 
-    public static func fileURL(
+    private static func fileURL(
         for url: URL,
         renderer: RendererKind,
         look: RenderLook,
@@ -114,7 +91,7 @@ public enum FirstPixelPreview {
 
     /// Stable hex of path + size + mtime + renderer + look. Not a filesystem path — the group
     /// container is world-readable to the host and both extensions.
-    public static func identity(
+    private static func identity(
         for url: URL,
         renderer: RendererKind,
         look: RenderLook
@@ -133,11 +110,6 @@ public enum FirstPixelPreview {
         ].joined(separator: "\n")
         let digest = SHA256.hash(data: Data(fingerprint.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
-    }
-
-    public static func bounds(for url: URL) -> ModelBounds? {
-        guard let json = try? GLBBox.peekDocumentJSON(from: url) else { return nil }
-        return ModelBounds.from(json: json)
     }
 
     private static func loadPNG(at url: URL) -> CGImage? {

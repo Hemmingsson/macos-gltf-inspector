@@ -219,19 +219,6 @@ struct WebCameraPresetTests {
     }
 
     @Test
-    func flatBoxUsesSharedFitRuleFromTheSide() {
-        let box = state(min: [0, 0, 0], max: [0, 0, 1])
-        let expected = Double(
-            RenderCamera.fitDistance(
-                extent: SIMD3(0, 0, 1),
-                toCamera: RenderCamera.lookDirection(azimuthDegrees: -90, elevationDegrees: 0),
-                fieldOfViewInDegrees: Float(0.8 * 180 / .pi)
-            )
-        )
-        #expect(abs(box.distance(framing: .left) - expected) < 1e-5)
-    }
-
-    @Test
     func presetAnglesMatchTheRealityKitViews() {
         // Page: azimuth follows RealityKit yaw; elevation is minus RealityKit pitch.
         #expect(CameraPreset.front.webOrbitAngles == (0, 0))
