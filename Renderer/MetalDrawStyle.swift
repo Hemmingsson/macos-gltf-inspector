@@ -52,7 +52,11 @@ enum MetalDrawStyle: Equatable {
     func adjust(_ material: inout GPUMaterial) {
         switch self {
         case .xray:
-            material.baseColor.w *= Self.xrayOpacity
+            // MASK compares the authored alpha to the cutoff. Scaling it first (0.4 < 0.5)
+            // discards the whole card. The shader scales MASK alpha after the test.
+            if material.flags.y != 1 {
+                material.baseColor.w *= Self.xrayOpacity
+            }
             material.flags.z |= Self.xrayBlendBit
         case .clay:
             material.flags.z |= Self.ignoreVertexColorBit

@@ -108,8 +108,7 @@ struct MetalRendererTests {
         let center = (size / 2 * size + size / 2) * 4
         #expect(Array(xrayRaster.bytes[center..<center + 3]) == Array(xrayBackRaster.bytes[center..<center + 3]))
         #expect(Array(shadedRaster.bytes[center..<center + 3]) == Array(shadedBackRaster.bytes[center..<center + 3]))
-        let rim = (size / 2 * size + size / 2 + 18) * 4
-        #expect(Array(xrayRaster.bytes[rim..<rim + 3]) == Array(shadedRaster.bytes[rim..<rim + 3]))
+        #expect(xrayRaster.bytes != xrayBackRaster.bytes, "opaque mask texels must still draw over the back quad")
     }
 
     @Test func clayIgnoresVertexColor() async throws {

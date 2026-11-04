@@ -137,7 +137,9 @@ fragment MetalFragmentOutput khronos_fragment(MetalVaryings in [[stage_in]],bool
     // Khronos alpha-tests a lit material only under DEBUG_NONE; unlit always.
     if(m.flags.y==1 && (frame.options.y==0 || (m.flags.z&1u))) {
         if(base.a<m.surface.w) discard_fragment();
-        if((m.flags.z&256u)==0u) base.a=1;
+        // 0.4 matches MetalDrawStyle.xrayOpacity, applied after the cutoff.
+        if((m.flags.z&256u)!=0u) base.a*=0.4f;
+        else base.a=1;
     }
     if(m.flags.y==0 && (m.flags.z&256u)==0u) base.a=1;
     // MATERIAL_UNLIT: TRANSMISSION_PASS writes toneMapInverse(baseColor) with flag 2, else baseColor with flag 1.
