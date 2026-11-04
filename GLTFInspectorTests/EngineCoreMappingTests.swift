@@ -2,6 +2,7 @@ import Foundation
 @testable import GLTFCore
 @testable import GLTFInspector
 import PreviewUI
+import Renderer
 import Testing
 
 struct EngineCoreMappingTests {
@@ -15,10 +16,10 @@ struct EngineCoreMappingTests {
 
     @Test func cameraPresetsRoundTrip() {
         for preset in PreviewUI.CameraPreset.allCases {
-            let core = GLTFCore.CameraPreset(preset)
+            let core = Renderer.CameraPreset(preset)
             #expect(core.rawValue == preset.rawValue)
         }
-        #expect(GLTFCore.CameraPreset.allCases.count == PreviewUI.CameraPreset.allCases.count)
+        #expect(Renderer.CameraPreset.allCases.count == PreviewUI.CameraPreset.allCases.count)
     }
 
     @Test func toneMappingKeepsKhronosNames() {

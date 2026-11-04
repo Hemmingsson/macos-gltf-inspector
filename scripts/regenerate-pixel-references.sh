@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Rewrites the pixel-diff reference PNGs under TestModels/References/ (and the camera poses in
-# its manifest) from the current page. Run this only when a page change legitimately changes
-# output — the PNGs are the assertions, so regenerating makes the suite agree with whatever it
-# does today.
+# Rewrites the reference PNGs under TestModels/References/ (the camera poses in its manifest, and
+# Features/) from the Metal renderer. The committed PNGs were rendered by the Khronos Sample
+# Renderer; regenerating replaces them with this renderer's output, so run it only when a sample
+# is added or a deliberate renderer change moves pixels, and compare against the Khronos Sample
+# Viewer first.
 #
 #   ./scripts/regenerate-pixel-references.sh                 # re-record poses + references
 #   ./scripts/regenerate-pixel-references.sh --measure-noise # print the run-to-run noise floor
@@ -28,7 +29,7 @@ touch "$SENTINEL"
 
 status=0
 LOG="$(mktemp -t pixel-references)"
-"$ROOT/scripts/dev.sh" test "-only-testing:GLTFInspectorTests/PixelDiffWebKitRegeneration" >"$LOG" 2>&1 || status=$?
+"$ROOT/scripts/dev.sh" test "-only-testing:GLTFInspectorTests/PixelDiffRegenerationTests" >"$LOG" 2>&1 || status=$?
 grep -E "^(noise|regenerated)|error:|TEST (SUCCEEDED|FAILED)" "$LOG" || true
 echo "full log: $LOG"
 

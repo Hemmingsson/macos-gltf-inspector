@@ -1,11 +1,11 @@
 import Foundation
 import GLTFCore
 import PreviewUI
-import RendererWebKit
+import Renderer
 
 /// The window's viewport and sidebar as the web canvas's look: the `RenderLook` (through the core
 /// mapping) plus the view state the page draws. The page mapping itself lives in `RendererWebKit`.
-extension WebPreviewCanvas.Look {
+extension ViewOptions {
     /// `sidebar` is nil until the panels' document has loaded: the file's default scene, nothing
     /// selected.
     @MainActor
@@ -26,7 +26,7 @@ extension WebPreviewCanvas.Look {
         selectedNodeIndex: Int? = nil
     ) {
         self.init(
-            render: RenderLook(viewport.lighting, backdrop: viewport.backdrop),
+            look: RenderLook(viewport.lighting, backdrop: viewport.backdrop),
             viewMode: RenderViewMode(viewport.viewMode),
             autoRotates: viewport.autoRotates,
             isOrthographic: viewport.projection == .orthographic,

@@ -1,27 +1,15 @@
 import GLTFCore
-import RendererWebKit
+import Renderer
 
 extension FocusedPreviewCommands {
-    /// The web canvas's commands. Camera moves are fire-and-forget; a failure only means the page
-    /// was not ready, so it is logged, not surfaced.
-    static func web(_ canvas: WebCanvasController) -> Self {
-        func run(_ name: String, _ action: @escaping @MainActor () async throws -> Void) {
-            Task { @MainActor in
-                do {
-                    try await action()
-                } catch {
-                    AppLog.error(AppLog.host, "web canvas \(name) failed: \(error.localizedDescription)")
-                }
-            }
-        }
-        return FocusedPreviewCommands(
-            fit: { run("fit") { try await canvas.fit() } },
-            reset: { run("reset") { try await canvas.fit() } },
-            applyCameraPreset: { preset in
-                run("preset \(preset.rawValue)") { try await canvas.apply(preset: preset) }
-            },
-            zoom: { factor in run("zoom") { try await canvas.zoom(by: factor) } },
-            screenshot: { try await canvas.snapshot() },
+    /// The mounted canvas's commands.
+    static func canvas(_ canvas: ModelCanvasController) -> Self {
+        FocusedPreviewCommands(
+            fit: { canvas.fit() },
+            reset: { canvas.fit() },
+            applyCameraPreset: { canvas.show($0) },
+            zoom: { canvas.zoom(by: $0) },
+            screenshot: { try canvas.snapshot() },
             zoomPercent: { canvas.zoomPercent }
         )
     }

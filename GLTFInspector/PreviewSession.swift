@@ -14,7 +14,8 @@ final class PreviewSession {
     let settings: EngineSettingsStore
     var exposureEV: Float = 0
     var environmentYaw: Float = 0
-    var fieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
+    static let defaultFieldOfViewDegrees: Float = 35
+    var fieldOfViewDegrees = defaultFieldOfViewDegrees
     var viewMode: RenderViewMode = .shaded
     /// Modes the open file offers (always starts with `.shaded`); `viewMode` is one of them.
     var viewModes: [RenderViewMode] = [.shaded]

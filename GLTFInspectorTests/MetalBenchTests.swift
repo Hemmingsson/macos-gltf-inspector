@@ -2,16 +2,16 @@ import Darwin
 import Foundation
 import GLTFCore
 import Testing
-@testable import RendererMetal
+@testable import Renderer
 
 extension PerfBench {
     @MainActor
     @Suite struct MetalBench {
-        /// In-process measurements, matching wk.thumb.cold/warm rather than claiming to
+        /// In-process measurements, rather than claiming to
         /// measure a fresh extension process. The warm measurement reuses the Metal device.
         @Test func offscreenFirstPixel() async throws {
             let manifest = try PixelDiffManifest.load()
-            let look = try PixelDiffWebKit.renderLook(manifest.look)
+            let options = ViewOptions(look: try PixelDiffMetal.renderLook(manifest.look))
             let warm = try MetalRenderer()
             for file in BenchCorpus.khronos {
                 guard let entry = manifest.entries.first(where: { $0.modelURL == file.url }) else {
@@ -24,15 +24,15 @@ extension PerfBench {
                     let coldStart = ContinuousClock.now
                     let renderer = try MetalRenderer()
                     try await renderer.load(url: file.url)
-                    _ = try renderer.still(look: look, pose: pose, size: PerfBench.stillSize)
+                    _ = try renderer.image(options, pose: pose, width: PerfBench.stillSize, height: PerfBench.stillSize)
                     coldTimes.append(BenchClock.ms(since: coldStart))
                     let previousPipelineTime = warm.pipelineMilliseconds
                     let warmStart = ContinuousClock.now
                     try await warm.load(url: file.url)
-                    _ = try warm.still(look: look, pose: pose, size: PerfBench.stillSize)
+                    _ = try warm.image(options, pose: pose, width: PerfBench.stillSize, height: PerfBench.stillSize)
                     warmTimes.append(BenchClock.ms(since: warmStart))
                     pipelineTimes.append(warm.pipelineMilliseconds - previousPipelineTime)
-                    _ = try warm.image(look: look, pose: pose, width: 1920, height: 1080)
+                    _ = try warm.image(options, pose: pose, width: 1920, height: 1080)
                     gpuTimes.append(warm.gpuMilliseconds)
                 }
                 BenchReport.row("mtl.thumb.cold", file.name, "total", coldTimes)

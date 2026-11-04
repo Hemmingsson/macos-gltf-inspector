@@ -4,7 +4,7 @@ import Testing
 /// Opt-in performance bench: `./scripts/dev.sh bench` (sets `GLTF_BENCH=1` for the test runner).
 ///
 /// Skipped by the default `dev.sh test` and free of wall-clock assertions: the suite nested in
-/// this one (`PerfBench.WebKitBench`) only prints `bench|…` rows, which `dev.sh bench` turns into
+/// this one (`PerfBench.MetalBench`) only prints `bench|…` rows, which `dev.sh bench` turns into
 /// a table. Serialized so no two renders share
 /// the GPU; numbers are a baseline on whatever else the machine is doing, not a gate.
 @Suite(.serialized, .enabled(if: BenchEnvironment.isEnabled, "set GLTF_BENCH=1 (./scripts/dev.sh bench)"))

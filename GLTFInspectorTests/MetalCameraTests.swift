@@ -1,7 +1,7 @@
 import Foundation
 import simd
 import Testing
-@testable import RendererMetal
+@testable import Renderer
 
 struct MetalCameraTests {
     private func camera(azimuth: Double = 0, elevation: Double = 0) -> MetalCamera {

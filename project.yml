@@ -17,11 +17,6 @@ schemes:
       test:
         targets:
           - GLTFInspectorTests
-        # Tests that mount a canvas through the factory without a host drive the WebKit page.
-        # The Metal and Filament suites (and CanvasRendererFactoryTests) pick their backend
-        # explicitly; shipped surfaces default to Metal.
-        environmentVariables:
-          GLTF_RENDERER: webkit
 
     # Opt-in real-window XCUITest flows (`./scripts/dev.sh uitest`); not part of `dev.sh test`.
     GLTFInspectorUITests:
@@ -52,7 +47,6 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "1.1"
     CURRENT_PROJECT_VERSION: "4"
-    # Filament's prebuilt SDK (.build/filament, scripts/fetch-filament.sh) is arm64 only.
     ARCHS: arm64
 
 packages:
@@ -116,19 +110,14 @@ targets:
       - target: PreviewUI
         embed: true
 
-  # Extension-safe core: glTF file model, validator, stats, App Group settings, the bundled
-  # Khronos HDRs the page lights with and their prefiltered `.metalibl` bakes RendererMetal lights
-  # with (both found with `Bundle(for:)`, inside the app, so the sandboxed extensions can read
-  # them). Linked by the host (embedded once), both extensions and the tests. Must not import
-  # WebKit, AppKit or PreviewUI.
+  # Extension-safe core: what the file contains (JSON summary, validator, stats), the look
+  # vocabulary and the App Group settings. Linked by the host (embedded once), both extensions
+  # and the tests. No AppKit or SwiftUI.
   GLTFCore:
     type: framework
     platform: macOS
     sources:
       - GLTFCore
-      - path: assets/ibl/khronos
-        type: file
-        buildPhase: resources
       - path: Vendor/gltf-validator
         includes:
           - gltf_validator.dart.js
@@ -141,14 +130,14 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
 
-  # Native Metal port of the Khronos Sample Renderer: the default renderer of the window, Quick
-  # Look and the Finder thumbnail (`CanvasRenderer`). Extension-safe; its `default.metallib` ships
-  # in this framework (`Bundle(for:)`). DracoSwift links in statically. GLTFKit2 is a dynamic
-  # framework that only the host app's own package dependency embeds (in Contents/Frameworks,
-  # where the extensions' `@executable_path/../../../../Frameworks` rpath finds it); a framework
-  # target's package dependency is not embedded, and `embed: true` on the package names a
-  # nonexistent `GLTFKit2-product`.
-  RendererMetal:
+  # The Metal port of the Khronos glTF Sample Renderer and the canvas every surface mounts
+  # (`ModelView`, `ModelCanvas`, `ThumbnailRenderer`). Extension-safe; its `default.metallib` and
+  # lighting bakes ship in this framework (`Bundle(for:)`). DracoSwift links in statically.
+  # GLTFKit2 is a dynamic framework that only the host app's own package dependency embeds (in
+  # Contents/Frameworks, where the extensions' `@executable_path/../../../../Frameworks` rpath
+  # finds it); a framework target's package dependency is not embedded, and `embed: true` on
+  # the package names a nonexistent `GLTFKit2-product`.
+  Renderer:
     type: framework
     platform: macOS
     sources:
@@ -161,18 +150,23 @@ targets:
       - path: Vendor/meshoptimizer
         includes: [meshoptimizer.h, vertexcodec.cpp, indexcodec.cpp, vertexfilter.cpp]
         headerVisibility: private
-      - path: RendererMetal
+      - path: Renderer
         excludes:
           - Shaders/UPSTREAM.md
-          - Shaders/LICENSE
+          - Shaders/LICENSE.md
+          - Shaders/THIRD_PARTY_NOTICES.txt
           - Scene/MetalLoadKernels.c
+          - Environments
         headerVisibility: public
-      - path: RendererMetal/Scene/MetalLoadKernels.c
+      - path: Renderer/Scene/MetalLoadKernels.c
         compilerFlags: [-O2]
+      - path: Renderer/Environments
+        includes: ["*.metalibl"]
+        buildPhase: resources
     settings:
       base:
         MTL_FAST_MATH: NO
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.RendererMetal
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.Renderer
         GENERATE_INFOPLIST_FILE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
         CLANG_CXX_LANGUAGE_STANDARD: c++20
@@ -184,99 +178,6 @@ targets:
         product: GLTFKit2
       - package: DracoSwift
         product: DracoSwift
-
-  # Objective-C++ over Google's Filament (Metal backend, gltfio ubershaders). Static Filament
-  # libraries from the prebuilt SDK in .build/filament (scripts/fetch-filament.sh). Public
-  # surface: FLRenderer.h, no Filament headers.
-  FilamentBridge:
-    type: framework
-    platform: macOS
-    sources:
-      - path: FilamentBridge
-        headerVisibility: public
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.FilamentBridge
-        GENERATE_INFOPLIST_FILE: YES
-        APPLICATION_EXTENSION_API_ONLY: YES
-        DEFINES_MODULE: YES
-        CLANG_CXX_LANGUAGE_STANDARD: c++20
-        CLANG_ENABLE_OBJC_ARC: YES
-        GCC_WARN_INHIBIT_ALL_WARNINGS: YES
-        HEADER_SEARCH_PATHS: $(SRCROOT)/.build/filament/include
-        LIBRARY_SEARCH_PATHS: $(SRCROOT)/.build/filament/lib/arm64
-        OTHER_LDFLAGS:
-          - -lfilament
-          - -lbackend
-          - -lbluegl
-          - -lbluevk
-          - -lfilabridge
-          - -lfilaflat
-          - -lutils
-          - -lgeometry
-          - -lsmol-v
-          - -libl
-          - -libl-lite
-          - -lgltfio_core
-          - -luberarchive
-          - -ldracodec
-          - -lktxreader
-          - -lbasis_transcoder
-          - -lstb
-          - -lmeshoptimizer
-          - -lmikktspace
-          - -lzstd
-          - -luberzlib
-          - -limage
-          - -limageio-lite
-          - -lfilament-iblprefilter
-          - -lfilament-generatePrefilterMipmap
-          - -labseil
-          - -lperfetto
-          - -lshaders
-          - -lcamutils
-          - -lfilameshio
-          - -lfilamat
-          - -lmatp
-          - -lc++
-          - -framework
-          - Metal
-          - -framework
-          - QuartzCore
-          - -framework
-          - CoreVideo
-          - -framework
-          - ImageIO
-          - -framework
-          - AppKit
-
-  # The renderer seam every surface uses: `CanvasRenderer` (the backend switch), the SwiftUI
-  # canvas and `WebCanvasController`, `ThumbnailRenderer`, and the three hosts — the native
-  # Metal host (default), Filament, and the WKWebView page (the vendored Khronos glTF Sample
-  # Renderer). Extension-safe. The page ships once, inside this framework; `WebRendererHost`
-  # finds it with `Bundle(for:)` (the HDRs come from GLTFCore).
-  RendererWebKit:
-    type: framework
-    platform: macOS
-    sources:
-      - path: RendererWebKit
-        excludes:
-          - web-renderer
-      - path: RendererWebKit/web-renderer
-        type: file
-        buildPhase: resources
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.RendererWebKit
-        GENERATE_INFOPLIST_FILE: YES
-        APPLICATION_EXTENSION_API_ONLY: YES
-    dependencies:
-      - target: GLTFCore
-        embed: false
-      - target: RendererMetal
-        embed: false
-      - target: FilamentBridge
-        embed: false
 
   GLTFInspector:
     type: application
@@ -374,11 +275,7 @@ targets:
         embed: true
       - target: GLTFCore
         embed: true
-      - target: RendererWebKit
-        embed: true
-      - target: RendererMetal
-        embed: true
-      - target: FilamentBridge
+      - target: Renderer
         embed: true
       - target: PreviewUI
         embed: true
@@ -407,11 +304,6 @@ targets:
         # user opens from, so the sandboxed extensions need read access beyond the opened file.
         com.apple.security.temporary-exception.files.home-relative-path.read-only:
           - /
-        # The default Metal renderer needs no entitlement beyond the sandbox. This one is for the
-        # `GLTF_RENDERER=webkit` override, which still ships: WKWebView spawns a Networking XPC
-        # service even with no network use; without this the extension is denied the mach
-        # extension WebContent needs and WebContent dies on launch.
-        com.apple.security.network.client: true
     info:
       path: PreviewExtension/Info.plist
       properties:
@@ -435,7 +327,7 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: false
-      - target: RendererWebKit
+      - target: Renderer
         embed: false
 
   ThumbnailExtension:
@@ -456,11 +348,6 @@ targets:
         # user opens from, so the sandboxed extensions need read access beyond the opened file.
         com.apple.security.temporary-exception.files.home-relative-path.read-only:
           - /
-        # The default Metal renderer needs no entitlement beyond the sandbox. This one is for the
-        # `GLTF_RENDERER=webkit` override, which still ships: WKWebView spawns a Networking XPC
-        # service even with no network use; without this the extension is denied the mach
-        # extension WebContent needs and WebContent dies on launch.
-        com.apple.security.network.client: true
     info:
       path: ThumbnailExtension/Info.plist
       properties:
@@ -484,7 +371,7 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: false
-      - target: RendererWebKit
+      - target: Renderer
         embed: false
 
   GLTFInspectorTests:
@@ -502,9 +389,7 @@ targets:
       - target: GLTFInspector
       - target: GLTFCore
         embed: false
-      - target: RendererMetal
-        embed: false
-      - target: RendererWebKit
+      - target: Renderer
         embed: false
       - target: DesignSystem
         embed: false

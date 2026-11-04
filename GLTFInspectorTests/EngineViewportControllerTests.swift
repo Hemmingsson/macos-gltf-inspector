@@ -206,9 +206,9 @@ struct EngineViewportControllerTests {
         #expect(viewport.fieldOfViewDegrees == 90)
 
         viewport.setFieldOfViewDegrees(5)
-        #expect(session.fieldOfViewDegrees == RenderCamera.clampedFieldOfView(5))
+        #expect(session.fieldOfViewDegrees == 15)
         viewport.reset()
-        #expect(session.fieldOfViewDegrees == RenderCamera.defaultFieldOfViewDegrees)
+        #expect(session.fieldOfViewDegrees == PreviewSession.defaultFieldOfViewDegrees)
         #expect(session.exposureEV == 0)
     }
 

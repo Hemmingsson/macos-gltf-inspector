@@ -3,6 +3,7 @@ import Foundation
 import PreviewUI
 import Testing
 @testable import GLTFInspector
+import Renderer
 
 /// One settings store for host + both extensions: the App Group suite and container.
 @MainActor
@@ -87,23 +88,19 @@ struct AppGroupSettingsTests {
         #expect(AppGroupSettings.rendererLook(defaults: defaults).environment == .defaultLook)
     }
 
-    /// The page serves these by name; a missing `.hdr` would leave the model unlit.
+    /// The renderer finds each stored environment's lighting bake by name; a missing one would
+    /// leave the model unlit.
     @Test
     func everyEnvironmentIsBundled() {
-        for environment in KhronosEnvironments.allCases {
-            #expect(environment.bundledURL != nil, "\(environment.rawValue).hdr missing")
+        for name in KhronosEnvironments.allCases.map(\.rawValue) + ["shared"] {
+            #expect(Bundle(for: MetalRenderer.self).url(forResource: name, withExtension: "metalibl") != nil,
+                    "\(name).metalibl missing")
         }
     }
 
-    /// The test host is the app, which claims the group: the container must resolve to the
-    /// shared Group Containers folder, not Application Support.
+    /// The test host is the app, which claims the group, so the suite is the group's.
     @Test
-    func hostResolvesTheGroupContainer() {
-        let url = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: AppGroupSettings.groupID
-        )
-        #expect(url != nil)
-        #expect(AppGroupSettings.containerURL.path.contains("Group Containers/\(AppGroupSettings.groupID)"))
+    func hostResolvesTheGroupSuite() {
         #expect(AppGroupSettings.defaults !== UserDefaults.standard)
     }
 

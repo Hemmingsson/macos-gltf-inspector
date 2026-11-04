@@ -3,6 +3,7 @@ import Foundation
 import GLTFCore
 import Observation
 import PreviewUI
+import Renderer
 import SwiftUI
 
 /// Session + camera + still-path adapter for `ViewportController`.
@@ -166,7 +167,7 @@ final class EngineViewportController: ViewportController {
                 toneMapping: defaultToneMapping
             )
         )
-        setFieldOfViewDegrees(RenderCamera.defaultFieldOfViewDegrees)
+        setFieldOfViewDegrees(PreviewSession.defaultFieldOfViewDegrees)
         sidebar.selectedCameraNodeIndex = nil
         activeCameraPreset = nil
         commands?.reset()
@@ -175,7 +176,7 @@ final class EngineViewportController: ViewportController {
     func applyCameraPreset(_ preset: PreviewUI.CameraPreset) {
         sidebar.selectedCameraNodeIndex = nil
         activeCameraPreset = preset
-        commands?.applyCameraPreset(GLTFCore.CameraPreset(preset))
+        commands?.applyCameraPreset(Renderer.CameraPreset(preset))
     }
 
     func screenshot() {
@@ -215,7 +216,7 @@ final class EngineViewportController: ViewportController {
     var fieldOfViewDegrees: Float { previewSession.fieldOfViewDegrees }
 
     func setFieldOfViewDegrees(_ degrees: Float) {
-        previewSession.fieldOfViewDegrees = RenderCamera.clampedFieldOfView(degrees)
+        previewSession.fieldOfViewDegrees = min(max(degrees, 15), 90)
     }
 }
 

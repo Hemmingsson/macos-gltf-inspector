@@ -1,5 +1,6 @@
 import CoreGraphics
 import GLTFCore
+import Renderer
 
 /// Camera and still commands of the web canvas that is on screen. `DocumentWindow` registers them
 /// (`FocusedPreviewCommands.web`); `EngineViewportController` forwards the View menu, the Camera

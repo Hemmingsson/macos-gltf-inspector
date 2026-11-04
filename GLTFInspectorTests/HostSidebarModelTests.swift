@@ -2,7 +2,7 @@ import Foundation
 @testable import GLTFCore
 @testable import GLTFInspector
 import PreviewUI
-import RendererWebKit
+import Renderer
 import Testing
 
 /// Sidebar state, and how it reaches the page `Look`.
@@ -44,7 +44,7 @@ struct HostSidebarModelTests {
         let sidebar = HostSidebarModel(document: doc)
         let viewport = EngineViewportController(sidebar: sidebar)
 
-        #expect(WebPreviewCanvas.Look(viewport, sidebar: sidebar) == WebPreviewCanvas.Look(viewport, sidebar: nil))
+        #expect(ViewOptions(viewport, sidebar: sidebar) == ViewOptions(viewport, sidebar: nil))
 
         let model = EngineSceneModel(
             fileName: "cam.gltf", document: doc,
@@ -56,8 +56,8 @@ struct HostSidebarModelTests {
         )
         viewport.setFileCamera(cameraID)
         #expect(
-            WebPreviewCanvas.Look(viewport, sidebar: sidebar)
-                == WebPreviewCanvas.Look(viewport, sceneIndex: 0, fileCameraNodeIndex: 3)
+            ViewOptions(viewport, sidebar: sidebar)
+                == ViewOptions(viewport, sceneIndex: 0, fileCameraNodeIndex: 3)
         )
         #expect(EngineSelectionModel.detail(for: cameraID, document: doc)?.camera?.name == "Cam")
 

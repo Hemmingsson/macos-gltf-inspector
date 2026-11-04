@@ -42,20 +42,9 @@ public enum AppGroupSettings {
         if let suite = UserDefaults(suiteName: groupID) {
             return suite
         }
-        AppLog.error(AppLog.lighting, "app group suite unavailable; using standard defaults")
+        AppLog.error(AppLog.settings, "app group suite unavailable; using standard defaults")
         return .standard
     }()
-
-    /// Group container root: holds the cached Finder posters (`FirstPixelPreview`). Falls back to
-    /// the process's own Application Support folder when the group is not claimed (logged).
-    public static var containerURL: URL {
-        if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID) {
-            return url
-        }
-        AppLog.error(AppLog.lighting, "app group container unavailable; using Application Support")
-        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("glTF Inspector", isDirectory: true)
-    }
 
     public static func registerDefaults(in defaults: UserDefaults = defaults) {
         defaults.register(defaults: defaultValues)

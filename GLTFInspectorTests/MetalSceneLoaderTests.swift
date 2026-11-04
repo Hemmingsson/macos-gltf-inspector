@@ -2,7 +2,7 @@ import Foundation
 import Metal
 import simd
 import Testing
-@testable import RendererMetal
+@testable import Renderer
 
 struct MetalSceneLoaderTests {
     private func device() throws -> any MTLDevice { try #require(MTLCreateSystemDefaultDevice()) }

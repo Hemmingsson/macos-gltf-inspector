@@ -1,5 +1,6 @@
 import GLTFCore
 import PreviewUI
+import Renderer
 
 /// PreviewUI seam values ↔ GLTFCore render values, one switch per type.
 ///
@@ -65,7 +66,7 @@ extension DebugChannel {
     }
 }
 
-extension GLTFCore.CameraPreset {
+extension Renderer.CameraPreset {
     init(_ preset: PreviewUI.CameraPreset) {
         switch preset {
         case .front: self = .front

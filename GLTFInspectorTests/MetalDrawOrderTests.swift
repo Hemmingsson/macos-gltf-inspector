@@ -2,7 +2,7 @@ import Foundation
 import Metal
 import simd
 import Testing
-@testable import RendererMetal
+@testable import Renderer
 
 /// The native port orders draws like the pinned Khronos `drawScene`: opaque instancing groups,
 /// then transmission and transparent drawables sorted by view-space centroid depth.

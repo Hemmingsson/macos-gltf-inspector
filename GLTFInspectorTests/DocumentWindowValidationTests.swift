@@ -43,7 +43,7 @@ struct DocumentWindowValidationTests {
         window.noteCanvasReady()
         window.noteCanvasReady()
 
-        _ = try await waitUntil { window.validation != nil }
+        #expect(try await waitUntil { window.validation != nil })
         #expect(log.all == [url])
         guard case .success(let report) = window.validation else {
             Issue.record("expected success, got \(String(describing: window.validation))")
@@ -70,7 +70,7 @@ struct DocumentWindowValidationTests {
         #expect(log.all.isEmpty)
 
         window.noteCanvasReady()
-        _ = try await waitUntil { window.validation != nil }
+        #expect(try await waitUntil { window.validation != nil })
         #expect(log.all == [second])
     }
 
@@ -97,19 +97,4 @@ private final class ValidationLog: @unchecked Sendable {
         defer { lock.unlock() }
         return urls
     }
-}
-
-@MainActor
-private func waitUntil(
-    within limit: Duration = .seconds(2),
-    _ predicate: () -> Bool
-) async throws -> Bool {
-    let deadline = ContinuousClock.now + limit
-    while ContinuousClock.now < deadline {
-        if predicate() { return true }
-        await Task.yield()
-    }
-    if predicate() { return true }
-    Issue.record("timed out waiting for validation")
-    return false
 }
