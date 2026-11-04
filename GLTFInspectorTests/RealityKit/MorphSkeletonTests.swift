@@ -100,11 +100,7 @@ struct MorphSkeletonTests {
         let mesh = try #require(bone.components[ModelComponent.self]?.mesh)
         let childCount = overlay.children.count
 
-        PreviewSkeletonOverlay.updateBones(
-            skins: model.document.skins,
-            root: model.entity,
-            pivot: pivot
-        )
+        PreviewSkeletonOverlay.updateBones(pivot: pivot)
         #expect(overlay.children.count == childCount)
         let updated = try #require(
             overlay.children.first { $0.name.hasPrefix(PreviewSkeletonOverlay.bonePrefix) }
@@ -139,11 +135,7 @@ struct MorphSkeletonTests {
         let knee = try #require(GLTFNodeLookup.entity(nodeIndex: 2, in: model.entity))
         knee.position = [0, 2, 0]
 
-        PreviewSkeletonOverlay.updateBones(
-            skins: model.document.skins,
-            root: model.entity,
-            pivot: pivot
-        )
+        PreviewSkeletonOverlay.updateBones(pivot: pivot)
         #expect(bone === overlay.children.first { $0.name.hasPrefix(PreviewSkeletonOverlay.bonePrefix) })
         #expect(simd_distance(bone.position, before) > 0.1)
     }

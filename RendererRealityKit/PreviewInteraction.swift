@@ -13,7 +13,6 @@ public protocol PreviewOverlay: AnyObject {
     var overlayRevision: Int { get }
     var selectedCameraIndex: Int? { get }
     var selectedNodeIndex: Int? { get }
-    var document: GLTFSessionDocument { get }
     /// Which glTF nodes stay enabled.
     var nodeVisibility: PreviewNodeVisibility { get }
     /// Last `overlayRevision` applied to the canvas. Written by `applyIfNeeded(to:)` only.

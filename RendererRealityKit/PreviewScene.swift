@@ -467,11 +467,7 @@ struct PreviewScene: View {
             guard skeletonTickActive else { return }
             while !Task.isCancelled {
                 if let pivot = frame.pivot, frame.appliedShowSkeleton == true {
-                    PreviewSkeletonOverlay.updateBones(
-                        skins: documentSkins,
-                        root: entity,
-                        pivot: pivot
-                    )
+                    PreviewSkeletonOverlay.updateBones(pivot: pivot)
                 }
                 try? await Task.sleep(for: .milliseconds(16))
             }

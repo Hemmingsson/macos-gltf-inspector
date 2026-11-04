@@ -70,13 +70,11 @@ enum PreviewSkeletonOverlay {
         overlay.components.set(
             SkeletonOverlayState(joints: joints, bones: bones, thickness: thickness)
         )
-        updateBones(skins: skins, root: root, pivot: pivot, thickness: thickness)
+        updateBones(pivot: pivot, thickness: thickness)
     }
 
     /// Reposition existing bone segments after animation / auto-rotate.
     static func updateBones(
-        skins: [GLTFSessionDocument.Skin],
-        root: Entity,
         pivot: Entity,
         thickness: Float? = nil
     ) {

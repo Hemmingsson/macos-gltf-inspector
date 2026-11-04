@@ -172,7 +172,7 @@ extension PerfBench {
                 show.append(BenchClock.ms(since: start))
                 for _ in 0..<10 {
                     let updateStart = ContinuousClock.now
-                    PreviewSkeletonOverlay.updateBones(skins: skins, root: model.entity, pivot: pivot)
+                    PreviewSkeletonOverlay.updateBones(pivot: pivot)
                     update.append(BenchClock.ms(since: updateStart))
                 }
                 PreviewSkeletonOverlay.clear(from: model.entity, pivot: pivot)
