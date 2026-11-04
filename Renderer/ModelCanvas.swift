@@ -101,7 +101,13 @@ public final class ModelCanvasController {
     public private(set) var animationClips: [AnimationClipDescriptor] = []
     /// Indices into `animationClips` / the loaded clip list that are evaluated together.
     public var selectedClipIndices: [Int] = [] {
-        didSet { playbackStateDidChange() }
+        didSet {
+            let duration = playbackDuration
+            if duration > 0, time > duration {
+                time = duration
+            }
+            playbackStateDidChange()
+        }
     }
     public private(set) var isPlaying = false
     /// Current time in seconds along the active clips; 0 at rest when the window opens.
@@ -130,6 +136,10 @@ public final class ModelCanvasController {
 
     public func play() {
         guard !animationClips.isEmpty else { return }
+        guard playbackDuration > 0 else { return }
+        if !loops, time >= playbackDuration {
+            time = 0
+        }
         isPlaying = true
         lastPlaybackInstant = playbackClock.now()
         playbackStateDidChange()

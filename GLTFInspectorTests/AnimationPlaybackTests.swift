@@ -129,6 +129,45 @@ struct AnimationPlaybackTests {
         #expect(!state.canvas.isPlaying && state.canvas.time == 0)
     }
 
+    @Test func playRewindsAfterNonLoopingEnd() async throws {
+        let canvas = ModelCanvasController()
+        try await ready(canvas, url: TestFixtures.boxAnimated)
+        canvas.loops = false
+        canvas.play()
+        let duration = try #require(canvas.animationClips.first?.duration)
+        canvas.advancePlayback(elapsed: duration + 0.5)
+        #expect(!canvas.isPlaying)
+        #expect(canvas.time == duration)
+        canvas.play()
+        #expect(canvas.isPlaying)
+        canvas.advancePlayback(elapsed: 0.1)
+        #expect(abs(canvas.time - 0.1) < 0.05)
+    }
+
+    @Test func zeroDurationClipDoesNotStartPlayback() async throws {
+        let url = try writeTempZeroDurationClipGLB()
+        defer { try? FileManager.default.trashItem(at: url, resultingItemURL: nil) }
+        let canvas = ModelCanvasController()
+        let container = mount(canvas, url: url)
+        #expect(try await waitUntil { canvas.phase == .ready })
+        canvas.play()
+        #expect(!canvas.isPlaying)
+        canvas.advancePlayback(elapsed: 1)
+        #expect(canvas.time == 0)
+        _ = container
+    }
+
+    @Test func selectingShorterClipClampsTime() async throws {
+        let url = try writeTempTwoDurationClipsGLB()
+        defer { try? FileManager.default.trashItem(at: url, resultingItemURL: nil) }
+        let canvas = ModelCanvasController()
+        try await ready(canvas, url: url)
+        canvas.selectAnimationClip(at: 1)
+        canvas.scrub(to: 2)
+        canvas.selectAnimationClip(at: 0)
+        #expect(abs(canvas.time - 1) < 1e-4)
+    }
+
     @Test func displayLinkRunsOnlyWhilePlayingOrAutoRotating() async throws {
         let canvas = ModelCanvasController()
         let container = mount(canvas, url: TestFixtures.cube)
