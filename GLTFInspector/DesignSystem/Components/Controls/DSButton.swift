@@ -74,20 +74,3 @@ extension DSButton where Label == Text {
         self.init(variant: variant, size: size, role: role, action: action) { Text(title) }
     }
 }
-
-extension DSButton where Label == SwiftUI.Label<Text, Image> {
-    /// Title + SF Symbol. Apply `.labelStyle(.iconOnly)` for an icon button; the title stays the
-    /// accessibility label.
-    init(
-        _ title: String,
-        systemImage: String,
-        variant: Variant = .bordered,
-        size: Size = .regular,
-        role: ButtonRole? = nil,
-        action: @escaping () -> Void
-    ) {
-        self.init(variant: variant, size: size, role: role, action: action) {
-            SwiftUI.Label(title, systemImage: systemImage)
-        }
-    }
-}

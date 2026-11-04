@@ -3,7 +3,7 @@ import Foundation
 @testable import GLTFInspector
 import Testing
 
-/// Host validation must start after the canvas is ready / first paint — not beside the page
+/// Host validation must start after the canvas is ready / first paint — not beside the renderer's load
 /// load and compile (`GLTFValidator` says call after first paint).
 @MainActor
 struct DocumentWindowValidationTests {

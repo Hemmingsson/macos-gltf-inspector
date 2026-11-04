@@ -73,7 +73,7 @@ public enum GLTFDocumentJSON {
         document.morphs = meshesJSON.enumerated().compactMap { index, mesh in
             makeMorph(mesh, meshIndex: index)
         }
-        document.animations = (json["animations"] as? [[String: Any]] ?? []).compactMap { animation in
+        document.animations = (json["animations"] as? [[String: Any]] ?? []).map { animation in
             makeAnimation(animation, accessors: accessors, binary: binary)
         }
         AppLog.signposter.withIntervalSignpost("json.document.textures") {
@@ -402,13 +402,13 @@ public enum GLTFDocumentJSON {
     /// Shortest span that still counts as a clip.
     private static let minimumClipDuration: Float = 1e-4
 
-    /// A clip needs more than one keyframe and a non-trivial span, so one-keyframe
-    /// "Default Take" junk never reaches the sidebar.
+    /// A clip needs more than one keyframe and a non-trivial span; one-keyframe "Default Take"
+    /// junk gets duration 0, which the outliner leaves out.
     private static func makeAnimation(
         _ animation: [String: Any],
         accessors: [[String: Any]],
         binary: GLTFBinaryStore
-    ) -> GLTFDocument.Animation? {
+    ) -> GLTFDocument.Animation {
         var minTime = Float.infinity
         var maxTime = -Float.infinity
         var sampleCount = 0
@@ -421,15 +421,10 @@ public enum GLTFDocumentJSON {
             if range.minTime.isFinite { minTime = min(minTime, range.minTime) }
             if range.maxTime.isFinite { maxTime = max(maxTime, range.maxTime) }
         }
-        guard minTime.isFinite, maxTime.isFinite,
-              sampleCount > 1,
-              maxTime - minTime > minimumClipDuration
-        else { return nil }
-        let duration = Double(max(maxTime, 0))
-        guard duration > 0 else { return nil }
+        let isClip = minTime.isFinite && maxTime.isFinite && sampleCount > 1 && maxTime - minTime > minimumClipDuration
         return GLTFDocument.Animation(
             name: animation["name"] as? String ?? "",
-            duration: duration
+            duration: isClip ? Double(max(maxTime, 0)) : 0
         )
     }
 

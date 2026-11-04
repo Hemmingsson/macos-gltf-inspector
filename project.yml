@@ -127,8 +127,8 @@ targets:
       - path: assets/ICON.icon
         type: file
         buildPhase: resources
-    # Not sandboxed. The only entitlement is the App Group, so Settings (the group suite) and the
-    # cached posters (the group container) are visible to both extensions.
+    # Not sandboxed. The only entitlement is the App Group, so Settings (the group suite) is
+    # visible to both extensions.
     entitlements:
       path: GLTFInspector/GLTFInspector.entitlements
       properties:

@@ -263,7 +263,7 @@ public final class ModelView: NSView {
         redraw()
     }
 
-    /// `UserCamera.zoomBy(deltaY * 0.01)`, with WebKit's wheel `deltaY`: the negated scroll delta
+    /// `UserCamera.zoomBy(deltaY * 0.01)`, with the browser wheel `deltaY` it was written for: the negated scroll delta
     /// in pixels, 40 per line step.
     override public func scrollWheel(with event: NSEvent) {
         let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 40

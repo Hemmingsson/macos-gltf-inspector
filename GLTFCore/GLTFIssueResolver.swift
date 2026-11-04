@@ -1,6 +1,6 @@
 import Foundation
 
-/// An entity a validator issue is about, in the file's own index space. The host turns these into
+/// An entity a validator issue is about, in the file's own index space. The app turns these into
 /// outliner rows; nothing here knows about UI.
 public enum GLTFIssueSubject: Sendable, Hashable {
     case node(Int)

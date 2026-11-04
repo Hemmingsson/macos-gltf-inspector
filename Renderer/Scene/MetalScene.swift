@@ -226,7 +226,7 @@ extension MetalScene {
 extension MetalScene {
     /// `viewportAspect` is the aspect Khronos letterboxes the canvas to: an authored perspective
     /// `aspectRatio`, or `xmag / ymag`; nil fills the canvas. `view` is the camera's view matrix,
-    /// used to depth-sort drawables the way the page sorts them.
+    /// used to depth-sort drawables the way the viewer sorts them.
     func fileCamera(at index: Int, aspect: Float) -> (viewProjection: simd_float4x4, view: simd_float4x4, eye: SIMD3<Float>, viewportAspect: Float?)? {
         guard asset.nodes.indices.contains(index), let camera = asset.nodes[index].camera else { return nil }
         func world(_ node: GLTFNode) -> simd_float4x4 {

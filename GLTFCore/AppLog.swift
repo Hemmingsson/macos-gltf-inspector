@@ -17,7 +17,7 @@ public enum AppLog {
     public static let app = Logger(subsystem: subsystem, category: "app")
     /// The Metal renderer and the canvas that hosts it.
     public static let renderer = Logger(subsystem: subsystem, category: "renderer")
-    /// Open-pipeline intervals (parse, page, still, first frame) for Instruments ›
+    /// JSON parse intervals for Instruments ›
     /// Points of Interest. Free when nobody is recording; never a substitute for a log line.
     public static let signposter = OSSignposter(subsystem: subsystem, category: .pointsOfInterest)
 

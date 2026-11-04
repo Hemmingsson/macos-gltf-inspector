@@ -167,8 +167,10 @@ public struct GLTFDocument: Sendable, Equatable {
         public var targetNames: [String]
     }
 
+    /// One per JSON animation, so indices match validator pointers.
     public struct Animation: Sendable, Equatable {
         public var name: String
+        /// Seconds; 0 for a clip with fewer than two keyframes or no span.
         public var duration: Double
     }
 }

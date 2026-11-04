@@ -3,8 +3,8 @@ import Foundation
 import Renderer
 import Testing
 
-/// Which state the document window's canvas region shows. Only the page's own failure fails it —
-/// panels still loading from JSON, or failed, must not hide a page that draws.
+/// Which state the document window's canvas region shows. Only the renderer's own failure fails
+/// it: panels still loading from JSON, or failed, must not hide a model that draws.
 @MainActor
 struct CanvasRoutingTests {
     private let url = URL(fileURLWithPath: "/tmp/model.glb")

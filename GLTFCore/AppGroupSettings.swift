@@ -1,18 +1,15 @@
 import Foundation
 
-/// The one settings store shared by the host and both extensions.
+/// The one settings store shared by the app and both extensions.
 ///
 /// Everything Settings writes lives in the App Group `groupID`: `settings.*` keys in the group's
-/// `UserDefaults` suite. The host (not sandboxed) and both sandboxed extensions claim the group,
+/// `UserDefaults` suite. The app (not sandboxed) and both sandboxed extensions claim the group,
 /// so all three processes resolve the same suite.
-///
-/// Foundation-only and extension-safe on purpose; `PreviewUI` keeps its own `SettingKey`
-/// strings because it must not import `GLTFCore` (`AppGroupSettingsTests` asserts they match).
 public enum AppGroupSettings {
     /// Team-prefixed macOS group: needs no provisioning profile or portal registration.
     public static let groupID = "94A9N4B67S.lol.mattias.gltf-inspector"
 
-    /// Storage names. The only list of `settings.*` keys outside `PreviewUI`.
+    /// Storage names; `AppSettings` in the app reads and writes these.
     public enum Key {
         public static let autoRotate = "settings.preview.autoRotate"
         public static let background = "settings.preview.background"
@@ -23,7 +20,7 @@ public enum AppGroupSettings {
         public static let environment = "settings.preview.environmentCatalog"
     }
 
-    /// Fresh-install values. `register(defaults:)` is per process: the host registers them at
+    /// Fresh-install values. `register(defaults:)` is per process: the app registers them at
     /// launch and `rendererLook` before an extension reads; other extension reads pass their own
     /// fallback.
     public static var defaultValues: [String: Any] {

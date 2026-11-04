@@ -18,7 +18,7 @@ public enum MetalRendererError: Error, LocalizedError {
 }
 
 /// Native Khronos renderer. One instance has one caller; loading and drawing must not overlap.
-/// GPU resources stay in this extension-safe framework; the host owns its presentation view.
+/// `ModelView` presents its frames; stills are read back.
 public final class MetalRenderer: @unchecked Sendable {
     public let device: any MTLDevice
     let queue: any MTLCommandQueue
@@ -111,7 +111,7 @@ public final class MetalRenderer: @unchecked Sendable {
         let overlays = MetalOverlayOptions(floor: options.showsFloor, origin: !options.isCentered,
                                            selectedNode: options.selectedNodeIndex, extents: extents)
         if environmentID != look.environment {
-            environment = try MetalEnvironment.shared(device: device, library: library, queue: queue, environment: look.environment)
+            environment = try MetalEnvironment.shared(device: device, environment: look.environment)
             environmentID = look.environment
         }
         let camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
@@ -220,7 +220,7 @@ public final class MetalRenderer: @unchecked Sendable {
                                         scene: MetalScene, draws: [Int],
                                         fallback: any MTLTexture, wireframe: Bool = false,
                                         resolution requested: Int = 1024) throws -> any MTLTexture {
-        // The page's prepass is 1024². Thumbnail stills pass a smaller edge; never grow past 1024.
+        // Khronos's prepass is 1024². Thumbnail stills pass a smaller edge; never grow past 1024.
         let resolution = min(1024, max(1, requested))
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
             width: resolution, height: resolution, mipmapped: true)
@@ -245,7 +245,7 @@ public final class MetalRenderer: @unchecked Sendable {
         pass.colorAttachments[0].texture = color
         pass.colorAttachments[0].resolveTexture = resolved
         pass.colorAttachments[0].loadAction = .clear
-        // clearFrame clears opaqueFramebufferMSAA to clearColor^2.2; the page's clearColor is [0, 0, 0, 0].
+        // clearFrame clears opaqueFramebufferMSAA to clearColor^2.2; the viewer's clearColor is [0, 0, 0, 0].
         pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
         pass.colorAttachments[0].storeAction = .storeAndMultisampleResolve
         pass.colorAttachments[1].texture = flag

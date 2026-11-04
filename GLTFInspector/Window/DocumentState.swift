@@ -2,7 +2,7 @@ import Foundation
 
 /// Load lifecycle — empty / loading / ready / failed.
 ///
-/// Host drives this from the open path (web page + JSON panels).
+/// The panels follow the JSON read; the canvas region follows the renderer.
 /// Never leave a failed URL as a spinner (AGENTS.md pitfall 2).
 enum DocumentState: Equatable, Sendable, Hashable {
     /// No document yet — drop / Open invite.

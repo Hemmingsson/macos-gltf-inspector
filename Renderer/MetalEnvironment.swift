@@ -37,16 +37,15 @@ final class MetalEnvironment {
     private static let cacheLock = NSLock()
     nonisolated(unsafe) private static var cache: (device: UInt64, environment: KhronosEnvironments, value: MetalEnvironment)?
 
-    static func shared(device: any MTLDevice, library: any MTLLibrary, queue: any MTLCommandQueue,
-                       environment: KhronosEnvironments) throws -> MetalEnvironment {
+    static func shared(device: any MTLDevice, environment: KhronosEnvironments) throws -> MetalEnvironment {
         cacheLock.lock(); defer { cacheLock.unlock() }
         if let cache, cache.device == device.registryID, cache.environment == environment { return cache.value }
-        let value = try MetalEnvironment(device: device, library: library, queue: queue, environment: environment)
+        let value = try MetalEnvironment(device: device, environment: environment)
         cache = (device.registryID, environment, value)
         return value
     }
 
-    init(device: any MTLDevice, library: any MTLLibrary, queue: any MTLCommandQueue, environment: KhronosEnvironments) throws {
+    init(device: any MTLDevice, environment: KhronosEnvironments) throws {
         let bundle = Bundle(for: MetalEnvironment.self)
         guard let url = bundle.url(forResource: environment.rawValue, withExtension: "metalibl"),
               let sharedURL = bundle.url(forResource: "shared", withExtension: "metalibl")

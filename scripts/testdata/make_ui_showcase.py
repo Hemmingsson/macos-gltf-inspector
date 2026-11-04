@@ -3,7 +3,7 @@
 
 File → two scenes → a group tree of meshes, cameras and lights, plus materials,
 a skin, morph targets and an animation clip. Geometry is one triangle so the
-page can draw it. Regen: python3 scripts/testdata/make_ui_showcase.py
+renderer can draw it. Regen: python3 scripts/testdata/make_ui_showcase.py
 """
 import json
 import struct

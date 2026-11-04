@@ -1,113 +1,80 @@
+import Darwin
 import Foundation
+import GLTFCore
 import Testing
+@testable import Renderer
 
 /// Opt-in performance bench: `./scripts/dev.sh bench` (sets `GLTF_BENCH=1` for the test runner).
 ///
-/// Skipped by the default `dev.sh test` and free of wall-clock assertions: the suite nested in
-/// this one (`PerfBench.MetalBench`) only prints `bench|…` rows, which `dev.sh bench` turns into
-/// a table. Serialized so no two renders share
-/// the GPU; numbers are a baseline on whatever else the machine is doing, not a gate.
-@Suite(.serialized, .enabled(if: BenchEnvironment.isEnabled, "set GLTF_BENCH=1 (./scripts/dev.sh bench)"))
+/// Skipped by the default `dev.sh test` and free of wall-clock assertions: it prints
+/// `bench|section|file|metric|median|spread|n` rows, which `dev.sh bench` turns into a table.
+/// Numbers are a baseline on whatever else the machine is doing, not a gate.
+@MainActor
+@Suite(.serialized, .enabled(if: ProcessInfo.processInfo.environment["GLTF_BENCH"] == "1", "set GLTF_BENCH=1 (./scripts/dev.sh bench)"))
 struct PerfBench {
-    /// Repeats per measurement (`GLTF_BENCH_RUNS`, default 3); rows report the median and spread.
+    /// Texture-heavy and material-heavy pinned samples.
+    static let samples = ["BoomBox", "Corset", "MetalRoughSpheresNoTextures"]
+    static let stillSize = 512
+    /// Repeats per measurement (`GLTF_BENCH_RUNS`, default 3).
     static var runs: Int {
         ProcessInfo.processInfo.environment["GLTF_BENCH_RUNS"].flatMap(Int.init).map { max(1, $0) } ?? 3
     }
 
-    /// Edge of every offscreen still, so window-proxy and thumbnail numbers compare.
-    static let stillSize = 512
-}
+    /// Load + first still on a new renderer (cold) and on one reused renderer (warm), pipeline
+    /// specialisation on the warm one, and a 1080p frame's GPU time. In-process, so "cold" is a
+    /// fresh renderer, not a fresh extension process.
+    @Test func loadAndFirstStill() async throws {
+        let manifest = try PixelDiffManifest.load()
+        let options = ViewOptions(look: try PixelDiffMetal.renderLook(manifest.look))
+        let warm = try MetalRenderer()
+        for name in Self.samples {
+            let entry = try #require(manifest.entries.first { $0.name == name }, "\(name) is not a pinned sample")
+            let pose = MetalCameraPose(try PixelDiffRun.camera(of: entry))
+            var cold: [Double] = [], reused: [Double] = [], gpu: [Double] = [], pipelines: [Double] = []
+            for _ in 0..<Self.runs {
+                let coldStart = ContinuousClock.now
+                let renderer = try MetalRenderer()
+                try await renderer.load(url: entry.modelURL)
+                _ = try renderer.image(options, pose: pose, width: Self.stillSize, height: Self.stillSize)
+                cold.append(milliseconds(since: coldStart))
 
-/// Outside `PerfBench`: a suite's own trait cannot name the suite type.
-enum BenchEnvironment {
-    static var isEnabled: Bool { ProcessInfo.processInfo.environment["GLTF_BENCH"] == "1" }
-}
+                let pipelineBefore = warm.pipelineMilliseconds
+                let warmStart = ContinuousClock.now
+                try await warm.load(url: entry.modelURL)
+                _ = try warm.image(options, pose: pose, width: Self.stillSize, height: Self.stillSize)
+                reused.append(milliseconds(since: warmStart))
+                pipelines.append(warm.pipelineMilliseconds - pipelineBefore)
 
-/// The files the bench renders: four pinned Khronos samples (texture-heavy and geometry/material
-/// heavy) plus the stress files in `~/Downloads` when present. Downloads are never copied into
-/// the repo; a missing one is skipped, a missing Khronos sample is an issue.
-enum BenchCorpus {
-    struct File: Sendable {
-        var name: String
-        var url: URL
-        /// Worth timing view-mode switches on (geometry, materials, nodes or joints).
-        var viewModes = false
-    }
-
-    static var files: [File] {
-        khronos + stress
-    }
-
-    static var khronos: [File] {
-        let samples: [(String, Bool)] = [
-            ("BoomBox", false),
-            ("Corset", true),
-            ("BarramundiFish", false),
-            ("MetalRoughSpheresNoTextures", true),
-        ]
-        return samples.compactMap { name, viewModes in
-            let url = TestModels.khronosDirectory.appendingPathComponent("\(name)/\(name).glb")
-            guard TestFixtures.exists(url) else {
-                Issue.record("missing Khronos sample \(name) — ./scripts/fetch-test-models.sh")
-                return nil
+                _ = try warm.image(options, pose: pose, width: 1920, height: 1080)
+                gpu.append(warm.gpuMilliseconds)
             }
-            // Short enough for the table's file column.
-            let short = name == "MetalRoughSpheresNoTextures" ? "MetalRoughSph" : name
-            return File(name: short, url: url, viewModes: viewModes)
+            row("still.cold", name, "total", cold)
+            row("still.warm", name, "total", reused)
+            row("pipeline", name, "specialize ms", pipelines)
+            row("gpu", name, "1080p frame ms", gpu)
+            if let footprint = physicalFootprintMB() {
+                print("bench|process|\(name)|footprint MB|\(String(format: "%.1f", footprint))|test process|1")
+            }
         }
     }
 
-    /// Stress files by filename prefix (Sketchfab appends a hash).
-    static var stress: [File] {
-        let downloads = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: downloads.path)) ?? []
-        let wanted: [(prefix: String, short: String)] = [
-            ("Flame_Knight", "FlameKnight"),
-            ("2024_Porsche_992_GT3_R", "Porsche992"),
-            ("EMMA_FROST", "EmmaFrost"),
-        ]
-        return wanted.compactMap { item in
-            guard let match = names.sorted().first(where: { $0.hasPrefix(item.prefix) && $0.hasSuffix(".glb") })
-            else {
-                print("bench SKIP \(item.short): not in ~/Downloads")
-                return nil
-            }
-            return File(
-                name: item.short,
-                url: downloads.appendingPathComponent(match),
-                viewModes: true
-            )
-        }
-    }
-}
-
-/// One `bench|section|file|metric|median|spread|n` line per measurement, in ms.
-enum BenchReport {
-    static func row(_ section: String, _ file: String, _ metric: String, _ samples: [Double]) {
-        guard !samples.isEmpty else { return }
+    private func row(_ section: String, _ file: String, _ metric: String, _ samples: [Double]) {
         let sorted = samples.sorted()
-        let median = sorted[sorted.count / 2]
-        let spread = sorted.count > 1 ? String(format: "%.0f-%.0f", sorted.first!, sorted.last!) : "-"
-        emit(section, file, metric, String(format: "%.1f", median), spread, sorted.count)
+        guard let first = sorted.first, let last = sorted.last else { return }
+        let spread = sorted.count > 1 ? String(format: "%.0f-%.0f", first, last) : "-"
+        print("bench|\(section)|\(file)|\(metric)|\(String(format: "%.1f", sorted[sorted.count / 2]))|\(spread)|\(sorted.count)")
     }
 
-    /// A value whose spread is not min–max (e.g. a p95 next to a p50).
-    static func row(_ section: String, _ file: String, _ metric: String, value: Double, spread: String, n: Int) {
-        emit(section, file, metric, String(format: "%.1f", value), spread, n)
+    private func milliseconds(since start: ContinuousClock.Instant) -> Double {
+        (ContinuousClock.now - start) / .milliseconds(1)
     }
 
-    private static func emit(_ section: String, _ file: String, _ metric: String, _ value: String, _ spread: String, _ n: Int) {
-        print("bench|\(section)|\(file)|\(metric)|\(value)|\(spread)|\(n)")
-    }
-}
-
-/// Wall-clock helpers for the bench.
-enum BenchClock {
-    static func ms(since start: ContinuousClock.Instant) -> Double {
-        ms(ContinuousClock.now - start)
-    }
-
-    static func ms(_ duration: Duration) -> Double {
-        duration / .milliseconds(1)
+    private func physicalFootprintMB() -> Double? {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+        }
+        return result == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : nil
     }
 }

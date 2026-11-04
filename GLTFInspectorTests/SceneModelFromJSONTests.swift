@@ -85,9 +85,11 @@ struct SceneModelFromJSONTests {
             "scene": 0,
         ])
 
-        // One-keyframe junk stays out; the real clip keeps its measured duration.
-        #expect(document.animations.map(\.name) == ["Walk"])
+        // The real clip keeps its measured duration; one-keyframe junk has none, keeping its JSON
+        // index so validator pointers still line up.
+        #expect(document.animations.map(\.name) == ["Walk", "Default Take"])
         #expect(abs(document.animations[0].duration - 1.5) < 0.0001)
+        #expect(document.animations[1].duration == 0)
     }
 
     @Test func materialVariantNamesComeFromJSON() {

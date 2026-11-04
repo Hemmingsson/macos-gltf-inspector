@@ -1,5 +1,5 @@
 /// The lighting look applied to a model: what Settings stores and the window's lighting popover
-/// edits. `RendererWebKit/WebRendererLook.swift` maps it onto the page in one place (`PageLook`).
+/// edits, in the Khronos Sample Renderer's terms.
 public struct RenderLook: Sendable, Hashable, Codable {
     /// Exposure compensation in EV (stops). Scales all light before tone mapping.
     public var exposureEV: Double

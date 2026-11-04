@@ -95,7 +95,7 @@ enum MetalImageLoader {
         return queue
     }
 
-    /// The page uploads KTX2 through libktx's glUpload: Basis payloads become ASTC 4x4 and the
+    /// The viewer uploads KTX2 through libktx's glUpload: Basis payloads become ASTC 4x4 and the
     /// file's transfer function (not the material slot) selects sRGB decoding.
     private static func loadKTX2(image: GLTFImage, device: any MTLDevice) throws -> any MTLTexture {
         let data = try encodedData(image)

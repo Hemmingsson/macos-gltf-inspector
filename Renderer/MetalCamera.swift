@@ -12,7 +12,7 @@ public struct MetalCameraPose: Sendable, Equatable {
     public var yfov: Double
     public var znear: Double
     public var zfar: Double
-    /// The page's `camera.orthographic`, captured when it last restated the projection. Wheel
+    /// The viewer's `camera.orthographic`, captured when it last restated the projection. Wheel
     /// zoom moves the camera without restating it, so the ortho scale and planes stay put until
     /// the next fit or camera command. Nil derives both from this pose, as `applyProjection` does.
     public var orthographic: MetalOrthographic?
@@ -31,13 +31,13 @@ public struct MetalCameraPose: Sendable, Equatable {
         self.orthographic = orthographic
     }
 
-    /// What `applyProjection` in viewer.html would assign for this pose.
+    /// What `applyProjection` in would assign for this pose.
     public var orthographicProjection: MetalOrthographic {
         orthographic ?? MetalOrthographic(magnitude: distance * tan(yfov / 2), znear: znear, zfar: zfar)
     }
 }
 
-/// Khronos `OrthographicCamera` as viewer.html fills it: the same `xmag` and `ymag`.
+/// Khronos `OrthographicCamera` as fills it: the same `xmag` and `ymag`.
 public struct MetalOrthographic: Sendable, Equatable {
     public var magnitude: Double
     public var znear: Double

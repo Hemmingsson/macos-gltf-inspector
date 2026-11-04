@@ -366,7 +366,7 @@ private extension Builder {
     static func image(of params: GLTFTextureParams) -> GLTFImage? {
         params.texture.basisUSource ?? params.texture.webpSource ?? params.texture.source
     }
-    /// KTX2 keeps its file-declared transfer function, as the page's glUpload does.
+    /// KTX2 keeps its file-declared transfer function, as the viewer's glUpload does.
     /// WebGL generates colour-texture mipmaps through its sRGB texture format.
     /// Sharing linear-data mips with an sRGB view averages encoded values instead.
     static func usesSRGBTexture(_ slot: MetalTextureSlot, _ image: GLTFImage) -> Bool {

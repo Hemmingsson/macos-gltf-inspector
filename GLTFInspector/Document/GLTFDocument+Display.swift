@@ -40,7 +40,8 @@ extension NodeKind {
         case .mesh: self = .mesh
         case .camera: self = .camera
         case .light: self = .light
-        case .skin: self = .skin
+        // A skin needs a mesh; a node with only a skin draws nothing and is shown as a group.
+        case .skin: self = .empty
         }
     }
 }

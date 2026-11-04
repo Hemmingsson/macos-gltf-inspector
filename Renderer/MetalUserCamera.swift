@@ -1,10 +1,10 @@
 import Foundation
 import simd
 
-/// Hand port of the pinned Khronos `UserCamera` plus the framing rules viewer.html layers on top
-/// (`fitCamera`, `includeOriginInFraming`, `applySharedFitDistance`, `applyProjection`,
-/// `orbitTo`, pointer orbit/pan and wheel zoom). The page is the behavioural oracle: every
-/// operation here mirrors one there, including the quirks (fit keeps the current orbit angles
+/// Hand port of the pinned Khronos `UserCamera` plus the framing rules this app's former WebKit
+/// viewer page layered on top (`fitCamera`, `includeOriginInFraming`, `applySharedFitDistance`,
+/// `applyProjection`, `orbitTo`, pointer orbit/pan and wheel zoom). Every operation mirrors one
+/// there, including the quirks (fit keeps the current orbit angles
 /// while measuring, clip planes follow the Khronos distance rather than the padded one, wheel
 /// zoom refits the planes but not the orthographic scale).
 ///
@@ -19,7 +19,7 @@ public struct MetalUserCamera: Sendable, Equatable {
     public var distance = 1.0
     public var baseDistance = 1.0
     public var panSpeed = 1.0
-    /// `perspective.yfov` in radians and the clip planes the page reports.
+    /// `perspective.yfov` in radians and the clip planes the viewer reports.
     public var yfov = 45 * Double.pi / 180
     public var znear = 0.01
     public var zfar = Double.infinity
@@ -35,7 +35,7 @@ public struct MetalUserCamera: Sendable, Equatable {
 
     static let panSpeedDenominator = 3500.0
     static let maxNearFarRatio = 10000.0
-    /// viewer.html `FIT_PADDING`, the same as `RenderCamera.fitPadding`.
+    /// `FIT_PADDING`, the same as `RenderCamera.fitPadding`.
     public static let fitPadding = 1.02
 
     public init() {}
@@ -49,7 +49,7 @@ public struct MetalUserCamera: Sendable, Equatable {
 
     public var lookDirection: SIMD3<Double> { -simd_normalize(rotation.back) }
 
-    /// `position + lookDirection · distance` (viewer.html `cameraState` recomputes it this way).
+    /// `position + lookDirection · distance` (`cameraState` recomputes it this way).
     public var target: SIMD3<Double> { position + lookDirection * distance }
 
     public mutating func setDistanceFromTarget(_ distance: Double, _ target: SIMD3<Double>) {
@@ -57,7 +57,7 @@ public struct MetalUserCamera: Sendable, Equatable {
         self.distance = distance
     }
 
-    /// `orbitTo` in viewer.html: absolute angles in degrees around `target`.
+    /// `orbitTo` in the viewer: absolute angles in degrees around `target`.
     public mutating func orbitTo(azimuth: Double, elevation: Double, distance: Double, target: SIMD3<Double>) {
         rotAroundY = azimuth * .pi / 180
         rotAroundX = elevation * .pi / 180
@@ -75,14 +75,14 @@ public struct MetalUserCamera: Sendable, Equatable {
         setDistanceFromTarget(distance, target)
     }
 
-    /// `UserCamera.pan(x, y)`; the page calls it as `pan(-dx, dy)`.
+    /// `UserCamera.pan(x, y)`; the viewer calls it as `pan(-dx, dy)`.
     public mutating func pan(_ x: Double, _ y: Double) {
         let axes = rotation
         let scale = panSpeed * (distance / baseDistance)
         position += simd_normalize(axes.right) * (-x * scale) + simd_normalize(axes.up) * (-y * scale)
     }
 
-    /// `UserCamera.zoomBy(value)`; the page passes `wheel.deltaY * 0.01`.
+    /// `UserCamera.zoomBy(value)`; the viewer passes `wheel.deltaY * 0.01`.
     public mutating func zoomBy(_ value: Double) {
         let target = self.target
         var zoom = pow(distance / baseDistance, 1 / 5.0)
@@ -95,9 +95,9 @@ public struct MetalUserCamera: Sendable, Equatable {
 
     // MARK: - Framing
 
-    /// viewer.html `fitCamera`: Khronos `fitViewToScene`, the authored origin when centring is
+    /// `fitCamera`: Khronos `fitViewToScene`, the authored origin when centring is
     /// off, then the shared padded distance at the camera's current angles. Returns the distance
-    /// the page records as `fitDistance` (100% zoom).
+    /// the viewer records as `fitDistance` (100% zoom).
     @discardableResult
     public mutating func fit(extents: (min: SIMD3<Double>, max: SIMD3<Double>), centered: Bool, aspect: Double) -> Double? {
         // A non-finite box (Draco accessors arrive without min/max) must not move the camera:
@@ -123,7 +123,7 @@ public struct MetalUserCamera: Sendable, Equatable {
         return fitted
     }
 
-    /// viewer.html `applySharedFitDistance`: projected-AABB + near-face + 1.02, at the current angles.
+    /// `applySharedFitDistance`: projected-AABB + near-face + 1.02, at the current angles.
     @discardableResult
     public mutating func applySharedFitDistance(aspect: Double) -> Double? {
         let extent = sceneMax - sceneMin
@@ -137,7 +137,7 @@ public struct MetalUserCamera: Sendable, Equatable {
         return self.distance
     }
 
-    /// viewer.html `applyProjection`: the ortho scale is restated from the current distance.
+    /// `applyProjection`: the ortho scale is restated from the current distance.
     public mutating func applyProjection(orthographic isOrthographic: Bool? = nil) {
         if let isOrthographic { self.isOrthographic = isOrthographic }
         if self.isOrthographic {

@@ -35,7 +35,7 @@ When this doc and the app disagree, **code wins**.
 
 ## glTF & the renderer
 
-- **Closest practical 1:1** with how the file renders on the web — the same renderer on every
+- **Closest practical 1:1** with the Khronos Sample Viewer, and the same renderer on every
   surface (window, Quick Look, and Finder). Fidelity over DCC breadth.
 - **Complexity follows the asset** — a plain mesh should feel calm; a rigged, textured,
   multi-scene file may legitimately expose more. Never the reverse (empty chrome for a rich file,
@@ -75,7 +75,7 @@ The inspector answers *"is the file wrong, or are we?"*
 ## Non-goals
 
 - Not an editor: no shader debugger, GPU counters, or heavy DCC tooling.
-- No second renderer and no renderer setting. Window, Quick Look and Finder use the same page.
+- No second renderer and no renderer setting. Window, Quick Look and Finder use the same one.
 - No fake chrome. No duplicate settings. No section for data that isn't in the file.
-- No control the page cannot drive. Playback, morph weights, hide/solo, double-sided, skeleton,
-  a file-light toggle and a custom environment are not part of the product.
+- No control the renderer cannot drive. Playback, morph weights, hide/solo, double-sided,
+  skeleton, a file-light toggle and a custom environment are not part of the product.

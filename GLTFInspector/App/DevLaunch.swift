@@ -7,7 +7,6 @@ import GLTFCore
 enum FixtureCatalog {
     struct Entry: Decodable {
         let id: String
-        let label: String
         let path: String
     }
 

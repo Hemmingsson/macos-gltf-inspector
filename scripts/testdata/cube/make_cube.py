@@ -4,7 +4,7 @@
 A unit cube with six axis-coloured faces. Unlike the flat `tiny.glb` triangle it
 reads as a solid from every angle, so camera presets and stills stay legible from
 the side and back. Standard metallic-roughness + FLOAT attributes + a PNG texture
-in sidecar files, so the page and the JSON panels resolve a real `.gltf` with
+in sidecar files, so the renderer and the JSON panels resolve a real `.gltf` with
 external resources.
 
 Pure stdlib (struct/zlib/json). Re-run after editing:  python3 make_cube.py

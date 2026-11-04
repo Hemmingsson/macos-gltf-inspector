@@ -46,8 +46,8 @@ extension OutlinerSection {
     /// DESIGN.md's "show only what the model has" is enforced here, once, by not producing an
     /// empty section, rather than by an `if` in every view.
     static func sections(of document: GLTFDocument) -> [OutlinerSection] {
-        func items(_ kind: NodeKind, count: Int) -> [OutlinerItem] {
-            (0..<count).map { index in
+        func items(_ kind: NodeKind, count: Int, where include: (Int) -> Bool = { _ in true }) -> [OutlinerItem] {
+            (0..<count).filter(include).map { index in
                 let id = NodeID(kind: kind, index: index)
                 return OutlinerItem(id: id, name: document.displayName(of: id))
             }
@@ -59,7 +59,9 @@ extension OutlinerSection {
             OutlinerSection(title: "Scene", items: sceneGraph(document), folds: true),
             OutlinerSection(title: "Materials", items: items(.material, count: document.materials.count)),
             OutlinerSection(title: "Skins", items: items(.skin, count: document.skins.count)),
-            OutlinerSection(title: "Animations", items: items(.animation, count: document.animations.count)),
+            OutlinerSection(title: "Animations", items: items(.animation, count: document.animations.count) {
+                document.animations[$0].duration > 0
+            }),
             OutlinerSection(title: "Morphs", items: items(.morph, count: document.morphs.count)),
         ]
         return candidates.filter { !$0.items.isEmpty }

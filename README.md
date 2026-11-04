@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Native App and Finder Support for <code>.glb</code> and <code>.gltf</code></strong><br>
-  Inspector App, Thumbnails, Quick Look and Preview Pane — rendered by the <a href="https://github.com/KhronosGroup/glTF-Sample-Renderer">Khronos glTF Sample Renderer</a>
+  Inspector App, Thumbnails, Quick Look and Preview Pane — rendered by a Metal port of the <a href="https://github.com/KhronosGroup/glTF-Sample-Renderer">Khronos glTF Sample Renderer</a>
 </p>
 
 <table>
@@ -32,9 +32,9 @@
   </tr>
 </table>
 
-The same page draws the model in the app, in Quick Look and in Finder. There is no renderer
-setting. Lighting, cameras and view mode change the picture; the page does not move the model's
-geometry, and it draws the rest pose.
+The same renderer draws the model in the app, in Quick Look and in Finder. There is no renderer
+setting. Lighting, cameras and view mode change the picture; the geometry is shown as authored, in
+its rest pose.
 
 ## Install
 
@@ -56,43 +56,25 @@ This generates the Xcode project, builds, installs to `/Applications`, and check
 ./scripts/dev.sh test
 ```
 
-Renderer regressions need the Khronos samples on disk (`./scripts/fetch-test-models.sh`);
-missing samples fail the pixel-diff coverage test rather than skip. See
+Renderer tests need the Khronos samples on disk (`./scripts/fetch-test-models.sh`); missing
+samples fail rather than skip. See
 [`TestModels/References/README.md`](TestModels/References/README.md).
 
 ## How it works
 
-The host window is **`PreviewUI`** chrome over one canvas. The canvas is drawn by a native
-Metal port of the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
-(`RendererMetal/`), which loads the file itself. The window, Quick Look and the Preview Pane run
-it live; thumbnails render one frame off-screen. The original Khronos page in a `WKWebView`
-(described below and in the pipeline doc) remains as a dev override and as the reference the
-Metal port is pixel-tested against; see
-[`docs/renderer-backends.md`](docs/renderer-backends.md).
+The renderer is a native Metal port of the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
+(`Renderer/`). The window and Quick Look draw it live; Finder thumbnails render one frame off
+screen. Its output is tested against images rendered by the Khronos renderer itself
+([`TestModels/References/`](TestModels/References/README.md)).
 
-The WebKit page path: the file is served into a `WKWebView` over `gltf-inspector://`; the page
-(`RendererWebKit/web-renderer/viewer.html`) runs the Khronos renderer and loads the file
-itself. Thumbnails take `canvas.toDataURL()`.
+The outliner and inspector describe the **file**: they read its glTF JSON (`GLTFDocument`), not
+what the renderer kept, and the Khronos glTF-Validator reports problems in it.
 
-```mermaid
-flowchart LR
-  file[".glb / .gltf"] --> scheme["gltf-inspector:// handler"]
-  scheme --> page["viewer.html"]
-  page --> surf["Window / Quick Look / thumbnail"]
-  file --> json["Original glTF JSON"]
-  json --> sidebar["Host sidebar / inspector"]
-```
+Settings (lighting defaults, backdrop, floor) live in an App Group so the sandboxed Quick Look and
+thumbnail extensions read the same values as the app.
 
-The outliner and inspector describe the **file** (`GLTFDocumentSummary` from the original
-JSON), not what a renderer kept.
-
-Look defaults (environment + tone map) are shared through the App Group suite
-(`AppGroupSettings`) — a sandboxed extension cannot read the host's preferences domain.
-Thumbnail and preview extensions keep `com.apple.security.network.client` so WebKit's
-Networking XPC can start under the WebKit override; nothing fetches from the network.
-
-Details: [`docs/pipeline-web-renderer.md`](docs/pipeline-web-renderer.md).
+Details: [`docs/architecture.md`](docs/architecture.md).
 
 ## License
 
-Released under the [MIT License](LICENSE). [Sparkle](https://github.com/sparkle-project/Sparkle) is MIT-licensed. The vendored [Khronos glTF Sample Renderer](RendererWebKit/web-renderer) is Apache-2.0. The [Khronos glTF-Validator](Vendor/gltf-validator) and IBL environments carry their own licenses in-tree.
+Released under the [MIT License](LICENSE). [Sparkle](https://github.com/sparkle-project/Sparkle) is MIT-licensed. The Metal port of the [Khronos glTF Sample Renderer](Renderer/Shaders) is Apache-2.0. The [Khronos glTF-Validator](Vendor/gltf-validator) and IBL environments carry their own licenses in-tree.

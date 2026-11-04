@@ -26,9 +26,6 @@ extension DS {
         /// The smallest legible text: gizmo tags, badge counts. `Font.caption2` (macOS 10 pt).
         static let micro = SwiftUI.Font.caption2
 
-        /// Pane and card titles. `Font.title3.weight(.semibold)` (macOS 15 pt).
-        static let title = SwiftUI.Font.title3.weight(.semibold)
-
         /// Uppercase section labels (SCENE, MATERIALS, GEOMETRY). `Font.subheadline` semibold; apply
         /// with `.dsSectionHeader()` so the case and tracking come along.
         static let sectionHeader = SwiftUI.Font.subheadline.weight(.semibold)

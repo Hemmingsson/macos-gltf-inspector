@@ -1,5 +1,4 @@
 import AppKit
-import GLTFCore
 import Sparkle
 import SwiftUI
 

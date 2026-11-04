@@ -8,7 +8,6 @@
 #   ./scripts/dev.sh run [fixture]        # install + launch fixture (default: cube)
 #   ./scripts/dev.sh logs                 # tail .build/logs/debug.log (or unified log stream)
 #   ./scripts/dev.sh fixtures             # list fixture ids
-#   ./scripts/dev.sh catalog [-page id]   # build DesignCatalog + launch in background (open -g)
 #   ./scripts/dev.sh bench                # opt-in PerfBench table → .build/bench/
 set -euo pipefail
 
@@ -17,7 +16,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
 DEFAULT_FIXTURE=cube
 
 usage() {
-  sed -n '2,12p' "$0"
+  sed -n '2,11p' "$0"
 }
 
 require_xcodegen() {
@@ -121,17 +120,6 @@ dev_logs() {
     --predicate 'subsystem == "lol.mattias.gltf-inspector"'
 }
 
-# DesignCatalog: build into this branch's DerivedData and launch without taking focus.
-# Relaunches (quits only this build's catalog process) so the new build and any args apply.
-# Args pass through to the app, e.g. `-page colors -appearance dark`.
-dev_catalog() {
-  xcb DesignCatalog build
-  # Process path is /private/tmp/... even when CATALOG_APP is /tmp/...
-  pkill -f "DesignCatalog.app/Contents/MacOS/DesignCatalog" 2>/dev/null || true
-  echo "launch $CATALOG_APP"
-  open -g "$CATALOG_APP" --args "$@"
-}
-
 dev_fixtures() {
   dev_fixture_ids
 }
@@ -164,11 +152,8 @@ case "$cmd" in
   fixtures)
     dev_fixtures
     ;;
-  catalog)
-    dev_catalog "$@"
-    ;;
   bench)
-    # Opt-in perf bench (`PerfBench` suites, GLTF_BENCH=1): a table on stdout and in
+    # Opt-in perf bench (`PerfBench`, GLTF_BENCH=1): a table on stdout and in
     # .build/bench/<stamp>.txt (raw xcodebuild log beside it). GLTF_BENCH_RUNS=N (default 3).
     # Wall-clock numbers — run on an idle machine, never alongside another build.
     mkdir -p "$ROOT/.build/bench"
@@ -184,7 +169,6 @@ case "$cmd" in
       grep -E '^bench[|]' "$raw" | awk -F'|' '
         BEGIN { printf "%-13s %-14s %-24s %9s %13s %4s\n", "section", "file", "metric (ms)", "median", "spread", "n" }
         { printf "%-13s %-14s %-24s %9s %13s %4s\n", $2, $3, $4, $5, $6, $7 }'
-      grep -E '^bench SKIP' "$raw" | sort -u || true
     } | tee "$table"
     if [[ $status -ne 0 ]]; then
       grep -E "error|failed|Issue recorded" "$raw" | tail -20 >&2

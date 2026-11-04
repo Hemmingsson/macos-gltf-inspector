@@ -8,7 +8,7 @@ extern "C" {
 #endif
 typedef struct GLTFMetalKTX2 GLTFMetalKTX2;
 /// Parses a KTX2 image. Basis Universal payloads (ETC1S and UASTC) are transcoded to ASTC 4x4,
-/// the first choice of the pinned Khronos page's KtxDecoder. Returns NULL on failure.
+/// the first choice of the pinned Khronos viewer's KtxDecoder. Returns NULL on failure.
 GLTFMetalKTX2 *GLTFMetalKTX2Create(const void *bytes, size_t length);
 void GLTFMetalKTX2Destroy(GLTFMetalKTX2 *texture);
 /// Vulkan format after transcoding (ASTC 4x4 is 157 unorm / 158 sRGB).

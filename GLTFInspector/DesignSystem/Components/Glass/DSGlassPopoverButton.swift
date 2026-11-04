@@ -12,20 +12,15 @@ import SwiftUI
 /// - Standalone: a `DS.Metrics.glassControlWide` capsule with one `DS.Glass.control` layer.
 /// - In an island (`DSGlassPlacement.inIsland`): same size, no glass.
 ///
-/// Owns its presentation state by default; pass `isPresented:` to drive it from outside (e.g. a
-/// menu command that opens the popover).
 struct DSGlassPopoverButton<PopoverContent: View>: View {
     private let title: String
     private let systemImage: String
     private let help: String?
     private let value: String?
-    private let externalIsPresented: Binding<Bool>?
     private let popoverContent: () -> PopoverContent
 
-    @State private var ownIsPresented = false
+    @State private var isPresented = false
 
-    /// A popover button that owns its presentation state.
-    ///
     /// - Parameters:
     ///   - title: What the popover adjusts ("Lighting"): accessibility label and, unless `help` is
     ///     given, the tooltip.
@@ -44,49 +39,27 @@ struct DSGlassPopoverButton<PopoverContent: View>: View {
         self.systemImage = systemImage
         self.value = value
         self.help = help
-        self.externalIsPresented = nil
         self.popoverContent = content
-    }
-
-    /// A popover button whose presentation is driven by `isPresented`.
-    init(
-        _ title: String,
-        systemImage: String,
-        isPresented: Binding<Bool>,
-        value: String? = nil,
-        help: String? = nil,
-        @ViewBuilder content: @escaping () -> PopoverContent
-    ) {
-        self.title = title
-        self.systemImage = systemImage
-        self.value = value
-        self.help = help
-        self.externalIsPresented = isPresented
-        self.popoverContent = content
-    }
-
-    private var isPresented: Binding<Bool> {
-        externalIsPresented ?? $ownIsPresented
     }
 
     var body: some View {
         Button {
-            isPresented.wrappedValue.toggle()
+            isPresented.toggle()
         } label: {
             HStack(spacing: DS.Spacing.xs) {
                 Image(systemName: systemImage)
-                    .dsGlassPrimaryGlyph(isHighlighted: isPresented.wrappedValue)
+                    .dsGlassPrimaryGlyph(isHighlighted: isPresented)
                 DSGlassChevron()
             }
-            .dsGlassControlLabel(.wide, isHighlighted: isPresented.wrappedValue)
+            .dsGlassControlLabel(.wide, isHighlighted: isPresented)
         }
         .buttonStyle(.plain)
-        .dsGlassControlSurface(isEngaged: isPresented.wrappedValue)
+        .dsGlassControlSurface(isEngaged: isPresented)
         .help(help ?? title)
         .accessibilityLabel(title)
         .accessibilityValue(value ?? "")
-        .accessibilityAddTraits(isPresented.wrappedValue ? .isSelected : [])
-        .popover(isPresented: isPresented, arrowEdge: .bottom) {
+        .accessibilityAddTraits(isPresented ? .isSelected : [])
+        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             popoverContent()
         }
     }

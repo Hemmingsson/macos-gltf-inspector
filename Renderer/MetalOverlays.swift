@@ -1,16 +1,17 @@
 import Metal
 import simd
 
-/// Inspector chrome viewer.html draws after the Khronos frame (`drawOverlays`): the polar floor,
-/// the authored-origin gizmo and the selected subtree's box. Same geometry, colours and pass:
+/// Inspector chrome drawn after the Khronos frame, as the former viewer page's `drawOverlays` did:
+/// the polar floor, the authored-origin gizmo and the selected subtree's box. Same geometry,
+/// colours and pass:
 /// opaque 1-pixel lines, no depth occlusion (the canvas depth is cleared and the tonemap quad
-/// writes none), the user camera even while a file camera draws the model, and the page's
+/// writes none), the user camera even while a file camera draws the model, and the viewer's
 /// antialiased canvas — 4× MSAA, seeded with the tonemapped frame.
 struct MetalOverlayOptions: Sendable {
     var floor: Bool
     var origin: Bool
     var selectedNode: Int?
-    /// `camera.sceneExtents`: what the page sizes the floor and gizmo by. When centring is off it
+    /// `camera.sceneExtents`: what the viewer sizes the floor and gizmo by. When centring is off it
     /// includes the origin. Nil uses the scene's drawn bounds.
     var extents: (min: SIMD3<Float>, max: SIMD3<Float>)?
     init(floor: Bool = false, origin: Bool = false, selectedNode: Int? = nil,
@@ -26,7 +27,7 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
         vertices.append(MetalLineVertex(position: SIMD4(a, 1), color: SIMD4(color, 1)))
         vertices.append(MetalLineVertex(position: SIMD4(b, 1), color: SIMD4(color, 1)))
     }
-    // viewer.html `sceneBounds`.
+    // `sceneBounds`.
     let low = options.extents?.min ?? scene.boundsMin
     let high = options.extents?.max ?? scene.boundsMax
     let extent = simd_max(high - low, SIMD3(repeating: 1e-4))
@@ -76,7 +77,7 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
 }
 
 extension MetalRenderer {
-    /// Draws `lines` over the tonemapped `output` the way the page draws them over its canvas.
+    /// Draws `lines` over the tonemapped `output` the way the viewer draws them over its canvas.
     /// `viewProjection` is the user camera's WebGL clip transform; `viewport` the Khronos one.
     func encodeOverlays(_ lines: [MetalLineVertex], command: any MTLCommandBuffer, output: any MTLTexture,
                         viewProjection: simd_float4x4, viewport: MTLViewport) throws {
@@ -125,7 +126,7 @@ extension MetalRenderer {
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .multisampleResolve
         // WebGL draws its canvas bottom-up, so the standard 4× pattern lands mirrored in the
-        // image the page reads back. Mirror it here so line coverage matches sample for sample.
+        // image the viewer reads back. Mirror it here so line coverage matches sample for sample.
         if device.areProgrammableSamplePositionsSupported {
             pass.setSamplePositions(device.getDefaultSamplePositions(sampleCount: samples).map {
                 MTLSamplePosition(x: $0.x, y: 1 - $0.y)
