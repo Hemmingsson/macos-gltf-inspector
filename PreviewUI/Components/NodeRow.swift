@@ -7,7 +7,6 @@ import SwiftUI
 /// nodes use `.tertiary` (`isMuted`), not opacity.
 struct NodeRow<Selection: SelectionModel>: View {
     var item: OutlinerItem
-    var isSelected: Bool
     var selection: Selection
 
     /// Hit box of the visibility eye.
@@ -15,6 +14,10 @@ struct NodeRow<Selection: SelectionModel>: View {
 
     @State private var isHovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var isSelected: Bool {
+        selection.selected == item.id
+    }
 
     private var isVisible: Bool {
         selection.isVisible(item.id)
@@ -129,20 +132,7 @@ private struct NodeRowPreviewHost: View {
 
     var body: some View {
         PreviewCanvas(width: DS.Metrics.sidebarWidth, height: 44) {
-            switch mode {
-            case .flat:
-                NodeRow(
-                    item: NodeRowPreviewFixtures.flatItem,
-                    isSelected: false,
-                    selection: selection
-                )
-            case .hidden:
-                NodeRow(
-                    item: NodeRowPreviewFixtures.flatItem,
-                    isSelected: false,
-                    selection: selection
-                )
-            }
+            NodeRow(item: NodeRowPreviewFixtures.flatItem, selection: selection)
         }
     }
 }

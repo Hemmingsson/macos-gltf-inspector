@@ -16,7 +16,7 @@ struct ValidationSection: View {
                 if validation.status == .pending {
                     DSStatusBadge("Checking validation…", status: .pending)
                 } else if validation.isClean {
-                    DSStatusBadge("Valid \(validation.formatLabel)", status: .valid)
+                    DSStatusBadge("Valid glTF 2.0", status: .valid)
                 } else {
                     DSDisclosureCard(
                         issueSummary(errors: validation.errorCount, warnings: validation.warningCount),

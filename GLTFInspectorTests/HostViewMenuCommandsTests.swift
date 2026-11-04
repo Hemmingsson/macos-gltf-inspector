@@ -7,18 +7,6 @@ import Testing
 /// window's renderer cannot drive them. WebKit's feature set lacks both.
 @MainActor
 struct HostViewMenuCommandsTests {
-    @Test func focusedWindowViewportCarriesRendererFeatures() {
-        let sidebar = HostSidebarModel(document: GLTFSessionDocument())
-        let web = EngineViewportController(
-            sidebar: sidebar,
-            features: [.debugChannels, .wireframe, .orthographicProjection]
-        )
-        #expect(!web.features.contains(.doubleSided) && !web.features.contains(.skeletonOverlay))
-
-        let reality = EngineViewportController(sidebar: sidebar)
-        #expect(reality.features.contains(.doubleSided) && reality.features.contains(.skeletonOverlay))
-    }
-
     @Test func documentWindowViewportUsesMountedRendererFeatures() {
         let web = DocumentWindowModel(
             documentURL: TestFixtures.cube,

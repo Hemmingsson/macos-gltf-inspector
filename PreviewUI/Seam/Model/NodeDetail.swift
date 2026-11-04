@@ -151,8 +151,6 @@ public struct NodeDetail: Sendable, Hashable, Identifiable {
     public var id: NodeID
     public var name: String
     public var transform: TransformInfo?
-    /// True when the transform is the file's own, false when we re-centred/fitted it.
-    public var isTransformAuthored: Bool
     public var geometry: GeometryInfo?
     public var material: MaterialInfo?
     public var light: LightInfo?
@@ -176,7 +174,6 @@ public struct NodeDetail: Sendable, Hashable, Identifiable {
         id: NodeID,
         name: String,
         transform: TransformInfo? = nil,
-        isTransformAuthored: Bool = true,
         geometry: GeometryInfo? = nil,
         material: MaterialInfo? = nil,
         light: LightInfo? = nil,
@@ -189,7 +186,6 @@ public struct NodeDetail: Sendable, Hashable, Identifiable {
         self.id = id
         self.name = name
         self.transform = transform
-        self.isTransformAuthored = isTransformAuthored
         self.geometry = geometry
         self.material = material
         self.light = light

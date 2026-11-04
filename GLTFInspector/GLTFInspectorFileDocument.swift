@@ -12,8 +12,6 @@ struct GLTFInspectorFileDocument: FileDocument {
 
     static var writableContentTypes: [UTType] { [] }
 
-    init() {}
-
     init(configuration: ReadConfiguration) throws {
         // Intentionally ignore FileWrapper bytes — GLTFKit2 needs a filesystem URL + parent dir.
     }

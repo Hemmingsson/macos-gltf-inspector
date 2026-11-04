@@ -43,13 +43,11 @@ final class EngineViewportController: ViewportController {
     init(
         sidebar: HostSidebarModel,
         previewSession: PreviewSession? = nil,
-        commands: FocusedPreviewCommands? = nil,
         saveScreenshot: ((CGImage) async -> Void)? = nil,
         features: Set<RendererFeature> = Set(RendererFeature.allCases)
     ) {
         self.sidebar = sidebar
         self.previewSession = previewSession ?? PreviewSession()
-        self.commands = commands
         self.saveScreenshot = saveScreenshot
         self.features = features
     }
@@ -148,16 +146,11 @@ final class EngineViewportController: ViewportController {
 
     /// Convert-owned file-light dimming. Open resets exposure/yaw; scene/variant keep them.
     func applyConvertedLighting(dimStudioForFileLights: Bool, resetExposureAndYaw: Bool) {
-        setLighting(
-            LightingSettings(
-                exposure: resetExposureAndYaw ? 0 : lighting.exposure,
-                environmentRotationDegrees: resetExposureAndYaw ? 0 : lighting.environmentRotationDegrees,
-                usesFileLights: dimStudioForFileLights,
-                usesStudioEnvironment: settings.default(for: .useEnvironmentMap),
-                environment: environment,
-                toneMapping: toneMapping
-            )
-        )
+        if resetExposureAndYaw {
+            previewSession.exposureEV = 0
+            previewSession.environmentYaw = 0
+        }
+        previewSession.dimStudioForFileLights = dimStudioForFileLights
     }
 
     func fit() {

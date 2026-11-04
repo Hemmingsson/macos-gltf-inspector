@@ -11,7 +11,6 @@ public enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Iden
     case clearcoatRoughness
     case clearcoatNormal
     case specular
-    case transmission
 
     public var id: Self { self }
 
@@ -27,7 +26,6 @@ public enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Iden
         case .clearcoatRoughness: "Clearcoat Roughness"
         case .clearcoatNormal: "Clearcoat Normal"
         case .specular: "Specular"
-        case .transmission: "Transmission"
         }
     }
 
@@ -43,7 +41,6 @@ public enum MaterialMap: String, Sendable, Hashable, Codable, CaseIterable, Iden
         case .clearcoatRoughness: "Coat R"
         case .clearcoatNormal: "Coat N"
         case .specular: "Spec"
-        case .transmission: "Trans"
         }
     }
 }

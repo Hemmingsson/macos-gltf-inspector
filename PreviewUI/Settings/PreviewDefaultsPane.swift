@@ -143,20 +143,13 @@ struct PreviewDefaultsPane<Store: SettingsDefaultsStore>: View {
         ].compactMap { $0 }
         guard panel.runModal() == .OK, let url = panel.url else { return }
 
-        if let importCustomEnvironment {
-            do {
-                let fileName = try importCustomEnvironment(url)
-                store.set(fileName, for: .customEnvironmentFile)
-                store.set(true, for: .useEnvironmentMap)
-                importError = nil
-            } catch {
-                importError = error.localizedDescription
-            }
-            return
+        do {
+            let name = try importCustomEnvironment?(url) ?? url.lastPathComponent
+            store.set(name, for: .customEnvironmentFile)
+            store.set(true, for: .useEnvironmentMap)
+            importError = nil
+        } catch {
+            importError = error.localizedDescription
         }
-
-        store.set(url.lastPathComponent, for: .customEnvironmentFile)
-        store.set(true, for: .useEnvironmentMap)
-        importError = nil
     }
 }

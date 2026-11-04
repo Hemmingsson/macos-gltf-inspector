@@ -49,7 +49,7 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
                         }
                     } else {
                         ForEach(section.items) { item in
-                            NodeRow(item: item, isSelected: selection.selected == item.id, selection: selection)
+                            NodeRow(item: item, selection: selection)
                                 .tag(Optional(item.id))
                         }
                     }
@@ -122,11 +122,11 @@ struct OutlinerDisclosure<Selection: SelectionModel>: View {
                     OutlinerDisclosure(item: child, expanded: $expanded, selection: selection)
                 }
             } label: {
-                NodeRow(item: item, isSelected: selection.selected == item.id, selection: selection)
+                NodeRow(item: item, selection: selection)
             }
             .tag(Optional(item.id))
         } else {
-            NodeRow(item: item, isSelected: selection.selected == item.id, selection: selection)
+            NodeRow(item: item, selection: selection)
                 .tag(Optional(item.id))
         }
     }
