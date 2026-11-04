@@ -17,6 +17,9 @@ schemes:
       test:
         targets:
           - GLTFInspectorTests
+        # The WebKit suites drive the page directly; FilamentRendererTests builds its own host.
+        environmentVariables:
+          GLTF_RENDERER: webkit
 
     # Opt-in real-window XCUITest flows (`./scripts/dev.sh uitest`); not part of `dev.sh test`.
     GLTFInspectorUITests:
@@ -47,6 +50,8 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "1.1"
     CURRENT_PROJECT_VERSION: "4"
+    # Filament's prebuilt SDK (.build/filament, scripts/fetch-filament.sh) is arm64 only.
+    ARCHS: arm64
 
 packages:
   Sparkle:
@@ -126,6 +131,71 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
 
+  # Objective-C++ over Google's Filament (Metal backend, gltfio ubershaders). Static Filament
+  # libraries from the prebuilt SDK in .build/filament (scripts/fetch-filament.sh). Public
+  # surface: FLRenderer.h, no Filament headers.
+  FilamentBridge:
+    type: framework
+    platform: macOS
+    sources:
+      - path: FilamentBridge
+        headerVisibility: public
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.FilamentBridge
+        GENERATE_INFOPLIST_FILE: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        DEFINES_MODULE: YES
+        CLANG_CXX_LANGUAGE_STANDARD: c++20
+        CLANG_ENABLE_OBJC_ARC: YES
+        GCC_WARN_INHIBIT_ALL_WARNINGS: YES
+        HEADER_SEARCH_PATHS: $(SRCROOT)/.build/filament/include
+        LIBRARY_SEARCH_PATHS: $(SRCROOT)/.build/filament/lib/arm64
+        OTHER_LDFLAGS:
+          - -lfilament
+          - -lbackend
+          - -lbluegl
+          - -lbluevk
+          - -lfilabridge
+          - -lfilaflat
+          - -lutils
+          - -lgeometry
+          - -lsmol-v
+          - -libl
+          - -libl-lite
+          - -lgltfio_core
+          - -luberarchive
+          - -ldracodec
+          - -lktxreader
+          - -lbasis_transcoder
+          - -lstb
+          - -lmeshoptimizer
+          - -lmikktspace
+          - -lzstd
+          - -luberzlib
+          - -limage
+          - -limageio-lite
+          - -lfilament-iblprefilter
+          - -lfilament-generatePrefilterMipmap
+          - -labseil
+          - -lperfetto
+          - -lshaders
+          - -lcamutils
+          - -lfilameshio
+          - -lfilamat
+          - -lmatp
+          - -lc++
+          - -framework
+          - Metal
+          - -framework
+          - QuartzCore
+          - -framework
+          - CoreVideo
+          - -framework
+          - ImageIO
+          - -framework
+          - AppKit
+
   # The renderer: one WKWebView page (the vendored Khronos glTF Sample Renderer) driven from
   # Swift — host, scheme handler, command bridge, the SwiftUI canvas. Extension-safe. The page
   # ships once, inside this framework; `WebRendererHost` finds it with `Bundle(for:)` (the HDRs
@@ -147,6 +217,8 @@ targets:
         APPLICATION_EXTENSION_API_ONLY: YES
     dependencies:
       - target: GLTFCore
+        embed: false
+      - target: FilamentBridge
         embed: false
 
   GLTFInspector:
@@ -241,6 +313,8 @@ targets:
       - target: GLTFCore
         embed: true
       - target: RendererWebKit
+        embed: true
+      - target: FilamentBridge
         embed: true
       - target: PreviewUI
         embed: true

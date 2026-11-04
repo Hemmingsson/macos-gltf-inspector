@@ -29,7 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        // As a test host, a test's own window may be the last one; quitting then ends the run.
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {

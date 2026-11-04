@@ -9,7 +9,7 @@ import SwiftUI
 /// Look builds its chrome; `present` hands that same host to the canvas.
 class PreviewViewController: NSViewController, QLPreviewingController {
     private var hostingView: NSHostingView<QuickLookWebView>!
-    private var prestartedHost: WebRendererHost?
+    private var prestartedHost: (any CanvasRendererHost)?
 
     override func loadView() {
         prestartRenderer()
@@ -25,7 +25,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
 
     private func prestartRenderer() {
         do {
-            let host = try WebRendererHost(mode: .live)
+            let host = try CanvasRenderer.makeHost(mode: .live)
             prestartedHost = host
             Task { @MainActor in
                 do {
@@ -103,7 +103,7 @@ struct QuickLookWebView: View {
             url: URL,
             look: WebPreviewCanvas.Look,
             placeholder: NSImage?,
-            host: WebRendererHost,
+            host: any CanvasRendererHost,
             canvas: WebCanvasController
         )
     }

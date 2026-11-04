@@ -49,15 +49,15 @@ public final class WebRendererHost {
     private var brokenBy: WebRendererError?
 
     /// Called when a page that was running dies. The owner decides whether to `start()` again.
-    var onFailure: ((WebRendererError) -> Void)?
+    public var onFailure: ((WebRendererError) -> Void)?
     /// Live mode: the camera's zoom against the last fit, as a whole percent, when it changes.
-    var onZoom: ((Int) -> Void)?
+    public var onZoom: ((Int) -> Void)?
 
     /// The renderer surface, for `.live` hosting. Untouched in `.still`.
-    var view: NSView { webView }
+    public var view: NSView { webView }
 
     /// Short per-instance tag so the log shows whether a page start came from a new web view.
-    var logID: String { String(UInt(bitPattern: ObjectIdentifier(self).hashValue), radix: 36) }
+    public var logID: String { String(UInt(bitPattern: ObjectIdentifier(self).hashValue), radix: 36) }
 
     public init(mode: WebRendererMode, size: Int = 512, timeout: Duration = .seconds(15)) throws {
         guard let rendererRoot = Bundle(for: WebRendererHost.self).url(forResource: "web-renderer", withExtension: nil)
@@ -143,7 +143,7 @@ public final class WebRendererHost {
 
     /// Moves or reads the camera; always answers with the resulting state.
     @discardableResult
-    func camera(_ command: CameraCommand) async throws -> RendererCameraState {
+    public func camera(_ command: CameraCommand) async throws -> RendererCameraState {
         try await call("camera", command)
     }
 
