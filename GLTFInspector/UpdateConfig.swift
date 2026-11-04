@@ -37,7 +37,8 @@ struct CheckForUpdatesView: View {
     }
 
     var body: some View {
-        Button("Check for Updates…", action: updater.checkForUpdates)
+        Button("Check for Updates…", systemImage: MenuSymbol.checkForUpdates, action: updater.checkForUpdates)
             .disabled(!viewModel.canCheckForUpdates)
+            .menuBarIcons()
     }
 }

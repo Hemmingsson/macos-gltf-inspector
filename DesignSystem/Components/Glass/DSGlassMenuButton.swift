@@ -62,7 +62,9 @@ public struct DSGlassMenuButton<MenuContent: View>: View {
 
     public var body: some View {
         Menu {
+            // macOS 27 draws a menu symbol only when the label style asks for title and icon.
             menuContent
+                .labelStyle(.titleAndIcon)
         } label: {
             label
         }

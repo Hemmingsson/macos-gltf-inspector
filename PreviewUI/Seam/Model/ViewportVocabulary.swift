@@ -15,6 +15,15 @@ public enum BackdropStyle: String, Sendable, Hashable, Codable, CaseIterable, Id
         case .dark: "Dark"
         }
     }
+
+    /// Menu glyph. Template symbols, so White and Dark are sun and moon rather than a tint.
+    public var systemImage: String {
+        switch self {
+        case .window: "checkerboard.rectangle"
+        case .white: "sun.max"
+        case .dark: "moon"
+        }
+    }
 }
 
 /// A render channel the view-mode menu can offer. Only channels the file actually
@@ -74,6 +83,16 @@ public enum ViewMode: Sendable, Hashable, Identifiable {
         case .shaded: "Shaded"
         case .wireframe: "Wireframe"
         case .channel(let channel): channel.title
+        }
+    }
+
+    /// Menu and toolbar glyph. Shaded is the half-lit sphere, wireframe the grid, any debug
+    /// channel the mesh cube.
+    public var systemImage: String {
+        switch self {
+        case .shaded: "circle.lefthalf.filled"
+        case .wireframe: "grid"
+        case .channel: "cube"
         }
     }
 

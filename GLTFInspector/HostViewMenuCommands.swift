@@ -23,71 +23,84 @@ private struct HostViewMenuBody: View {
     let viewport: EngineViewportController
 
     var body: some View {
-        Picker("View Mode", selection: bind(\.viewMode, viewport.setViewMode)) {
+        Picker(selection: bind(\.viewMode, viewport.setViewMode)) {
             ForEach(ViewMode.base) { mode in
-                Text(mode.title)
+                Label(mode.title, systemImage: mode.systemImage)
                     .tag(mode)
                     .keyboardShortcutIfAvailable(viewModeShortcut(for: mode))
             }
+        } label: {
+            Label("View Mode", systemImage: MenuSymbol.viewMode)
         }
+        .menuBarIcons()
 
-        Picker("Backdrop", selection: bind(\.backdrop, viewport.setBackdrop)) {
+        Picker(selection: bind(\.backdrop, viewport.setBackdrop)) {
             ForEach(BackdropStyle.allCases) { style in
-                Text(style.title).tag(style)
+                Label(style.title, systemImage: style.systemImage)
+                    .tag(style)
             }
+        } label: {
+            Label("Backdrop", systemImage: MenuSymbol.backdrop)
         }
+        .menuBarIcons()
 
-        Toggle("Show Floor", systemImage: "circle.grid.cross", isOn: bind(\.showsFloor, viewport.setFloor))
+        Toggle("Show Floor", systemImage: MenuSymbol.floor, isOn: bind(\.showsFloor, viewport.setFloor))
+            .menuBarIcons()
 
         Toggle(
             "Auto-Rotate",
-            systemImage: "arrow.trianglehead.counterclockwise.rotate.90",
+            systemImage: MenuSymbol.autoRotate,
             isOn: bind(\.autoRotates, viewport.setAutoRotate)
         )
         .keyboardShortcut(DS.Shortcuts.action(.autoRotate))
+        .menuBarIcons()
 
-        Toggle("Center Model", systemImage: "dot.scope", isOn: bind(\.isCentered, viewport.setCenter))
+        Toggle("Center Model", systemImage: MenuSymbol.center, isOn: bind(\.isCentered, viewport.setCenter))
             .keyboardShortcut(DS.Shortcuts.action(.center))
+            .menuBarIcons()
 
-        Toggle("Orthographic", systemImage: "perspective", isOn: orthographic)
+        Toggle("Orthographic", systemImage: MenuSymbol.orthographic, isOn: orthographic)
             .keyboardShortcut(DS.Shortcuts.action(.orthographic))
+            .menuBarIcons()
 
         Divider()
 
-        Button("Zoom In", systemImage: "plus.magnifyingglass") {
+        Button("Zoom In", systemImage: MenuSymbol.zoomIn) {
             viewport.zoom(by: 0.8)
         }
         .keyboardShortcut(DS.Shortcuts.action(.zoomIn))
         .disabled(viewport.commands == nil)
+        .menuBarIcons()
 
-        Button("Zoom Out", systemImage: "minus.magnifyingglass") {
+        Button("Zoom Out", systemImage: MenuSymbol.zoomOut) {
             viewport.zoom(by: 1 / 0.8)
         }
         .keyboardShortcut(DS.Shortcuts.action(.zoomOut))
         .disabled(viewport.commands == nil)
+        .menuBarIcons()
 
-        Button("Fit", systemImage: "viewfinder") {
+        Button("Fit", systemImage: MenuSymbol.fit) {
             viewport.fit()
         }
         .keyboardShortcut(DS.Shortcuts.action(.fit))
         .disabled(viewport.commands == nil)
+        .menuBarIcons()
 
-        Button("Reset View", systemImage: "arrow.counterclockwise") {
+        Button("Reset View", systemImage: MenuSymbol.reset) {
             viewport.reset()
         }
         .keyboardShortcut(DS.Shortcuts.action(.reset))
+        .menuBarIcons()
 
         Divider()
 
         ForEach(CameraPreset.allCases) { preset in
-            Button(
-                preset.title,
-                systemImage: preset.systemImage
-            ) {
+            Button(preset.title, systemImage: preset.systemImage) {
                 viewport.applyCameraPreset(preset)
             }
             .keyboardShortcutIfAvailable(cameraPresetShortcut(for: preset))
             .disabled(viewport.commands == nil)
+            .menuBarIcons()
         }
     }
 

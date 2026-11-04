@@ -7,10 +7,11 @@ struct NewWindowCommand: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("New Window") {
+        Button("New Window", systemImage: MenuSymbol.newWindow) {
             openWindow(id: WelcomeWindow.id)
         }
         .keyboardShortcut("n", modifiers: [.command])
+        .menuBarIcons()
     }
 }
 
@@ -20,30 +21,37 @@ struct DocumentFileCommands: View {
     @FocusedValue(\.documentFileURL) private var documentURL
 
     var body: some View {
-        Button("Close") {
+        Button("Close", systemImage: MenuSymbol.close) {
             NSApp.sendAction(#selector(NSWindow.performClose(_:)), to: nil, from: nil)
         }
         .keyboardShortcut("w", modifiers: [.command])
+        .menuBarIcons()
 
         Divider()
 
-        Button("Rename…") {
+        Button("Rename…", systemImage: MenuSymbol.rename) {
             NSApp.sendAction(#selector(NSDocument.rename(_:)), to: nil, from: nil)
         }
         .disabled(documentURL == nil)
+        .menuBarIcons()
 
-        Button("Move To…") {
+        Button("Move To…", systemImage: MenuSymbol.moveTo) {
             NSApp.sendAction(#selector(NSDocument.move(_:)), to: nil, from: nil)
         }
         .disabled(documentURL == nil)
+        .menuBarIcons()
 
         Divider()
 
         if let documentURL {
-            ShareLink("Share", item: documentURL)
+            ShareLink(item: documentURL) {
+                Label("Share", systemImage: MenuSymbol.share)
+            }
+            .menuBarIcons()
         } else {
-            Button("Share") {}
+            Button("Share", systemImage: MenuSymbol.share) {}
                 .disabled(true)
+                .menuBarIcons()
         }
     }
 }
@@ -54,11 +62,12 @@ struct HostFileMenuCommands: View {
     @FocusedValue(\.engineViewport) private var viewport
 
     var body: some View {
-        Button("Export PNG…", systemImage: "camera") {
+        Button("Export PNG…", systemImage: MenuSymbol.exportPNG) {
             viewport?.screenshot()
         }
         .keyboardShortcut("e", modifiers: [.command])
         .disabled(viewport?.commands == nil)
+        .menuBarIcons()
     }
 }
 

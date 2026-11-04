@@ -21,13 +21,13 @@ struct ViewModeMenu<Viewport: ViewportController>: View {
     var body: some View {
         DSGlassMenuButton(
             "View mode",
-            systemImage: Self.symbol(for: viewport.viewMode),
+            systemImage: viewport.viewMode.systemImage,
             style: .titled(viewport.viewMode.title),
             isEngaged: viewport.viewMode != .shaded
         ) {
             DSInlineMenuPicker("View mode", selection: mode) {
                 ForEach(availability.availableDebugChannels) { mode in
-                    Text(mode.title)
+                    Label(mode.title, systemImage: mode.systemImage)
                         .tag(mode)
                         .keyboardShortcutIfAvailable(viewModeShortcut(for: mode))
                 }
@@ -42,16 +42,6 @@ struct ViewModeMenu<Viewport: ViewportController>: View {
 
     private func viewModeShortcut(for mode: ViewMode) -> KeyboardShortcut? {
         DS.Shortcuts.ViewMode(rawValue: mode.id).map { DS.Shortcuts.viewMode($0) }
-    }
-
-    /// One glyph per family, matching the wireframes: the shaded sphere for Shaded, a grid for
-    /// Wireframe, and the mesh cube for any channel (`Inspect@2x.png` on Normals).
-    static func symbol(for mode: ViewMode) -> String {
-        switch mode {
-        case .shaded: "circle.lefthalf.filled"
-        case .wireframe: "grid"
-        case .channel: "cube"
-        }
     }
 }
 
