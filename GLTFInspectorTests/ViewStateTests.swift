@@ -164,6 +164,51 @@ struct ViewStateTests {
     }
 
     /// A file camera clears the canned angle; a preset needs a drawn model to act on.
+    /// Shift-click range: primary is the far end in outliner order, not the first empty by kind name.
+    @Test func shiftRangePrimaryIsTheFarEndInOutlinerOrder() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "scenes": [["nodes": [0]]],
+            "nodes": [["name": "Root", "children": [1, 3]],
+                      ["name": "Group", "children": [2]],
+                      ["name": "Mesh A", "mesh": 0], ["name": "Mesh B", "mesh": 0]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "Shared"]],
+        ])
+        let meshA = NodeID(kind: .mesh, index: 2)
+        let meshB = NodeID(kind: .mesh, index: 3)
+        let root = NodeID(kind: .empty, index: 0)
+        let group = NodeID(kind: .empty, index: 1)
+        view.selection = meshA
+        view.selectedIDs = [root, group, meshA, meshB]
+        #expect(view.selection == meshB)
+
+        view.selection = meshB
+        view.selectedIDs = [root, group, meshA, meshB]
+        #expect(view.selection == meshA)
+    }
+
+    @Test func resetClearsSceneGizmosAndPickMemory() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "scenes": [["nodes": [0, 1]]],
+            "nodes": [["name": "A", "mesh": 0], ["name": "B", "mesh": 0]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "M"]],
+        ])
+        view.showsSceneGizmos = true
+        view.pick(0)
+        view.pick(0)
+        view.reset()
+        #expect(!view.showsSceneGizmos)
+        view.pick(0)
+        #expect(view.selection == NodeID(kind: .mesh, index: 0))
+    }
+
     @Test func fileCameraClearsTheActivePreset() throws {
         let view = ViewState(settings: try settings())
         view.show(.front)

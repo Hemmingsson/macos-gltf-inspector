@@ -81,6 +81,22 @@ struct ShapePreviewTests {
         #expect(state.shapePreview.adoptCount == adoptsBefore)
     }
 
+    @Test func jointSelectionShowsNoInteractivePreview() async throws {
+        let url = try writeTempSkinWithPivotGLB(prefix: "shape-preview-joint")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let state = ViewState(settings: try settings())
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 256, height: 256))
+        state.canvas.mount(in: container, url: url, options: ViewOptions())
+        try #require(try await waitUntil { state.canvas.phase == .ready })
+        defer { state.canvas.view?.removeFromSuperview() }
+
+        await state.shapePreview.sync(canvas: state.canvas, windowOptions: state.options,
+                                      selection: NodeID(kind: .empty, index: 3))
+        #expect(!state.shapePreview.showsInteractivePreview)
+        #expect(state.shapePreview.view == nil)
+    }
+
     @Test func previewModelViewStaysStableAcrossSelectionAndReAdoptsOnReload() async throws {
         let url = try writeTempStackedQuadsGLB()
         defer { try? FileManager.default.removeItem(at: url) }

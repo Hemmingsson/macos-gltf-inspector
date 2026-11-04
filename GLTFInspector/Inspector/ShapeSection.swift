@@ -97,16 +97,17 @@ final class ShapePreviewController {
 
     func sync(canvas: ModelCanvasController, windowOptions: ViewOptions, selection: NodeID?) async {
         guard canvas.phase == .ready, let scene = canvas.scene, let selection else {
-            showsInteractivePreview = false
-            showsCameraStill = false
-            cameraImage = nil
-            lastSync = nil
+            reset()
             return
         }
 
         let generation = canvas.sceneGeneration
         switch selection.kind {
         case .mesh, .empty:
+            guard Self.nodeHasPreviewGeometry(nodeIndex: selection.index, canvas: canvas) else {
+                reset()
+                return
+            }
             let options = Self.previewOptions(from: windowOptions, isolatedNode: selection.index)
             let key = SyncKey(kind: selection.kind, node: selection.index, generation: generation, options: options)
             guard key != lastSync else { return }
@@ -125,11 +126,28 @@ final class ShapePreviewController {
             showsCameraStill = true
             updateCameraStill(scene: scene, generation: generation, options: options)
         default:
-            showsInteractivePreview = false
-            showsCameraStill = false
-            cameraImage = nil
-            lastSync = nil
+            reset()
         }
+    }
+
+    private static func nodeHasPreviewGeometry(nodeIndex: Int, canvas: ModelCanvasController) -> Bool {
+        guard let bounds = canvas.bounds(ofNode: nodeIndex) else { return false }
+        let eps: Float = 1e-5
+        return bounds.max.x - bounds.min.x > eps
+            || bounds.max.y - bounds.min.y > eps
+            || bounds.max.z - bounds.min.z > eps
+    }
+
+    /// Drops the adopted scene and preview view (document reset or selection without drawable geometry).
+    func reset() {
+        view?.removeFromSuperview()
+        view = nil
+        adoptedSceneGeneration = -1
+        fitted = nil
+        lastSync = nil
+        showsInteractivePreview = false
+        showsCameraStill = false
+        cameraImage = nil
     }
 
     func mount(in container: NSView) {
