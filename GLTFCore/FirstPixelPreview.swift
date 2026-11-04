@@ -45,6 +45,18 @@ public enum FirstPixelPreview {
         return loadPNG(at: stored)
     }
 
+    /// Cache file location for `url`, with its directory created.
+    private static func prepareDestination(
+        for url: URL, renderer: RendererKind, look: RenderLook, container: URL
+    ) throws -> URL {
+        let destination = fileURL(for: url, renderer: renderer, look: look, container: container)
+        try FileManager.default.createDirectory(
+            at: destination.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        return destination
+    }
+
     /// Thumbnail extension writes the PNG it just rendered so Quick Look / the window can show it.
     @discardableResult
     public static func store(
@@ -54,11 +66,7 @@ public enum FirstPixelPreview {
         look: RenderLook = AppGroupSettings.rendererLook(),
         container: URL = AppGroupSettings.containerURL
     ) throws -> URL {
-        let destination = fileURL(for: url, renderer: renderer, look: look, container: container)
-        try FileManager.default.createDirectory(
-            at: destination.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+        let destination = try prepareDestination(for: url, renderer: renderer, look: look, container: container)
         let staging = destination.deletingLastPathComponent()
             .appendingPathComponent(".\(destination.lastPathComponent).tmp")
         try png.write(to: staging, options: .atomic)
@@ -78,11 +86,7 @@ public enum FirstPixelPreview {
         look: RenderLook = AppGroupSettings.rendererLook(),
         container: URL = AppGroupSettings.containerURL
     ) throws -> URL {
-        let destination = fileURL(for: url, renderer: renderer, look: look, container: container)
-        try FileManager.default.createDirectory(
-            at: destination.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+        let destination = try prepareDestination(for: url, renderer: renderer, look: look, container: container)
         try PNGWriter.write(image, to: destination)
         return destination
     }
