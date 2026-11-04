@@ -98,35 +98,12 @@ extension RealityKitConvert {
             material.normal.texture = tex(normal, .all, .normal)
         }
         if let emissive = gltfMaterial.emissive {
-            let hint = RealityPolicy.EmissiveHint(gltfMaterial)
-            if RealityPolicy.dropsEmissive(hint, fileLooksBaked: ignoreBakedEmissive) {
-                if hint.hasEmissive {
-                    context.record(.droppedEmissive, severity: .warning, message: "Baked / boost emissive dropped", materialName: name)
-                }
-            } else {
-                material.emissiveColor = .init(
-                    color: platformColor(for: simd_make_float4(emissive.emissiveFactor, 1)),
-                    texture: emissive.emissiveTexture.flatMap { tex($0, .all, .color) }
-                )
-                material.emissiveIntensity = emissive.emissiveStrength
-            }
+            applyEmissive(emissive, of: gltfMaterial, to: &material, context: context, tex: tex)
         }
         if let occlusion = gltfMaterial.occlusionTexture {
             material.ambientOcclusion.texture = tex(occlusion, .red, .scalar)
         }
-        if let clearcoat = gltfMaterial.clearcoat {
-            material.clearcoat.scale = clearcoat.clearcoatFactor
-            if let clearcoatTexture = clearcoat.clearcoatTexture {
-                material.clearcoat.texture = tex(clearcoatTexture, .red, .raw)
-            }
-            material.clearcoatRoughness.scale = clearcoat.clearcoatRoughnessFactor
-            if let clearcoatRoughnessTexture = clearcoat.clearcoatRoughnessTexture {
-                material.clearcoatRoughness.texture = tex(clearcoatRoughnessTexture, .green, .raw)
-            }
-            if let clearcoatNormalTexture = clearcoat.clearcoatNormalTexture {
-                material.clearcoatNormal = .init(texture: tex(clearcoatNormalTexture, .all, .normal))
-            }
-        }
+        if let clearcoat = gltfMaterial.clearcoat { applyClearcoat(clearcoat, to: &material, tex: tex) }
         applyBlendMode(toPBR: &material, gltfMaterial: gltfMaterial, context: context)
         material.faceCulling = gltfMaterial.isDoubleSided ? .none : .back
 
@@ -154,6 +131,45 @@ extension RealityKitConvert {
         if let primary = transforms[0] { material.textureCoordinateTransform = primary }
         if let secondary = transforms[1] { material.secondaryTextureCoordinateTransform = secondary }
         return material
+    }
+
+    private func applyEmissive(
+        _ emissive: GLTFEmissiveParams,
+        of gltfMaterial: GLTFMaterial,
+        to material: inout PhysicallyBasedMaterial,
+        context: RealityKitResourceContext,
+        tex: (GLTFTextureParams, RealityKitResourceContext.ColorMask, RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
+    ) {
+        let hint = RealityPolicy.EmissiveHint(gltfMaterial)
+        if RealityPolicy.dropsEmissive(hint, fileLooksBaked: ignoreBakedEmissive) {
+            if hint.hasEmissive {
+                context.record(.droppedEmissive, severity: .warning, message: "Baked / boost emissive dropped", materialName: gltfMaterial.name)
+            }
+        } else {
+            material.emissiveColor = .init(
+                color: platformColor(for: simd_make_float4(emissive.emissiveFactor, 1)),
+                texture: emissive.emissiveTexture.flatMap { tex($0, .all, .color) }
+            )
+            material.emissiveIntensity = emissive.emissiveStrength
+        }
+    }
+
+    private func applyClearcoat(
+        _ clearcoat: GLTFClearcoatParams,
+        to material: inout PhysicallyBasedMaterial,
+        tex: (GLTFTextureParams, RealityKitResourceContext.ColorMask, RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
+    ) {
+        material.clearcoat.scale = clearcoat.clearcoatFactor
+        if let clearcoatTexture = clearcoat.clearcoatTexture {
+            material.clearcoat.texture = tex(clearcoatTexture, .red, .raw)
+        }
+        material.clearcoatRoughness.scale = clearcoat.clearcoatRoughnessFactor
+        if let clearcoatRoughnessTexture = clearcoat.clearcoatRoughnessTexture {
+            material.clearcoatRoughness.texture = tex(clearcoatRoughnessTexture, .green, .raw)
+        }
+        if let clearcoatNormalTexture = clearcoat.clearcoatNormalTexture {
+            material.clearcoatNormal = .init(texture: tex(clearcoatNormalTexture, .all, .normal))
+        }
     }
 
     @MainActor
