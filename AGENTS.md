@@ -4,7 +4,7 @@ macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host **`GLTFInspe
 `PreviewExtension` and `ThumbnailExtension`. Two siloed renderers — the same one on the window,
 Quick Look and Finder icons:
 
-- **RealityKit** (`RendererRealityKit`, default, what `main` ships): `EntityLoader` convert feeds
+- **RealityKit** (`RendererRealityKit`, default): `EntityLoader` convert feeds
   the canvas *and* RealityKit-only chrome. Window / Quick Look bind 1×1 `TextureResource`
   placeholders and replace after the first frame (`RealityCanvasView`); thumbnails and goldens
   stay eager.
@@ -39,10 +39,10 @@ previews / icons. Debug: `-GLTFRenderer webkit|realitykit` (host only).
 
 Silos: [`docs/renderer-silos.md`](docs/renderer-silos.md). Convert:
 [`docs/pipeline-gltf-to-realitykit.md`](docs/pipeline-gltf-to-realitykit.md). Pixels:
-[`docs/pipeline-web-renderer.md`](docs/pipeline-web-renderer.md). Historical WebKit-only
-decision: [`docs/decision-web-renderer.md`](docs/decision-web-renderer.md).
+[`docs/pipeline-web-renderer.md`](docs/pipeline-web-renderer.md). RealityKit look calibration:
+[`docs/look-probes.md`](docs/look-probes.md).
 
-Ship **`GLTFInspector/`**. `main` is RealityKit-only; this branch is the two-renderer integration.
+Ship **`GLTFInspector/`** from `main` (both renderers behind the switch).
 
 ## Commands & build
 
@@ -79,7 +79,7 @@ Signing: `project.yml`. Fixtures: `TestModels/Fixture Models/` via
 
 | Source | Treat as |
 | --- | --- |
-| `main` (merged commits) | Shipped behavior (RealityKit) |
+| `main` (merged commits) | Shipped behavior (both renderers) |
 | git worktrees (gitignored) | Throwaway until merged |
 | Dex / `.agents/plans` | Intent only |
 

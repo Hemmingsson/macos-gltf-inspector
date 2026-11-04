@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Tidy-loop metrics: Periphery, SwiftLint (size/complexity), jscpd (duplication), LOC.
-# Writes .agents/research/tidy-baseline/<label>/ and prints the summary + delta vs summary-0.
+# Code-health metrics: Periphery, SwiftLint (size/complexity), jscpd (duplication), LOC.
+# Writes .build/tidy-metrics/<label>/ and prints the summary + delta vs a baseline label.
 #
-#   ./scripts/tidy-metrics.sh [label] [tests]   # label defaults to the short HEAD sha;
-#                                              # tests = passing test count to record (optional)
+#   ./scripts/tidy-metrics.sh [label] [tests] [baseline]
+#     label    defaults to the short HEAD sha
+#     tests    passing test count to record (optional)
+#     baseline label to diff against (optional; default: none)
 #
 # Needs: periphery, swiftlint (brew), npx (jscpd@5.4.0), xcodegen.
 set -euo pipefail
@@ -13,7 +15,8 @@ cd "$ROOT"
 
 LABEL="${1:-$(git rev-parse --short HEAD)}"
 TESTS="${2:-}"
-BASE="$ROOT/.agents/research/tidy-baseline"
+BASELINE="${3:-}"
+BASE="$ROOT/.build/tidy-metrics"
 OUT="$BASE/$LABEL"
 PROD_DIRS=(GLTFCore RendererRealityKit RendererWebKit GLTFInspector PreviewUI DesignSystem DesignCatalog PreviewExtension ThumbnailExtension)
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -31,7 +34,7 @@ periphery scan --project GLTFInspector.xcodeproj --schemes GLTFInspector DesignC
   -- -destination 'platform=macOS' >"$OUT/periphery.txt"
 
 echo "swiftlint…" >&2
-swiftlint lint --config "$BASE/swiftlint-metrics.yml" --quiet --no-cache "${PROD_DIRS[@]}" 2>/dev/null \
+swiftlint lint --config "$ROOT/scripts/swiftlint-metrics.yml" --quiet --no-cache "${PROD_DIRS[@]}" 2>/dev/null \
   | sed "s|^$ROOT/||" | sort >"$OUT/swiftlint.txt" || true
 
 echo "jscpd…" >&2
@@ -51,12 +54,12 @@ summary="loc=$loc periphery=$periphery_count swiftlint=$swiftlint_count jscpd_cl
 echo "$summary" >"$OUT/summary.txt"
 
 echo "$summary"
-python3 - "$BASE/summary-0.txt" "$OUT/summary.txt" <<'PY'
+[[ -n "$BASELINE" ]] && python3 - "$BASE/$BASELINE/summary.txt" "$OUT/summary.txt" "$BASELINE" <<'PY'
 import sys
 def read(p):
     return dict(kv.split("=", 1) for kv in open(p).read().split())
 base, now = read(sys.argv[1]), read(sys.argv[2])
-print("delta vs summary-0: " + " ".join(
+print(f"delta vs {sys.argv[3]}: " + " ".join(
     f"{k}={int(now[k]) - int(base[k]):+d}" for k in now if k in base))
 PY
 echo "wrote $OUT" >&2

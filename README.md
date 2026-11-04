@@ -33,7 +33,7 @@
 </table>
 
 The same renderer draws the model on every surface. **Settings ▸ Preview ▸ Renderer** picks
-RealityKit (default, what `main` ships) or WebKit. On WebKit the page loads the file itself
+RealityKit (default) or WebKit. On WebKit the page loads the file itself
 and the panels come from the JSON alone — no convert. On RealityKit one convert feeds canvas
 and chrome.
 
@@ -43,8 +43,6 @@ and chrome.
 2. Move `glTF Inspector.app` to `/Applications`.
 3. Control-click → **Open** (or allow under **System Settings → Privacy & Security**).
 4. Open the app once so the Quick Look preview and thumbnail extensions load.
-
-Released zips follow **`main`**, which still uses RealityKit. To run this branch, build it.
 
 ## Build
 
@@ -99,7 +97,6 @@ sandboxed extension has its own container. Thumbnail and preview extensions need
 `com.apple.security.network.client` so WebKit's Networking XPC can start — the page itself
 does not fetch from the network.
 
-Why WebKit instead of RealityKit: [`docs/decision-web-renderer.md`](docs/decision-web-renderer.md).
 Pixel path: [`docs/pipeline-web-renderer.md`](docs/pipeline-web-renderer.md). Convert /
 inspector path: [`docs/pipeline-gltf-to-realitykit.md`](docs/pipeline-gltf-to-realitykit.md).
 

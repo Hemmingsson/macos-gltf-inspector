@@ -7,7 +7,7 @@
       "id": "glb.build",
       "label": "$(tools) Build",
       "command": "workbench.action.tasks.build",
-      "tooltip": "dev.sh install → .build/ (+ /Applications on main). Does not open the app.",
+      "tooltip": "dev.sh install → .build/ (+ /Applications from the main checkout). Does not open the app.",
       "color": "#d29922",
       "useVsCodeApi": true
     },

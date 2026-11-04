@@ -1,8 +1,7 @@
 # Look probes: RealityKit vs the Khronos web renderer (seam 5)
 
 Measured 2026-09-30 on branch `rs/look-probes`, macOS 27 SDK, this machine. These are the numbers
-behind the `RenderLook` → renderer mapping tables. They close research gaps G1, G2 and G6 and
-answer "Needs measurement" items 1–3 in `2026-09-30-rendering-validity-and-testing.md`.
+behind the `RenderLook` → renderer mapping tables.
 
 **Kit removed (tidy W0, 2026-10-01):** the probe test, fixtures and scripts were deleted in `8812d12`; restore with `git checkout a680e41 -- GLTFInspectorTests/CrossRenderer "TestModels/Fixture Models/probes" scripts/testdata/make_look_probes.py scripts/testdata/run-look-probes.sh`.
 
@@ -15,9 +14,8 @@ answer "Needs measurement" items 1–3 in `2026-09-30-rendering-validity-and-tes
   - a mirror sphere (metallic 1, roughness 0)
   - a white rough plane (metallic 0, roughness 1) under one 1 lux directional, 1 cd point or 1 cd spot
   - an emissive ramp
-- **Test:** `GLTFInspectorTests/LookProbeTests.swift`. It is opt-in behind a sentinel. Run it with
-  `./scripts/testdata/run-look-probes.sh`. It prints `lookprobe …` lines and writes PNGs and JSON
-  to `/tmp/GLTFInspector-look-probes/`.
+- **Test:** `LookProbeTests` (opt-in behind a sentinel, removed with the kit): printed `lookprobe …`
+  lines and wrote PNGs and JSON to `/tmp/GLTFInspector-look-probes/`.
 - **Web:** the shipping `WebRendererHost` still page. Tone map is set to
   `"None (Linear mapping, clamped at 1.0)"` at exposure 0 EV. IBL is off unless `setEnvironment`
   is sent. The HDR is served as a model sibling.
@@ -65,7 +63,7 @@ dielectrics. Prefer 591 so the pixels match.
 1. **`StillRenderer` encode.** Render into `.bgra8Unorm_srgb`, or tag the `CGImage` with
    `CGColorSpace.linearSRGB`, instead of `bgra8Unorm` + DeviceRGB. This fixes the dark RK
    thumbnails and backdrop. Every RK golden changes once.
-2. **Convert light units** (`Shared/Convert/RealityKitConvert.swift` ~218–235):
+2. **Convert light units** (`RendererRealityKit/Convert/RealityKitConvert.swift`):
    - apply ×591 to all three light types
    - use ×π instead of ×4π for spots
    - double the cone angles

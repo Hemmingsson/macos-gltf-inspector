@@ -135,7 +135,7 @@ UV1 needs macOS 27, else `missingTexCoord`). Nothing is baked into the UVs.
 ## Look mapping (`RealityLook`)
 
 One file maps `RenderLook` and glTF light units to RealityKit, with constants from the look probes
-(`.agents/research/2026-09-30-look-probes.md`):
+([`look-probes.md`](look-probes.md)):
 
 | Value | RealityKit |
 | --- | --- |

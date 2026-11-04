@@ -2,7 +2,7 @@ import Foundation
 import GLTFCore
 
 /// `RenderLook` → RealityKit, in one place. Constants come from the look probes
-/// (`.agents/research/2026-09-30-look-probes.md`); each row says whether it is measured.
+/// (`docs/look-probes.md`); each row says whether it is measured.
 ///
 /// | Look / glTF value | RealityKit | Status |
 /// | --- | --- | --- |
