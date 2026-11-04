@@ -135,6 +135,7 @@ final class ViewState {
         self.settings = settings
         environment = settings.environment
         toneMapping = settings.toneMapping
+        canvas.onOrbitStart = { [weak self] in self?.canvasDidOrbit() }
     }
 
     /// What the canvas draws with.
@@ -317,6 +318,8 @@ final class ViewState {
     }
 
     func orbit(dx: Double, dy: Double) {
+        guard canvas.phase == .ready else { return }
+        fileCameraNodeIndex = nil
         canvasDidOrbit()
         canvas.orbit(dx: dx, dy: dy)
     }
@@ -328,6 +331,7 @@ final class ViewState {
     }
 
     func show(_ preset: CameraPreset) {
+        guard canvas.phase == .ready else { return }
         fileCameraNodeIndex = nil
         activeCameraPreset = preset
         let wasOrthographic = isOrthographic && !autoOrthographic

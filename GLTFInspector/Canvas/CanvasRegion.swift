@@ -113,6 +113,7 @@ struct CanvasRegion<Content: View>: View {
                     onSelect: { view.show($0) },
                     onOrbit: { dx, dy in view.orbit(dx: dx, dy: dy) }
                 )
+                .allowsHitTesting(view.canvas.phase == .ready)
                 .padding(OverlayMetrics.inset)
             }
             .overlay(alignment: .bottomTrailing) {

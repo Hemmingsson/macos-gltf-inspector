@@ -391,9 +391,17 @@ public final class ModelView: NSView {
         displayLink = link
     }
 
-    @objc private func displayLinkStep() {
+    @objc func displayLinkStep() {
         guard renderer.scene != nil else { return }
-        if options.autoRotates { camera.orbit(1.2, 0) }
+        if options.autoRotates {
+            if !didReportAutoRotate {
+                didReportAutoRotate = true
+                onOrbitStart?()
+            }
+            camera.orbit(1.2, 0)
+        } else {
+            didReportAutoRotate = false
+        }
         if isPlaybackRunning { onAnimationPlaybackStep?() }
         redraw()
     }
@@ -409,6 +417,7 @@ public final class ModelView: NSView {
     private var dragExceededClickThreshold = false
     private var isPanning = false
     private var didReportOrbit = false
+    private var didReportAutoRotate = false
 
     override public var acceptsFirstResponder: Bool { true }
     override public func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

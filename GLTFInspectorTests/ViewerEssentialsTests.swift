@@ -226,16 +226,22 @@ struct ViewerEssentialsTests {
 
     // MARK: - ggq8r9uj auto-orthographic
 
-    @Test func orbitAfterAnAxisSnapReturnsToPerspective() throws {
+    @Test func orbitAfterAnAxisSnapReturnsToPerspective() async throws {
         let view = ViewState(settings: try settings())
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: TestFixtures.cube, options: view.options)
+        try #require(try await waitUntil { view.canvas.phase == .ready })
         view.show(.top)
         #expect(view.isOrthographic)
         view.canvasDidOrbit()
         #expect(!view.isOrthographic)
     }
 
-    @Test func orbitKeepsOrthographicTheUserChose() throws {
+    @Test func orbitKeepsOrthographicTheUserChose() async throws {
         let view = ViewState(settings: try settings())
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: TestFixtures.cube, options: view.options)
+        try #require(try await waitUntil { view.canvas.phase == .ready })
         view.isOrthographic = true
         view.show(.front)
         view.canvasDidOrbit()
@@ -257,6 +263,20 @@ struct ViewerEssentialsTests {
         view.mouseDragged(with: try testMouseEvent(.leftMouseDragged, NSPoint(x: 240, y: 200), in: window))
         view.mouseUp(with: try testMouseEvent(.leftMouseUp, NSPoint(x: 240, y: 200), in: window))
         #expect(starts == 1)
+    }
+
+    @Test func autoRotateClearsTheActivePreset() async throws {
+        let (state, container) = try await loadedState(TestFixtures.cube)
+        defer { state.canvas.view?.removeFromSuperview(); _ = container }
+        let view = try #require(state.canvas.view)
+        state.show(.front)
+        #expect(state.activeCameraPreset == .front)
+        state.autoRotates = true
+        state.canvas.update(url: TestFixtures.cube, options: state.options)
+        try #require(try await waitUntil { view.options.autoRotates })
+        view.displayLinkStep()
+        #expect(state.activeCameraPreset == nil)
+        #expect(NavigationGizmoLayout.cameraPreset(for: .posZ, activePreset: state.activeCameraPreset) == .front)
     }
 
     @Test func orthographicWheelZoomRescalesTheOrthographicMagnitude() async throws {
