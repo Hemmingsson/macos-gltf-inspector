@@ -64,6 +64,33 @@ struct ModelCanvasControllerTests {
 
     /// Quick Look's path: the stored look with a floor, a preset, and an export at the canvas
     /// size rather than a square.
+    @Test func boundsCacheSurvivesViewRotation() async throws {
+        let canvas = ModelCanvasController()
+        _ = mount(canvas, url: TestFixtures.cube)
+        #expect(try await waitUntil { canvas.phase == .ready })
+        _ = canvas.bounds(ofNode: 0)
+        _ = canvas.bounds(ofNode: 0)
+        #expect(canvas.boundsEvaluations == 1)
+        canvas.orbit(dx: 40, dy: 20)
+        _ = canvas.bounds(ofNode: 0)
+        #expect(canvas.boundsEvaluations == 1)
+        _ = canvas.bounds(ofNode: 0)
+        #expect(canvas.boundsEvaluations == 1)
+    }
+
+    @Test func boundsCacheInvalidatesWhenTheSceneReloads() async throws {
+        let canvas = ModelCanvasController()
+        _ = mount(canvas, url: TestFixtures.cube)
+        #expect(try await waitUntil { canvas.phase == .ready })
+        _ = canvas.bounds(ofNode: 0)
+        #expect(canvas.boundsEvaluations == 1)
+        let generation = canvas.sceneGeneration
+        canvas.update(url: TestFixtures.multiScene, options: ViewOptions())
+        #expect(try await waitUntil { canvas.sceneGeneration > generation })
+        _ = canvas.bounds(ofNode: 0)
+        #expect(canvas.boundsEvaluations == 1)
+    }
+
     @Test func readyCanvasTakesPresetsAndExportsAtCanvasSize() async throws {
         let canvas = ModelCanvasController()
         _ = mount(canvas, url: TestFixtures.cube, options: .stored(showsFloor: true))

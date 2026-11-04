@@ -67,6 +67,10 @@ public final class ModelCanvasController {
     public private(set) var zoomPercent: Int?
     /// Rotation of the current view matrix; updates when the camera moves.
     public private(set) var viewRotation = matrix_identity_float3x3
+    /// Count of uncached `bounds(ofNode:)` evaluations since the last scene generation change.
+    private(set) var boundsEvaluations = 0
+    @ObservationIgnored private var boundsCache: [Int: (min: SIMD3<Float>, max: SIMD3<Float>)] = [:]
+    @ObservationIgnored private var boundsCacheGeneration = -1
 
     @ObservationIgnored private(set) var view: ModelView?
     @ObservationIgnored private var reportedViewRotation = matrix_identity_float3x3
@@ -302,8 +306,16 @@ public final class ModelCanvasController {
     /// World-space box of one node's subtree in the loaded scene, or nil before a load or for a
     /// node with no drawn geometry. Re-read when `sceneGeneration` changes.
     public func bounds(ofNode index: Int) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
-        _ = sceneGeneration
-        return view?.renderer.scene?.bounds(ofNode: index)
+        if boundsCacheGeneration != sceneGeneration {
+            boundsCache.removeAll(keepingCapacity: true)
+            boundsCacheGeneration = sceneGeneration
+            boundsEvaluations = 0
+        }
+        if let cached = boundsCache[index] { return cached }
+        boundsEvaluations += 1
+        guard let box = view?.renderer.scene?.bounds(ofNode: index) else { return nil }
+        boundsCache[index] = box
+        return box
     }
 
     /// One frame at the canvas's pixel size. The caller writes the file.
