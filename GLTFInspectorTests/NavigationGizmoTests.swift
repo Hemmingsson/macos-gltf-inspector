@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import simd
 import Testing
@@ -47,5 +48,25 @@ struct NavigationGizmoTests {
         #expect(NavigationGizmoLayout.cameraPreset(for: .posX, activePreset: .right) == .left)
         #expect(NavigationGizmoLayout.cameraPreset(for: .posY, activePreset: nil) == .top)
         #expect(NavigationGizmoLayout.cameraPreset(for: .posZ, activePreset: .back) == .front)
+    }
+
+    @Test func downwardGizmoDragMatchesCanvasOrbitSign() {
+        let startUI = CGPoint(x: 10, y: 10)
+        let endUI = CGPoint(x: 10, y: 20)
+        let gizmo = NavigationGizmoLayout.dragDelta(from: startUI, to: endUI)
+        #expect(gizmo.dy > 0)
+
+        let startWindow = NSPoint(x: 10, y: 20)
+        let endWindow = NSPoint(x: 10, y: 10)
+        let canvasDy = Double(startWindow.y - endWindow.y)
+        #expect(canvasDy > 0)
+        #expect(gizmo.dy == canvasDy)
+
+        var fromGizmo = MetalUserCamera()
+        var fromCanvas = MetalUserCamera()
+        fromGizmo.orbit(gizmo.dx, gizmo.dy)
+        fromCanvas.orbit(Double(endWindow.x - startWindow.x), canvasDy)
+        #expect(fromGizmo.rotAroundX == fromCanvas.rotAroundX)
+        #expect(fromGizmo.rotAroundY == fromCanvas.rotAroundY)
     }
 }

@@ -1,8 +1,9 @@
+import AppKit
 import Foundation
 import GLTFCore
 import Testing
 @testable import GLTFInspector
-import Renderer
+@testable import Renderer
 
 /// A window's view state: what follows Settings, what the window owns, and what reaches the
 /// renderer.
@@ -180,11 +181,35 @@ struct ViewStateTests {
     }
 
     /// A file camera clears the canned angle; a preset needs a drawn model to act on.
-    @Test func fileCameraClearsTheActivePreset() throws {
+    @Test func fileCameraClearsTheActivePreset() async throws {
         let view = ViewState(settings: try settings())
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: TestFixtures.cube, options: view.options)
+        try #require(try await waitUntil { view.canvas.phase == .ready })
         view.show(.front)
         #expect(view.activeCameraPreset == .front)
         view.fileCameraNodeIndex = 1
         #expect(view.activeCameraPreset == nil)
+    }
+
+    @Test func gizmoOrbitClearsTheFileCamera() async throws {
+        let view = ViewState(settings: try settings())
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: TestFixtures.cube, options: view.options)
+        try #require(try await waitUntil { view.canvas.phase == .ready })
+        view.fileCameraNodeIndex = 2
+        view.orbit(dx: 5, dy: 0)
+        #expect(view.fileCameraNodeIndex == nil)
+    }
+
+    @Test func showPresetIsIgnoredUntilTheCanvasIsReady() throws {
+        let view = ViewState(settings: try settings())
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: TestFixtures.cube, options: view.options)
+        #expect(view.canvas.phase == .loading)
+        view.isOrthographic = false
+        view.show(.top)
+        #expect(view.activeCameraPreset == nil)
+        #expect(!view.isOrthographic)
     }
 }
