@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Metal
 import simd
@@ -66,7 +67,7 @@ struct FrameSelectionTests {
         #expect(abs(target.z) < 0.05)
     }
 
-    @Test func frameSelectionNoopsWithoutSceneNodeAndClearsFileCamera() throws {
+    @Test func frameSelectionNoopsWithoutSceneNodeAndClearsFileCamera() async throws {
         let view = ViewState(settings: try settings())
         view.fileCameraNodeIndex = 3
         view.selection = NodeID(kind: .material, index: 0)
@@ -74,6 +75,9 @@ struct FrameSelectionTests {
         #expect(view.fileCameraNodeIndex == 3, "non-node selection must not clear the file camera")
 
         view.selection = NodeID(kind: .mesh, index: 1)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        view.canvas.mount(in: container, url: TestFixtures.cube, options: view.options)
+        try #require(try await waitUntil { view.canvas.phase == .ready })
         view.show(.front)
         #expect(view.activeCameraPreset == .front)
         // No loaded canvas scene: frame still clears framing state.
