@@ -101,4 +101,15 @@ extension View {
             }
         }
     }
+
+    /// Accessibility-only: JSON panels and outliner are ready (`GLTFInspectorUITests`).
+    func documentReadyMarker() -> some View {
+        overlay(alignment: .topLeading) {
+            Color.clear
+                .frame(width: 1, height: 1)
+                .allowsHitTesting(false)
+                .accessibilityElement()
+                .accessibilityIdentifier("document-ready")
+        }
+    }
 }

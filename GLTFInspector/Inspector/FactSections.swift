@@ -1,4 +1,5 @@
 import GLTFCore
+import simd
 import SwiftUI
 
 // Read-only fact blocks for the inspector, one per glTF entry type.
@@ -65,6 +66,74 @@ struct SkinSection: View {
         FactBlock("Skin") {
             DSFactRow("Joints", value: "\(skin.jointNames.count)")
             NameList(names: skin.jointNames)
+        }
+    }
+}
+
+struct PrimitivesSection: View {
+    var document: GLTFDocument
+    var node: GLTFDocument.Node
+    var onSelect: ((NodeID) -> Void)?
+
+    var body: some View {
+        FactBlock("Primitives") {
+            ForEach(Array(node.meshPrimitives.enumerated()), id: \.offset) { index, primitive in
+                primitiveRow(index: index, primitive: primitive)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Primitives")
+    }
+
+    @ViewBuilder
+    private func primitiveRow(index: Int, primitive: GLTFDocument.MeshPrimitive) -> some View {
+        let label = "Primitive \(index + 1)"
+        if let materialIndex = primitive.materialIndex, document.materials.indices.contains(materialIndex) {
+            let material = document.materials[materialIndex]
+            let materialName = document.displayName(of: NodeID(kind: .material, index: materialIndex))
+            let triLabel = "\(primitive.triangleCount.formatted()) tris"
+            Button {
+                onSelect?(NodeID(kind: .material, index: materialIndex))
+            } label: {
+                DSFactRow(label) {
+                    HStack(spacing: DS.Spacing.s) {
+                        MaterialSwatch(color: swatchColor(for: material), size: 12)
+                        Text("\(materialName) · \(triLabel)")
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(label), \(materialName), \(triLabel)")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: "Select \(materialName)") {
+                onSelect?(NodeID(kind: .material, index: materialIndex))
+            }
+        } else {
+            DSFactRow(label, value: "\(primitive.triangleCount.formatted()) tris")
+        }
+    }
+
+    private func swatchColor(for material: GLTFDocument.Material) -> Color {
+        if let factor = material.baseColorFactor {
+            return Color(.sRGB,
+                         red: Double(simd_clamp(factor.x, 0, 1)),
+                         green: Double(simd_clamp(factor.y, 0, 1)),
+                         blue: Double(simd_clamp(factor.z, 0, 1)))
+        }
+        return Color(.quaternaryLabelColor)
+    }
+}
+
+struct JointOfSection: View {
+    var document: GLTFDocument
+    var skinIndices: [Int]
+
+    var body: some View {
+        FactBlock("Skin") {
+            ForEach(skinIndices, id: \.self) { skinIndex in
+                DSFactRow("Joint of", value: document.displayName(of: NodeID(kind: .skin, index: skinIndex)))
+            }
         }
     }
 }

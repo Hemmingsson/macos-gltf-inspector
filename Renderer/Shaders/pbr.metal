@@ -18,27 +18,61 @@ struct MetalVaryings {
 };
 inline float3 rgb_mix(float3 base,float3 layer,float3 alpha) { return (1.0f-max(alpha.r,max(alpha.g,alpha.b)))*base+alpha*layer; }
 struct MetalFragmentOutput { float4 color [[color(0)]]; uint toneMapFlag [[color(1)]]; };
+// Zero mask and no capture compiles out, so a rigid draw stays the unmorphed shader.
+constant uint morph_mask [[function_constant(0)]];
+constant bool morph_capture [[function_constant(1)]];
+constant bool morph_streams [[function_constant(2)]];
+float4 morph_sum(uint slot,uint vid,constant float *weights,device const float4 *morphs,constant MetalDrawUniforms &draw) {
+    uint targets=draw.morphInfo.x, verts=draw.morphInfo.y;
+    uint ordinal=uint(popcount(morph_mask & ((1u<<slot)-1u)));
+    float4 sum=float4(0);
+    for(uint t=0;t<targets;++t) sum+=weights[t]*morphs[(ordinal*targets+t)*verts+vid];
+    return sum;
+}
 vertex MetalVaryings khronos_vertex(uint id [[vertex_id]],
     device const MetalVertex *vertices [[buffer(0)]],
     constant MetalFrameUniforms &frame [[buffer(1)]],
     constant MetalDrawUniforms &draw [[buffer(2)]],
-    constant MetalMaterialUniforms &m [[buffer(3)]]) {
+    constant MetalMaterialUniforms &m [[buffer(3)]],
+    device const float4 *morphs [[buffer(4), function_constant(morph_streams)]],
+    constant float *weights [[buffer(5), function_constant(morph_streams)]],
+    device MetalVertex *capture [[buffer(6), function_constant(morph_capture)]]) {
     MetalVertex v=vertices[id];
+    float3 pos=v.position.xyz;
+    float3 nrm=v.normal.xyz;
+    float4 tan=v.tangent;
+    float4 col=v.color;
+    float2 uv0=v.uv0, uv1=v.uv1;
+    if(morph_streams) {
+        if(morph_mask&1u) pos+=morph_sum(0,id,weights,morphs,draw).xyz;
+        if(morph_mask&2u) nrm+=morph_sum(1,id,weights,morphs,draw).xyz;
+        if(morph_mask&4u) tan.xyz+=morph_sum(2,id,weights,morphs,draw).xyz;
+        if(morph_mask&8u) uv0+=morph_sum(3,id,weights,morphs,draw).xy;
+        if(morph_mask&16u) uv1+=morph_sum(4,id,weights,morphs,draw).xy;
+        if(morph_mask&32u) col=clamp(col+morph_sum(5,id,weights,morphs,draw),0.0f,1.0f);
+    }
+    if(morph_capture) {
+        MetalVertex c=v;
+        c.position=float4(pos,v.position.w); c.normal=float4(nrm,v.normal.w); c.tangent=tan;
+        c.color=col; c.uv0=uv0; c.uv1=uv1;
+        capture[id]=c;
+    }
     MetalVaryings o;
-    float4 p=draw.model*float4(v.position.xyz,1);
+    float4 p=draw.model*float4(pos,1);
     o.position=frame.viewProjection*p;
     o.position.z=(o.position.z+o.position.w)*0.5f;
     o.worldPosition=p.xyz/p.w;
-    o.normal=normalize((draw.normalMatrix*float4(v.normal.xyz,0)).xyz);
-    float3 tangentW=(draw.model*float4(v.tangent.xyz,0)).xyz;
-    float3 bitangentW=cross(o.normal,tangentW)*v.tangent.w;
+    o.normal=normalize((draw.normalMatrix*float4(nrm,0)).xyz);
+    float3 tangentW=(draw.model*float4(tan.xyz,0)).xyz;
+    float3 bitangentW=cross(o.normal,tangentW)*tan.w;
     float3 uvT=float3(dot(m.uvTransforms[6].xyz,tangentW),dot(m.uvTransforms[7].xyz,tangentW),dot(m.uvTransforms[8].xyz,tangentW));
     float3 uvB=float3(dot(m.uvTransforms[6].xyz,bitangentW),dot(m.uvTransforms[7].xyz,bitangentW),dot(m.uvTransforms[8].xyz,bitangentW));
     o.bitangent=normalize(uvB);
-    o.tangent=float4(normalize(uvT),v.tangent.w);
-    o.color=v.color; o.uv0=v.uv0; o.uv1=v.uv1;
+    o.tangent=float4(normalize(uvT),tan.w);
+    o.color=col; o.uv0=uv0; o.uv1=uv1;
     return o;
 }
+fragment float4 khronos_capture_fragment(MetalVaryings in [[stage_in]]) { return float4(0); }
 inline float2 materialUV(MetalVaryings in,constant MetalMaterialUniforms &m,uint slot) {
     uint set=m.uvSets[slot/4][slot%4];
     float3 uv=float3(set==1 ? in.uv1 : in.uv0,1);
@@ -305,8 +339,13 @@ fragment float4 khronos_tonemap_fragment(FullscreenVaryings in [[stage_in]],
     uint2 pixel=uint2(in.position.xy);
     float4 color=main.read(pixel);
     uint flag=flags.read(pixel).r;
+    // X-ray (options.z bit 8): ghosted parts sit premultiplied over a clear canvas; tone-map
+    // their straight colour so the page compositor's divide by alpha does not wash them out.
+    bool straight=(frame.options.z&8u) && color.a>0.0001;
+    if(straight) color.rgb/=color.a;
     if(flag==1u) color.rgb=linearTosRGB(color.rgb);
     else if(flag==2u) color.rgb=toneMap(color.rgb,frame.environment.z,frame.options.x);
+    if(straight) color.rgb*=color.a;
     return color;
 }
 
@@ -338,4 +377,17 @@ fragment float4 khronos_line_fragment(LineVaryings in [[stage_in]],
 // tonemap quad fills its antialiased canvas before the overlay lines are drawn.
 fragment float4 khronos_overlay_copy_fragment(FullscreenVaryings in [[stage_in]],texture2d<float> image [[texture(0)]]) {
     return image.read(uint2(in.position.xy));
+}
+
+fragment uint khronos_pick_fragment(MetalVaryings in [[stage_in]],
+    constant MetalFrameUniforms &frame [[buffer(1)]],
+    constant MetalDrawUniforms &draw [[buffer(2)]],
+    constant MetalMaterialUniforms &m [[buffer(3)]],
+    constant MaterialTextureArguments &materialTextures [[buffer(5)]],
+    constant uint &drawID [[buffer(6)]]) {
+    float4 base=m.baseColor*in.color;
+    if(m.flags.x&1u) base*=materialTextures.maps[0].sample(materialTextures.samplers[0],materialUV(in,m,0));
+    if(m.flags.y==0) base.a=1;
+    if(m.flags.y==1 && base.a<m.surface.w) discard_fragment();
+    return drawID;
 }

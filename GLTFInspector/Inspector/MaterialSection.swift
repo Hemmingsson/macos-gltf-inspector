@@ -17,6 +17,7 @@ struct MaterialSection: View {
     var document: GLTFDocument
     var index: Int
     var density: Density
+    var onSelect: ((NodeID) -> Void)?
 
     private var material: GLTFDocument.Material { document.materials[index] }
     private var name: String { document.displayName(of: NodeID(kind: .material, index: index)) }
@@ -34,7 +35,7 @@ struct MaterialSection: View {
             .padding(.top, DS.Spacing.xxs)
             .padding(.bottom, DS.Spacing.l)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: density == .full ? .contain : .combine)
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -103,16 +104,14 @@ struct MaterialSection: View {
                 }
             }
 
-            if let usage {
-                DSFactRow("Used by", value: usage)
+            if !usedByNodeIndices.isEmpty {
+                UsedBySection(document: document, nodeIndices: usedByNodeIndices, onSelect: onSelect)
             }
         }
     }
 
-    private var usage: String? {
-        let names = document.meshNames(usingMaterial: index)
-        guard !names.isEmpty else { return nil }
-        return names.count <= 3 ? names.joined(separator: ", ") : "\(names.count) meshes"
+    private var usedByNodeIndices: [Int] {
+        document.nodeIndices(usingMaterial: index)
     }
 
     private func mapRow(_ texture: GLTFDocument.TextureSlot) -> some View {
@@ -178,8 +177,50 @@ struct MaterialSection: View {
         }
         if density == .full {
             parts += [material.workflowTitle, material.alphaTitle]
-            if let usage { parts.append("used by \(usage)") }
+            let users = document.nodeIndices(usingMaterial: index)
+            if !users.isEmpty {
+                parts.append("used by \(users.map { document.displayName(of: NodeID(kind: .mesh, index: $0)) }.joined(separator: ", "))")
+            }
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+private struct UsedBySection: View {
+    var document: GLTFDocument
+    var nodeIndices: [Int]
+    var onSelect: ((NodeID) -> Void)?
+
+    var body: some View {
+        let names = nodeIndices.map { document.displayName(of: NodeID(kind: .mesh, index: $0)) }
+        VStack(alignment: .leading, spacing: 0) {
+            InspectorSectionHeader("Used by", top: DS.Spacing.m)
+            ForEach(nodeIndices, id: \.self) { nodeIndex in
+                let name = document.displayName(of: NodeID(kind: .mesh, index: nodeIndex))
+                Button {
+                    onSelect?(NodeID(kind: .mesh, index: nodeIndex))
+                } label: {
+                    HStack(spacing: DS.Spacing.m) {
+                        DSTypeIcon(.mesh)
+                        Text(name)
+                            .font(.callout)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Spacer(minLength: DS.Spacing.m)
+                    }
+                    .padding(.vertical, DS.Spacing.xxs)
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(name)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction(named: "Select \(name)") {
+                    onSelect?(NodeID(kind: .mesh, index: nodeIndex))
+                }
+            }
+        }
+        .padding(.horizontal, DS.Spacing.l)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(names.isEmpty ? "Used by" : "Used by, \(names.joined(separator: ", "))")
     }
 }

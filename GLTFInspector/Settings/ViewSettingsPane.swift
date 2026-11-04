@@ -12,6 +12,11 @@ struct ViewSettingsPane: View {
                 Toggle("Polar floor", isOn: $settings.showsFloor)
             }
 
+            Section("Navigation") {
+                Toggle("Orbit around selection", isOn: $settings.orbitsAroundSelection)
+                Toggle("Zoom toward pointer", isOn: $settings.zoomsTowardPointer)
+            }
+
             Section("Appearance") {
                 DSPicker("Background", selection: $settings.backdrop, options: BackdropStyle.allCases, style: .menu) { $0.title }
             }

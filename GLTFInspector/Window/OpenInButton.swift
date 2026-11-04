@@ -6,6 +6,9 @@ import SwiftUI
 /// toolbar clusters. Callers let it ignore the top safe area.
 struct OpenInButton: View {
     let documentURL: URL?
+    /// The window whose canvas the turntable exports draw; nil hides them.
+    var view: ViewState?
+    var exportName = "export"
 
     var body: some View {
         HStack(spacing: DS.Spacing.xs) {
@@ -27,6 +30,11 @@ struct OpenInButton: View {
                         appLabel("Open in Blender", appURL: blenderURL, fallbackSymbol: "cube")
                     }
                     .disabled(documentURL == nil)
+                }
+
+                if let view {
+                    Divider()
+                    TurntableExportButtons(view: view, suggestedName: exportName)
                 }
             }
             .dsGlassPlacement(.standalone)

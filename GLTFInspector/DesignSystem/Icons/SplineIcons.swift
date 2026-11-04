@@ -45,7 +45,7 @@ enum SplineIcons {
     static func viewMode(_ mode: RenderViewMode) -> String? {
         switch mode {
         case .shaded: "spline.material.preview"
-        case .wireframe: nil
+        case .wireframe, .wireframeOnShaded, .xray, .clay: nil
         case .channel(let channel): viewChannel(channel)
         }
     }

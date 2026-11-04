@@ -19,6 +19,11 @@ public enum AppGroupSettings {
         public static let toneMapping = "settings.preview.toneMapping"
         /// `LightingEnvironment.rawValue`.
         public static let environment = "settings.preview.environmentCatalog"
+        /// App window only: orbit pivots on the selection, wheel zooms toward the pointer.
+        public static let orbitAroundSelection = "settings.navigation.orbitAroundSelection"
+        public static let zoomTowardPointer = "settings.navigation.zoomTowardPointer"
+        /// Tree guide lines in the layer list.
+        public static let outlinerTreeGuides = "settings.general.outlinerTreeGuides"
     }
 
     /// Fresh-install values. `register(defaults:)` is per process: the app registers them at
@@ -28,6 +33,9 @@ public enum AppGroupSettings {
             Key.background: "window",
             Key.autoRotate: false,
             Key.showFloor: true,
+            Key.orbitAroundSelection: true,
+            Key.zoomTowardPointer: true,
+            Key.outlinerTreeGuides: true,
             Key.toneMapping: RenderLook.standard.toneMapping.rawValue,
             Key.environment: RenderLook.standard.environment.rawValue,
         ]

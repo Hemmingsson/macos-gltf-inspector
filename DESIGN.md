@@ -55,8 +55,9 @@ The inspector answers *"is the file wrong, or are we?"*
 - Surface **viewer limits** (what the renderer could not draw) — a valid file can still look
   wrong in our viewer.
 - Read **dimensions and stats from the real model**, not placeholders.
-- When the user turns off centering, show the **authored origin** — don't pretend every asset was
-  built at the world origin.
+- When the user turns off centering, frame the model at its **authored origin** — don't pretend
+  every asset was built at the world origin. No in-scene origin marker: the corner navigation
+  gizmo is the only axis cue.
 
 ## Visual language
 
@@ -78,5 +79,9 @@ The inspector answers *"is the file wrong, or are we?"*
 - Not an editor: no shader debugger, GPU counters, or heavy DCC tooling.
 - No second renderer and no renderer setting. Window, Quick Look and Finder use the same one.
 - No fake chrome. No duplicate settings. No section for data that isn't in the file.
-- No control the renderer cannot drive. Playback, morph weights, hide/solo, double-sided,
-  skeleton, a file-light toggle and a custom environment are not part of the product.
+- No control the renderer cannot drive. Morph weight sliders, a double-sided override and a
+  custom environment are not part of the product.
+- **View state, never file edits.** Hide / solo, picking, the isolated shape preview, camera /
+  light / skeleton gizmos and animation playback are per-window ways of *looking* at the file.
+  Nothing writes the file. Hiding a light's node turns that light off, honestly, as hiding does.
+  Quick Look and Finder thumbnails stay at the rest pose with nothing hidden.

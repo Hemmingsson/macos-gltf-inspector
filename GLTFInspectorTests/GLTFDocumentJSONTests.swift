@@ -91,6 +91,22 @@ struct GLTFDocumentJSONTests {
         #expect(fallback.scale == SIMD3<Float>(2, 2, 2))
     }
 
+    @Test func nodeVisibilityExtensionMarksHiddenNodesOnly() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "asset": ["version": "2.0"],
+            "nodes": [
+                ["name": "Hidden", "extensions": ["KHR_node_visibility": ["visible": false]]],
+                ["name": "Shown", "extensions": ["KHR_node_visibility": ["visible": true]]],
+                ["name": "Plain"],
+            ],
+            "scenes": [["nodes": [0, 1, 2]]],
+            "scene": 0,
+        ])
+        let parsed = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let document = GLTFDocumentJSON.makeDocument(json: parsed)
+        #expect(document.nodes.map(\.isHiddenInFile) == [true, false, false])
+    }
+
     @Test func twoSkinsShareOneParentForest() {
         let document = GLTFDocumentJSON.makeDocument(json: [
             "asset": ["version": "2.0"],
@@ -108,7 +124,9 @@ struct GLTFDocumentJSONTests {
         ])
         #expect(document.skins.map(\.name) == ["Full", "Tip"])
         #expect(document.skins[0].jointNames == ["Root", "Mid", "Leaf"])
+        #expect(document.skins[0].jointNodeIndices == [0, 1, 2])
         #expect(document.skins[1].jointNames == ["Mid", "Leaf"])
+        #expect(document.skins[1].jointNodeIndices == [1, 2])
     }
 
     @Test func instanceForestIsDeterministicAndRoundTripsJSON() throws {

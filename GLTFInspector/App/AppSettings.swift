@@ -25,6 +25,12 @@ final class AppSettings {
     /// Lighting for new windows, Quick Look and thumbnails.
     var environment: LightingEnvironment { didSet { defaults.set(environment.rawValue, forKey: Key.environment) } }
     var toneMapping: RenderLook.ToneMapping { didSet { defaults.set(toneMapping.rawValue, forKey: Key.toneMapping) } }
+    /// Selecting a node moves the orbit pivot onto it.
+    var orbitsAroundSelection: Bool { didSet { defaults.set(orbitsAroundSelection, forKey: Key.orbitAroundSelection) } }
+    /// Scroll and pinch zoom into the spot under the pointer.
+    var zoomsTowardPointer: Bool { didSet { defaults.set(zoomsTowardPointer, forKey: Key.zoomTowardPointer) } }
+    /// Hairline tree guides in the layer list (on by default since 2026-11-04).
+    var showsTreeGuides: Bool { didSet { defaults.set(showsTreeGuides, forKey: Key.outlinerTreeGuides) } }
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -36,6 +42,9 @@ final class AppSettings {
         appearance = defaults.string(forKey: Key.appearance).flatMap(AppAppearance.init) ?? .system
         environment = look.environment
         toneMapping = look.toneMapping
+        orbitsAroundSelection = defaults.bool(forKey: Key.orbitAroundSelection)
+        zoomsTowardPointer = defaults.bool(forKey: Key.zoomTowardPointer)
+        showsTreeGuides = defaults.bool(forKey: Key.outlinerTreeGuides)
     }
 }
 

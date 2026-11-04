@@ -13,7 +13,7 @@ import SwiftUI
 /// canvas instead of on it. Overlays keep each cluster free to size itself and to sit exactly
 /// at its own edge.
 struct CanvasRegion<Content: View>: View {
-    /// The model's bounds, for the dimensions readout and the origin gizmo. Nil before the
+    /// The model's bounds, for the dimensions readout. Nil before the
     /// file's JSON is read, or when it has no measurable mesh.
     var bounds: ModelBounds?
     var view: ViewState
@@ -42,6 +42,7 @@ struct CanvasRegion<Content: View>: View {
                         // The panes are the leading/trailing safe area: the renderer centres
                         // the model between them. The top band is title bar: drags there move
                         // the window. Written after layout, never during an update.
+                        .overlay(alignment: .topLeading) { HoverTooltip(view: view) }
                         .onGeometryChange(for: EdgeInsets.self, of: \.safeAreaInsets) { insets in
                             view.canvas.contentInsets = NSEdgeInsets(
                                 top: DS.Metrics.toolbarBandHeight, left: insets.leading,
@@ -98,30 +99,34 @@ struct CanvasRegion<Content: View>: View {
                     .padding(.top, bandTopPadding)
             }
             .ignoresSafeArea(.container, edges: .top)
-            // World-origin cue: shown when Center is off, or when the file is uncentered
-            // (`authoredOrigin != .zero`), so the Center toggle has one clear effect.
-            .overlay {
-                if !view.isCentered || authoredOrigin != .zero {
-                    OriginGizmo(authoredOrigin: authoredOrigin)
-                        .transition(reduceMotion ? .identity : .opacity)
-                }
-            }
             // Bottom overlays.
             .overlay(alignment: .bottomLeading) {
-                OrientationGizmo()
-                    .padding(OverlayMetrics.inset)
+                NavigationGizmo(
+                    viewRotation: view.canvas.viewRotation,
+                    activePreset: view.activeCameraPreset,
+                    onSelect: { view.show($0) },
+                    onOrbit: { dx, dy in view.orbit(dx: dx, dy: dy) }
+                )
+                .padding(OverlayMetrics.inset)
             }
             .overlay(alignment: .bottomTrailing) {
-                DimensionsReadout(size: bounds?.size ?? .zero)
+                DimensionsReadout(size: readout.size, name: readout.name)
                     .padding(OverlayMetrics.inset)
             }
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: view.isCentered)
-            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: authoredOrigin)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isSidebarVisible)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isInspectorVisible)
     }
 
-    private var authoredOrigin: SIMD3<Float> { bounds?.authoredOrigin ?? .zero }
+    /// The selected scene node's drawn box when it has one, otherwise the whole model.
+    private var readout: (size: SIMD3<Float>, name: String?) {
+        // A camera, light or empty without drawn geometry has no size of its own.
+        if let id = view.selection, id.kind.isSceneNode, let box = view.canvas.bounds(ofNode: id.index),
+           (box.max - box.min).max() > 0 {
+            return (box.max - box.min, view.document.displayName(of: id))
+        }
+        return (bounds?.size ?? .zero, nil)
+    }
 
     private var stageLeadingInset: CGFloat {
         // Collapsed: Stage follows the traffic lights in the band (no sidebar toggle; ⌘B).
@@ -134,5 +139,27 @@ struct CanvasRegion<Content: View>: View {
         isInspectorVisible
             ? DS.Metrics.canvasClusterInset
             : DS.Metrics.glassControl + DS.Spacing.l + DS.Spacing.l + DS.Metrics.toolbarClearance
+    }
+}
+
+/// The name of the node under the resting pointer, just below and right of it. Its own view, so
+/// only it re-renders as the pointer moves.
+private struct HoverTooltip: View {
+    var view: ViewState
+
+    var body: some View {
+        if let node = view.canvas.hoveredNode, let location = view.canvas.hoverLocation,
+           let id = view.document.id(ofNode: node) {
+            DSHUDCapsule(height: OverlayMetrics.tooltipHeight, horizontalPadding: DS.Spacing.m) {
+                Text(view.document.displayName(of: id))
+                    .font(.callout)
+                    .lineLimit(1)
+            }
+            .fixedSize()
+            .offset(x: location.x + OverlayMetrics.tooltipOffset, y: location.y + OverlayMetrics.tooltipOffset)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .ignoresSafeArea()
+        }
     }
 }

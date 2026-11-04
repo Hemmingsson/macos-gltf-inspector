@@ -101,9 +101,9 @@ extension GLTFDocument {
         }
     }
 
-    /// Names of the nodes whose mesh uses material `index`.
+    /// Names of the nodes whose mesh uses material `index` on at least one primitive.
     func meshNames(usingMaterial index: Int) -> [String] {
-        nodes.filter { $0.materialIndices.contains(index) }.map { $0.name.displayName(or: "Node \($0.index)") }
+        nodeIndices(usingMaterial: index).map { nodes[$0].name.displayName(or: "Node \($0)") }
     }
 }
 
@@ -240,10 +240,6 @@ private extension SIMD4<Float> {
     }
 }
 
-extension ModelBounds {
-    /// Where the authored glTF origin sits relative to the box centre the canvas frames.
-    var authoredOrigin: SIMD3<Float> { -center }
-}
 
 extension GLTFDocument.Light {
     /// SF Symbol fallback when Blender light glyphs are unavailable.

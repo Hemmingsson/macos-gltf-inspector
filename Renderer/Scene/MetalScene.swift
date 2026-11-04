@@ -85,7 +85,10 @@ public struct MetalDraw {
     public let indexBuffer: any MTLBuffer
     public let indexCount: Int
     public let primitiveType: MTLPrimitiveType
+    /// Rest model, including the instance matrix. A posed frame replaces this per draw.
     public let worldTransform: simd_float4x4
+    /// `EXT_mesh_gpu_instancing` transform for this draw, or identity.
+    public let instanceMatrix: simd_float4x4
     public let material: MetalMaterial
     public let nodeIndex: Int
     public let negativeScale: Bool
@@ -95,6 +98,42 @@ public struct MetalDraw {
     /// Khronos opaque instancing key (`${mesh}_${winding}_${primitiveIndex}`, made unique for skins,
     /// morph targets, GPU instancing and attribute-limit fallbacks). Equal keys draw consecutively.
     public var opaqueGroup = ""
+    /// Index into `asset.meshes`, or -1 when the node has no mesh.
+    let meshIndex: Int
+    /// Authored `node.weights`, otherwise `mesh.weights`, otherwise zeros. One entry per target.
+    let restWeights: [Float]
+    /// Packed `float4` deltas, `[presentSlot][target][emittedVertex]`. Nil when nothing is morphed.
+    let morphBuffer: (any MTLBuffer)?
+    let morphTargetCount: Int
+    /// Emitted vertex count. The shader indexes this buffer with `vertex_id`.
+    let morphVertexCount: Int
+    /// Bits in `MorphSlot` order: position, normal, tangent, texcoord0, texcoord1, color0.
+    let morphMask: UInt32
+
+    init(vertexBuffer: any MTLBuffer, indexBuffer: any MTLBuffer, indexCount: Int,
+         primitiveType: MTLPrimitiveType, worldTransform: simd_float4x4, instanceMatrix: simd_float4x4,
+         material: MetalMaterial, nodeIndex: Int, negativeScale: Bool, centroid: SIMD3<Float> = .zero,
+         opaqueGroup: String = "", meshIndex: Int = -1, restWeights: [Float] = [],
+         morphBuffer: (any MTLBuffer)? = nil, morphTargetCount: Int = 0, morphVertexCount: Int = 0,
+         morphMask: UInt32 = 0) {
+        self.vertexBuffer = vertexBuffer
+        self.indexBuffer = indexBuffer
+        self.indexCount = indexCount
+        self.primitiveType = primitiveType
+        self.worldTransform = worldTransform
+        self.instanceMatrix = instanceMatrix
+        self.material = material
+        self.nodeIndex = nodeIndex
+        self.negativeScale = negativeScale
+        self.centroid = centroid
+        self.opaqueGroup = opaqueGroup
+        self.meshIndex = meshIndex
+        self.restWeights = restWeights
+        self.morphBuffer = morphBuffer
+        self.morphTargetCount = morphTargetCount
+        self.morphVertexCount = morphVertexCount
+        self.morphMask = morphMask
+    }
 }
 
 public struct MetalPunctualLight {
@@ -107,6 +146,8 @@ public struct MetalPunctualLight {
     public let range: Float
     public let innerConeCos: Float
     public let outerConeCos: Float
+    /// glTF node index in `asset.nodes`, or -1 if unknown.
+    public let nodeIndex: Int
 }
 
 /// CPU and Metal objects are immutable after the detached load completes.
@@ -115,14 +156,40 @@ public final class MetalScene: @unchecked Sendable {
     public let boundsMin: SIMD3<Float>
     public let boundsMax: SIMD3<Float>
     public let lights: [MetalPunctualLight]
+    /// Parent node index for each index in `asset.nodes`, or -1 for a root.
+    public let nodeParents: [Int]
+    /// Load-time TRS and world matrix for each node, parallel to `asset.nodes`.
+    let nodeRests: [MetalNodeRest]
+    /// Children of each node, in index order. Used to push a posed parent into its subtree.
+    let nodeChildren: [[Int]]
     let asset: GLTFAsset
 
-    init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight], asset: GLTFAsset) {
+    init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight], asset: GLTFAsset, nodeRests: [MetalNodeRest]) {
         self.draws = draws
         self.boundsMin = boundsMin
         self.boundsMax = boundsMax
         self.lights = lights
         self.asset = asset
+        self.nodeRests = nodeRests
+        let indices = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        nodeParents = asset.nodes.map { node in node.parent.flatMap { indices[ObjectIdentifier($0)] } ?? -1 }
+        var children = Array(repeating: [Int](), count: nodeParents.count)
+        for (index, parent) in nodeParents.enumerated() where children.indices.contains(parent) {
+            children[parent].append(index)
+        }
+        nodeChildren = children
+    }
+
+    /// The node itself, then its parent, grandparent and so on up to a root. Empty for an index
+    /// outside `asset.nodes`; the walk stops after `nodeParents.count` steps if the file has a cycle.
+    public func ancestors(ofNode index: Int) -> [Int] {
+        var chain: [Int] = []
+        var current = index
+        while nodeParents.indices.contains(current), chain.count < nodeParents.count {
+            chain.append(current)
+            current = nodeParents[current]
+        }
+        return chain
     }
 }
 
@@ -144,8 +211,13 @@ extension MetalScene {
         return asset.scenes.isEmpty ? nil : 0
     }
 
-    private func worldMatrix(_ node: GLTFNode) -> simd_float4x4 {
+    func worldMatrix(_ node: GLTFNode) -> simd_float4x4 {
         (node.parent.map(worldMatrix) ?? matrix_identity_float4x4) * node.matrix
+    }
+
+    public func worldMatrix(ofNode index: Int) -> simd_float4x4? {
+        guard asset.nodes.indices.contains(index) else { return nil }
+        return worldMatrix(asset.nodes[index])
     }
 
     /// Expands `box` by the eight transformed corners of each POSITION accessor's min/max. With

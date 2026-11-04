@@ -34,6 +34,7 @@ struct GLTFDocumentContentTests {
         let skin = try #require(document.skins.first)
         #expect(skin.name == "Leg")
         #expect(skin.jointNames == ["Hip", "Knee"])
+        #expect(skin.jointNodeIndices == [4, 5])
 
         #expect(document.morphs.map(\.targetNames) == [["Blink"]])
         #expect(document.materials[0].workflow == .metallicRoughness)
@@ -101,6 +102,88 @@ struct GLTFDocumentContentTests {
             ],
         ])
         #expect(names == ["Red", "Variant 1", "Blue"])
+    }
+
+    @Test func meshNodeListsEveryPrimitiveMaterialTopologyAndTris() {
+        let document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "accessors": [
+                ["componentType": 5126, "count": 3, "type": "VEC3"],
+                ["componentType": 5126, "count": 4, "type": "VEC3"],
+            ],
+            "materials": [["name": "A"], ["name": "B"]],
+            "meshes": [[
+                "primitives": [
+                    ["attributes": ["POSITION": 0], "material": 0, "mode": 4],
+                    ["attributes": ["POSITION": 1], "material": 1, "mode": 5],
+                ],
+            ]],
+            "nodes": [["name": "Body", "mesh": 0]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+        ])
+        let mesh = document.nodes[0]
+        #expect(mesh.meshPrimitives.count == 2)
+        #expect(mesh.meshPrimitives[0].materialIndex == 0)
+        #expect(mesh.meshPrimitives[0].triangleCount == 1)
+        #expect(mesh.meshPrimitives[0].mode == 4)
+        #expect(mesh.meshPrimitives[1].materialIndex == 1)
+        #expect(mesh.meshPrimitives[1].triangleCount == 2)
+        #expect(mesh.meshPrimitives[1].mode == 5)
+    }
+
+    @Test func materialUsedByListsEachNodeOnceAndSkipsUnusedMaterials() {
+        let document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "accessors": [
+                ["componentType": 5126, "count": 3, "type": "VEC3"],
+                ["componentType": 5126, "count": 3, "type": "VEC3"],
+            ],
+            "materials": [["name": "Shared"], ["name": "Lonely"]],
+            "meshes": [
+                ["primitives": [
+                    ["attributes": ["POSITION": 0], "material": 0],
+                    ["attributes": ["POSITION": 1], "material": 0],
+                ]],
+                ["primitives": [["attributes": ["POSITION": 0], "material": 0]]],
+            ],
+            "nodes": [
+                ["name": "A", "mesh": 0],
+                ["name": "B", "mesh": 1],
+            ],
+            "scenes": [["nodes": [0, 1]]],
+            "scene": 0,
+        ])
+        #expect(document.nodeIndices(usingMaterial: 0) == [0, 1])
+        #expect(document.nodeIndices(usingMaterial: 1).isEmpty)
+    }
+
+    @Test func gpuInstancingAndJointMembershipAreDerivedFromJSON() {
+        let document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "accessors": [
+                ["componentType": 5126, "count": 3, "type": "VEC3"],
+                ["componentType": 5126, "count": 5, "type": "VEC3"],
+            ],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+            "skins": [["name": "Arm", "joints": [1, 2]]],
+            "nodes": [
+                [
+                    "name": "Forest",
+                    "mesh": 0,
+                    "extensions": [
+                        "EXT_mesh_gpu_instancing": ["attributes": ["TRANSLATION": 1]],
+                    ],
+                ],
+                ["name": "Shoulder"],
+                ["name": "Elbow"],
+            ],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+        ])
+        #expect(document.nodes[0].gpuInstanceCount == 5)
+        #expect(document.nodes[1].jointOfSkinIndices == [0])
+        #expect(document.nodes[2].jointOfSkinIndices == [0])
     }
 
     @Test func textureSlotsAreSizedAndThumbedFromTheFilesOwnImages() throws {

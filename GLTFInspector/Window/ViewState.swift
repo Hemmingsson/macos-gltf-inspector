@@ -18,8 +18,16 @@ final class ViewState {
     static let zoomStep = 0.8
 
     @ObservationIgnored let settings: AppSettings
+    /// The open file's JSON; drives material → mesh highlights in `options`.
+    @ObservationIgnored var document = GLTFDocument() {
+        didSet { nodeParents = document.nodeParents }
+    }
+    /// `document.nodeParents`, kept with the document so selection walks don't rebuild it.
+    @ObservationIgnored private var nodeParents: [Int?] = []
     /// The renderer behind the canvas. Outlives SwiftUI remounts of the canvas view.
     let canvas = ModelCanvasController()
+    /// Orbit preview in the inspector Shape section; one `ModelView` across selection changes.
+    let shapePreview = ShapePreviewController()
 
     private var overrides = StageOverrides()
 
@@ -31,13 +39,20 @@ final class ViewState {
         get { overrides.showsFloor ?? settings.showsFloor }
         set { overrides.showsFloor = newValue }
     }
+    var showsSceneGizmos = false
     var autoRotates: Bool {
         get { overrides.autoRotates ?? settings.autoRotates }
         set { overrides.autoRotates = newValue }
     }
-    /// False frames the authored origin too and shows the origin gizmo.
+    /// False frames the authored origin too.
     var isCentered = true
-    var isOrthographic = false
+    /// Any explicit change (menu, toolbar) makes it the person's choice again.
+    var isOrthographic = false {
+        didSet { autoOrthographic = false }
+    }
+    /// True while orthographic is on only because an axis view was chosen (Blender's
+    /// auto-perspective): the next orbit returns to perspective.
+    private(set) var autoOrthographic = false
     /// Vertical field of view in degrees, kept within `fieldOfViewRange`.
     /// Stored separately so `@Observable` + `didSet` cannot re-enter on assign.
     var fieldOfView: Double {
@@ -64,16 +79,55 @@ final class ViewState {
             guard sceneIndex != oldValue else { return }
             if let selection, selection.kind.isSceneNode { self.selection = nil }
             fileCameraNodeIndex = nil
+            hiddenNodes = []
+            soloNodes = []
         }
     }
+    /// Scene-graph nodes hidden in this window (glTF node indices). Hiding a node hides its subtree.
+    var hiddenNodes: Set<Int> = []
+    /// When non-empty, only these nodes' subtrees are drawn.
+    var soloNodes: Set<Int> = []
     /// `KHR_materials_variants` index, or nil for the file's default materials.
     var materialVariantIndex: Int?
     /// The node of the file camera the canvas looks through, or nil for the orbit camera.
     var fileCameraNodeIndex: Int? {
         didSet { if fileCameraNodeIndex != nil { activeCameraPreset = nil } }
     }
-    /// The selected outliner row. A mesh or empty node is also outlined on the canvas.
-    var selection: NodeID?
+    /// The primary selection: the row the inspector shows. A mesh or empty node is also outlined
+    /// on the canvas. Assigning it replaces the whole selection with this one row.
+    var selection: NodeID? {
+        get { primarySelection }
+        set {
+            primarySelection = newValue
+            storedSelectedIDs = newValue.map { [$0] } ?? []
+        }
+    }
+    /// Every selected row (outliner ⌘/⇧-click, canvas ⌘/⇧-click). Contains `selection` when
+    /// that is non-nil. Assigning makes a newly added row the primary; when only rows were
+    /// removed the primary stays if it is still selected.
+    var selectedIDs: Set<NodeID> {
+        get { storedSelectedIDs }
+        set {
+            let added = newValue.subtracting(storedSelectedIDs)
+            storedSelectedIDs = newValue
+            if let first = added.min(by: Self.rowOrder) {
+                primarySelection = first
+            } else if primarySelection.map(newValue.contains) != true {
+                primarySelection = newValue.min(by: Self.rowOrder)
+            }
+        }
+    }
+    private var primarySelection: NodeID?
+    private var storedSelectedIDs: Set<NodeID> = []
+    /// Selected glTF scene nodes (mesh, empty, camera, light), primary first.
+    var selectedSceneNodes: [Int] {
+        let nodes = storedSelectedIDs.filter(\.kind.isSceneNode).map(\.index).sorted()
+        guard let primary = primarySelection, primary.kind.isSceneNode else { return nodes }
+        return [primary.index] + nodes.filter { $0 != primary.index }
+    }
+    /// The last canvas hit and the selection it produced, so a repeated click on the same spot
+    /// walks up the hierarchy instead of reselecting the part.
+    @ObservationIgnored private var lastPick: (hit: Int, selection: NodeID?)?
     /// The canned angle last chosen; cleared by Fit, zoom and file cameras.
     private(set) var activeCameraPreset: CameraPreset?
 
@@ -96,8 +150,17 @@ final class ViewState {
             materialVariantIndex: materialVariantIndex,
             sceneIndex: sceneIndex,
             showsFloor: showsFloor,
+            showsSceneGizmos: showsSceneGizmos,
             isCentered: isCentered,
-            selectedNodeIndex: selection.flatMap { $0.kind == .mesh || $0.kind == .empty ? $0.index : nil }
+            selectedNodeIndex: selection.flatMap { $0.kind == .mesh || $0.kind == .empty ? $0.index : nil },
+            selectedNodeIndices: Set(storedSelectedIDs.filter { $0.kind == .mesh || $0.kind == .empty }.map(\.index)),
+            orbitsAroundSelection: settings.orbitsAroundSelection,
+            zoomsTowardPointer: settings.zoomsTowardPointer,
+            highlightedNodeIndices: materialHighlightNodeIndices,
+            gizmoSelectedNodeIndex: selection.flatMap { $0.kind.isSceneNode ? $0.index : nil },
+            selectedSkinIndex: selection.flatMap { $0.kind == .skin ? $0.index : nil },
+            hiddenNodeIndices: hiddenNodes,
+            soloNodeIndices: soloNodes
         )
     }
 
@@ -111,6 +174,124 @@ final class ViewState {
         fileCameraNodeIndex = nil
         selection = nil
         activeCameraPreset = nil
+        showAll()
+        canvas.stopPlayback()
+    }
+
+    // MARK: - Selection
+
+    /// The canvas reported a plain click on `nodeIndex` (nil = background). Clicking the part
+    /// that was just picked again selects its parent, up to the root, then the part again.
+    func pick(_ nodeIndex: Int?) {
+        guard let nodeIndex, let hit = document.id(ofNode: nodeIndex) else {
+            selection = nil
+            lastPick = nil
+            return
+        }
+        var next = hit
+        if let lastPick, lastPick.hit == nodeIndex, lastPick.selection == selection,
+           let current = selection, current.kind.isSceneNode {
+            next = parent(of: current.index) ?? hit
+        }
+        selection = next
+        lastPick = (nodeIndex, next)
+    }
+
+    /// ⌘- or ⇧-click on the canvas: adds the node under the pointer, or removes it.
+    func toggleSelection(ofNode nodeIndex: Int) {
+        guard let id = document.id(ofNode: nodeIndex) else { return }
+        lastPick = nil
+        if storedSelectedIDs.contains(id) {
+            selectedIDs.remove(id)
+        } else {
+            selectedIDs.insert(id)
+        }
+    }
+
+    /// Edit ▸ Select Parent: the primary scene node's parent.
+    func selectParent() {
+        if let parentID { selection = parentID }
+    }
+
+    /// Edit ▸ Select Children: every direct child of the primary scene node.
+    func selectChildren() {
+        let children = childIDs
+        guard let first = children.first else { return }
+        storedSelectedIDs = Set(children)
+        primarySelection = first
+    }
+
+    var canSelectParent: Bool { parentID != nil }
+    var canSelectChildren: Bool { !childIDs.isEmpty }
+
+    /// The primary scene node's parent row.
+    private var parentID: NodeID? {
+        guard let current = selection, current.kind.isSceneNode else { return nil }
+        return parent(of: current.index)
+    }
+
+    /// The primary scene node's direct child rows.
+    private var childIDs: [NodeID] {
+        guard let current = selection, current.kind.isSceneNode, document.nodes.indices.contains(current.index) else { return [] }
+        return document.nodes[current.index].children.compactMap { document.id(ofNode: $0) }
+    }
+
+    private func parent(of nodeIndex: Int) -> NodeID? {
+        guard nodeParents.indices.contains(nodeIndex), let parent = nodeParents[nodeIndex] else { return nil }
+        return document.id(ofNode: parent)
+    }
+
+    /// Stable order for picking a new primary out of a set: outliner kinds, then index.
+    private static func rowOrder(_ a: NodeID, _ b: NodeID) -> Bool {
+        a.kind == b.kind ? a.index < b.index : a.kind.rawValue < b.kind.rawValue
+    }
+
+    // MARK: - Layer visibility
+
+    /// Hide Selection: hides every selected scene node, or shows them when all are hidden.
+    func toggleHiddenSelection() {
+        let nodes = Set(selectedSceneNodes)
+        guard !nodes.isEmpty else { return }
+        if selectionIsHidden { hiddenNodes.subtract(nodes) } else { hiddenNodes.formUnion(nodes) }
+    }
+
+    /// Solo Selection: solos exactly the selected scene nodes; again clears the solo.
+    func toggleSoloSelection() {
+        let nodes = Set(selectedSceneNodes)
+        guard !nodes.isEmpty else { return }
+        soloNodes = selectionIsSoloed ? [] : nodes
+    }
+
+    /// Every selected scene node is hidden (the menu then offers Show Selection).
+    var selectionIsHidden: Bool {
+        let nodes = Set(selectedSceneNodes)
+        return !nodes.isEmpty && nodes.isSubset(of: hiddenNodes)
+    }
+
+    /// Exactly the selected scene nodes are soloed.
+    var selectionIsSoloed: Bool {
+        let nodes = Set(selectedSceneNodes)
+        return !nodes.isEmpty && soloNodes == nodes
+    }
+
+    /// Hide or show one scene node in this window; the file is not touched.
+    func toggleHidden(_ node: Int) {
+        if hiddenNodes.contains(node) {
+            hiddenNodes.remove(node)
+        } else {
+            hiddenNodes.insert(node)
+        }
+    }
+
+    /// Solo one node; soloing the only soloed node clears the solo.
+    func toggleSolo(_ node: Int) {
+        soloNodes = soloNodes == [node] ? [] : [node]
+    }
+
+    /// Clears every hidden and soloed node.
+    func showAll() {
+        hiddenNodes = []
+        soloNodes = []
     }
 
     // MARK: - Camera commands
@@ -121,14 +302,37 @@ final class ViewState {
         canvas.fit()
     }
 
+    /// Frames every selected scene node at the current orbit angle. No-op without one.
+    func frameSelection() {
+        let nodes = selectedSceneNodes
+        guard !nodes.isEmpty else { return }
+        fileCameraNodeIndex = nil
+        activeCameraPreset = nil
+        canvas.frame(nodeIndices: nodes)
+    }
+
     func zoom(by factor: Double) {
         activeCameraPreset = nil
         canvas.zoom(by: factor)
     }
 
+    func orbit(dx: Double, dy: Double) {
+        canvasDidOrbit()
+        canvas.orbit(dx: dx, dy: dy)
+    }
+
+    /// An orbit leaves the canned angle; an axis view's automatic orthographic ends with it.
+    func canvasDidOrbit() {
+        activeCameraPreset = nil
+        if autoOrthographic { isOrthographic = false }
+    }
+
     func show(_ preset: CameraPreset) {
         fileCameraNodeIndex = nil
         activeCameraPreset = preset
+        let wasOrthographic = isOrthographic && !autoOrthographic
+        isOrthographic = preset != .isometric || wasOrthographic
+        autoOrthographic = preset != .isometric && !wasOrthographic
         canvas.show(preset)
     }
 
@@ -138,6 +342,18 @@ final class ViewState {
         fit()
     }
 
+    /// Share ▸ Export Turntable: one orbit as a video or GIF, through a save panel. Ignored while
+    /// one is already being written.
+    func exportTurntable(_ format: TurntableExport.Format, suggestedName: String) {
+        guard !isExportingTurntable, canvas.phase == .ready else { return }
+        isExportingTurntable = true
+        Task {
+            await TurntableExport.save(format, from: canvas, suggestedName: suggestedName)
+            isExportingTurntable = false
+        }
+    }
+    private(set) var isExportingTurntable = false
+
     /// File ▸ Export PNG: the canvas at its pixel size, through a save panel.
     func exportPNG(suggestedName: String) {
         do {
@@ -146,6 +362,11 @@ final class ViewState {
         } catch {
             AppLog.error(AppLog.app, "PNG export failed: \(error.localizedDescription)")
         }
+    }
+
+    private var materialHighlightNodeIndices: Set<Int> {
+        guard let selection, selection.kind == .material else { return [] }
+        return Set(document.nodeIndices(usingMaterial: selection.index))
     }
 
     private func restoreStageAndLook() {

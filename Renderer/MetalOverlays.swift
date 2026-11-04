@@ -1,3 +1,4 @@
+import GLTFKit2
 import Metal
 import simd
 
@@ -9,17 +10,82 @@ import simd
 /// canvas — 4× MSAA, seeded with the tonemapped frame.
 struct MetalOverlayOptions: Sendable {
     var floor: Bool
+    /// Authored-origin RGB tripod when the view is not centred on the scene.
     var origin: Bool
+    /// When true, draws every authored camera and punctual-light gizmo except `skipCameraNodeIndex`.
+    var sceneGizmos: Bool
     var selectedNode: Int?
+    /// glTF mesh nodes using the selected material (muted AABB each).
+    var highlightedNodeIndices: Set<Int>
+    /// Every selected mesh or empty node (multi-select), each with the selection box.
+    var selectedNodes: Set<Int> = []
+    /// Node under the pointer: thin muted box.
+    var hoveredNode: Int?
+    /// Index into `asset.skins` when a skin row is selected.
+    var selectedSkinIndex: Int?
+    /// glTF node index of the file camera the canvas looks through; its frustum is omitted.
+    var skipCameraNodeIndex: Int?
+    /// Canvas aspect when a perspective camera has no authored `aspectRatio`.
+    var canvasAspect: Float
+    /// Nodes (or ancestors) whose scene gizmos are omitted unless that node is selected.
+    var hiddenNodeIndices: Set<Int>
     /// `camera.sceneExtents`: what the viewer sizes the floor and gizmo by. When centring is off it
     /// includes the origin. Nil uses the scene's drawn bounds.
     var extents: (min: SIMD3<Float>, max: SIMD3<Float>)?
-    init(floor: Bool = false, origin: Bool = false, selectedNode: Int? = nil,
-                extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil) {
-        self.floor = floor; self.origin = origin; self.selectedNode = selectedNode; self.extents = extents
+    init(floor: Bool = false, origin: Bool = false, sceneGizmos: Bool = false, selectedNode: Int? = nil,
+         highlightedNodeIndices: Set<Int> = [], selectedSkinIndex: Int? = nil, skipCameraNodeIndex: Int? = nil,
+         canvasAspect: Float = 1, hiddenNodeIndices: Set<Int> = [], extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil) {
+        self.floor = floor
+        self.origin = origin
+        self.sceneGizmos = sceneGizmos
+        self.selectedNode = selectedNode
+        self.highlightedNodeIndices = highlightedNodeIndices
+        self.selectedSkinIndex = selectedSkinIndex
+        self.skipCameraNodeIndex = skipCameraNodeIndex
+        self.canvasAspect = canvasAspect
+        self.hiddenNodeIndices = hiddenNodeIndices
+        self.extents = extents
     }
 }
+
+extension MetalOverlayOptions {
+    /// What a frame drawn with `options` overlays; the live draw and gizmo picking share it.
+    init(_ options: ViewOptions, canvasAspect: Float, extents: (min: SIMD3<Float>, max: SIMD3<Float>)?) {
+        self.init(floor: options.showsFloor, origin: !options.isCentered, sceneGizmos: options.showsSceneGizmos,
+                  selectedNode: options.gizmoSelectedNodeIndex ?? options.selectedNodeIndex,
+                  highlightedNodeIndices: options.highlightedNodeIndices,
+                  selectedSkinIndex: options.selectedSkinIndex, skipCameraNodeIndex: options.fileCameraNodeIndex,
+                  canvasAspect: canvasAspect, hiddenNodeIndices: options.hiddenNodeIndices, extents: extents)
+        selectedNodes = options.selectedNodeIndices
+        hoveredNode = options.hoveredNodeIndex
+    }
+}
+
 struct MetalLineVertex { var position: SIMD4<Float>; var color: SIMD4<Float> }
+
+private enum OverlayGizmoColors {
+    /// Selected camera / light frustum (DS warning-adjacent orange).
+    static let selectedScene = SIMD3<Float>(1, 0.65, 0.2)
+    static let mutedScene = SIMD3<Float>(0.45, 0.45, 0.45)
+    static let axisBlue = SIMD3<Float>(0.25, 0.45, 1)
+    static let selectionHighlight = SIMD3<Float>(0.15, 0.75, 1)
+    static let materialUsageHighlight = SIMD3<Float>(0.35, 0.55, 0.65)
+    /// Pre-selection under the pointer: the selection hue, dimmed.
+    static let hover = SIMD3<Float>(0.45, 0.62, 0.72)
+}
+
+private func lightIsHidden(nodeIndex: Int, scene: MetalScene, hidden: Set<Int>) -> Bool {
+    guard !hidden.isEmpty else { return false }
+    return scene.ancestors(ofNode: nodeIndex).contains { hidden.contains($0) }
+}
+
+private func sceneLightGizmoColor(light: GLTFLight, selected: Bool) -> SIMD3<Float> {
+    if selected { return OverlayGizmoColors.selectedScene }
+    var c = SIMD3<Float>(light.color.x, light.color.y, light.color.z)
+    let peak = max(c.x, c.y, c.z, 1e-6)
+    c /= peak
+    return c * 0.5 + SIMD3(repeating: 0.5)
+}
 
 func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalLineVertex] {
     var vertices: [MetalLineVertex] = []
@@ -31,6 +97,7 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
     let low = options.extents?.min ?? scene.boundsMin
     let high = options.extents?.max ?? scene.boundsMax
     let extent = simd_max(high - low, SIMD3(repeating: 1e-4))
+    let span = max(extent.x, extent.y, extent.z, 0.05)
     if options.floor {
         // `collectPolarFloor`: centred on the world origin, just under the scene.
         let radius = max(2.7 * max(extent.x, extent.z) * 0.5, 0.001)
@@ -59,21 +126,372 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
         let size = 0.18 * max(extent.x, extent.y, extent.z, 0.05)
         line(.zero, SIMD3(size, 0, 0), SIMD3(1, 0.2, 0.2))
         line(.zero, SIMD3(0, size, 0), SIMD3(0.2, 1, 0.2))
-        line(.zero, SIMD3(0, 0, size), SIMD3(0.25, 0.45, 1))
+        line(.zero, SIMD3(0, 0, size), OverlayGizmoColors.axisBlue)
     }
-    if let index = options.selectedNode, let box = scene.bounds(ofNode: index) {
-        // `collectAABB`: padded by 1% of the longest side.
-        let size = box.max - box.min
-        let pad = 0.01 * max(size.x, size.y, size.z, 0.01)
-        let a = box.min - pad, b = box.max + pad
-        let corners: [SIMD3<Float>] = [
-            SIMD3(a.x, a.y, a.z), SIMD3(b.x, a.y, a.z), SIMD3(a.x, b.y, a.z), SIMD3(b.x, b.y, a.z),
-            SIMD3(a.x, a.y, b.z), SIMD3(b.x, a.y, b.z), SIMD3(a.x, b.y, b.z), SIMD3(b.x, b.y, b.z),
-        ]
-        let edges = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
-        for (i, j) in edges { line(corners[i], corners[j], SIMD3(0.15, 0.75, 1)) }
+
+    var drawnSceneGizmos = Set<Int>()
+    if options.sceneGizmos {
+        for (index, node) in scene.asset.nodes.enumerated() {
+            guard node.camera != nil || node.light != nil else { continue }
+            if index == options.skipCameraNodeIndex, node.camera != nil { continue }
+            if index != options.selectedNode, lightIsHidden(nodeIndex: index, scene: scene,
+                                                            hidden: options.hiddenNodeIndices) { continue }
+            let selected = index == options.selectedNode
+            collectSceneNodeGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
+                                  selected: selected, line: line)
+            drawnSceneGizmos.insert(index)
+        }
+    }
+    if let index = options.selectedNode, !drawnSceneGizmos.contains(index) {
+        collectSelectionGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
+                              line: line)
+    }
+    collectSkeletonOverlay(scene: scene, selectedSkinIndex: options.selectedSkinIndex,
+                           selectedNode: options.selectedNode, span: span,
+                           hidden: options.hiddenNodeIndices, line: line)
+    let selectionBoxNode = options.selectedNode
+    let boxed = options.selectedNodes.union(selectionBoxNode.map { [$0] } ?? [])
+    for index in options.selectedNodes.sorted() where index != selectionBoxNode {
+        collectSelectionGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
+                              line: line)
+    }
+    for index in options.highlightedNodeIndices.sorted() {
+        if boxed.contains(index) { continue }
+        collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.materialUsageHighlight, line: line)
+    }
+    if let index = options.hoveredNode, !boxed.contains(index),
+       scene.asset.nodes.indices.contains(index), scene.asset.nodes[index].mesh != nil {
+        collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.hover, line: line)
     }
     return vertices
+}
+
+/// Nearest ancestor glTF node index that is also a joint of the same skin, or nil.
+func nearestJointAncestor(of nodeIndex: Int, jointSet: Set<Int>, nodeParents: [Int]) -> Int? {
+    guard nodeParents.indices.contains(nodeIndex) else { return nil }
+    var current = nodeIndex
+    while nodeParents[current] >= 0 {
+        let parent = nodeParents[current]
+        if jointSet.contains(parent) { return parent }
+        guard nodeParents.indices.contains(parent) else { return nil }
+        current = parent
+    }
+    return nil
+}
+
+private func isSkinJoint(_ nodeIndex: Int, scene: MetalScene) -> Bool {
+    scene.asset.skins.contains { skin in
+        skin.joints.contains { joint in scene.asset.nodes.firstIndex(of: joint) == nodeIndex }
+    }
+}
+
+private func jointNodeIndices(in scene: MetalScene, skin: GLTFSkin) -> [Int] {
+    skin.joints.compactMap { scene.asset.nodes.firstIndex(of: $0) }
+}
+
+private func collectSkeletonOverlay(
+    scene: MetalScene,
+    selectedSkinIndex: Int?,
+    selectedNode: Int?,
+    span: Float,
+    hidden: Set<Int>,
+    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
+) {
+    let resolved: (skin: GLTFSkin, highlightedJoint: Int?)?
+    if let skinIndex = selectedSkinIndex, scene.asset.skins.indices.contains(skinIndex) {
+        resolved = (scene.asset.skins[skinIndex], nil)
+    } else if let nodeIndex = selectedNode, isSkinJoint(nodeIndex, scene: scene),
+              let skinIndex = scene.asset.skins.firstIndex(where: { skin in
+                  jointNodeIndices(in: scene, skin: skin).contains(nodeIndex)
+              }) {
+        resolved = (scene.asset.skins[skinIndex], nodeIndex)
+    } else {
+        resolved = nil
+    }
+    guard let (skin, highlightedJoint) = resolved else { return }
+
+    let joints = jointNodeIndices(in: scene, skin: skin)
+    let jointSet = Set(joints)
+    let cross = span * 0.03
+
+    for jointIndex in joints {
+        if lightIsHidden(nodeIndex: jointIndex, scene: scene, hidden: hidden) { continue }
+        guard let world = scene.worldMatrix(ofNode: jointIndex) else { continue }
+        let p = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
+        let jointColor = jointIndex == highlightedJoint
+            ? OverlayGizmoColors.selectionHighlight
+            : OverlayGizmoColors.mutedScene
+        line(p - SIMD3(cross, 0, 0), p + SIMD3(cross, 0, 0), jointColor)
+        line(p - SIMD3(0, cross, 0), p + SIMD3(0, cross, 0), jointColor)
+        line(p - SIMD3(0, 0, cross), p + SIMD3(0, 0, cross), jointColor)
+
+        guard let parentJoint = nearestJointAncestor(of: jointIndex, jointSet: jointSet,
+                                                     nodeParents: scene.nodeParents),
+              !lightIsHidden(nodeIndex: parentJoint, scene: scene, hidden: hidden),
+              let parentWorld = scene.worldMatrix(ofNode: parentJoint) else { continue }
+        let parentPos = SIMD3(parentWorld.columns.3.x, parentWorld.columns.3.y, parentWorld.columns.3.z)
+        let boneColor = jointIndex == highlightedJoint
+            ? OverlayGizmoColors.selectionHighlight
+            : OverlayGizmoColors.mutedScene
+        line(parentPos, p, boneColor)
+    }
+}
+
+/// Pick segments for camera and light gizmos when `sceneGizmos` is on (same nodes as the global
+/// gizmo overlay pass, not selection-only AABB / skeleton lines).
+func overlayGizmoSegments(scene: MetalScene, options: MetalOverlayOptions) -> [MetalGizmoSegment] {
+    guard options.sceneGizmos else { return [] }
+    var segments: [MetalGizmoSegment] = []
+    let low = options.extents?.min ?? scene.boundsMin
+    let high = options.extents?.max ?? scene.boundsMax
+    let extent = simd_max(high - low, SIMD3(repeating: 1e-4))
+    let span = max(extent.x, extent.y, extent.z, 0.05)
+    for (index, node) in scene.asset.nodes.enumerated() {
+        guard node.camera != nil || node.light != nil else { continue }
+        if index == options.skipCameraNodeIndex, node.camera != nil { continue }
+        if index != options.selectedNode, lightIsHidden(nodeIndex: index, scene: scene,
+                                                        hidden: options.hiddenNodeIndices) { continue }
+        let selected = index == options.selectedNode
+        appendSceneNodeGizmoSegments(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
+                                     selected: selected, into: &segments)
+    }
+    return segments
+}
+
+private func appendSceneNodeGizmoSegments(
+    scene: MetalScene,
+    nodeIndex: Int,
+    span: Float,
+    canvasAspect: Float,
+    selected: Bool,
+    into segments: inout [MetalGizmoSegment]
+) {
+    guard scene.asset.nodes.indices.contains(nodeIndex),
+          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
+    let node = scene.asset.nodes[nodeIndex]
+    func emit(_ a: SIMD3<Float>, _ b: SIMD3<Float>) {
+        segments.append(MetalGizmoSegment(a: a, b: b, nodeIndex: nodeIndex))
+    }
+    if let camera = node.camera {
+        collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
+                             selected: selected, line: { a, b, _ in emit(a, b) })
+        return
+    }
+    if let light = node.light {
+        collectLightGizmo(world: world, light: light, span: span, color: .zero, line: { a, b, _ in emit(a, b) })
+    }
+}
+
+private func collectSceneNodeGizmo(
+    scene: MetalScene,
+    nodeIndex: Int,
+    span: Float,
+    canvasAspect: Float,
+    selected: Bool,
+    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
+) {
+    guard scene.asset.nodes.indices.contains(nodeIndex),
+          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
+    let node = scene.asset.nodes[nodeIndex]
+    if let camera = node.camera {
+        collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
+                             selected: selected, line: line)
+        return
+    }
+    if let light = node.light {
+        collectLightGizmo(world: world, light: light, span: span,
+                          color: sceneLightGizmoColor(light: light, selected: selected), line: line)
+    }
+}
+
+private func collectSelectionGizmo(
+    scene: MetalScene,
+    nodeIndex: Int,
+    span: Float,
+    canvasAspect: Float,
+    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
+) {
+    guard scene.asset.nodes.indices.contains(nodeIndex),
+          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
+    let node = scene.asset.nodes[nodeIndex]
+
+    if let camera = node.camera {
+        collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
+                             selected: true, line: line)
+        return
+    }
+
+    if let light = node.light {
+        collectLightGizmo(world: world, light: light, span: span, color: OverlayGizmoColors.selectedScene, line: line)
+        return
+    }
+
+    if isSkinJoint(nodeIndex, scene: scene) { return }
+
+    if node.mesh == nil, scene.nodeParents.indices.contains(nodeIndex), scene.nodeParents[nodeIndex] >= 0 {
+        let parent = scene.nodeParents[nodeIndex]
+        if let parentWorld = scene.worldMatrix(ofNode: parent) {
+            let a = SIMD3(parentWorld.columns.3.x, parentWorld.columns.3.y, parentWorld.columns.3.z)
+            let b = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
+            line(a, b, OverlayGizmoColors.selectionHighlight)
+            return
+        }
+    }
+
+    collectNodeAABB(scene: scene, nodeIndex: nodeIndex, color: OverlayGizmoColors.selectionHighlight, line: line)
+}
+
+private func collectNodeAABB(
+    scene: MetalScene,
+    nodeIndex: Int,
+    color: SIMD3<Float>,
+    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
+) {
+    guard let box = scene.bounds(ofNode: nodeIndex) else { return }
+    let size = box.max - box.min
+    let pad = 0.01 * max(size.x, size.y, size.z, 0.01)
+    let a = box.min - pad, b = box.max + pad
+    let corners: [SIMD3<Float>] = [
+        SIMD3(a.x, a.y, a.z), SIMD3(b.x, a.y, a.z), SIMD3(a.x, b.y, a.z), SIMD3(b.x, b.y, a.z),
+        SIMD3(a.x, a.y, b.z), SIMD3(b.x, a.y, b.z), SIMD3(a.x, b.y, b.z), SIMD3(b.x, b.y, b.z),
+    ]
+    let edges = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
+    for (i, j) in edges { line(corners[i], corners[j], color) }
+}
+
+private func cameraAxes(from world: simd_float4x4) -> (eye: SIMD3<Float>, forward: SIMD3<Float>, up: SIMD3<Float>, right: SIMD3<Float>) {
+    let eye = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
+    let forward = simd_normalize(-SIMD3(world.columns.2.x, world.columns.2.y, world.columns.2.z))
+    let up = simd_normalize(SIMD3(world.columns.1.x, world.columns.1.y, world.columns.1.z))
+    let right = simd_normalize(SIMD3(world.columns.0.x, world.columns.0.y, world.columns.0.z))
+    return (eye, forward, up, right)
+}
+
+private func rectangleCorners(center: SIMD3<Float>, right: SIMD3<Float>, up: SIMD3<Float>,
+                              halfWidth: Float, halfHeight: Float) -> [SIMD3<Float>] {
+    [
+        center - right * halfWidth - up * halfHeight,
+        center + right * halfWidth - up * halfHeight,
+        center + right * halfWidth + up * halfHeight,
+        center - right * halfWidth + up * halfHeight,
+    ]
+}
+
+private func collectCameraFrustum(
+    world: simd_float4x4,
+    camera: GLTFCamera,
+    span: Float,
+    canvasAspect: Float,
+    selected: Bool,
+    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
+) {
+    let (eye, forward, up, right) = cameraAxes(from: world)
+    let znear = camera.zNear
+    let distance = max(znear, 0.15 * span)
+    let color = selected ? OverlayGizmoColors.selectedScene : OverlayGizmoColors.mutedScene
+
+    if let perspective = camera.perspective {
+        let halfHeight = distance * Float(tan(perspective.yFOV / 2))
+        let aspect = perspective.aspectRatio > 0 ? Float(perspective.aspectRatio) : canvasAspect
+        let halfWidth = halfHeight * aspect
+        let center = eye + forward * distance
+        let corners = rectangleCorners(center: center, right: right, up: up, halfWidth: halfWidth, halfHeight: halfHeight)
+        for corner in corners { line(eye, corner, color) }
+        for i in 0..<4 { line(corners[i], corners[(i + 1) % 4], color) }
+        if selected {
+            let topLeft = corners[2], topRight = corners[3]
+            let mid = (topLeft + topRight) * 0.5
+            let edge = simd_distance(topLeft, topRight)
+            let triHalf = edge / 6
+            let baseLeft = mid - right * triHalf
+            let baseRight = mid + right * triHalf
+            let apex = mid + up * triHalf
+            line(baseLeft, baseRight, OverlayGizmoColors.axisBlue)
+            line(baseLeft, apex, OverlayGizmoColors.axisBlue)
+            line(baseRight, apex, OverlayGizmoColors.axisBlue)
+        }
+        return
+    }
+
+    if let orthographic = camera.orthographic {
+        let halfWidth = orthographic.xMag
+        let halfHeight = orthographic.yMag
+        let nearCenter = eye + forward * znear
+        let farCenter = eye + forward * distance
+        let near = rectangleCorners(center: nearCenter, right: right, up: up, halfWidth: halfWidth, halfHeight: halfHeight)
+        let far = rectangleCorners(center: farCenter, right: right, up: up, halfWidth: halfWidth, halfHeight: halfHeight)
+        for i in 0..<4 { line(near[i], near[(i + 1) % 4], color) }
+        for i in 0..<4 { line(far[i], far[(i + 1) % 4], color) }
+        for i in 0..<4 { line(near[i], far[i], color) }
+    }
+}
+
+private func collectLightGizmo(
+    world: simd_float4x4,
+    light: GLTFLight,
+    span: Float,
+    color: SIMD3<Float>,
+    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
+) {
+    let origin = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
+    let emission = world * SIMD4(0, 0, -1, 0)
+    let direction = simd_normalize(SIMD3(emission.x, emission.y, emission.z))
+
+    switch light.type {
+    case .directional:
+        let axis: SIMD3<Float> = abs(direction.y) < 0.9 ? SIMD3(0, 1, 0) : SIMD3(1, 0, 0)
+        let plateRight = simd_normalize(simd_cross(direction, axis))
+        let plateUp = simd_normalize(simd_cross(plateRight, direction))
+        let half = span * 0.02
+        let plate = [
+            origin + plateRight * half + plateUp * half,
+            origin - plateRight * half + plateUp * half,
+            origin - plateRight * half - plateUp * half,
+            origin + plateRight * half - plateUp * half,
+        ]
+        for i in 0..<4 { line(plate[i], plate[(i + 1) % 4], color) }
+        line(origin, origin + direction * span * 0.5, color)
+    case .point:
+        let size = span * 0.03
+        let tips: [SIMD3<Float>] = [
+            origin + SIMD3(size, 0, 0), origin - SIMD3(size, 0, 0),
+            origin + SIMD3(0, size, 0), origin - SIMD3(0, size, 0),
+            origin + SIMD3(0, 0, size), origin - SIMD3(0, 0, size),
+        ]
+        let pairs = [(0, 2), (0, 3), (0, 4), (0, 5), (1, 2), (1, 3), (1, 4), (1, 5), (2, 4), (2, 5), (3, 4), (3, 5)]
+        for (a, b) in pairs { line(tips[a], tips[b], color) }
+    case .spot:
+        let range = light.range > 0 ? light.range : span * 0.25
+        let outerRadius = range * Float(tan(light.outerConeAngle))
+        let innerRadius = range * Float(tan(light.innerConeAngle))
+        let end = origin + direction * range
+        let axis: SIMD3<Float> = abs(direction.y) < 0.9 ? SIMD3(0, 1, 0) : SIMD3(1, 0, 0)
+        let coneRight = simd_normalize(simd_cross(direction, axis))
+        let coneUp = simd_normalize(simd_cross(coneRight, direction))
+        line(origin, origin + direction * (range * 0.92), color)
+        let segments = 32
+        let innerColor = color * 0.55
+        func ring(at center: SIMD3<Float>, r: Float, ringColor: SIMD3<Float>) {
+            var previous: SIMD3<Float>?
+            for i in 0...segments {
+                let a = Double(i) / Double(segments) * .pi * 2
+                let c = Float(cos(a)), s = Float(sin(a))
+                let p = center + coneRight * (c * r) + coneUp * (s * r)
+                if let previous { line(previous, p, ringColor) }
+                previous = p
+            }
+        }
+        ring(at: end, r: outerRadius, ringColor: color)
+        ring(at: end, r: innerRadius, ringColor: innerColor)
+        for i in 0..<4 {
+            let a = Double(i) / 4 * .pi * 2
+            let c = Float(cos(a)), s = Float(sin(a))
+            let edge = end + coneRight * (c * outerRadius) + coneUp * (s * outerRadius)
+            line(origin, edge, color)
+        }
+    @unknown default:
+        break
+    }
 }
 
 extension MetalRenderer {

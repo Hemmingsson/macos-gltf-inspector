@@ -6,13 +6,17 @@ import SwiftUI
 /// (DESIGN.md › menu bar = full command set).
 enum Shortcuts {
     enum Action: String, CaseIterable, Sendable {
-        case orthographic, center, fit, reset, autoRotate, zoomIn, zoomOut, toggleSidebar
+        case orthographic, center, fit, frameSelection, reset, autoRotate, zoomIn, zoomOut, toggleSidebar
+        case hideSelection, soloSelection, selectParent, selectChildren
     }
 
     static func viewMode(_ mode: RenderViewMode) -> KeyboardShortcut? {
         switch mode {
         case .shaded: KeyboardShortcut("1", modifiers: .command)
         case .wireframe: KeyboardShortcut("2", modifiers: .command)
+        case .wireframeOnShaded: KeyboardShortcut("3", modifiers: .command)
+        case .xray: KeyboardShortcut("4", modifiers: .command)
+        case .clay: KeyboardShortcut("5", modifiers: .command)
         case .channel: nil
         }
     }
@@ -36,17 +40,23 @@ enum Shortcuts {
         case .orthographic: KeyboardShortcut("5", modifiers: [.command, .option])
         case .center: KeyboardShortcut("c", modifiers: [.command, .option])
         case .fit: KeyboardShortcut("9", modifiers: .command)
+        case .frameSelection: KeyboardShortcut("f", modifiers: [.command, .option])
         case .reset: KeyboardShortcut("0", modifiers: .command)
         case .autoRotate: KeyboardShortcut("r", modifiers: .command)
         case .zoomIn: KeyboardShortcut("+", modifiers: .command)
         case .zoomOut: KeyboardShortcut("-", modifiers: .command)
         case .toggleSidebar: KeyboardShortcut("b", modifiers: .command)
+        case .hideSelection: KeyboardShortcut("h", modifiers: [.command, .shift])
+        case .soloSelection: KeyboardShortcut("h", modifiers: [.command, .option, .shift])
+        // Finder's enclosing folder / open: up the hierarchy and down into it.
+        case .selectParent: KeyboardShortcut(.upArrow, modifiers: .command)
+        case .selectChildren: KeyboardShortcut(.downArrow, modifiers: .command)
         }
     }
 
     /// Every bound shortcut, for duplicate / reserved-key checks in tests.
     static var allBound: [(id: String, shortcut: KeyboardShortcut)] {
-        [RenderViewMode.shaded, .wireframe].compactMap { mode in
+        ([RenderViewMode.shaded] + RenderViewMode.displayModes).compactMap { mode in
             viewMode(mode).map { ("viewMode.\(mode)", $0) }
         }
             + CameraPreset.allCases.compactMap { preset in

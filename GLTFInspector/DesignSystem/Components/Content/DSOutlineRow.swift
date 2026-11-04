@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// One layer-list row: indent, type glyph, title — sized like a design tool's layer list
@@ -22,8 +23,13 @@ struct DSOutlineRow: View {
     /// `nil` for a leaf; otherwise whether the row's children are showing.
     private let isExpanded: Bool?
     private let isSelected: Bool
+    private let isJoint: Bool
     private let badge: DSStatus?
+    private let visibility: DSVisibility?
+    private let onVisibility: (_ solo: Bool) -> Void
     private let onToggle: () -> Void
+    /// Indent guide lines (`OutlinerTree.Row.guides`); nil draws plain indent.
+    private let guides: [Bool]?
 
     @State private var isHovered = false
     @ScaledMetric(relativeTo: .subheadline) private var indent = DS.Metrics.outlineIndent
@@ -38,9 +44,14 @@ struct DSOutlineRow: View {
         depth: Int = 0,
         isExpanded: Bool? = nil,
         isSelected: Bool = false,
+        isJoint: Bool = false,
         badge: DSStatus? = nil,
-        onToggle: @escaping () -> Void = {}
+        visibility: DSVisibility? = nil,
+        onVisibility: @escaping (_ solo: Bool) -> Void = { _ in },
+        onToggle: @escaping () -> Void = {},
+        guides: [Bool]? = nil
     ) {
+        self.guides = guides
         self.title = title
         self.role = role
         self.systemImage = systemImage
@@ -49,7 +60,10 @@ struct DSOutlineRow: View {
         self.depth = depth
         self.isExpanded = isExpanded
         self.isSelected = isSelected
+        self.isJoint = isJoint
         self.badge = badge
+        self.visibility = visibility
+        self.onVisibility = onVisibility
         self.onToggle = onToggle
     }
 
@@ -58,7 +72,7 @@ struct DSOutlineRow: View {
             glyphSlot
             Text(title)
                 .font(.subheadline)
-                .foregroundStyle(.primary)
+                .foregroundStyle(isDimmed ? .secondary : .primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
@@ -68,13 +82,68 @@ struct DSOutlineRow: View {
                     .foregroundStyle(badge.tint)
                     .accessibilityLabel(badge == .error ? "Has errors" : "Has warnings")
             }
+            visibilityControl
         }
         .padding(.leading, CGFloat(depth) * indent)
+        .background(alignment: .leading) {
+            if let guides, depth > 0 {
+                DSOutlineGuides(guides: guides, indent: indent, glyph: side)
+            }
+        }
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .accessibilityElement(children: .combine)
-        .accessibilityAction(named: isExpanded == true ? "Collapse" : "Expand") {
-            if isExpanded != nil { onToggle() }
+        .modifier(OutlineRowAccessibilityActions(
+            isExpanded: isExpanded,
+            isToggleable: isToggleable,
+            visibility: visibility,
+            onToggle: onToggle,
+            onVisibility: { onVisibility(false) }
+        ))
+    }
+
+    /// Only the window's own state toggles; inherited and authored states are read-only.
+    private var isToggleable: Bool { visibility == .visible || visibility == .hidden }
+
+    private var isDimmed: Bool {
+        guard let visibility else { return false }
+        return visibility != .visible
+    }
+
+    /// Reserves the trailing eye slot whenever `visibility` is set; fades out when visible and not hovered.
+    @ViewBuilder
+    private var visibilityControl: some View {
+        if let visibility {
+            Group {
+                if visibility == .hiddenInFile {
+                    Image(systemName: "eye.slash")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .help("Hidden in the file (KHR_node_visibility)")
+                        .accessibilityLabel("Hidden in file")
+                } else if visibility == .hiddenByParent {
+                    Image(systemName: "eye.slash")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .help("Hidden by a parent layer or by solo")
+                        .accessibilityLabel("Hidden by parent")
+                } else {
+                    Button {
+                        // Option-click solos the node; a plain click toggles it.
+                        let solo = NSApp.currentEvent?.modifierFlags.contains(.option) ?? false
+                        onVisibility(solo)
+                    } label: {
+                        Image(systemName: visibility == .visible ? "eye" : "eye.slash")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(visibility == .visible ? "Hide (Option-click to solo)" : "Show (Option-click to solo)")
+                    .accessibilityLabel(visibility == .visible ? "Hide" : "Show")
+                }
+            }
+            .opacity(visibility == .visible && !isHovered ? 0 : 1)
+            .allowsHitTesting(visibility != .visible || isHovered)
         }
     }
 
@@ -105,12 +174,74 @@ struct DSOutlineRow: View {
         } else {
             DSTypeIcon(
                 role,
-                systemImage: systemImage,
+                // A skin joint is an empty node with its own glyph.
+                systemImage: isJoint && role == .empty ? "circle.grid.cross" : systemImage,
                 assetImage: assetImage,
                 swatchColor: swatchColor,
                 isSelected: isSelected,
                 font: Font.subheadline
             )
         }
+    }
+}
+
+private struct OutlineRowAccessibilityActions: ViewModifier {
+    let isExpanded: Bool?
+    let isToggleable: Bool
+    let visibility: DSVisibility?
+    let onToggle: () -> Void
+    let onVisibility: () -> Void
+
+    func body(content: Content) -> some View {
+        if let isExpanded {
+            if isToggleable, let visibility {
+                content
+                    .accessibilityAction(named: isExpanded ? "Collapse" : "Expand", onToggle)
+                    .accessibilityAction(named: visibility == .visible ? "Hide" : "Show", onVisibility)
+            } else {
+                content
+                    .accessibilityAction(named: isExpanded ? "Collapse" : "Expand", onToggle)
+            }
+        } else if isToggleable, let visibility {
+            content
+                .accessibilityAction(named: visibility == .visible ? "Hide" : "Show", onVisibility)
+        } else {
+            content
+        }
+    }
+}
+
+/// Hairline tree guides in a row's indent: a vertical line per ancestor level that continues
+/// below, and an elbow (└ or ├) from the parent's glyph centre to this row's glyph.
+private struct DSOutlineGuides: View {
+    let guides: [Bool]
+    let indent: CGFloat
+    let glyph: CGFloat
+    /// List rows sit apart; the lines reach past the row so they join across the gap.
+    private let overhang = DS.Spacing.s
+
+    var body: some View {
+        Canvas { context, size in
+            let top: CGFloat = 0, bottom = size.height, middle = size.height / 2
+            var path = Path()
+            for (level, continues) in guides.enumerated() {
+                let x = (CGFloat(level) * indent + glyph / 2).rounded() + 0.5
+                let isOwnLevel = level == guides.count - 1
+                if isOwnLevel {
+                    path.move(to: CGPoint(x: x, y: top))
+                    path.addLine(to: CGPoint(x: x, y: continues ? bottom : middle))
+                    path.move(to: CGPoint(x: x, y: middle))
+                    path.addLine(to: CGPoint(x: x + indent - glyph / 2 - DS.Spacing.xxs, y: middle))
+                } else if continues {
+                    path.move(to: CGPoint(x: x, y: top))
+                    path.addLine(to: CGPoint(x: x, y: bottom))
+                }
+            }
+            context.stroke(path, with: .color(DS.Color.separator), lineWidth: DS.Metrics.hairline)
+        }
+        .frame(width: CGFloat(guides.count) * indent)
+        .padding(.vertical, -overhang)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }

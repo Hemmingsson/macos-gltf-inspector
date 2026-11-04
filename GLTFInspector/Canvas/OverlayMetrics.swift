@@ -5,7 +5,10 @@ enum OverlayMetrics {
     static let inset = DS.Spacing.xl
     /// Slightly under `DS.Metrics.glassControl` so the readout stays compact.
     static let dimensionsHeight: CGFloat = 30
-    static let orientationSize: CGFloat = 66
+    static let navigationGizmoSize = DS.Metrics.navigationGizmoSize
+    /// Hover name tag: compact, offset so the pointer never covers it.
+    static let tooltipHeight: CGFloat = 24
+    static let tooltipOffset: CGFloat = 14
 
     static func strokeAxis(
         _ context: GraphicsContext,
@@ -20,19 +23,5 @@ enum OverlayMetrics {
         context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
     }
 
-    static func drawAxisLabel(
-        _ context: GraphicsContext,
-        _ text: String,
-        at point: CGPoint,
-        color: Color,
-        size: CGFloat = 9
-    ) {
-        context.draw(
-            Text(text)
-                .font(.system(size: size, weight: .medium))
-                .foregroundStyle(color),
-            at: point,
-            anchor: .topLeading
-        )
-    }
+
 }

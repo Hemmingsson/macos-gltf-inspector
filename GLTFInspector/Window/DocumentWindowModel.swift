@@ -38,6 +38,10 @@ final class DocumentWindowModel {
         self.documentURL = documentURL
         phase = documentURL == nil ? .empty : .loading
         view = ViewState(settings: settings ?? .shared)
+        view.document = document
+        view.canvas.onPick = { [weak self] index in self?.view.pick(index) }
+        view.canvas.onTogglePick = { [weak self] index in self?.view.toggleSelection(ofNode: index) }
+        view.canvas.onOrbitStart = { [weak self] in self?.view.canvasDidOrbit() }
     }
 
     /// The validator's findings, resolved to outliner rows.
@@ -63,6 +67,7 @@ final class DocumentWindowModel {
 
         phase = .loading
         document = GLTFDocument()
+        view.document = document
         validationState = nil
         loadingURL = url
         loadGeneration += 1
@@ -83,6 +88,7 @@ final class DocumentWindowModel {
             let document = try await load(url)
             guard generation == loadGeneration else { return }
             self.document = document
+            view.document = document
             view.sceneIndex = document.defaultSceneIndex
             view.viewModes = document.viewModes
             phase = .ready
@@ -95,6 +101,7 @@ final class DocumentWindowModel {
             guard generation == loadGeneration else { return }
             AppLog.error(AppLog.app, "open failed \(url.lastPathComponent): \(error.localizedDescription)")
             document = GLTFDocument()
+            view.document = document
             phase = .failed(error.localizedDescription)
         }
     }

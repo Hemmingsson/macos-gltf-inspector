@@ -52,17 +52,19 @@ struct WindowLayout<Canvas: View>: View {
             )
             .overlay(alignment: .topTrailing) {
                 if window.phase.isReady, !showsInspector {
-                    OpenInButton(documentURL: documentURL)
+                    OpenInButton(documentURL: documentURL, view: window.view, exportName: window.exportName)
                         .ignoresSafeArea(.container, edges: .top)
                 }
             }
             .inspector(isPresented: inspectorPresented) {
                 Inspector(
+                    view: window.view,
                     document: window.document,
                     selection: window.view.selection,
                     documentState: window.phase,
                     validation: validation,
-                    documentURL: documentURL
+                    documentURL: documentURL,
+                    onSelect: { window.view.selection = $0 }
                 )
                 .inspectorColumnWidth(
                     min: DS.Metrics.inspectorWidthRange.lowerBound,

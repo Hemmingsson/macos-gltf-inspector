@@ -32,6 +32,22 @@ public struct GLTFDocument: Sendable, Equatable {
     }
 
     /// Flat glTF node with child indices — small tree, no nested copies.
+    /// One draw primitive on a mesh (`meshes[].primitives[]`).
+    public struct MeshPrimitive: Sendable, Equatable {
+        /// glTF `material` index, when present and in range.
+        public var materialIndex: Int?
+        /// Triangle count for triangle-compatible topologies; zero for points and lines.
+        public var triangleCount: Int
+        /// glTF primitive `mode` (0–6). Omitted in JSON means `4` (triangles).
+        public var mode: Int
+
+        public init(materialIndex: Int? = nil, triangleCount: Int = 0, mode: Int = 4) {
+            self.materialIndex = materialIndex
+            self.triangleCount = triangleCount
+            self.mode = mode
+        }
+    }
+
     public struct Node: Sendable, Equatable {
         public enum Kind: String, Sendable, Equatable {
             case empty
@@ -60,6 +76,15 @@ public struct GLTFDocument: Sendable, Equatable {
         public var uvSetCount: Int = 0
         public var hasTangents: Bool = false
         public var hasVertexColors: Bool = false
+        /// Per-primitive facts for this node's mesh (mesh nodes only).
+        public var meshPrimitives: [MeshPrimitive] = []
+        /// Instance count from `EXT_mesh_gpu_instancing` when present.
+        public var gpuInstanceCount: Int?
+        /// Skins that list this node as a joint (`skins[].joints`).
+        public var jointOfSkinIndices: [Int] = []
+        /// `KHR_node_visibility` says `visible: false` in the file. The renderer does not read it;
+        /// the outliner marks it and the inspector explains it.
+        public var isHiddenInFile: Bool = false
 
         /// Primary attachment wins: mesh > camera > light > skin; all nil → empty.
         public static func inferredKind(
@@ -158,6 +183,8 @@ public struct GLTFDocument: Sendable, Equatable {
     public struct Skin: Sendable, Equatable {
         public var name: String
         public var jointNames: [String]
+        /// glTF node indices for each joint, same order as `jointNames`.
+        public var jointNodeIndices: [Int]
     }
 
     /// Morph targets for one mesh (`extras.targetNames`, else by index).
@@ -176,6 +203,22 @@ public struct GLTFDocument: Sendable, Equatable {
 }
 
 extension GLTFDocument {
+    /// True when `index` is listed as a joint on any skin in the file.
+    public func isJoint(nodeIndex: Int) -> Bool {
+        skins.contains { $0.jointNodeIndices.contains(nodeIndex) }
+    }
+
+    /// Scene node indices whose mesh uses `materialIndex` on at least one primitive (each once).
+    public func nodeIndices(usingMaterial materialIndex: Int) -> [Int] {
+        var seen = Set<Int>()
+        var indices: [Int] = []
+        for node in nodes where node.kind == .mesh {
+            guard node.meshPrimitives.contains(where: { $0.materialIndex == materialIndex }) else { continue }
+            if seen.insert(node.index).inserted { indices.append(node.index) }
+        }
+        return indices
+    }
+
     /// Reads a `.gltf` or a GLB's JSON chunk (plus texture headers for the inspector) off the main
     /// thread. Throws for a file that is not glTF.
     public static func load(from url: URL) async throws -> GLTFDocument {

@@ -24,6 +24,9 @@ struct GeometrySection: View {
         }
         if node.hasTangents { items.append("Tangents") }
         if node.hasVertexColors { items.append("Vertex colors") }
+        if let count = node.gpuInstanceCount, count > 1 {
+            items.append("× \(count.formatted()) instances")
+        }
         return items
     }
 }

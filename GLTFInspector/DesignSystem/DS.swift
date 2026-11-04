@@ -27,6 +27,8 @@ enum DS {
 
     enum Metrics {
         static let hairline: CGFloat = 1
+        /// Rounded-square navigation gizmo on the canvas.
+        static let navigationGizmoSize: CGFloat = 76
         /// Side of an icon-only glass button.
         static let glassControl: CGFloat = 32
         /// Width of a glass button that carries a menu chevron.
@@ -67,6 +69,9 @@ enum DS {
         static let separator = SwiftUI.Color(nsColor: .separatorColor)
         static let controlBackground = SwiftUI.Color(nsColor: .controlBackgroundColor)
         static let windowBackground = SwiftUI.Color(nsColor: .windowBackgroundColor)
+        /// A layer row whose node is under the canvas pointer (pre-selection), below the
+        /// selection highlight's strength.
+        static let pointedRowFill = SwiftUI.Color.accentColor.opacity(0.14)
 
         /// Tint over the sidebar and inspector glass: translucent so the canvas reads through.
         static let paneFill = SwiftUI.Color.dynamic(
@@ -88,6 +93,8 @@ enum DS {
             static let x = SwiftUI.Color(red: 0xE2 / 255, green: 0x56 / 255, blue: 0x4A / 255)
             static let y = SwiftUI.Color(red: 0x34 / 255, green: 0xC7 / 255, blue: 0x59 / 255)
             static let z = SwiftUI.Color(red: 0x0A / 255, green: 0x84 / 255, blue: 0xFF / 255)
+            /// Negative axis ends on the navigation gizmo.
+            static let negative = SwiftUI.Color.secondary
         }
 
         /// What the backdrop swatches paint; the same in both appearances.
@@ -139,6 +146,18 @@ extension View {
             .textCase(.uppercase)
             .tracking(0.5)
     }
+}
+
+/// Whether a layer row draws, and why not. `hiddenByParent` and `hiddenInFile` are read-only
+/// states of the row; `hidden` is the window's own choice.
+enum DSVisibility: Sendable, Equatable {
+    case visible
+    /// Hidden in this window.
+    case hidden
+    /// Its own visibility is fine, but an ancestor is hidden or another node is soloed.
+    case hiddenByParent
+    /// Authored as hidden (`KHR_node_visibility`). Shown, not toggled.
+    case hiddenInFile
 }
 
 extension SwiftUI.Color {

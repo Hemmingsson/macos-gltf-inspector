@@ -162,6 +162,31 @@ struct ModelViewTests {
     }
 
     /// `UserCamera.zoomBy`, `orbit` and `pan` against values worked from the Khronos source.
+    @Test func unmodifiedClickAtCentrePicksMesh() async throws {
+        let view = try await loaded(TestFixtures.cube)
+        view.frame = NSRect(x: 0, y: 0, width: 512, height: 512)
+        view.layoutSubtreeIfNeeded()
+        // Off-screen fixture window: pick needs a window, but must not steal focus (AGENTS.md).
+        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        view.layoutSubtreeIfNeeded()
+        defer { window.contentView = nil; window.close() }
+
+        var picked: Int?
+        view.onPick = { picked = $0 }
+
+        let centre = NSPoint(x: 256, y: 256)
+        func event(_ type: NSEvent.EventType) -> NSEvent {
+            NSEvent.mouseEvent(with: type, location: centre, modifierFlags: [], timestamp: 0,
+                               windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                               clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1)!
+        }
+        view.mouseDown(with: event(.leftMouseDown))
+        view.mouseUp(with: event(.leftMouseUp))
+        #expect(picked == 0)
+    }
+
     @Test func userCameraInputFollowsKhronos() {
         var camera = MetalUserCamera()
         camera.fit(extents: (SIMD3(-1, -1, -1), SIMD3(1, 1, 1)), centered: true, aspect: 1)

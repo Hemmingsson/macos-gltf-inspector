@@ -12,6 +12,9 @@ struct ViewportZoomCommands: View {
             .keyboardShortcut(Shortcuts.action(.zoomOut))
         Button("Fit", systemImage: "viewfinder") { view.fit() }
             .keyboardShortcut(Shortcuts.action(.fit))
+        Button("Frame Selection", systemImage: "viewfinder.rectangular") { view.frameSelection() }
+            .keyboardShortcut(Shortcuts.action(.frameSelection))
+            .disabled(view.selectedSceneNodes.isEmpty)
     }
 }
 

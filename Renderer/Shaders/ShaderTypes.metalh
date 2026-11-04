@@ -22,7 +22,12 @@ struct MetalFrameUniforms {
     // Render target width and height in pixels (the debug checkerboard's gl_FragCoord flip).
     float4 viewport;
 };
-struct MetalDrawUniforms { float4x4 model; float4x4 normalMatrix; };
+struct MetalDrawUniforms {
+    float4x4 model;
+    float4x4 normalMatrix;
+    // x target count, y emitted vertex count, z attribute mask, w unused.
+    uint4 morphInfo;
+};
 struct MetalMaterialUniforms {
     float4 baseColor;
     // emissive RGB (already multiplied by emissive strength), normal scale.

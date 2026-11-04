@@ -14,7 +14,25 @@ struct Sidebar: View {
     var body: some View {
         Group {
             if documentState.isReady {
-                OutlinerList(document: document, validation: validation, selection: $view.selection, onActivate: activate)
+                OutlinerList(
+                    document: document,
+                    validation: validation,
+                    selection: $view.selection,
+                    selectedIDs: $view.selectedIDs,
+                    onActivate: activate,
+                    hiddenNodes: view.hiddenNodes,
+                    soloNodes: view.soloNodes,
+                    onToggleHidden: { view.toggleHidden($0) },
+                    onToggleSolo: { view.toggleSolo($0) },
+                    onShowAll: { view.showAll() },
+                    onFrame: { index in
+                        if let id = document.id(ofNode: index), !view.selectedIDs.contains(id) { view.selection = id }
+                        view.frameSelection()
+                    },
+                    pointedNode: view.canvas.hoveredNode,
+                    showsTreeGuides: view.settings.showsTreeGuides
+                )
+                .documentReadyMarker()
                 .safeAreaInset(edge: .top, spacing: 0) {
                     documentCard
                 }

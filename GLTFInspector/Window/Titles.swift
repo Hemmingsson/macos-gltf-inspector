@@ -9,6 +9,9 @@ extension RenderViewMode {
         switch self {
         case .shaded: "Shaded"
         case .wireframe: "Wireframe"
+        case .wireframeOnShaded: "Wireframe on Shaded"
+        case .xray: "X-Ray"
+        case .clay: "Clay"
         case .channel(let channel): channel.title
         }
     }
@@ -18,6 +21,9 @@ extension RenderViewMode {
         switch self {
         case .shaded: "circle.lefthalf.filled"
         case .wireframe: "grid"
+        case .wireframeOnShaded: "square.grid.3x3.topleft.filled"
+        case .xray: "cube.transparent"
+        case .clay: "circle.fill"
         case .channel(let channel): channel.systemImage
         }
     }

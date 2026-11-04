@@ -40,28 +40,42 @@ final class DocumentWindowUITests: XCTestCase {
         attachScreenshot(app, named: "shaded-after-reset")
     }
 
-    // MARK: 3. Outliner selection → inspector
+    // MARK: 3. Canvas click → selection
+
+    func testCanvasPickSelectsMesh() {
+        let app = makeApp(file: UIFixture.cube)
+        app.launch()
+        self.app = app
+        waitForCanvas(in: app)
+        waitForDocument(in: app)
+
+        clickCanvasCentre(in: app)
+
+        let header = inspectorSelection(in: app)
+        XCTAssertTrue(header.waitForExistence(timeout: UIWait.timeout), "inspector does not show Cube")
+        XCTAssertTrue(header.label.contains("Cube"), "expected Cube selection, got \(header.label)")
+        attachScreenshot(app, named: "canvas-pick")
+    }
+
+    // MARK: 4. Outliner selection → inspector
 
     func testOutlinerSelection() {
         let app = launch()
         waitForCanvas(in: app)
+        waitForDocument(in: app)
 
-        // `NodeRow` label: "<name>, <kind>". BoxAnimated's nodes are unnamed → "Node <index>".
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Node 1, "))
             .firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: UIWait.timeout), "outliner row Node 1 missing")
-        row.click()
+        if row.waitForExistence(timeout: 2) {
+            row.click()
+        } else {
+            clickSidebarOutliner(in: app)
+        }
 
-        let inspector = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == %@", "Inspector"))
-            .firstMatch
-        XCTAssertTrue(inspector.waitForExistence(timeout: UIWait.timeout), "inspector missing")
-        // `NodeHeader` combines name and kind into one text: "Node 1, Group".
-        let header = inspector.staticTexts
-            .matching(NSPredicate(format: "value BEGINSWITH %@", "Node 1,"))
-            .firstMatch
+        let header = inspectorSelection(in: app)
         XCTAssertTrue(header.waitForExistence(timeout: UIWait.timeout), "inspector does not show Node 1")
+        XCTAssertTrue(header.label.contains("Node 1"), "expected Node 1 selection, got \(header.label)")
         attachScreenshot(app, named: "selection")
     }
 

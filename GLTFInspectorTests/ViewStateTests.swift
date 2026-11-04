@@ -94,6 +94,60 @@ struct ViewStateTests {
         #expect(view.options.selectedNodeIndex == nil)
     }
 
+    @Test func materialSelectionHighlightsEveryUserNode() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "Shared"], ["name": "Lonely"]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "nodes": [["name": "A", "mesh": 0], ["name": "B", "mesh": 0]],
+            "scenes": [["nodes": [0, 1]]],
+        ])
+        view.selection = NodeID(kind: .material, index: 0)
+        #expect(view.options.highlightedNodeIndices == [0, 1])
+        view.selection = NodeID(kind: .material, index: 1)
+        #expect(view.options.highlightedNodeIndices.isEmpty)
+        view.selection = NodeID(kind: .mesh, index: 0)
+        #expect(view.options.highlightedNodeIndices.isEmpty)
+    }
+
+    @Test func hideAndSoloReachTheRendererOptions() throws {
+        let view = ViewState(settings: try settings())
+        view.toggleHidden(2)
+        view.toggleHidden(5)
+        view.toggleHidden(5)
+        #expect(view.options.hiddenNodeIndices == [2])
+
+        view.toggleSolo(4)
+        #expect(view.soloNodes == [4] && view.options.soloNodeIndices == [4])
+        view.toggleSolo(7)
+        #expect(view.soloNodes == [7])
+        view.toggleSolo(7)
+        #expect(view.soloNodes.isEmpty)
+    }
+
+    @Test func showAllAndResetClearHiddenAndSoloNodes() throws {
+        let view = ViewState(settings: try settings())
+        view.toggleHidden(1)
+        view.toggleSolo(3)
+        view.showAll()
+        #expect(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
+
+        view.toggleHidden(1)
+        view.toggleSolo(3)
+        view.reset()
+        #expect(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
+    }
+
+    @Test func sceneChangeClearsHiddenAndSoloNodes() throws {
+        let view = ViewState(settings: try settings())
+        view.toggleHidden(1)
+        view.toggleSolo(3)
+        view.sceneIndex = 1
+        #expect(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
+    }
+
     @Test func optionsCarryTheWindowsLook() throws {
         let view = ViewState(settings: try settings())
         view.exposure = 0.5

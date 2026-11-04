@@ -117,13 +117,14 @@ private final class Builder {
                 let p = transform * SIMD4<Float>(0, 0, 0, 1)
                 let d = transform * SIMD4<Float>(0, 0, -1, 0)
                 // Map GLTFKit2 light types (1...3) to the shader types (0...2).
-                lights.append(MetalPunctualLight(type: Int(light.type.rawValue) - 1, position: SIMD3(p.x,p.y,p.z), direction: simd_normalize(SIMD3(d.x,d.y,d.z)), color: light.color, intensity: light.intensity, range: light.range, innerConeCos: cos(light.innerConeAngle), outerConeCos: cos(light.outerConeAngle)))
+                lights.append(MetalPunctualLight(type: Int(light.type.rawValue) - 1, position: SIMD3(p.x,p.y,p.z), direction: simd_normalize(SIMD3(d.x,d.y,d.z)), color: light.color, intensity: light.intensity, range: light.range, innerConeCos: cos(light.innerConeAngle), outerConeCos: cos(light.outerConeAngle), nodeIndex: asset.nodes.firstIndex(of: node) ?? -1))
             }
             if let mesh = node.mesh {
                 let instances = node.meshInstances
                 for i in 0..<(instances?.instanceCount ?? 1) {
-                    let model = transform * (instances?.transform(at: i) ?? matrix_identity_float4x4)
-                    for primitive in mesh.primitives { try append(primitive, node: node, model: model, variant: variant) }
+                    let instance = instances?.transform(at: i) ?? matrix_identity_float4x4
+                    let model = transform * instance
+                    for primitive in mesh.primitives { try append(primitive, node: node, model: model, instance: instance, variant: variant) }
                 }
             }
             for child in node.childNodes { try visit(child, visible: true) }
@@ -132,10 +133,32 @@ private final class Builder {
         guard !draws.isEmpty else { throw MetalSceneError.invalid("The glTF scene contains no renderable primitives") }
         try MetalImageLoader.generateMipmaps(pendingMips, device: device)
         pendingMips.removeAll()
-        return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset)
+        return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset, nodeRests: nodeRests())
     }
 
-    func append(_ primitive: GLTFPrimitive, node: GLTFNode, model: simd_float4x4, variant: GLTFMaterialVariant?) throws {
+    /// Cached rest worlds. Nodes the scene walk did not reach (a joint outside the scene) get the
+    /// same `parent * matrix` the loader uses for them.
+    func nodeRests() -> [MetalNodeRest] {
+        let matrixNodes = AnimationClipLoader.matrixAuthoredNodeIndices(sourceURL: sourceURL)
+        func ensure(_ node: GLTFNode) -> simd_float4x4 {
+            if let value = world[ObjectIdentifier(node)] { return value }
+            let value = (node.parent.map { ensure($0) } ?? matrix_identity_float4x4) * node.matrix
+            world[ObjectIdentifier(node)] = value
+            return value
+        }
+        return asset.nodes.enumerated().map { index, node in
+            MetalNodeRest(
+                translation: node.translation,
+                rotation: node.rotation,
+                scale: node.scale,
+                localMatrix: node.matrix,
+                worldMatrix: ensure(node),
+                hasMatrix: matrixNodes.contains(index)
+            )
+        }
+    }
+
+    func append(_ primitive: GLTFPrimitive, node: GLTFNode, model: simd_float4x4, instance: simd_float4x4, variant: GLTFMaterialVariant?) throws {
         guard let accessor = primitive.attribute(forName: "POSITION")?.accessor else { throw MetalSceneError.invalid("Primitive has no POSITION accessor") }
         let count = accessor.count
         guard count > 0 else { return }
@@ -157,23 +180,7 @@ private final class Builder {
                                   positions, normal, tangent, color, colorComponents, uv0, uv1)
             initialized = count
         }
-        let weights = node.weights ?? node.mesh?.weights ?? []
-        for (targetIndex, target) in primitive.targets.enumerated() where targetIndex < weights.count && weights[targetIndex].floatValue != 0 {
-            let weight = weights[targetIndex].floatValue
-            for attribute in target {
-                let data = try values(attribute.accessor, components: 3)
-                guard attribute.accessor.count == count else { throw MetalSceneError.invalid("Mismatched morph accessor count") }
-                for i in 0..<count {
-                    let delta = SIMD4<Float>(data[i*3],data[i*3+1],data[i*3+2],0) * weight
-                    switch attribute.name {
-                    case "POSITION": vertices[i].position += delta
-                    case "NORMAL": vertices[i].normal += delta
-                    case "TANGENT": vertices[i].tangent += delta
-                    default: break
-                    }
-                }
-            }
-        }
+        var sourceOf = (0..<count).map { UInt32($0) }
         if let skin = node.skin, let joints = try attribute("JOINTS_0",4), let weights = try attribute("WEIGHTS_0",4) {
             let inverseBind: [Float]? = try skin.inverseBindMatrices.map { try values($0, components: 16) }
             let matrices = skin.joints.enumerated().map { i,joint -> simd_float4x4 in
@@ -234,12 +241,15 @@ private final class Builder {
         if normal == nil && topology == .triangle {
             // Khronos generates a face normal when absent: split shared vertices to preserve hard edges.
             let flatCount = indices.count - indices.count%3
+            let sources = Array(indices.prefix(flatCount))
             vertices = Self.deindexed(vertices, indices, count: flatCount, faceNormals: true)
+            sourceOf = sources.map { sourceOf[Int($0)] }
             indices = Self.sequence(flatCount)
         }
         if tangent == nil && uv0 != nil && topology == .triangle {
             // A tangent discontinuity can split one indexed vertex into several corners.
             // Keep Mikk's corner results by deindexing before running its callback interface.
+            let sources = indices
             var corners = Self.deindexed(vertices, indices, count: indices.count, faceNormals: false)
             let cornerCount = corners.count
             let generated = corners.withUnsafeMutableBytes { raw in
@@ -247,14 +257,32 @@ private final class Builder {
             }
             guard generated else { throw MetalSceneError.invalid("MikkTSpace tangent generation failed") }
             vertices = corners
+            sourceOf = sources.map { sourceOf[Int($0)] }
             indices = Self.sequence(corners.count)
         }
         guard !indices.isEmpty else { return }
+        let morph = try gatherMorph(primitive, sourceCount: count, sourceOf: sourceOf)
+        let targetCount = primitive.targets.count
+        var restWeights = [Float](repeating: 0, count: targetCount)
+        let authored = (node.weights ?? node.mesh?.weights ?? []).map(\.floatValue)
+        for index in 0..<min(targetCount, authored.count) { restWeights[index] = authored[index] }
+        var boundsVertices = vertices
+        if let morph, morph.mask & (1 << MorphSlot.position) != 0, restWeights.contains(where: { $0 != 0 }) {
+            let ordinal = MorphSlot.ordinal(mask: morph.mask, slot: MorphSlot.position)
+            for vertex in boundsVertices.indices {
+                var position = boundsVertices[vertex].position
+                for target in 0..<morph.targetCount where target < restWeights.count && restWeights[target] != 0 {
+                    let delta = morph.deltas[(ordinal * morph.targetCount + target) * morph.vertexCount + vertex]
+                    position += SIMD4(delta.x, delta.y, delta.z, 0) * restWeights[target]
+                }
+                boundsVertices[vertex].position = position
+            }
+        }
         withUnsafeBytes(of: model) { matrix in
             withUnsafeMutableBytes(of: &minimum) { lo in
                 withUnsafeMutableBytes(of: &maximum) { hi in
-                    vertices.withUnsafeBytes { raw in
-                        GLTFMetalBounds(raw.baseAddress?.assumingMemoryBound(to: Float.self), vertices.count,
+                    boundsVertices.withUnsafeBytes { raw in
+                        GLTFMetalBounds(raw.baseAddress?.assumingMemoryBound(to: Float.self), boundsVertices.count,
                                         matrix.baseAddress!.assumingMemoryBound(to: Float.self),
                                         lo.baseAddress!.assumingMemoryBound(to: Float.self),
                                         hi.baseAddress!.assumingMemoryBound(to: Float.self))
@@ -263,13 +291,56 @@ private final class Builder {
             }
         }
         guard let vb = device.makeBuffer(bytes: vertices, length: vertices.count*MemoryLayout<MetalVertex>.stride, options: .storageModeShared), let ib = device.makeBuffer(bytes:indices,length:indices.count*4,options:.storageModeShared) else { throw MetalSceneError.invalid("Metal buffer allocation failed") }
+        let morphBuffer: (any MTLBuffer)?
+        if let morph, !morph.deltas.isEmpty {
+            guard let buffer = device.makeBuffer(bytes: morph.deltas, length: morph.deltas.count * MemoryLayout<SIMD4<Float>>.stride, options: .storageModeShared) else {
+                throw MetalSceneError.invalid("Metal buffer allocation failed")
+            }
+            morphBuffer = buffer
+        } else { morphBuffer = nil }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
         var m = try convert(material)
         m.hasTexCoord0 = uv0 != nil
         m.hasNormal = normal != nil
         // MikkTSpace above fills TANGENT when the mesh has UVs but no authored tangent.
         m.hasTangent = tangent != nil || (uv0 != nil && topology == .triangle)
-        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup))
+        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0))
+    }
+
+    /// Deltas for the emitted vertices. Layout is `[present slot][target][vertex]`, slot order
+    /// matching `MorphSlot` (only attributes some target actually carries).
+    func gatherMorph(_ primitive: GLTFPrimitive, sourceCount: Int, sourceOf: [UInt32]) throws -> (deltas: [SIMD4<Float>], mask: UInt32, targetCount: Int, vertexCount: Int)? {
+        let targets = primitive.targets
+        guard !targets.isEmpty else { return nil }
+        var mask: UInt32 = 0
+        for target in targets {
+            for attribute in target {
+                if let slot = MorphSlot.index(for: attribute.name ?? "") { mask |= 1 << UInt32(slot) }
+            }
+        }
+        let vertexCount = sourceOf.count
+        let targetCount = targets.count
+        guard mask != 0 else { return (deltas: [], mask: 0, targetCount: targetCount, vertexCount: vertexCount) }
+        var present: [Int] = []
+        for slot in 0..<MorphSlot.count where mask & (1 << UInt32(slot)) != 0 { present.append(slot) }
+        var deltas = [SIMD4<Float>](repeating: .zero, count: present.count * targetCount * vertexCount)
+        for (targetIndex, target) in targets.enumerated() {
+            for attribute in target {
+                guard let slot = MorphSlot.index(for: attribute.name ?? ""), let ordinal = present.firstIndex(of: slot) else { continue }
+                let components = Int(GLTFComponentCountForDimension(attribute.accessor.dimension))
+                guard attribute.accessor.count == sourceCount else { throw MetalSceneError.invalid("Mismatched morph accessor count") }
+                let data = try values(attribute.accessor, components: components)
+                for vertex in 0..<vertexCount {
+                    let source = Int(sourceOf[vertex])
+                    guard sourceCount > source else { throw MetalSceneError.invalid("Morph delta is outside the accessor") }
+                    var value = SIMD4<Float>(repeating: 0)
+                    let base = source * components
+                    for component in 0..<min(components, 4) { value[component] = data[base + component] }
+                    deltas[(ordinal * targetCount + targetIndex) * vertexCount + vertex] = value
+                }
+            }
+        }
+        return (deltas, mask, targetCount, vertexCount)
     }
 
     func values(_ accessor: GLTFAccessor, components: Int) throws -> [Float] {

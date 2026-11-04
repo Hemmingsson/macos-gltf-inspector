@@ -16,6 +16,7 @@ struct GeneralSettingsPane: View {
         Form {
             Section("Appearance") {
                 DSPicker("Appearance", selection: $settings.appearance, options: AppAppearance.allCases, style: .menu) { $0.title }
+                Toggle("Tree guide lines in the layer list", isOn: $settings.showsTreeGuides)
             }
 
             if showsDefaultApp {

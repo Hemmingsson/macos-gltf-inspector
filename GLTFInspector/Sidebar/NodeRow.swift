@@ -6,6 +6,7 @@ import SwiftUI
 /// Built for a native `List(selection:)` — the row draws **no** selection of its own.
 struct NodeRow: View {
     var item: OutlinerItem
+    var isJoint: Bool = false
     var isSelected: Bool
     var depth: Int = 0
     /// `nil` for a leaf or a flat (non-folding) section.
@@ -20,7 +21,14 @@ struct NodeRow: View {
     var swatchColor: Color? = nil
     /// VoiceOver type phrase; defaults to `item.id.kind.displayTitle`.
     var kindTitle: String? = nil
+    /// Layer visibility for scene-graph rows; nil for every other row.
+    var visibility: DSVisibility? = nil
+    /// The node is under the canvas pointer: a light tint, never the selection highlight.
+    var isPointed: Bool = false
+    var onVisibility: (_ solo: Bool) -> Void = { _ in }
     var onToggle: () -> Void = {}
+    /// Tree guide flags when the guide-line experiment is on.
+    var guides: [Bool]? = nil
 
     private var role: NodeKind {
         item.id.kind
@@ -36,10 +44,22 @@ struct NodeRow: View {
             depth: depth,
             isExpanded: isExpanded,
             isSelected: isSelected,
+            isJoint: isJoint,
             badge: badge,
-            onToggle: onToggle
+            visibility: visibility,
+            onVisibility: onVisibility,
+            onToggle: onToggle,
+            guides: guides
         )
+        .background {
+            if isPointed, !isSelected {
+                RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
+                    .fill(DS.Color.pointedRowFill)
+                    .padding(.horizontal, -DS.Spacing.xs)
+            }
+        }
         .accessibilityLabel("\(item.name), \(kindTitle ?? item.id.kind.displayTitle)")
+        .accessibilityIdentifier("outliner-\(item.id.kind.rawValue)-\(item.id.index)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }

@@ -1,3 +1,4 @@
+import GLTFCore
 import Renderer
 import SwiftUI
 import Testing
@@ -42,7 +43,8 @@ struct ShortcutsTests {
 
     @Test func allBound_coversEveryCase() {
         let presetsWithShortcut = CameraPreset.allCases.filter { Shortcuts.cameraPreset($0) != nil }
-        #expect(Shortcuts.allBound.count == 2 + presetsWithShortcut.count + Shortcuts.Action.allCases.count)
+        #expect(Shortcuts.allBound.count == 1 + RenderViewMode.displayModes.count + presetsWithShortcut.count
+            + Shortcuts.Action.allCases.count)
         #expect(Shortcuts.cameraPreset(.isometric) == nil)
     }
 }

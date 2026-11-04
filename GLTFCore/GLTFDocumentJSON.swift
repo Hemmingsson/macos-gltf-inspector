@@ -22,6 +22,7 @@ public enum GLTFDocumentJSON {
         let materialsJSON = json["materials"] as? [[String: Any]] ?? []
 
         let geometryByMesh = meshesJSON.map { meshGeometry($0, accessors: accessors) }
+        let primitivesByMesh = meshesJSON.map { meshPrimitives($0, accessors: accessors, materialCount: materialsJSON.count) }
         let materialsByMesh = meshesJSON.map { boundMaterialIndices($0, materialCount: materialsJSON.count) }
 
         var document = GLTFDocument()
@@ -49,7 +50,9 @@ public enum GLTFDocumentJSON {
             makeNodes(
                 nodesJSON,
                 counts: counts,
+                accessors: accessors,
                 geometryByMesh: geometryByMesh,
+                primitivesByMesh: primitivesByMesh,
                 materialsByMesh: materialsByMesh
             )
         }
@@ -69,6 +72,7 @@ public enum GLTFDocumentJSON {
                     makeSkin(skin, index: index, nodes: nodesJSON)
                 }
             }
+            stampJointMembership(&document)
         }
         document.morphs = meshesJSON.enumerated().compactMap { index, mesh in
             makeMorph(mesh, meshIndex: index)
@@ -113,7 +117,9 @@ public enum GLTFDocumentJSON {
     private static func makeNodes(
         _ nodesJSON: [[String: Any]],
         counts: Counts,
+        accessors: [[String: Any]],
         geometryByMesh: [MeshGeometry],
+        primitivesByMesh: [[GLTFDocument.MeshPrimitive]],
         materialsByMesh: [[Int]]
     ) -> [GLTFDocument.Node] {
         let count = nodesJSON.count
@@ -124,7 +130,9 @@ public enum GLTFDocumentJSON {
                     nodesJSON[index],
                     index: index,
                     counts: counts,
+                    accessors: accessors,
                     geometryByMesh: geometryByMesh,
+                    primitivesByMesh: primitivesByMesh,
                     materialsByMesh: materialsByMesh
                 )
             }
@@ -137,7 +145,9 @@ public enum GLTFDocumentJSON {
                         nodesJSON[index],
                         index: index,
                         counts: counts,
+                        accessors: accessors,
                         geometryByMesh: geometryByMesh,
+                        primitivesByMesh: primitivesByMesh,
                         materialsByMesh: materialsByMesh
                     )
                 )
@@ -158,13 +168,16 @@ public enum GLTFDocumentJSON {
         static let skin = "skin" as NSString
         static let extensions = "extensions" as NSString
         static let light = "light" as NSString
+        static let visible = "visible" as NSString
     }
 
     private static func makeNode(
         _ node: [String: Any],
         index: Int,
         counts: Counts,
+        accessors: [[String: Any]],
         geometryByMesh: [MeshGeometry],
+        primitivesByMesh: [[GLTFDocument.MeshPrimitive]],
         materialsByMesh: [[Int]]
     ) -> GLTFDocument.Node {
         let dict = node as NSDictionary
@@ -205,8 +218,17 @@ public enum GLTFDocumentJSON {
             vertexCount: geometry.vertexCount,
             uvSetCount: geometry.uvSetCount,
             hasTangents: geometry.hasTangents,
-            hasVertexColors: geometry.hasVertexColors
+            hasVertexColors: geometry.hasVertexColors,
+            meshPrimitives: meshIndex.map { primitivesByMesh[$0] } ?? [],
+            gpuInstanceCount: gpuInstanceCount(dict, accessors: accessors),
+            isHiddenInFile: isHiddenInFile(dict)
         )
+    }
+
+    private static func isHiddenInFile(_ node: NSDictionary) -> Bool {
+        let extensions = node.object(forKey: NodeKey.extensions) as? NSDictionary
+        let visibility = extensions?.object(forKey: visibilityExtension) as? NSDictionary
+        return (visibility?.object(forKey: NodeKey.visible) as? Bool) == false
     }
 
     private static func punctualLightIndex(_ node: NSDictionary) -> Any? {
@@ -272,6 +294,56 @@ public enum GLTFDocumentJSON {
         var uvSetCount = 0
         var hasTangents = false
         var hasVertexColors = false
+    }
+
+    private static func meshPrimitives(
+        _ mesh: [String: Any],
+        accessors: [[String: Any]],
+        materialCount: Int
+    ) -> [GLTFDocument.MeshPrimitive] {
+        (mesh["primitives"] as? [[String: Any]] ?? []).map { primitive in
+            let material = GLTFJSON.int(primitive["material"]).flatMap {
+                $0 >= 0 && $0 < materialCount ? $0 : nil
+            }
+            let mode = GLTFJSON.int(primitive["mode"]) ?? 4
+            return GLTFDocument.MeshPrimitive(
+                materialIndex: material,
+                triangleCount: GLTFJSON.triangleCount(primitive, accessors: accessors),
+                mode: mode
+            )
+        }
+    }
+
+    private static func gpuInstanceCount(_ node: NSDictionary, accessors: [[String: Any]]) -> Int? {
+        let extensions = node.object(forKey: NodeKey.extensions) as? NSDictionary
+        let instancing = extensions?.object(forKey: gpuInstancingExtension) as? NSDictionary
+        let attributes = instancing?.object(forKey: "attributes") as? NSDictionary
+        guard let attributes, attributes.count > 0 else { return nil }
+        for key in ["TRANSLATION", "ROTATION", "SCALE"] as [NSString] {
+            if let index = GLTFJSON.int(attributes.object(forKey: key)),
+               accessors.indices.contains(index),
+               let count = GLTFJSON.int(accessors[index]["count"]),
+               count > 0 {
+                return count
+            }
+        }
+        for key in attributes.allKeys {
+            guard let index = GLTFJSON.int(attributes.object(forKey: key)),
+                  accessors.indices.contains(index),
+                  let count = GLTFJSON.int(accessors[index]["count"]),
+                  count > 0
+            else { continue }
+            return count
+        }
+        return nil
+    }
+
+    private static func stampJointMembership(_ document: inout GLTFDocument) {
+        for skinIndex in document.skins.indices {
+            for joint in document.skins[skinIndex].jointNodeIndices where document.nodes.indices.contains(joint) {
+                document.nodes[joint].jointOfSkinIndices.append(skinIndex)
+            }
+        }
     }
 
     private static func meshGeometry(
@@ -353,6 +425,8 @@ public enum GLTFDocumentJSON {
     }
 
     private static let lightsExtension = "KHR_lights_punctual"
+    private static let visibilityExtension = "KHR_node_visibility"
+    private static let gpuInstancingExtension = "EXT_mesh_gpu_instancing"
 
     private static func punctualLights(_ json: [String: Any]) -> [[String: Any]] {
         let extensions = json["extensions"] as? [String: Any] ?? [:]
@@ -393,7 +467,8 @@ public enum GLTFDocumentJSON {
         let rawName = skin["name"] as? String ?? ""
         return GLTFDocument.Skin(
             name: rawName.isEmpty ? "Skin\(index)" : rawName,
-            jointNames: jointNames
+            jointNames: jointNames,
+            jointNodeIndices: joints
         )
     }
 

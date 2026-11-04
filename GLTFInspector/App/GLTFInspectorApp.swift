@@ -80,6 +80,10 @@ struct GLTFInspectorApp: App {
             CommandGroup(replacing: .sidebar) {
                 ToggleSidebarCommand()
             }
+            CommandGroup(after: .pasteboard) {
+                Divider()
+                SelectionMenuCommands()
+            }
             CommandGroup(after: .sidebar) {
                 ViewMenuCommands()
             }

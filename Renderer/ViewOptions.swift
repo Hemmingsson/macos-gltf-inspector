@@ -18,10 +18,34 @@ public struct ViewOptions: Equatable, Sendable {
     /// Scene index; 0 keeps the file's default scene.
     public var sceneIndex: Int
     public var showsFloor: Bool
-    /// False frames the authored origin too and draws the origin gizmo.
+    /// Draws authored camera and punctual-light gizmos in the viewport.
+    public var showsSceneGizmos: Bool
+    /// False frames the authored origin too.
     public var isCentered: Bool
-    /// glTF node index whose bounding box is outlined.
+    /// glTF node index for mesh / camera / light / joint selection gizmos.
+    public var gizmoSelectedNodeIndex: Int?
+    /// Index into `skins` when the outliner selection is a skin row.
+    public var selectedSkinIndex: Int?
+    /// glTF node index whose bounding box is outlined (the primary selection).
     public var selectedNodeIndex: Int?
+    /// Every selected mesh or empty node; each gets the selection box. Includes the primary.
+    public var selectedNodeIndices: Set<Int>
+    /// Node under the pointer: a thin muted box before it is clicked.
+    public var hoveredNodeIndex: Int?
+    /// Orbit pivots on the selection's centre: selecting a node eases the target onto it.
+    public var orbitsAroundSelection: Bool
+    /// Wheel and pinch dolly toward the point under the pointer instead of the orbit target.
+    public var zoomsTowardPointer: Bool
+    /// Meshes using the selected material (muted AABB each); cleared for mesh/node selection.
+    public var highlightedNodeIndices: Set<Int>
+    /// glTF node indices hidden in this window. A hidden node hides its whole subtree, draws and
+    /// punctual lights alike.
+    public var hiddenNodeIndices: Set<Int>
+    /// When non-empty, only draws under these nodes are drawn. Lights are not affected.
+    public var soloNodeIndices: Set<Int>
+    /// Draws only this node: its own draws when it has any, otherwise its whole subtree. Lights
+    /// are not affected.
+    public var isolatedNodeIndex: Int?
 
     public init(
         look: RenderLook = .standard,
@@ -33,8 +57,19 @@ public struct ViewOptions: Equatable, Sendable {
         materialVariantIndex: Int? = nil,
         sceneIndex: Int = 0,
         showsFloor: Bool = false,
+        showsSceneGizmos: Bool = false,
         isCentered: Bool = true,
-        selectedNodeIndex: Int? = nil
+        selectedNodeIndex: Int? = nil,
+        selectedNodeIndices: Set<Int> = [],
+        hoveredNodeIndex: Int? = nil,
+        orbitsAroundSelection: Bool = false,
+        zoomsTowardPointer: Bool = false,
+        highlightedNodeIndices: Set<Int> = [],
+        gizmoSelectedNodeIndex: Int? = nil,
+        selectedSkinIndex: Int? = nil,
+        hiddenNodeIndices: Set<Int> = [],
+        soloNodeIndices: Set<Int> = [],
+        isolatedNodeIndex: Int? = nil
     ) {
         self.look = look
         self.viewMode = viewMode
@@ -45,8 +80,19 @@ public struct ViewOptions: Equatable, Sendable {
         self.materialVariantIndex = materialVariantIndex
         self.sceneIndex = sceneIndex
         self.showsFloor = showsFloor
+        self.showsSceneGizmos = showsSceneGizmos
         self.isCentered = isCentered
         self.selectedNodeIndex = selectedNodeIndex
+        self.selectedNodeIndices = selectedNodeIndices
+        self.hoveredNodeIndex = hoveredNodeIndex
+        self.orbitsAroundSelection = orbitsAroundSelection
+        self.zoomsTowardPointer = zoomsTowardPointer
+        self.highlightedNodeIndices = highlightedNodeIndices
+        self.gizmoSelectedNodeIndex = gizmoSelectedNodeIndex
+        self.selectedSkinIndex = selectedSkinIndex
+        self.hiddenNodeIndices = hiddenNodeIndices
+        self.soloNodeIndices = soloNodeIndices
+        self.isolatedNodeIndex = isolatedNodeIndex
     }
 
     /// The look Settings stored in the App Group. Quick Look and the Finder thumbnail have no

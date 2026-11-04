@@ -23,9 +23,9 @@ public struct ViewModeAvailability: Sendable, Equatable {
         return gated.filter(\.0).map(\.1)
     }
 
-    /// Shaded, wireframe when there are triangles, then `channels`.
+    /// Shaded, the triangle modes when there are triangles, then `channels`.
     public var viewModes: [RenderViewMode] {
-        [.shaded] + (hasTriangles ? [.wireframe] : []) + channels.map(RenderViewMode.channel)
+        [.shaded] + (hasTriangles ? RenderViewMode.displayModes : []) + channels.map(RenderViewMode.channel)
     }
 
     public private(set) var hasTriangles = false

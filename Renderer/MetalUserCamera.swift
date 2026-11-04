@@ -92,6 +92,38 @@ public struct MetalUserCamera: Sendable, Equatable {
         fitCameraPlanesToExtents(sceneMin, sceneMax)
     }
 
+    // MARK: - Viewer essentials: pivot and pointer zoom
+
+    /// Turns the camera in place so it looks at `newTarget`: the eye stays where it is, the
+    /// orbit target (pivot) and distance change. Elevation keeps the orbit's pole limit.
+    public mutating func retargetKeepingEye(to newTarget: SIMD3<Double>) {
+        let eye = position
+        let toTarget = newTarget - eye
+        let length = simd_length(toTarget)
+        guard length > 1e-9, length.isFinite else { return }
+        let look = toTarget / length
+        let limit = Double.pi / 2 - 0.01
+        rotAroundX = min(max(asin(min(max(look.y, -1), 1)), -limit), limit)
+        rotAroundY = atan2(-look.x, -look.z)
+        setDistanceFromTarget(length, newTarget)
+        fitCameraPlanesToExtents(sceneMin, sceneMax)
+    }
+
+    /// Where the orbit target moves so `pointer` (a world point on the target's view plane)
+    /// stays under the cursor after the distance scales by `factor` (new / old).
+    public static func pointerDollyTarget(target: SIMD3<Double>, pointer: SIMD3<Double>, factor: Double) -> SIMD3<Double> {
+        target + (pointer - target) * (1 - factor)
+    }
+
+    /// `zoomBy`, then slides the target (and eye with it) so `pointer` stays put on screen.
+    public mutating func zoomBy(_ value: Double, toward pointer: SIMD3<Double>) {
+        let before = distance
+        zoomBy(value)
+        guard before > 0, distance.isFinite else { return }
+        let moved = Self.pointerDollyTarget(target: target, pointer: pointer, factor: distance / before)
+        setDistanceFromTarget(distance, moved)
+    }
+
     // MARK: - Framing
 
     /// `fitCamera`: Khronos `fitViewToScene`, the authored origin when centring is

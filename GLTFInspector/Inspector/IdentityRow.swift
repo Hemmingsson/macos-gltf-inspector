@@ -46,6 +46,8 @@ struct IdentityRow: View {
         .padding(.bottom, DS.Spacing.l)
         .padding(.leading, DS.Spacing.l)
         .padding(.trailing, DS.Spacing.l)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(name), \(subtitle)")
+        .accessibilityIdentifier("inspector-selection")
     }
 }
