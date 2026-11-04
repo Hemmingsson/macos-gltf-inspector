@@ -12,11 +12,13 @@ final class AccessibilityTestHost<Content: View> {
         NSApp.accessibilitySetValue(true, forAttribute: NSAccessibility.Attribute(rawValue: "AXManualAccessibility"))
         NSApp.accessibilitySetValue(true, forAttribute: NSAccessibility.Attribute(rawValue: "AXEnhancedUserInterface"))
         view = NSHostingView(rootView: content)
-        window = NSWindow(contentRect: NSRect(x: -2000, y: -2000, width: 900, height: 900),
+        // On-screen so `accessibilityFrame` is non-empty; never made key or ordered front.
+        window = NSWindow(contentRect: NSRect(x: 80, y: 80, width: 900, height: 900),
                           styleMask: [.borderless], backing: .buffered, defer: true)
         window.isReleasedWhenClosed = false
         window.contentView = view
         view.frame = NSRect(x: 0, y: 0, width: 900, height: 900)
+        window.orderFrontRegardless()
         view.layoutSubtreeIfNeeded()
         view.displayIfNeeded()
         await withCheckedContinuation { continuation in
@@ -59,6 +61,45 @@ final class AccessibilityTestHost<Content: View> {
                     element.accessibilityAttributeValue(.description) as? String,
                     element.accessibilityAttributeValue(.value) as? String].compactMap { $0 }
         }.joined(separator: "\n")
+    }
+
+    /// Invokes a VoiceOver custom action exposed by a hosted control.
+    func performCustomAction(named name: String) -> Bool {
+        for element in elements {
+            let actions: [NSAccessibilityCustomAction]
+            if let modern = element as? any NSAccessibilityProtocol,
+               let axActions = modern.accessibilityCustomActions() {
+                actions = axActions
+            } else if let axActions = attribute("accessibilityCustomActions", of: element) as? [NSAccessibilityCustomAction] {
+                actions = axActions
+            } else {
+                continue
+            }
+            for action in actions where action.name == name {
+                if let handler = action.handler {
+                    return handler() ?? true
+                }
+                let perform = NSSelectorFromString("perform")
+                if action.responds(to: perform) {
+                    _ = action.perform(perform)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// Steps an adjustable control (e.g. a scrubber) via VoiceOver increment.
+    func incrementAccessibility(labeled label: String) -> Bool {
+        for element in elements {
+            guard let modern = element as? any NSAccessibilityProtocol, modern.accessibilityLabel() == label else { continue }
+            let increment = NSSelectorFromString("accessibilityIncrement")
+            if element.responds(to: increment) {
+                _ = element.perform(increment)
+                return true
+            }
+        }
+        return false
     }
 
     var customActionNames: [String] {

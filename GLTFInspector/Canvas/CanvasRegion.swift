@@ -40,6 +40,13 @@ struct CanvasRegion<Content: View>: View {
                         .background(DS.Color.Canvas.ground)
                         .ignoresSafeArea()
                         .focusSection()
+                        .overlay {
+                            if view.canvas.showsAnimationTimeline {
+                                SpaceKeyView { view.canvas.togglePlayback() }
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                         .onKeyPress(.space) {
                             guard view.canvas.showsAnimationTimeline else { return .ignored }
                             view.canvas.togglePlayback()

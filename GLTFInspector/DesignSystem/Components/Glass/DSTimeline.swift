@@ -47,6 +47,7 @@ struct DSTimeline: View {
         .dsGlassControlSurface(isEngaged: isPlaying)
         .help(isPlaying ? "Pause" : "Play")
         .accessibilityLabel(isPlaying ? "Pause" : "Play")
+        .accessibilityAction(named: "Toggle playback") { isPlaying.toggle() }
     }
 
     private var timeReadout: some View {
@@ -79,6 +80,21 @@ struct DSTimeline: View {
         .frame(maxWidth: .infinity)
         .accessibilityLabel("Timeline")
         .accessibilityValue("\(PlaybackTimeFormat.string(time)) of \(PlaybackTimeFormat.string(duration))")
+        .accessibilityAdjustableAction { direction in
+            let step = max(duration * 0.01, 0.001)
+            switch direction {
+            case .increment:
+                time = min(time + step, max(duration, 0.001))
+            case .decrement:
+                time = max(time - step, 0)
+            @unknown default:
+                break
+            }
+        }
+        .accessibilityAction(named: "Step timeline forward") {
+            let step = max(duration * 0.01, 0.001)
+            time = min(time + step, max(duration, 0.001))
+        }
     }
 
     private var clipPicker: some View {

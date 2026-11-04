@@ -16,7 +16,8 @@ struct AnimationPlaybackTests {
 
     private func ready(_ canvas: ModelCanvasController, url: URL) async throws {
         _ = mount(canvas, url: url)
-        _ = try await waitUntil { canvas.phase == .ready }
+        #expect(try await waitUntil { canvas.phase == .ready })
+
     }
 
     @Test func loadedFileExposesClipsPausedAtRest() async throws {
@@ -114,12 +115,14 @@ struct AnimationPlaybackTests {
         #expect(!canvas.isPlaying && canvas.time == 0)
 
         canvas.update(url: TestFixtures.cube, options: ViewOptions())
-        _ = try await waitUntil { canvas.phase == .ready && canvas.animationClips.isEmpty }
+        #expect(try await waitUntil { canvas.phase == .ready && canvas.animationClips.isEmpty })
+
 
         let settings = try settingsForReset()
         let state = ViewState(settings: settings)
         _ = mount(state.canvas, url: TestFixtures.boxAnimated)
-        _ = try await waitUntil { state.canvas.phase == .ready && !state.canvas.animationClips.isEmpty }
+        #expect(try await waitUntil { state.canvas.phase == .ready && !state.canvas.animationClips.isEmpty })
+
         state.canvas.play()
         state.canvas.scrub(to: 0.3)
         state.reset()
@@ -129,7 +132,8 @@ struct AnimationPlaybackTests {
     @Test func displayLinkRunsOnlyWhilePlayingOrAutoRotating() async throws {
         let canvas = ModelCanvasController()
         let container = mount(canvas, url: TestFixtures.cube)
-        _ = try await waitUntil { canvas.phase == .ready }
+        #expect(try await waitUntil { canvas.phase == .ready })
+
         let view = try #require(canvas.view)
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
         window.isReleasedWhenClosed = false
@@ -141,18 +145,23 @@ struct AnimationPlaybackTests {
         var options = ViewOptions()
         options.autoRotates = true
         canvas.update(url: TestFixtures.cube, options: options)
-        _ = try await waitUntil { view.isDisplayLinkActive }
+        #expect(try await waitUntil { view.isDisplayLinkActive })
+
 
         options.autoRotates = false
         canvas.update(url: TestFixtures.cube, options: options)
-        _ = try await waitUntil { !view.isDisplayLinkActive }
+        #expect(try await waitUntil { !view.isDisplayLinkActive })
+
 
         canvas.update(url: TestFixtures.boxAnimated, options: ViewOptions())
-        _ = try await waitUntil { canvas.phase == .ready && !canvas.animationClips.isEmpty }
+        #expect(try await waitUntil { canvas.phase == .ready && !canvas.animationClips.isEmpty })
+
         canvas.play()
-        _ = try await waitUntil { view.isDisplayLinkActive }
+        #expect(try await waitUntil { view.isDisplayLinkActive })
+
         canvas.pause()
-        _ = try await waitUntil { !view.isDisplayLinkActive }
+        #expect(try await waitUntil { !view.isDisplayLinkActive })
+
     }
 
     private final class Box<T>: @unchecked Sendable {

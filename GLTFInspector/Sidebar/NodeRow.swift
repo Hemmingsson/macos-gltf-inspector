@@ -35,6 +35,14 @@ struct NodeRow: View {
         item.id.kind
     }
 
+    private var outlinerAccessibilityLabel: String {
+        let kind = kindTitle ?? item.id.kind.displayTitle
+        if showsAnimatedIndicator {
+            return "\(item.name), \(kind), Animated"
+        }
+        return "\(item.name), \(kind)"
+    }
+
     var body: some View {
         DSOutlineRow(
             item.name,
@@ -60,7 +68,7 @@ struct NodeRow: View {
                     .padding(.horizontal, -DS.Spacing.xs)
             }
         }
-        .accessibilityLabel("\(item.name), \(kindTitle ?? item.id.kind.displayTitle)")
+        .accessibilityLabel(outlinerAccessibilityLabel)
         .accessibilityIdentifier("outliner-\(item.id.kind.rawValue)-\(item.id.index)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
