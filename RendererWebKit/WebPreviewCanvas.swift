@@ -10,7 +10,7 @@ public struct WebPreviewCanvas: NSViewRepresentable {
     /// Cached Finder poster. Nil when none is stored — the loading pill is the stand-in.
     var placeholderImage: NSImage? = nil
     /// Live host already constructed (Quick Look `loadView` prestart). Nil in the document window.
-    var host: WebRendererHost? = nil
+    var host: (any CanvasRendererHost)? = nil
     /// Owner-held controller: phase, camera commands, and a page that survives a remount of this
     /// view.
     let controller: WebCanvasController
@@ -19,7 +19,7 @@ public struct WebPreviewCanvas: NSViewRepresentable {
         url: URL,
         look: Look = Look(),
         placeholderImage: NSImage? = nil,
-        host: WebRendererHost? = nil,
+        host: (any CanvasRendererHost)? = nil,
         controller: WebCanvasController
     ) {
         self.url = url

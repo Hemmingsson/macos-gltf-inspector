@@ -1,4 +1,7 @@
 import CoreGraphics
+import CoreText
+import ImageIO
+import UniformTypeIdentifiers
 import Foundation
 import GLTFCore
 import QuickLookThumbnailing
@@ -42,7 +45,7 @@ class ThumbnailProvider: QLThumbnailProvider {
     private static var renderChain: Task<URL, Error>?
 
     private struct SharedHost {
-        let host: WebRendererHost
+        let host: any CanvasRendererHost
         let look: WebPreviewCanvas.Look
     }
 
@@ -76,8 +79,9 @@ class ThumbnailProvider: QLThumbnailProvider {
         }
 
         let fileURL = outputURL()
-        // The page's PNG as is (sRGB-tagged by WebKit): no decode and re-encode.
-        try png.write(to: fileURL)
+        // Finder's icon carries the renderer's name; the poster cache below stays unmarked.
+        let shortName = host.rendererName.split(separator: " ").first.map(String.init) ?? host.rendererName
+        try (RendererMark.stamp(shortName, on: png) ?? png).write(to: fileURL)
         do {
             try FirstPixelPreview.store(png: png, for: url)
         } catch {
@@ -87,20 +91,20 @@ class ThumbnailProvider: QLThumbnailProvider {
         AppLog.info(
             AppLog.webRenderer,
             String(
-                format: "thumbnail ready %@ %.0fms %dpx %dB tris=%d",
+                format: "thumbnail ready %@ %.0fms %dpx %dB tris=%d renderer=%@",
                 url.lastPathComponent, (CFAbsoluteTimeGetCurrent() - started) * 1000,
-                pixel, png.count, info.triangles
+                pixel, png.count, info.triangles, host.rendererName
             )
         )
         return fileURL
     }
 
     @MainActor
-    private static func reusedHost(look: WebPreviewCanvas.Look, pixel: Int) async throws -> WebRendererHost {
+    private static func reusedHost(look: WebPreviewCanvas.Look, pixel: Int) async throws -> any CanvasRendererHost {
         if let shared, !shared.host.isBroken, shared.look == look {
             return shared.host
         }
-        let host = try WebRendererHost(mode: .still, size: pixel)
+        let host = try CanvasRenderer.makeHost(mode: .still, size: pixel)
         try await host.start()
         // Cheap before the first model: the page loads the HDR after `load`, `renderStill` waits.
         try await host.apply(look)
@@ -134,5 +138,51 @@ class ThumbnailProvider: QLThumbnailProvider {
                 try? FileManager.default.removeItem(at: entry)
             }
         }
+    }
+}
+
+/// Draws the renderer's name in a small capsule at the bottom-left of a thumbnail PNG.
+enum RendererMark {
+    static func stamp(_ name: String, on png: Data) -> Data? {
+        guard
+            let source = CGImageSourceCreateWithData(png as CFData, nil),
+            let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+            let space = CGColorSpace(name: CGColorSpace.sRGB),
+            let context = CGContext(
+                data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
+                bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else { return nil }
+        let edge = CGFloat(min(image.width, image.height))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+
+        let font = CTFontCreateUIFontForLanguage(.emphasizedSystem, edge * 0.045, nil)
+            ?? CTFontCreateWithName("Helvetica-Bold" as CFString, edge * 0.045, nil)
+        let white = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
+        let text = NSAttributedString(string: name, attributes: [
+            NSAttributedString.Key(kCTFontAttributeName as String): font,
+            NSAttributedString.Key(kCTForegroundColorAttributeName as String): white,
+        ])
+        let line = CTLineCreateWithAttributedString(text)
+        let bounds = CTLineGetImageBounds(line, context)
+        let padX = edge * 0.02
+        let padY = edge * 0.012
+        let margin = edge * 0.025
+        let capsule = CGRect(
+            x: margin, y: margin,
+            width: bounds.width + padX * 2, height: CTFontGetAscent(font) + CTFontGetDescent(font) + padY * 2
+        )
+        context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55))
+        context.addPath(CGPath(roundedRect: capsule, cornerWidth: capsule.height / 2, cornerHeight: capsule.height / 2, transform: nil))
+        context.fillPath()
+        context.textPosition = CGPoint(x: capsule.minX + padX - bounds.minX, y: capsule.minY + padY + CTFontGetDescent(font))
+        CTLineDraw(line, context)
+
+        guard let marked = context.makeImage() else { return nil }
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)
+        else { return nil }
+        CGImageDestinationAddImage(destination, marked, nil)
+        return CGImageDestinationFinalize(destination) ? data as Data : nil
     }
 }

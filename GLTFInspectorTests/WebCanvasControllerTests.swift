@@ -98,7 +98,7 @@ struct WebCanvasControllerTests {
         let canvas = WebCanvasController()
         _ = try mount(canvas, url: TestFixtures.cube)
         #expect(try await settledPhase(of: canvas) == .ready)
-        let host = try #require(canvas.host)
+        let host = try #require(canvas.host as? WebRendererHost)
 
         // The `contextlost` event arrives asynchronously: wait for the restart to leave `.ready`
         // (a page start is far longer than one poll), then for the redraw.

@@ -72,7 +72,7 @@ struct CameraPose: Equatable, Codable, Sendable {
 }
 
 /// `camera(...)`: one of four operations. Every one answers with the resulting camera state.
-struct CameraCommand: Encodable, Equatable {
+public struct CameraCommand: Encodable, Equatable {
     var op: String
     var azimuth: Double?
     var elevation: Double?
@@ -101,7 +101,7 @@ struct CameraCommand: Encodable, Equatable {
 ///
 /// The bounds come along because a caller that wants to frame the model on its own terms needs
 /// them: `pose.distance` only reports where this version of the renderer put the camera.
-struct RendererCameraState: Equatable, Decodable, Sendable {
+public struct RendererCameraState: Equatable, Decodable, Sendable {
     var pose: CameraPose
     var sceneMin: [Double]
     var sceneMax: [Double]

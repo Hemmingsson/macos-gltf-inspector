@@ -22,12 +22,13 @@ public final class WebCanvasController {
 
     public private(set) var phase: Phase = .loading
 
-    @ObservationIgnored private(set) var host: WebRendererHost?
+    @ObservationIgnored private(set) var host: (any CanvasRendererHost)?
     @ObservationIgnored private var loaded: URL?
     @ObservationIgnored private var appliedLook: WebPreviewCanvas.Look?
     @ObservationIgnored private var work: Task<Void, Never>?
     @ObservationIgnored private var placeholderView: NSImageView?
     @ObservationIgnored private var loadingHost: NSHostingView<WebCanvasLoadingChrome>?
+    @ObservationIgnored private var badgeHost: NSHostingView<RendererBadge>?
     @ObservationIgnored private var loadingPin: Alignment = .bottom
     @ObservationIgnored private var didRevealLive = false
     /// The model the page was last restarted for. One restart per model: a file that kills the
@@ -59,7 +60,7 @@ public final class WebCanvasController {
         try await readyHost().renderStill()
     }
 
-    private func readyHost() throws -> WebRendererHost {
+    private func readyHost() throws -> any CanvasRendererHost {
         guard phase == .ready, let host else { throw WebRendererError.notReady }
         return host
     }
@@ -71,7 +72,7 @@ public final class WebCanvasController {
         url: URL,
         look: WebPreviewCanvas.Look,
         placeholder: NSImage?,
-        existing: WebRendererHost?
+        existing: (any CanvasRendererHost)?
     ) {
         if let host {
             // Remount of an owner-held controller: move the running page into the new view.
@@ -79,6 +80,7 @@ public final class WebCanvasController {
                 view.removeFromSuperview()
                 Self.pin(view, in: container)
             }
+            installBadge(host.rendererName, in: container)
             AppLog.info(
                 AppLog.webRenderer,
                 "viewport adopt \(url.lastPathComponent) host=\(host.logID) uptimeMs=\(AppLog.uptimeMs())"
@@ -93,7 +95,7 @@ public final class WebCanvasController {
         installLoadingChrome(in: container, pin: placeholder == nil ? .center : .bottom)
 
         do {
-            let host = try existing ?? WebRendererHost(mode: .live)
+            let host = try existing ?? CanvasRenderer.makeHost(mode: .live)
             self.host = host
             host.onFailure = { [weak self] error in self?.pageDied(error) }
             AppLog.info(
@@ -107,6 +109,7 @@ public final class WebCanvasController {
             if let loadingHost {
                 container.addSubview(loadingHost, positioned: .above, relativeTo: view)
             }
+            installBadge(host.rendererName, in: container)
 
             reload(url: url, look: look)
         } catch {
@@ -286,6 +289,20 @@ public final class WebCanvasController {
         AppLog.info(AppLog.webRenderer, "poster shown uptimeMs=\(AppLog.uptimeMs())")
     }
 
+    /// Which renderer draws this canvas, pinned bottom-leading at its own size so it never takes
+    /// the canvas's mouse input.
+    private func installBadge(_ name: String, in container: NSView) {
+        badgeHost?.removeFromSuperview()
+        let badge = NSHostingView(rootView: RendererBadge(name: name))
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(badge)
+        NSLayoutConstraint.activate([
+            badge.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+            badge.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -10),
+        ])
+        badgeHost = badge
+    }
+
     /// Adds `view` edge-to-edge in `container` (on top, or below `sibling`).
     private static func pin(_ view: NSView, in container: NSView, below sibling: NSView? = nil) {
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -300,5 +317,21 @@ public final class WebCanvasController {
             view.topAnchor.constraint(equalTo: container.topAnchor),
             view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
+    }
+}
+
+/// Small capsule naming the renderer behind a live canvas.
+struct RendererBadge: View {
+    let name: String
+
+    var body: some View {
+        Text(name)
+            .font(.caption2.weight(.medium).monospaced())
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.ultraThinMaterial, in: Capsule())
+            .fixedSize()
+            .accessibilityLabel("Renderer: \(name)")
     }
 }
