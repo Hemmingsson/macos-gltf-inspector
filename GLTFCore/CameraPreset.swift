@@ -39,7 +39,7 @@ public enum RenderCamera {
         let direction = radius > 1e-4 ? toCamera / radius : SIMD3(0, 0, 1)
         let axes = framingAxes(toCamera: direction)
         let half = extent * 0.5
-        let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : 1
+        let safeAspect = clampedAspect(aspect)
         let vHalfFOV = clampedFieldOfView(fieldOfViewInDegrees) * .pi / 360
         let hHalfFOV = atan(tan(vHalfFOV) * safeAspect)
         let distanceV = projectedHalf(axes.up, halfExtent: half) / tan(vHalfFOV)
@@ -60,7 +60,8 @@ public enum RenderCamera {
         )
     }
 
-    private static func framingAxes(toCamera: SIMD3<Float>) -> (
+    /// Camera-space basis for projected AABB framing. When look ‖ world +Y, pick +X as right.
+    public static func framingAxes(toCamera: SIMD3<Float>) -> (
         forward: SIMD3<Float>,
         right: SIMD3<Float>,
         up: SIMD3<Float>
@@ -72,7 +73,13 @@ public enum RenderCamera {
         return (forward, right, up)
     }
 
-    private static func projectedHalf(_ axis: SIMD3<Float>, halfExtent: SIMD3<Float>) -> Float {
+    /// Half-extent of an axis-aligned box projected onto a unit axis (closed form).
+    public static func projectedHalf(_ axis: SIMD3<Float>, halfExtent: SIMD3<Float>) -> Float {
         abs(axis.x) * halfExtent.x + abs(axis.y) * halfExtent.y + abs(axis.z) * halfExtent.z
+    }
+
+    /// Layout can report ~0 before the first frame; clamp so Fit does not explode.
+    public static func clampedAspect(_ aspect: Float) -> Float {
+        (aspect > 0.05 && aspect < 20) ? aspect : 1
     }
 }

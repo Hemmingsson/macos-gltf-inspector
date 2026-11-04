@@ -62,11 +62,11 @@ extension PreviewCamera {
         aspect: Float,
         padding: Float
     ) -> Float {
-        let axes = framingAxes(toCamera: toCamera)
+        let axes = RenderCamera.framingAxes(toCamera: toCamera)
         let half = extent * 0.5
-        let safeAspect = clampedAspect(aspect)
-        let height = 2 * projectedHalf(axes.up, halfExtent: half)
-        let width = 2 * projectedHalf(axes.right, halfExtent: half)
+        let safeAspect = RenderCamera.clampedAspect(aspect)
+        let height = 2 * RenderCamera.projectedHalf(axes.up, halfExtent: half)
+        let width = 2 * RenderCamera.projectedHalf(axes.right, halfExtent: half)
         return max(0.0001, max(height, width / safeAspect) * padding)
     }
 
@@ -165,29 +165,6 @@ extension PreviewCamera {
             sin(pitchRad),
             cos(yawRad) * cos(pitchRad)
         )
-    }
-
-    /// Camera-space basis for projected AABB framing. When look ‖ world +Y, pick +X as right.
-    private static func framingAxes(toCamera: SIMD3<Float>) -> (
-        forward: SIMD3<Float>,
-        right: SIMD3<Float>,
-        up: SIMD3<Float>
-    ) {
-        let forward = -toCamera
-        var right = cross(forward, SIMD3<Float>(0, 1, 0))
-        right = length(right) < 1e-4 ? SIMD3<Float>(1, 0, 0) : normalize(right)
-        let up = normalize(cross(right, forward))
-        return (forward, right, up)
-    }
-
-    /// Half-extent of an axis-aligned box projected onto a unit axis (closed form).
-    private static func projectedHalf(_ axis: SIMD3<Float>, halfExtent: SIMD3<Float>) -> Float {
-        abs(axis.x) * halfExtent.x + abs(axis.y) * halfExtent.y + abs(axis.z) * halfExtent.z
-    }
-
-    /// Layout can report ~0 before the first frame; clamp so Fit does not explode.
-    private static func clampedAspect(_ aspect: Float) -> Float {
-        (aspect > 0.05 && aspect < 20) ? aspect : 1
     }
 
     /// Default RealityKit far/near clips a 3 km tile or a 12 cm ashtray.
