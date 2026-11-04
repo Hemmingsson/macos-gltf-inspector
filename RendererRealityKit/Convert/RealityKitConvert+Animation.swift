@@ -2,6 +2,14 @@ import GLTFCore
 import RealityKit
 import GLTFKit2
 
+private struct AnimatedJointData {
+    var jointNames = [String]()
+    var jointTransformSamplers = [TransformSampler]()
+    var minTime: Float = .infinity
+    var maxTime: Float = -.infinity
+    var sampleInterval: Float = AnimationSampling.defaultInterval
+}
+
 extension RealityKitConvert {
     func convert(animation: GLTFAnimation, skins: [GLTFSkin]) throws -> AnimationResource {
         var groupedChannels = [UUID: [GLTFAnimationChannel]]()
@@ -11,13 +19,6 @@ extension RealityKitConvert {
         }
         let name = animation.name ?? nextUniqueName(prefix: "Animation")
 
-        struct AnimatedJointData {
-            var jointNames = [String]()
-            var jointTransformSamplers = [TransformSampler]()
-            var minTime: Float = .infinity
-            var maxTime: Float = -.infinity
-            var sampleInterval: Float = AnimationSampling.defaultInterval
-        }
         var jointAnimation = AnimatedJointData()
         var animations = [AnimationDefinition]()
         for (_, channels) in groupedChannels {
@@ -66,44 +67,7 @@ extension RealityKitConvert {
                 animations.append(sampledAnimation)
             }
         }
-        if !jointAnimation.jointNames.isEmpty {
-            if !jointAnimation.minTime.isFinite { jointAnimation.minTime = 0 }
-            if !jointAnimation.maxTime.isFinite { jointAnimation.maxTime = jointAnimation.minTime }
-            if jointAnimation.maxTime < jointAnimation.minTime { jointAnimation.maxTime = jointAnimation.minTime }
-            var jointTransforms = [JointTransforms]()
-            for t in AnimationSampling.sampleTimes(
-                from: jointAnimation.minTime,
-                through: jointAnimation.maxTime,
-                by: jointAnimation.sampleInterval
-            ) {
-                let sampledTransforms = zip(jointAnimation.jointNames, jointAnimation.jointTransformSamplers).map { jointName, transformSampler -> Transform in
-                    var jointTransform = transformSampler.transform(at: t)
-                    if let ancestorTransform = skeletonTransformsByJointName[jointName] {
-                        jointTransform = Transform(matrix: ancestorTransform.matrix * jointTransform.matrix)
-                    }
-                    return jointTransform
-                }
-                jointTransforms.append(JointTransforms(sampledTransforms))
-            }
-            let delay = TimeInterval(jointAnimation.minTime)
-
-            var animatedSkeletonIDs = Set</*MeshResource.Skeleton.ID*/String>()
-            for jointName in jointAnimation.jointNames {
-                if let skeletonIDs = skeletonIDsByJointName[jointName] {
-                    animatedSkeletonIDs.formUnion(skeletonIDs)
-                }
-            }
-            let animatedBindPaths = animatedSkeletonIDs.compactMap { pathsForSkeletonIDs[$0] }
-            for bindPath in animatedBindPaths {
-                let skeletalAnimation = SampledAnimation(jointNames: jointAnimation.jointNames,
-                                                         frames: jointTransforms,
-                                                         tweenMode: .linear, // glTF STEP is not mapped; samples stay linear.
-                                                         frameInterval: jointAnimation.sampleInterval,
-                                                         bindTarget: bindPath.jointTransforms,
-                                                         delay: delay)
-                animations.append(skeletalAnimation)
-            }
-        }
+        animations += skeletalAnimations(for: jointAnimation)
 
         if animations.isEmpty {
             throw GLTFInspectorError.make(1022, "animation \(name) produced no channels")
@@ -113,6 +77,49 @@ extension RealityKitConvert {
         }
         let groupAnimation = AnimationGroup(group: animations, name: name)
         return try AnimationResource.generate(with: groupAnimation)
+    }
+
+    private func skeletalAnimations(for joints: AnimatedJointData) -> [AnimationDefinition] {
+        guard !joints.jointNames.isEmpty else { return [] }
+        var jointAnimation = joints
+        var result = [AnimationDefinition]()
+        if !jointAnimation.minTime.isFinite { jointAnimation.minTime = 0 }
+        if !jointAnimation.maxTime.isFinite { jointAnimation.maxTime = jointAnimation.minTime }
+        if jointAnimation.maxTime < jointAnimation.minTime { jointAnimation.maxTime = jointAnimation.minTime }
+        var jointTransforms = [JointTransforms]()
+        for t in AnimationSampling.sampleTimes(
+            from: jointAnimation.minTime,
+            through: jointAnimation.maxTime,
+            by: jointAnimation.sampleInterval
+        ) {
+            let sampledTransforms = zip(jointAnimation.jointNames, jointAnimation.jointTransformSamplers).map { jointName, transformSampler -> Transform in
+                var jointTransform = transformSampler.transform(at: t)
+                if let ancestorTransform = skeletonTransformsByJointName[jointName] {
+                    jointTransform = Transform(matrix: ancestorTransform.matrix * jointTransform.matrix)
+                }
+                return jointTransform
+            }
+            jointTransforms.append(JointTransforms(sampledTransforms))
+        }
+        let delay = TimeInterval(jointAnimation.minTime)
+
+        var animatedSkeletonIDs = Set</*MeshResource.Skeleton.ID*/String>()
+        for jointName in jointAnimation.jointNames {
+            if let skeletonIDs = skeletonIDsByJointName[jointName] {
+                animatedSkeletonIDs.formUnion(skeletonIDs)
+            }
+        }
+        let animatedBindPaths = animatedSkeletonIDs.compactMap { pathsForSkeletonIDs[$0] }
+        for bindPath in animatedBindPaths {
+            let skeletalAnimation = SampledAnimation(jointNames: jointAnimation.jointNames,
+                                                     frames: jointTransforms,
+                                                     tweenMode: .linear, // glTF STEP is not mapped; samples stay linear.
+                                                     frameInterval: jointAnimation.sampleInterval,
+                                                     bindTarget: bindPath.jointTransforms,
+                                                     delay: delay)
+            result.append(skeletalAnimation)
+        }
+        return result
     }
 
     private func convertMorphWeights(channel: GLTFAnimationChannel, target: GLTFNode) -> AnimationDefinition? {
