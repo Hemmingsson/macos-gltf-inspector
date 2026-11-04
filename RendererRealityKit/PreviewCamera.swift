@@ -3,7 +3,7 @@ import GLTFCore
 import RealityKit
 import simd
 
-public enum PreviewCamera {
+enum PreviewCamera {
     /// Default front-three-quarter yaw (degrees). Iso preset uses the same value.
     static let yawDegrees: Float = 35
     /// Default front-three-quarter pitch (degrees). Iso preset uses the same value.
