@@ -22,12 +22,7 @@ extension PreviewCamera {
         let extent = bounds.max - bounds.min
         return orthographicScale(
             extent: extent,
-            toCamera: lookDirection(
-                extent: extent,
-                yaw: yawDegrees,
-                pitch: pitchDegrees,
-                applyThinAxisOverride: true
-            ),
+            toCamera: lookDirection(extent: extent, preset: nil),
             aspect: aspect,
             padding: padding
         )
@@ -91,27 +86,18 @@ extension PreviewCamera {
 
     /// Front 3/4, Y-up. glTF +Z is forward, so the camera stands on +Z.
     /// Standing decals (thin X or Z) look along the thin axis so the face is visible
-    /// when `applyThinAxisOverride` is true (default Fit). Presets pass `false`.
-    ///
-    /// `yaw` / `pitch` are degrees (defaults = `yawDegrees` / `pitchDegrees`).
+    /// when `preset` is nil (default Fit). A named preset keeps its own yaw/pitch.
     static func cameraPosition(
         minBound: SIMD3<Float>,
         maxBound: SIMD3<Float>,
         padding: Float,
         aspect: Float = 1,
-        yaw: Float = yawDegrees,
-        pitch: Float = pitchDegrees,
-        applyThinAxisOverride: Bool = true,
+        preset: CameraPreset? = nil,
         fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
     ) -> SIMD3<Float> {
         let center = (minBound + maxBound) * 0.5
         let extent = maxBound - minBound
-        let toCamera = lookDirection(
-            extent: extent,
-            yaw: yaw,
-            pitch: pitch,
-            applyThinAxisOverride: applyThinAxisOverride
-        )
+        let toCamera = lookDirection(extent: extent, preset: preset)
         let distance = RenderCamera.fitDistance(
             extent: extent,
             toCamera: toCamera,
@@ -122,16 +108,12 @@ extension PreviewCamera {
         return center + distance * toCamera
     }
 
-    /// Unit vector from model center toward the camera for yaw/pitch (degrees).
-    private static func lookDirection(
-        extent: SIMD3<Float>,
-        yaw: Float,
-        pitch: Float,
-        applyThinAxisOverride: Bool
-    ) -> SIMD3<Float> {
-        var yawRad = yaw * .pi / 180
-        let pitchRad = pitch * .pi / 180
-        if applyThinAxisOverride, let axis = thinAxis(extent) {
+    /// Unit vector from model center toward the camera. `nil` = default front 3/4 with the
+    /// thin-axis override.
+    private static func lookDirection(extent: SIMD3<Float>, preset: CameraPreset?) -> SIMD3<Float> {
+        var yawRad = (preset?.yawDegrees ?? yawDegrees) * .pi / 180
+        let pitchRad = (preset?.pitchDegrees ?? pitchDegrees) * .pi / 180
+        if preset == nil, let axis = thinAxis(extent) {
             if axis == 0 { yawRad = .pi / 2 }
             if axis == 2 { yawRad = 0 }
         }
