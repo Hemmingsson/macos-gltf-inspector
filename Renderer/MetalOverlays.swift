@@ -32,9 +32,11 @@ struct MetalOverlayOptions: Sendable {
     /// `camera.sceneExtents`: what the viewer sizes the floor and gizmo by. When centring is off it
     /// includes the origin. Nil uses the scene's drawn bounds.
     var extents: (min: SIMD3<Float>, max: SIMD3<Float>)?
+    var useSilhouetteSelectionOutline: Bool
     init(floor: Bool = false, origin: Bool = false, sceneGizmos: Bool = false, selectedNode: Int? = nil,
          highlightedNodeIndices: Set<Int> = [], selectedSkinIndex: Int? = nil, skipCameraNodeIndex: Int? = nil,
-         canvasAspect: Float = 1, hiddenNodeIndices: Set<Int> = [], extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil) {
+         canvasAspect: Float = 1, hiddenNodeIndices: Set<Int> = [], extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
+         useSilhouetteSelectionOutline: Bool = true) {
         self.floor = floor
         self.origin = origin
         self.sceneGizmos = sceneGizmos
@@ -45,6 +47,7 @@ struct MetalOverlayOptions: Sendable {
         self.canvasAspect = canvasAspect
         self.hiddenNodeIndices = hiddenNodeIndices
         self.extents = extents
+        self.useSilhouetteSelectionOutline = useSilhouetteSelectionOutline
     }
 }
 
@@ -55,7 +58,8 @@ extension MetalOverlayOptions {
                   selectedNode: options.gizmoSelectedNodeIndex ?? options.selectedNodeIndex,
                   highlightedNodeIndices: options.highlightedNodeIndices,
                   selectedSkinIndex: options.selectedSkinIndex, skipCameraNodeIndex: options.fileCameraNodeIndex,
-                  canvasAspect: canvasAspect, hiddenNodeIndices: options.hiddenNodeIndices, extents: extents)
+                  canvasAspect: canvasAspect, hiddenNodeIndices: options.hiddenNodeIndices, extents: extents,
+                  useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline)
         selectedNodes = options.selectedNodeIndices
         hoveredNode = options.hoveredNodeIndex
     }
@@ -93,15 +97,11 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
         vertices.append(MetalLineVertex(position: SIMD4(a, 1), color: SIMD4(color, 1)))
         vertices.append(MetalLineVertex(position: SIMD4(b, 1), color: SIMD4(color, 1)))
     }
-    // `sceneBounds`.
-    let low = options.extents?.min ?? scene.boundsMin
-    let high = options.extents?.max ?? scene.boundsMax
-    let extent = simd_max(high - low, SIMD3(repeating: 1e-4))
-    let span = max(extent.x, extent.y, extent.z, 0.05)
+    let (extent, span) = overlayExtentAndSpan(scene: scene, options: options)
     if options.floor {
-        // `collectPolarFloor`: centred on the world origin, just under the scene.
+        // Polar floor centred on the world origin, just under the scene.
         let radius = max(2.7 * max(extent.x, extent.z) * 0.5, 0.001)
-        let y = low.y - 0.001
+        let y = (options.extents?.min ?? scene.boundsMin).y - 0.001
         let color = SIMD3<Float>(0.53, 0.53, 0.53)
         let rings = 4, radials = 8, segments = 64
         for ring in 1...rings {
@@ -122,7 +122,6 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
         }
     }
     if options.origin {
-        // `collectOriginGizmo`.
         let size = 0.18 * max(extent.x, extent.y, extent.z, 0.05)
         line(.zero, SIMD3(size, 0, 0), SIMD3(1, 0.2, 0.2))
         line(.zero, SIMD3(0, size, 0), SIMD3(0.2, 1, 0.2))
@@ -144,7 +143,7 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
     }
     if let index = options.selectedNode, !drawnSceneGizmos.contains(index) {
         collectSelectionGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
-                              line: line)
+                              useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline, line: line)
     }
     collectSkeletonOverlay(scene: scene, selectedSkinIndex: options.selectedSkinIndex,
                            selectedNode: options.selectedNode, span: span,
@@ -153,7 +152,7 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
     let boxed = options.selectedNodes.union(selectionBoxNode.map { [$0] } ?? [])
     for index in options.selectedNodes.sorted() where index != selectionBoxNode {
         collectSelectionGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
-                              line: line)
+                              useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline, line: line)
     }
     for index in options.highlightedNodeIndices.sorted() {
         if boxed.contains(index) { continue }
@@ -183,6 +182,20 @@ private func isSkinJoint(_ nodeIndex: Int, scene: MetalScene) -> Bool {
     scene.asset.skins.contains { skin in
         skin.joints.contains { joint in scene.asset.nodes.firstIndex(of: joint) == nodeIndex }
     }
+}
+
+/// Screen-space silhouette replaces the AABB for mesh nodes; groups and non-mesh selections keep the box.
+func usesSilhouetteSelectionOutline(nodeIndex: Int, scene: MetalScene) -> Bool {
+    guard scene.asset.nodes.indices.contains(nodeIndex) else { return false }
+    let node = scene.asset.nodes[nodeIndex]
+    guard node.mesh != nil, node.camera == nil, node.light == nil else { return false }
+    return !isSkinJoint(nodeIndex, scene: scene)
+}
+
+func silhouetteOutlineNodeIndices(options: MetalOverlayOptions, scene: MetalScene) -> Set<Int> {
+    var nodes = options.selectedNodes
+    if let primary = options.selectedNode { nodes.insert(primary) }
+    return Set(nodes.filter { usesSilhouetteSelectionOutline(nodeIndex: $0, scene: scene) })
 }
 
 private func jointNodeIndices(in scene: MetalScene, skin: GLTFSkin) -> [Int] {
@@ -239,13 +252,20 @@ private func collectSkeletonOverlay(
 
 /// Pick segments for camera and light gizmos when `sceneGizmos` is on (same nodes as the global
 /// gizmo overlay pass, not selection-only AABB / skeleton lines).
-func overlayGizmoSegments(scene: MetalScene, options: MetalOverlayOptions) -> [MetalGizmoSegment] {
-    guard options.sceneGizmos else { return [] }
-    var segments: [MetalGizmoSegment] = []
+private func overlayExtentAndSpan(
+    scene: MetalScene,
+    options: MetalOverlayOptions
+) -> (extent: SIMD3<Float>, span: Float) {
     let low = options.extents?.min ?? scene.boundsMin
     let high = options.extents?.max ?? scene.boundsMax
     let extent = simd_max(high - low, SIMD3(repeating: 1e-4))
-    let span = max(extent.x, extent.y, extent.z, 0.05)
+    return (extent, max(extent.x, extent.y, extent.z, 0.05))
+}
+
+func overlayGizmoSegments(scene: MetalScene, options: MetalOverlayOptions) -> [MetalGizmoSegment] {
+    guard options.sceneGizmos else { return [] }
+    var segments: [MetalGizmoSegment] = []
+    let span = overlayExtentAndSpan(scene: scene, options: options).span
     for (index, node) in scene.asset.nodes.enumerated() {
         guard node.camera != nil || node.light != nil else { continue }
         if index == options.skipCameraNodeIndex, node.camera != nil { continue }
@@ -309,6 +329,7 @@ private func collectSelectionGizmo(
     nodeIndex: Int,
     span: Float,
     canvasAspect: Float,
+    useSilhouetteSelectionOutline: Bool,
     line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
 ) {
     guard scene.asset.nodes.indices.contains(nodeIndex),
@@ -327,6 +348,9 @@ private func collectSelectionGizmo(
     }
 
     if isSkinJoint(nodeIndex, scene: scene) { return }
+
+    if useSilhouetteSelectionOutline,
+       usesSilhouetteSelectionOutline(nodeIndex: nodeIndex, scene: scene) { return }
 
     if node.mesh == nil, scene.nodeParents.indices.contains(nodeIndex), scene.nodeParents[nodeIndex] >= 0 {
         let parent = scene.nodeParents[nodeIndex]
@@ -501,9 +525,10 @@ extension MetalRenderer {
     /// discarded. Skip that when a file camera drew the model: the depths would not match.
     func encodeOverlays(_ lines: [MetalLineVertex], command: any MTLCommandBuffer, output: any MTLTexture,
                         viewProjection: simd_float4x4, viewport: MTLViewport,
-                        sceneDepth: any MTLTexture, occlude: Bool) throws {
+                        sceneDepth: any MTLTexture, occlude: Bool,
+                        selectionIDs: (any MTLTexture)? = nil) throws {
         let samples = 4
-        if overlayPipeline == nil || overlayCopyPipeline == nil {
+        if overlayPipeline == nil || overlayCopyPipeline == nil || (selectionIDs != nil && selectionOutlinePipeline == nil) {
             let line = MTLRenderPipelineDescriptor()
             line.vertexFunction = library.makeFunction(name: "khronos_line_vertex")
             line.fragmentFunction = library.makeFunction(name: "khronos_line_fragment")
@@ -516,6 +541,19 @@ extension MetalRenderer {
             copy.colorAttachments[0].pixelFormat = output.pixelFormat
             copy.rasterSampleCount = samples
             overlayCopyPipeline = try device.makeRenderPipelineState(descriptor: copy)
+        }
+        if selectionIDs != nil, selectionOutlinePipeline == nil {
+            let outline = MTLRenderPipelineDescriptor()
+            outline.vertexFunction = library.makeFunction(name: "khronos_tonemap_vertex")
+            outline.fragmentFunction = library.makeFunction(name: "khronos_selection_outline_fragment")
+            outline.colorAttachments[0].pixelFormat = output.pixelFormat
+            outline.rasterSampleCount = samples
+            outline.colorAttachments[0].isBlendingEnabled = true
+            outline.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+            outline.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+            outline.colorAttachments[0].sourceAlphaBlendFactor = .one
+            outline.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            selectionOutlinePipeline = try device.makeRenderPipelineState(descriptor: outline)
         }
         guard let linePipeline = overlayPipeline, let copyPipeline = overlayCopyPipeline else {
             throw MetalRendererError.resource("overlay pipelines")
@@ -553,22 +591,36 @@ extension MetalRenderer {
                 MTLSamplePosition(x: $0.x, y: 1 - $0.y)
             })
         }
-        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass),
-              let buffer = lines.withUnsafeBytes({ device.makeBuffer(bytes: $0.baseAddress!, length: $0.count, options: .storageModeShared) })
-        else { throw MetalRendererError.resource("overlays") }
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else {
+            throw MetalRendererError.resource("overlays")
+        }
+        let lineBuffer = lines.withUnsafeBytes { raw -> (any MTLBuffer)? in
+            guard raw.count > 0, let base = raw.baseAddress else { return nil }
+            return device.makeBuffer(bytes: base, length: raw.count, options: .storageModeShared)
+        }
+        if !lines.isEmpty, lineBuffer == nil { throw MetalRendererError.resource("overlay line buffer") }
         encoder.label = "Overlays"
         encoder.setRenderPipelineState(copyPipeline)
         encoder.setFragmentTexture(frame, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        encoder.setViewport(viewport)
-        encoder.setRenderPipelineState(linePipeline)
-        encoder.setVertexBuffer(buffer, offset: 0, index: 0)
-        var matrix = viewProjection
-        encoder.setVertexBytes(&matrix, length: MemoryLayout<simd_float4x4>.stride, index: 1)
-        var occludeFlag: UInt32 = occlude ? 1 : 0
-        encoder.setFragmentBytes(&occludeFlag, length: MemoryLayout<UInt32>.stride, index: 0)
-        encoder.setFragmentTexture(sceneDepth, index: 0)
-        encoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: lines.count)
+        if let selectionIDs, let outlinePipeline = selectionOutlinePipeline {
+            encoder.setRenderPipelineState(outlinePipeline)
+            encoder.setFragmentTexture(selectionIDs, index: 0)
+            var accent = Self.selectionOutlineAccent
+            encoder.setFragmentBytes(&accent, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
+        if let lineBuffer {
+            encoder.setViewport(viewport)
+            encoder.setRenderPipelineState(linePipeline)
+            encoder.setVertexBuffer(lineBuffer, offset: 0, index: 0)
+            var matrix = viewProjection
+            encoder.setVertexBytes(&matrix, length: MemoryLayout<simd_float4x4>.stride, index: 1)
+            var occludeFlag: UInt32 = occlude ? 1 : 0
+            encoder.setFragmentBytes(&occludeFlag, length: MemoryLayout<UInt32>.stride, index: 0)
+            encoder.setFragmentTexture(sceneDepth, index: 0)
+            encoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: lines.count)
+        }
         encoder.endEncoding()
     }
 }

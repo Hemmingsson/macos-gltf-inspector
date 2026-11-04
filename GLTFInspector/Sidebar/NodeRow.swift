@@ -25,6 +25,7 @@ struct NodeRow: View {
     var visibility: DSVisibility? = nil
     /// The node is under the canvas pointer: a light tint, never the selection highlight.
     var isPointed: Bool = false
+    var showsAnimatedIndicator: Bool = false
     var onVisibility: (_ solo: Bool) -> Void = { _ in }
     var onToggle: () -> Void = {}
     /// Tree guide flags when the guide-line experiment is on.
@@ -46,6 +47,7 @@ struct NodeRow: View {
             isSelected: isSelected,
             isJoint: isJoint,
             badge: badge,
+            showsAnimatedIndicator: showsAnimatedIndicator,
             visibility: visibility,
             onVisibility: onVisibility,
             onToggle: onToggle,

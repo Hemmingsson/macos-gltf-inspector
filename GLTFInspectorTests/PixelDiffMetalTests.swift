@@ -171,9 +171,11 @@ struct FeatureReferenceTests {
     }
 
     static func render(_ model: URL, _ options: ViewOptions) async throws -> CGImage {
+        var renderOptions = options
+        renderOptions.useSilhouetteSelectionOutline = false
         let view = ModelView(renderer: try MetalRenderer())
         view.frame = CGRect(x: 0, y: 0, width: size, height: size)
-        try await view.apply(options)
+        try await view.apply(renderOptions)
         try await view.load(model)
         view.orbit(azimuth: 30, elevation: -20)
         return try view.image(width: size, height: size)

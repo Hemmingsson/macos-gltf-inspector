@@ -86,6 +86,20 @@ struct SceneInteractionComponentTests {
         #expect(host.text.contains("1.00 × 2.00 × 3.00 m"))
     }
 
+    @Test func animatedFileOffersPlaybackControls() async throws {
+        let document = try await GLTFDocument.load(from: TestFixtures.boxAnimated)
+        let suite = "gltf.interaction-component-animated.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let state = ViewState(settings: AppSettings(defaults: defaults))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        state.canvas.mount(in: container, url: TestFixtures.boxAnimated, options: state.options)
+        try #require(try await waitUntil { state.canvas.phase == .ready && state.canvas.showsAnimationTimeline })
+        defer { state.canvas.view?.removeFromSuperview() }
+        let host = await AccessibilityTestHost(CanvasRegion(bounds: document.bounds, view: state) { Color.clear })
+        defer { host.close() }
+        #expect(host.text.contains("Play"))
+    }
+
     @Test func staticFileDoesNotOfferPlaybackControls() async throws {
         let document = try await GLTFDocument.load(from: TestFixtures.cube)
         let suite = "gltf.interaction-component.\(UUID().uuidString)"

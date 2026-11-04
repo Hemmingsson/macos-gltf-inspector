@@ -26,7 +26,8 @@ struct OutlinerList: View {
     var onFrame: (Int) -> Void = { _ in }
     /// glTF node under the canvas pointer; its row gets the pre-selection tint.
     var pointedNode: Int?
-    /// Experiment (Settings ▸ General): hairline tree guides in the indent.
+    /// Nodes targeted by the active animation clips (scene graph only).
+    var animatedSceneNodes: Set<Int> = []
     /// Hairline tree guides in the indent (Settings ▸ General, default on).
     var showsTreeGuides = true
 
@@ -64,6 +65,7 @@ struct OutlinerList: View {
                                     kindTitle: document.displayKindTitle(of: row.id),
                                     visibility: layers[row.id],
                                     isPointed: row.id.kind.isSceneNode && row.id.index == pointedNode,
+                                    showsAnimatedIndicator: row.id.kind.isSceneNode && animatedSceneNodes.contains(row.id.index),
                                     onVisibility: { solo in
                                         if solo { onToggleSolo(row.id.index) } else { onToggleHidden(row.id.index) }
                                     },

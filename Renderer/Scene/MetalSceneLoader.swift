@@ -30,6 +30,7 @@ private final class Builder {
     var minimum = SIMD3<Float>(repeating: .infinity)
     var maximum = SIMD3<Float>(repeating: -.infinity)
     var world: [ObjectIdentifier: simd_float4x4] = [:]
+    var skins: [MetalSkin] = []
     let sourceURL: URL
     init(asset: GLTFAsset, device: any MTLDevice, sourceURL: URL) { self.asset = asset; self.device = device; self.sourceURL = sourceURL }
     /// The source file's JSON (GLB chunk or .gltf), for extension fields GLTFKit2 parses incorrectly.
@@ -109,6 +110,7 @@ private final class Builder {
             return value
         }
         for skin in asset.skins { for joint in skin.joints { _ = global(joint) } }
+        skins = try makeSkins()
         func visit(_ node: GLTFNode, visible: Bool) throws {
             let authoredVisibility = (node.extensions["KHR_node_visibility"] as? [String: Any])?["visible"] as? Bool ?? true
             guard visible && authoredVisibility else { return }
@@ -133,7 +135,7 @@ private final class Builder {
         guard !draws.isEmpty else { throw MetalSceneError.invalid("The glTF scene contains no renderable primitives") }
         try MetalImageLoader.generateMipmaps(pendingMips, device: device)
         pendingMips.removeAll()
-        return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset, nodeRests: nodeRests())
+        return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset, nodeRests: nodeRests(), skins: skins)
     }
 
     /// Cached rest worlds. Nodes the scene walk did not reach (a joint outside the scene) get the
@@ -181,33 +183,11 @@ private final class Builder {
             initialized = count
         }
         var sourceOf = (0..<count).map { UInt32($0) }
-        if let skin = node.skin, let joints = try attribute("JOINTS_0",4), let weights = try attribute("WEIGHTS_0",4) {
-            let inverseBind: [Float]? = try skin.inverseBindMatrices.map { try values($0, components: 16) }
-            let matrices = skin.joints.enumerated().map { i,joint -> simd_float4x4 in
-                let ib: simd_float4x4
-                if let b = inverseBind, b.count >= (i+1)*16 { ib = simd_float4x4(columns:(SIMD4(b[i*16],b[i*16+1],b[i*16+2],b[i*16+3]),SIMD4(b[i*16+4],b[i*16+5],b[i*16+6],b[i*16+7]),SIMD4(b[i*16+8],b[i*16+9],b[i*16+10],b[i*16+11]),SIMD4(b[i*16+12],b[i*16+13],b[i*16+14],b[i*16+15]))) } else { ib = matrix_identity_float4x4 }
-                return simd_inverse(model) * (world[ObjectIdentifier(joint)] ?? matrix_identity_float4x4) * ib
-            }
-            for i in 0..<count {
-                var blended = simd_float4x4(0)
-                var total: Float = 0
-                for c in 0..<4 {
-                    let j = Int(joints[i*4+c]); let w = weights[i*4+c]
-                    guard matrices.indices.contains(j) else { continue }
-                    blended += matrices[j] * w; total += w
-                }
-                if total > 0 {
-                    blended *= 1 / total
-                    vertices[i].position = blended * vertices[i].position
-                    let n = simd_transpose(simd_inverse(blended))
-                    vertices[i].normal = n * vertices[i].normal
-                    let sign = vertices[i].tangent.w
-                    vertices[i].tangent.w = 0
-                    vertices[i].tangent = blended * vertices[i].tangent
-                    vertices[i].tangent.w = sign
-                }
-            }
-        }
+        // Bind-pose attributes. Skinning happens in the shader; these feeds are gathered after deindex.
+        let joints0 = try attribute("JOINTS_0", 4)
+        let weights0 = try attribute("WEIGHTS_0", 4)
+        let joints1 = try attribute("JOINTS_1", 4)
+        let weights1 = try attribute("WEIGHTS_1", 4)
         var indices = try primitive.indices.map { try indexValues($0, vertexCount: count) } ?? Self.sequence(count)
         // Khronos Primitive.computeCentroid: Float32 accumulation over the authored indices and POSITIONs.
         var sum = SIMD3<Float>(repeating: 0)
@@ -266,6 +246,14 @@ private final class Builder {
         var restWeights = [Float](repeating: 0, count: targetCount)
         let authored = (node.weights ?? node.mesh?.weights ?? []).map(\.floatValue)
         for index in 0..<min(targetCount, authored.count) { restWeights[index] = authored[index] }
+        let skinIndex = node.skin.flatMap { skin in asset.skins.firstIndex { $0 === skin } }
+        let hasJoints1 = joints1 != nil && weights1 != nil
+        let skinVerts: [MetalSkinVertex]
+        if let skinIndex, let joints0, let weights0 {
+            skinVerts = gatheredSkin(joints0: joints0, weights0: weights0, joints1: hasJoints1 ? joints1 : nil, weights1: hasJoints1 ? weights1 : nil, sourceOf: sourceOf)
+        } else {
+            skinVerts = []
+        }
         var boundsVertices = vertices
         if let morph, morph.mask & (1 << MorphSlot.position) != 0, restWeights.contains(where: { $0 != 0 }) {
             let ordinal = MorphSlot.ordinal(mask: morph.mask, slot: MorphSlot.position)
@@ -276,6 +264,32 @@ private final class Builder {
                     position += SIMD4(delta.x, delta.y, delta.z, 0) * restWeights[target]
                 }
                 boundsVertices[vertex].position = position
+            }
+        }
+        // Morph first, then the same object-space blend the CPU bake used, so camera fit stays.
+        // Weights are renormalized here only: the GPU path does not, matching Khronos.
+        if let skinIndex, !skinVerts.isEmpty {
+            let matrices = objectSpaceJoints(skinIndex: skinIndex, model: model)
+            for vertex in boundsVertices.indices {
+                var blended = simd_float4x4(0)
+                var total: Float = 0
+                func accumulate(_ joints: SIMD4<UInt16>, _ weights: SIMD4<Float>) {
+                    for component in 0..<4 {
+                        let weight = weights[component]
+                        let joint = Int(joints[component])
+                        guard weight != 0, matrices.indices.contains(joint) else { continue }
+                        blended += matrices[joint] * weight
+                        total += weight
+                    }
+                }
+                accumulate(skinVerts[vertex].joints0, skinVerts[vertex].weights0)
+                if hasJoints1 { accumulate(skinVerts[vertex].joints1, skinVerts[vertex].weights1) }
+                if total > 0 {
+                    blended *= 1 / total
+                    var position = boundsVertices[vertex].position
+                    position.w = 1
+                    boundsVertices[vertex].position = blended * position
+                }
             }
         }
         withUnsafeBytes(of: model) { matrix in
@@ -298,13 +312,77 @@ private final class Builder {
             }
             morphBuffer = buffer
         } else { morphBuffer = nil }
+        let skinBuffer: (any MTLBuffer)?
+        if !skinVerts.isEmpty {
+            guard let buffer = device.makeBuffer(bytes: skinVerts, length: skinVerts.count * MemoryLayout<MetalSkinVertex>.stride, options: .storageModeShared) else {
+                throw MetalSceneError.invalid("Metal buffer allocation failed")
+            }
+            skinBuffer = buffer
+        } else { skinBuffer = nil }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
         var m = try convert(material)
         m.hasTexCoord0 = uv0 != nil
         m.hasNormal = normal != nil
         // MikkTSpace above fills TANGENT when the mesh has UVs but no authored tangent.
         m.hasTangent = tangent != nil || (uv0 != nil && topology == .triangle)
-        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0))
+        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
+    }
+
+    func makeSkins() throws -> [MetalSkin] {
+        let indexOf = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        return try asset.skins.map { skin in
+            let raw = try skin.inverseBindMatrices.map { try values($0, components: 16) }
+            return MetalSkin(
+                jointNodeIndices: skin.joints.map { indexOf[ObjectIdentifier($0)] ?? -1 },
+                inverseBindMatrices: skin.joints.indices.map { MetalSkinning.gltfMatrix(raw, index: $0) }
+            )
+        }
+    }
+
+    /// Object-space joint matrices for rest bounds: `inverse(model) * world * IBM`. Multiplying
+    /// back by `model` in `GLTFMetalBounds` recovers `world * IBM` when the weights sum to 1,
+    /// and still applies `model` to a vertex whose weights sum to 0.
+    func objectSpaceJoints(skinIndex: Int, model: simd_float4x4) -> [simd_float4x4] {
+        let skin = skins[skinIndex]
+        let inverseModel = simd_inverse(model)
+        return skin.jointNodeIndices.enumerated().map { index, node in
+            let jointWorld: simd_float4x4
+            if asset.nodes.indices.contains(node) {
+                jointWorld = world[ObjectIdentifier(asset.nodes[node])] ?? matrix_identity_float4x4
+            } else {
+                jointWorld = matrix_identity_float4x4
+            }
+            let ibm = skin.inverseBindMatrices.indices.contains(index) ? skin.inverseBindMatrices[index] : matrix_identity_float4x4
+            return inverseModel * jointWorld * ibm
+        }
+    }
+
+    func gatheredSkin(joints0: [Float], weights0: [Float], joints1: [Float]?, weights1: [Float]?, sourceOf: [UInt32]) -> [MetalSkinVertex] {
+        func joint(_ values: [Float], source: Int, component: Int) -> UInt16 {
+            let raw = values[source * 4 + component]
+            guard raw.isFinite else { return 0 }
+            return UInt16(clamping: Int(raw.rounded()))
+        }
+        func weights(_ values: [Float], source: Int) -> SIMD4<Float> {
+            let base = source * 4
+            return SIMD4(values[base], values[base + 1], values[base + 2], values[base + 3])
+        }
+        return sourceOf.map { source in
+            let index = Int(source)
+            var vertex = MetalSkinVertex(joints0: .zero, joints1: .zero, weights0: weights(weights0, source: index), weights1: .zero)
+            vertex.joints0 = SIMD4(
+                joint(joints0, source: index, component: 0), joint(joints0, source: index, component: 1),
+                joint(joints0, source: index, component: 2), joint(joints0, source: index, component: 3)
+            )
+            if let joints1, let weights1 {
+                vertex.joints1 = SIMD4(
+                    joint(joints1, source: index, component: 0), joint(joints1, source: index, component: 1),
+                    joint(joints1, source: index, component: 2), joint(joints1, source: index, component: 3)
+                )
+                vertex.weights1 = weights(weights1, source: index)
+            }
+            return vertex
+        }
     }
 
     /// Deltas for the emitted vertices. Layout is `[present slot][target][vertex]`, slot order

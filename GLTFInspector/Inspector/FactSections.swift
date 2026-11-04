@@ -141,12 +141,21 @@ struct JointOfSection: View {
 struct MorphSection: View {
     var morph: GLTFDocument.Morph
     var meshName: String
+    /// Weights sampled from the active animation pose, when playback has left the rest pose.
+    var liveWeights: [Float]? = nil
 
     var body: some View {
         FactBlock("Morph") {
             DSFactRow("Mesh", value: meshName)
             DSFactRow("Targets", value: "\(morph.targetNames.count)")
-            NameList(names: morph.targetNames)
+            if let liveWeights, !liveWeights.isEmpty {
+                ForEach(Array(liveWeights.enumerated()), id: \.offset) { index, weight in
+                    let name = morph.targetNames.indices.contains(index) ? morph.targetNames[index] : "Target \(index + 1)"
+                    DSFactRow(name, value: String(format: "%.3f", weight))
+                }
+            } else {
+                NameList(names: morph.targetNames)
+            }
         }
     }
 }

@@ -46,6 +46,8 @@ public struct ViewOptions: Equatable, Sendable {
     /// Draws only this node: its own draws when it has any, otherwise its whole subtree. Lights
     /// are not affected.
     public var isolatedNodeIndex: Int?
+    /// Mesh selection uses a screen-space silhouette; when false, mesh nodes keep the AABB lines.
+    public var useSilhouetteSelectionOutline: Bool
 
     public init(
         look: RenderLook = .standard,
@@ -69,7 +71,8 @@ public struct ViewOptions: Equatable, Sendable {
         selectedSkinIndex: Int? = nil,
         hiddenNodeIndices: Set<Int> = [],
         soloNodeIndices: Set<Int> = [],
-        isolatedNodeIndex: Int? = nil
+        isolatedNodeIndex: Int? = nil,
+        useSilhouetteSelectionOutline: Bool = true
     ) {
         self.look = look
         self.viewMode = viewMode
@@ -93,6 +96,7 @@ public struct ViewOptions: Equatable, Sendable {
         self.hiddenNodeIndices = hiddenNodeIndices
         self.soloNodeIndices = soloNodeIndices
         self.isolatedNodeIndex = isolatedNodeIndex
+        self.useSilhouetteSelectionOutline = useSilhouetteSelectionOutline
     }
 
     /// The look Settings stored in the App Group. Quick Look and the Finder thumbnail have no

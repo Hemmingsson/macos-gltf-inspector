@@ -57,9 +57,10 @@ extensions can read it, and only the app writes it.
 ![Reference-image tests: the Metal renderer is compared with images from the Khronos renderer](assets/docs/reference-tests.svg)
 
 `TestModels/References/` holds images rendered by the Khronos Sample Renderer itself: one per
-pinned Khronos sample (`manifest.json`), and `Features/` for overlays, view modes, file cameras,
-scenes and the lighting options. `./scripts/dev.sh test` renders all of them with the Metal
-renderer and compares them (`PixelDiffMetalTests`); see
+pinned Khronos sample (`manifest.json`), `Animated/` for fixed-time animation poses, and
+`Features/` for overlays, view modes, file cameras, scenes and the lighting options.
+`./scripts/dev.sh test` renders all of them with the Metal renderer and compares them
+(`PixelDiffMetalTests`, `AnimatedReferenceTests`); see
 [`TestModels/References/README.md`](TestModels/References/README.md).
 
 `./scripts/dev.sh bench` prints load, first-still and GPU frame times for three samples.

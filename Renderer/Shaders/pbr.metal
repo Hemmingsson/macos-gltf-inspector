@@ -18,10 +18,22 @@ struct MetalVaryings {
 };
 inline float3 rgb_mix(float3 base,float3 layer,float3 alpha) { return (1.0f-max(alpha.r,max(alpha.g,alpha.b)))*base+alpha*layer; }
 struct MetalFragmentOutput { float4 color [[color(0)]]; uint toneMapFlag [[color(1)]]; };
-// Zero mask and no capture compiles out, so a rigid draw stays the unmorphed shader.
+// Zero mask, no capture and no skin compiles out, so a rigid draw stays the unmorphed shader.
 constant uint morph_mask [[function_constant(0)]];
 constant bool morph_capture [[function_constant(1)]];
 constant bool morph_streams [[function_constant(2)]];
+constant bool has_skin [[function_constant(3)]];
+constant bool has_joints1 [[function_constant(4)]];
+struct SkinVertex {
+    ushort4 joints0;
+    ushort4 joints1;
+    float4 weights0;
+    float4 weights1;
+};
+struct JointPair {
+    float4x4 joint;
+    float4x4 normal;
+};
 float4 morph_sum(uint slot,uint vid,constant float *weights,device const float4 *morphs,constant MetalDrawUniforms &draw) {
     uint targets=draw.morphInfo.x, verts=draw.morphInfo.y;
     uint ordinal=uint(popcount(morph_mask & ((1u<<slot)-1u)));
@@ -36,13 +48,16 @@ vertex MetalVaryings khronos_vertex(uint id [[vertex_id]],
     constant MetalMaterialUniforms &m [[buffer(3)]],
     device const float4 *morphs [[buffer(4), function_constant(morph_streams)]],
     constant float *weights [[buffer(5), function_constant(morph_streams)]],
-    device MetalVertex *capture [[buffer(6), function_constant(morph_capture)]]) {
+    device MetalVertex *capture [[buffer(6), function_constant(morph_capture)]],
+    device const SkinVertex *skinVerts [[buffer(7), function_constant(has_skin)]],
+    constant JointPair *jointPairs [[buffer(8), function_constant(has_skin)]]) {
     MetalVertex v=vertices[id];
     float3 pos=v.position.xyz;
     float3 nrm=v.normal.xyz;
     float4 tan=v.tangent;
     float4 col=v.color;
     float2 uv0=v.uv0, uv1=v.uv1;
+    // Morph deltas first, then skin. Skinning the already-morphed vertex is R·(v+d).
     if(morph_streams) {
         if(morph_mask&1u) pos+=morph_sum(0,id,weights,morphs,draw).xyz;
         if(morph_mask&2u) nrm+=morph_sum(1,id,weights,morphs,draw).xyz;
@@ -51,6 +66,31 @@ vertex MetalVaryings khronos_vertex(uint id [[vertex_id]],
         if(morph_mask&16u) uv1+=morph_sum(4,id,weights,morphs,draw).xy;
         if(morph_mask&32u) col=clamp(col+morph_sum(5,id,weights,morphs,draw),0.0f,1.0f);
     }
+    if(has_skin) {
+        SkinVertex s=skinVerts[id];
+        uint jointCount=draw.morphInfo.w;
+        float4x4 skinM=float4x4(0.0f);
+        float4x4 skinN=float4x4(0.0f);
+        float wsum=0.0f;
+        for(int i=0;i<4;++i) {
+            float w=s.weights0[i];
+            uint j=s.joints0[i];
+            if(w!=0.0f && j<jointCount) { skinM+=jointPairs[j].joint*w; skinN+=jointPairs[j].normal*w; wsum+=w; }
+        }
+        if(has_joints1) {
+            for(int i=0;i<4;++i) {
+                float w=s.weights1[i];
+                uint j=s.joints1[i];
+                if(w!=0.0f && j<jointCount) { skinM+=jointPairs[j].joint*w; skinN+=jointPairs[j].normal*w; wsum+=w; }
+            }
+        }
+        // A zero weight sum is the identity: the vertex stays in bind space.
+        if(wsum!=0.0f) {
+            pos=(skinM*float4(pos,1.0f)).xyz;
+            nrm=(skinN*float4(nrm,0.0f)).xyz;
+            tan.xyz=(skinM*float4(tan.xyz,0.0f)).xyz;
+        }
+    }
     if(morph_capture) {
         MetalVertex c=v;
         c.position=float4(pos,v.position.w); c.normal=float4(nrm,v.normal.w); c.tangent=tan;
@@ -58,7 +98,9 @@ vertex MetalVaryings khronos_vertex(uint id [[vertex_id]],
         capture[id]=c;
     }
     MetalVaryings o;
-    float4 p=draw.model*float4(pos,1);
+    // Skinned positions are already in world space (joint world * inverse bind). The mesh node's
+    // model matrix is not applied. Normals still get that node's normal matrix; tangents get model.
+    float4 p=has_skin ? float4(pos,1) : draw.model*float4(pos,1);
     o.position=frame.viewProjection*p;
     o.position.z=(o.position.z+o.position.w)*0.5f;
     o.worldPosition=p.xyz/p.w;
@@ -377,6 +419,26 @@ fragment float4 khronos_line_fragment(LineVaryings in [[stage_in]],
 // tonemap quad fills its antialiased canvas before the overlay lines are drawn.
 fragment float4 khronos_overlay_copy_fragment(FullscreenVaryings in [[stage_in]],texture2d<float> image [[texture(0)]]) {
     return image.read(uint2(in.position.xy));
+}
+
+// Composites a ~2 px accent ring outside selected mesh IDs (no interior fill).
+fragment float4 khronos_selection_outline_fragment(FullscreenVaryings in [[stage_in]],
+    texture2d<uint, access::read> ids [[texture(0)]],
+    constant float4 &accent [[buffer(0)]]) {
+    uint2 p = uint2(in.position.xy);
+    uint center = ids.read(p).r;
+    if (center != 0u) return float4(0);
+    constexpr int radius = 2;
+    uint2 size = uint2(ids.get_width(), ids.get_height());
+    for (int dy = -radius; dy <= radius; ++dy) {
+        for (int dx = -radius; dx <= radius; ++dx) {
+            if (dx * dx + dy * dy > radius * radius) continue;
+            int2 q = int2(p) + int2(dx, dy);
+            if (q.x < 0 || q.y < 0 || uint(q.x) >= size.x || uint(q.y) >= size.y) continue;
+            if (ids.read(uint2(q)).r != 0u) return accent;
+        }
+    }
+    return float4(0);
 }
 
 fragment uint khronos_pick_fragment(MetalVaryings in [[stage_in]],

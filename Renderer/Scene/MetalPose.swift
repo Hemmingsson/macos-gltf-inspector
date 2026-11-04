@@ -35,16 +35,31 @@ func gltfRotationTranslationScale(translation t: SIMD3<Float>, rotation q: simd_
     ))
 }
 
+/// One frame's draw uniforms and the node worlds that produced them. Joint palettes read
+/// `nodeWorlds`, including joints outside the scene that the walk re-derives.
+struct SceneFramePose {
+    var transforms: [DrawFrameTransform]
+    var nodeWorlds: [simd_float4x4]
+}
+
 extension MetalScene {
     /// Per-draw model, normal matrix and front face.
+    func drawTransforms(pose: AnimationPose?) -> [DrawFrameTransform] {
+        framePose(pose: pose).transforms
+    }
+
+    /// Per-draw model, normal matrix and front face, plus every node's world.
     ///
     /// No TRS override returns the cached rest worlds, the same matrices the loader baked, so a
     /// still matches the pixel references. A posed frame walks the node tree once: overridden
-    /// nodes (and their descendants) recompute; everyone else keeps the cached matrix. That walk
-    /// is O(nodes + draws) and is cheap next to the draw itself.
-    func drawTransforms(pose: AnimationPose?) -> [DrawFrameTransform] {
+    /// nodes (and their descendants, including off-scene joints) recompute; everyone else keeps
+    /// the cached matrix. That walk is O(nodes + draws) and is cheap next to the draw itself.
+    func framePose(pose: AnimationPose?) -> SceneFramePose {
+        let restWorlds = nodeRests.map(\.worldMatrix)
         let overrides = posedOverrides(pose)
-        if overrides.isEmpty { return draws.map(Self.restTransform) }
+        if overrides.isEmpty {
+            return SceneFramePose(transforms: draws.map(Self.restTransform), nodeWorlds: restWorlds)
+        }
 
         var dirty = Array(repeating: false, count: nodeRests.count)
         func mark(_ index: Int) {
@@ -54,7 +69,7 @@ extension MetalScene {
         }
         for index in overrides.keys { mark(index) }
 
-        var worlds = nodeRests.map(\.worldMatrix)
+        var worlds = restWorlds
         var resolved = Array(repeating: false, count: nodeRests.count)
         var resolving = Array(repeating: false, count: nodeRests.count)
         func resolve(_ index: Int) {
@@ -81,7 +96,7 @@ extension MetalScene {
         }
         for index in nodeRests.indices where dirty[index] { resolve(index) }
 
-        return draws.map { draw in
+        let transforms = draws.map { draw in
             let node = draw.nodeIndex
             guard nodeRests.indices.contains(node), dirty[node] else { return Self.restTransform(draw) }
             let model = worlds[node] * draw.instanceMatrix
@@ -91,6 +106,7 @@ extension MetalScene {
                 negativeScale: simd_determinant(model) < 0
             )
         }
+        return SceneFramePose(transforms: transforms, nodeWorlds: worlds)
     }
 
     /// TRS overrides that can move a node. Matrix-authored nodes stay on their cached local matrix.

@@ -292,14 +292,10 @@ public final class ModelView: NSView {
 
     // MARK: - Live drawing
 
-    func requestRedraw() { redraw() }
-
-    func refreshPlaybackDisplayLink() { updateDisplayLink() }
-
     /// Whether a live display link is installed (playback or auto-rotate).
     var isDisplayLinkActive: Bool { displayLink != nil }
 
-    private func redraw() {
+    func redraw() {
         reportZoom()
         reportOrientation()
         guard window != nil, renderer.scene != nil, !drawFailed, let drawable = metalLayer.nextDrawable() else { return }
@@ -387,7 +383,7 @@ public final class ModelView: NSView {
     }
 
     /// Auto-rotate and animation playback share one display link at the Khronos viewer's 60 Hz.
-    private func updateDisplayLink() {
+    func updateDisplayLink() {
         let wanted = window != nil && (options.autoRotates || isPlaybackRunning)
         guard wanted != (displayLink != nil) else { return }
         displayLink?.invalidate()
@@ -523,7 +519,8 @@ public final class ModelView: NSView {
         return try renderer.pick(options, pose: pose(width: width, height: height),
                                  width: width, height: height,
                                  centerOffset: centerOffset(pixelWidth: width),
-                                 point: point)
+                                 point: point,
+                                 animationPose: animationPoseProvider?())
     }
 
     /// The canvas's pixel size and backing scale, as picking and pointer zoom measure it.

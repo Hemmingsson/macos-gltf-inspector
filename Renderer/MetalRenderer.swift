@@ -28,10 +28,16 @@ public final class MetalRenderer: @unchecked Sendable {
     public private(set) var pipelineMilliseconds = 0.0
     var overlayPipeline: (any MTLRenderPipelineState)?
     var overlayCopyPipeline: (any MTLRenderPipelineState)?
+    var selectionOutlinePipeline: (any MTLRenderPipelineState)?
     private var presentationPipeline: (any MTLRenderPipelineState)?
     private var pipelines: [String: any MTLRenderPipelineState] = [:]
-    private var pickPipelines: [UInt32: any MTLRenderPipelineState] = [:]
-    private var capturePipelines: [UInt32: any MTLRenderPipelineState] = [:]
+    private var pickPipelines: [VertexVariant: any MTLRenderPipelineState] = [:]
+    private var capturePipelines: [VertexVariant: any MTLRenderPipelineState] = [:]
+    /// Slot in the 3-deep joint-palette ring. Advanced once per frame, shared by every pass.
+    private var jointSlot = 0
+    private var jointRings: [Int: [any MTLBuffer]] = [:]
+    private var jointUploaded: Set<Int> = []
+    private var jointPalettes: [Int: [GPUJointPair]] = [:]
     private let tonePipeline: any MTLRenderPipelineState
     private let depthWrite: any MTLDepthStencilState
     private let depthRead: any MTLDepthStencilState
@@ -137,13 +143,14 @@ public final class MetalRenderer: @unchecked Sendable {
 
     /// glTF node index under `point` (x right, y down), or nil for background / mask holes.
     func pick(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
-              centerOffset: SIMD2<Float> = .zero, point: SIMD2<Int>) throws -> Int? {
+              centerOffset: SIMD2<Float> = .zero, point: SIMD2<Int>,
+              animationPose: AnimationPose? = nil) throws -> Int? {
         guard let scene else { throw MetalRendererError.noScene }
         guard width > 0, height > 0, width <= 16384, height <= 16384 else {
             throw MetalRendererError.resource("invalid image size")
         }
         let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
-                                        centerOffset: centerOffset, scene: scene)
+                                        centerOffset: centerOffset, scene: scene, animationPose: animationPose)
         let pickTarget = try texture(.r32Uint, width, height, [.renderTarget, .shaderRead])
         let depth = try texture(.depth32Float, width, height, [.renderTarget])
         guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
@@ -158,7 +165,8 @@ public final class MetalRenderer: @unchecked Sendable {
         pass.depthAttachment.storeAction = .store
         pass.depthAttachment.clearDepth = 1
         try encodePick(command: command, pass: pass, frame: setup.frame, scene: scene,
-                       draws: setup.mainDraws, transforms: setup.transforms, viewport: setup.viewport)
+                       draws: setup.mainDraws, transforms: setup.transforms, worlds: setup.nodeWorlds,
+                       viewport: setup.viewport, animationPose: animationPose)
         let x = min(max(point.x, 0), width - 1)
         let y = min(max(point.y, 0), height - 1)
         let readback = try texture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
@@ -221,12 +229,14 @@ public final class MetalRenderer: @unchecked Sendable {
         var background: any MTLTexture = black
         if let prepass = order.transmissionPrepass {
             background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass,
-                                                    transforms: setup.transforms, lights: lights, fallback: black,
+                                                    transforms: setup.transforms, worlds: setup.nodeWorlds,
+                                                    lights: lights, fallback: black,
                                                     wireframe: wireframe, resolution: transmissionResolution,
                                                     animationPose: animationPose)
         }
         try encodeScene(command: command, pass: pass, frame: frame, scene: scene, lights: lights,
-                        draws: order.main, transforms: setup.transforms, background: background,
+                        draws: order.main, transforms: setup.transforms, worlds: setup.nodeWorlds,
+                        background: background,
                         wireframe: wireframe, style: MetalDrawStyle(options.viewMode), viewport: viewport,
                         animationPose: animationPose)
         let tone = MTLRenderPassDescriptor()
@@ -245,11 +255,24 @@ public final class MetalRenderer: @unchecked Sendable {
         finish.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         finish.endEncoding()
         let lines = overlayVertices(scene: scene, options: overlays)
-        if !lines.isEmpty {
+        let silhouetteNodes = options.useSilhouetteSelectionOutline
+            ? silhouetteOutlineNodeIndices(options: overlays, scene: scene) : []
+        var selectionIDs: (any MTLTexture)?
+        if options.useSilhouetteSelectionOutline, !silhouetteNodes.isEmpty {
+            let outlineDraws = selectionOutlineDrawIndices(options: options, scene: scene, nodeIndices: silhouetteNodes)
+            if !outlineDraws.isEmpty {
+                selectionIDs = try renderSelectionIDBuffer(frame: frame, transforms: setup.transforms, worlds: setup.nodeWorlds,
+                                                           viewport: viewport, scene: scene, draws: outlineDraws,
+                                                           width: width, height: height, command: command,
+                                                           animationPose: animationPose)
+            }
+        }
+        if !lines.isEmpty || selectionIDs != nil {
             // Overlays always use the user camera; only occlude when that camera also drew the model.
             try encodeOverlays(lines, command: command, output: output,
                                viewProjection: setup.camera.openGLProjectionMatrix * setup.camera.viewMatrix, viewport: viewport,
-                               sceneDepth: depth, occlude: options.fileCameraNodeIndex == nil)
+                               sceneDepth: depth, occlude: options.fileCameraNodeIndex == nil,
+                               selectionIDs: selectionIDs)
         }
         command.commit()
         command.waitUntilCompleted()
@@ -262,21 +285,22 @@ public final class MetalRenderer: @unchecked Sendable {
     /// isolate still drop draws after the sort.
     struct MetalFrameDraws {
         var transforms: [DrawFrameTransform]
+        var nodeWorlds: [simd_float4x4]
         var main: [Int]
         var transmissionPrepass: [Int]?
     }
 
     func frameDraws(options: ViewOptions, animationPose: AnimationPose?, view: simd_float4x4) -> MetalFrameDraws {
-        guard let scene else { return MetalFrameDraws(transforms: [], main: [], transmissionPrepass: nil) }
-        let transforms = scene.drawTransforms(pose: animationPose)
-        var order = drawLists.frame(draws: scene.draws, models: transforms.map(\.model), view: view)
+        guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
+        let posed = scene.framePose(pose: animationPose)
+        var order = drawLists.frame(draws: scene.draws, models: posed.transforms.map(\.model), view: view)
         let filter = MetalDrawFilter(options)
         if !filter.isEmpty {
             let visible = visibility(of: filter, in: scene)
             order.main = order.main.filter { visible[$0] }
             order.transmissionPrepass = order.transmissionPrepass?.filter { visible[$0] }
         }
-        return MetalFrameDraws(transforms: transforms, main: order.main, transmissionPrepass: order.transmissionPrepass)
+        return MetalFrameDraws(transforms: posed.transforms, nodeWorlds: posed.nodeWorlds, main: order.main, transmissionPrepass: order.transmissionPrepass)
     }
 
     private struct SceneFrameSetup {
@@ -286,6 +310,7 @@ public final class MetalRenderer: @unchecked Sendable {
         var viewportAspect: Float?
         var lights: [MetalPunctualLight]
         var transforms: [DrawFrameTransform]
+        var nodeWorlds: [simd_float4x4]
         var mainDraws: [Int]
         var transmissionPrepass: [Int]?
         var camera: MetalCamera
@@ -294,6 +319,7 @@ public final class MetalRenderer: @unchecked Sendable {
     private func sceneFrameSetup(options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
                                  centerOffset: SIMD2<Float>, scene: MetalScene,
                                  animationPose: AnimationPose? = nil) throws -> SceneFrameSetup {
+        beginJointFrame()
         let look = options.look
         let orthographic = options.isOrthographic
         if environmentID != look.environment {
@@ -325,7 +351,8 @@ public final class MetalRenderer: @unchecked Sendable {
         let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
         let posed = frameDraws(options: options, animationPose: animationPose, view: view)
         return SceneFrameSetup(frame: frame, view: view, viewport: viewport, viewportAspect: viewportAspect,
-                               lights: lights, transforms: posed.transforms, mainDraws: posed.main,
+                               lights: lights, transforms: posed.transforms, nodeWorlds: posed.nodeWorlds,
+                               mainDraws: posed.main,
                                transmissionPrepass: posed.transmissionPrepass, camera: camera)
     }
 
@@ -367,6 +394,7 @@ public final class MetalRenderer: @unchecked Sendable {
 
     private func transmissionBackground(command: any MTLCommandBuffer, frame: GPUFrame,
                                         scene: MetalScene, draws: [Int], transforms: [DrawFrameTransform],
+                                        worlds: [simd_float4x4],
                                         lights: [MetalPunctualLight],
                                         fallback: any MTLTexture, wireframe: Bool = false,
                                         resolution requested: Int = 1024,
@@ -409,7 +437,7 @@ public final class MetalRenderer: @unchecked Sendable {
         var preFrame = frame
         preFrame.options.z |= 2
         try encodeScene(command: command, pass: pass, frame: preFrame, scene: scene, lights: lights,
-            draws: draws, transforms: transforms, background: fallback, samples: 4, format: .rgba8Unorm,
+            draws: draws, transforms: transforms, worlds: worlds, background: fallback, samples: 4, format: .rgba8Unorm,
             wireframe: wireframe, animationPose: animationPose)
         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("transmission mips") }
         blit.generateMipmaps(for: resolved)
@@ -428,6 +456,7 @@ public final class MetalRenderer: @unchecked Sendable {
     private func encodeScene(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor,
                              frame inputFrame: GPUFrame, scene: MetalScene,
                              lights: [MetalPunctualLight], draws: [Int], transforms: [DrawFrameTransform],
+                             worlds: [simd_float4x4],
                              background: any MTLTexture,
                              samples: Int = 1, format: MTLPixelFormat = .rgba16Float,
                              wireframe: Bool = false, style: MetalDrawStyle = .shaded,
@@ -454,12 +483,13 @@ public final class MetalRenderer: @unchecked Sendable {
             let blend = passStyle.blends(source)
             let weights = scene.morphWeights(for: draw, pose: animationPose)
             let mask = Self.activeMorphMask(draw, weights: weights)
-            encoder.setRenderPipelineState(try pipeline(blend: blend, samples: samples, format: format, morphMask: mask))
+            let variant = Self.vertexVariant(mask: mask, draw: draw)
+            encoder.setRenderPipelineState(try pipeline(blend: blend, samples: samples, format: format, variant: variant))
             encoder.setDepthStencilState(blend || passStyle == .wireframeOnShaded ? depthRead : depthWrite)
             let transform = frameTransform(transforms, index, draw)
             encoder.setCullMode(source.doubleSided || passStyle.drawsBackFaces ? .none : .back)
             encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
-            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix, morphInfo: Self.morphInfo(draw, mask: mask))
+            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix, morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
             var material = GPUMaterial(source)
@@ -473,6 +503,7 @@ public final class MetalRenderer: @unchecked Sendable {
             materialResources[resourceKey]?.bind(encoder)
             encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
             Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+            try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
             encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
                                           indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
         }
@@ -481,7 +512,9 @@ public final class MetalRenderer: @unchecked Sendable {
     }
 
     private func encodePick(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor, frame inputFrame: GPUFrame,
-                            scene: MetalScene, draws: [Int], transforms: [DrawFrameTransform], viewport: MTLViewport) throws {
+                            scene: MetalScene, draws: [Int], transforms: [DrawFrameTransform],
+                            worlds: [simd_float4x4], viewport: MTLViewport,
+                            animationPose: AnimationPose?) throws {
         var frame = inputFrame
         guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw MetalRendererError.resource("pick encoder") }
         encoder.setViewport(viewport)
@@ -490,14 +523,15 @@ public final class MetalRenderer: @unchecked Sendable {
         for drawIndex in draws {
             let draw = scene.draws[drawIndex]
             let blend = draw.material.alphaMode == 2
-            let weights = scene.morphWeights(for: draw, pose: nil)
+            let weights = scene.morphWeights(for: draw, pose: animationPose)
             let mask = Self.activeMorphMask(draw, weights: weights)
-            encoder.setRenderPipelineState(try pickPipeline(morphMask: mask))
+            let variant = Self.vertexVariant(mask: mask, draw: draw)
+            encoder.setRenderPipelineState(try pickPipeline(variant))
             encoder.setDepthStencilState(blend ? depthRead : depthWrite)
             let transform = frameTransform(transforms, drawIndex, draw)
             encoder.setCullMode(draw.material.doubleSided ? .none : .back)
             encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
-            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix, morphInfo: Self.morphInfo(draw, mask: mask))
+            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix, morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
             var material = GPUMaterial(draw.material)
@@ -512,30 +546,107 @@ public final class MetalRenderer: @unchecked Sendable {
             encoder.setFragmentBytes(&drawID, length: MemoryLayout<UInt32>.stride, index: 6)
             encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
             Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+            try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
             encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
                                           indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
         }
         encoder.endEncoding()
     }
 
-    private func pickPipeline(morphMask: UInt32) throws -> any MTLRenderPipelineState {
-        if let cached = pickPipelines[morphMask] { return cached }
+    static let selectionOutlineAccent = SIMD4<Float>(0.15, 0.75, 1, 1)
+
+    func selectionOutlineDrawIndices(options: ViewOptions, scene: MetalScene, nodeIndices: Set<Int>) -> [Int] {
+        let filter = MetalDrawFilter(options)
+        let visible = filter.isEmpty ? Array(repeating: true, count: scene.draws.count) : visibility(of: filter, in: scene)
+        return scene.draws.enumerated().compactMap { index, draw -> Int? in
+            guard visible[index], nodeIndices.contains(draw.nodeIndex) else { return nil }
+            return index
+        }
+    }
+
+    private func renderSelectionIDBuffer(frame: GPUFrame, transforms: [DrawFrameTransform], worlds: [simd_float4x4],
+                                 viewport: MTLViewport, scene: MetalScene, draws: [Int], width: Int, height: Int,
+                                 command: any MTLCommandBuffer,
+                                 animationPose: AnimationPose?) throws -> any MTLTexture {
+        let target = try texture(.r32Uint, width, height, [.renderTarget, .shaderRead])
+        let depth = try texture(.depth32Float, width, height, [.renderTarget])
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = target
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.storeAction = .store
+        pass.depthAttachment.clearDepth = 1
+        try encodeSelectionPick(command: command, pass: pass, frame: frame, scene: scene, draws: draws,
+                                transforms: transforms, worlds: worlds, viewport: viewport, animationPose: animationPose)
+        return target
+    }
+
+    private func encodeSelectionPick(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor,
+                                     frame inputFrame: GPUFrame, scene: MetalScene, draws: [Int],
+                                     transforms: [DrawFrameTransform], worlds: [simd_float4x4],
+                                     viewport: MTLViewport, animationPose: AnimationPose?) throws {
+        var frame = inputFrame
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else {
+            throw MetalRendererError.resource("selection id encoder")
+        }
+        encoder.setViewport(viewport)
+        encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        encoder.setFragmentBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        for drawIndex in draws {
+            let draw = scene.draws[drawIndex]
+            let blend = draw.material.alphaMode == 2
+            let weights = scene.morphWeights(for: draw, pose: animationPose)
+            let mask = Self.activeMorphMask(draw, weights: weights)
+            let variant = Self.vertexVariant(mask: mask, draw: draw)
+            encoder.setRenderPipelineState(try pickPipeline(variant))
+            encoder.setDepthStencilState(blend ? depthRead : depthWrite)
+            let transform = frameTransform(transforms, drawIndex, draw)
+            encoder.setCullMode(draw.material.doubleSided ? .none : .back)
+            encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
+            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix,
+                                   morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            var material = GPUMaterial(draw.material)
+            encoder.setFragmentBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            let resourceKey = ObjectIdentifier(draw.vertexBuffer)
+            if materialResources[resourceKey] == nil {
+                materialResources[resourceKey] = try MetalMaterialResources(draw.material, device: device, library: library)
+            }
+            materialResources[resourceKey]?.bind(encoder)
+            var nodeID = UInt32(draw.nodeIndex + 1)
+            encoder.setFragmentBytes(&nodeID, length: MemoryLayout<UInt32>.stride, index: 6)
+            encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
+            Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+            try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
+            encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
+                                          indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
+        }
+        encoder.endEncoding()
+    }
+
+    private func pickPipeline(_ variant: VertexVariant) throws -> any MTLRenderPipelineState {
+        if let cached = pickPipelines[variant] { return cached }
         let descriptor = MTLRenderPipelineDescriptor()
-        descriptor.vertexFunction = try khronosVertex(morphMask: morphMask, capture: false)
+        descriptor.vertexFunction = try khronosVertex(variant, capture: false)
         descriptor.fragmentFunction = library.makeFunction(name: "khronos_pick_fragment")
         descriptor.colorAttachments[0].pixelFormat = .r32Uint
         descriptor.depthAttachmentPixelFormat = .depth32Float
         let made = try device.makeRenderPipelineState(descriptor: descriptor)
-        pickPipelines[morphMask] = made
+        pickPipelines[variant] = made
         return made
     }
 
-    private func pipeline(blend: Bool, samples: Int = 1, format: MTLPixelFormat = .rgba16Float, morphMask: UInt32 = 0) throws -> any MTLRenderPipelineState {
-        let key = "\(blend)-\(samples)-\(format.rawValue)-m\(morphMask)"
+    private func pipeline(blend: Bool, samples: Int = 1, format: MTLPixelFormat = .rgba16Float, variant: VertexVariant = VertexVariant()) throws -> any MTLRenderPipelineState {
+        let key = "\(blend)-\(samples)-\(format.rawValue)-m\(variant.morphMask)-s\(variant.hasSkin ? 1 : 0)\(variant.hasJoints1 ? 1 : 0)"
         if let cached = pipelines[key] { return cached }
         let start = CFAbsoluteTimeGetCurrent()
         let descriptor = MTLRenderPipelineDescriptor()
-        descriptor.vertexFunction = try khronosVertex(morphMask: morphMask, capture: false)
+        descriptor.vertexFunction = try khronosVertex(variant, capture: false)
         descriptor.fragmentFunction = library.makeFunction(name: "khronos_fragment")
         descriptor.colorAttachments[0].pixelFormat = format
         descriptor.rasterSampleCount = samples
@@ -555,27 +666,32 @@ public final class MetalRenderer: @unchecked Sendable {
         return made
     }
 
-    private func capturePipeline(morphMask: UInt32) throws -> any MTLRenderPipelineState {
-        if let cached = capturePipelines[morphMask] { return cached }
+    private func capturePipeline(_ variant: VertexVariant) throws -> any MTLRenderPipelineState {
+        if let cached = capturePipelines[variant] { return cached }
         let descriptor = MTLRenderPipelineDescriptor()
-        descriptor.vertexFunction = try khronosVertex(morphMask: morphMask, capture: true)
+        descriptor.vertexFunction = try khronosVertex(variant, capture: true)
         descriptor.fragmentFunction = library.makeFunction(name: "khronos_capture_fragment")
         descriptor.colorAttachments[0].pixelFormat = .rgba8Unorm
         let made = try device.makeRenderPipelineState(descriptor: descriptor)
-        capturePipelines[morphMask] = made
+        capturePipelines[variant] = made
         return made
     }
 
-    /// `morph_mask` 0, `morph_capture` 1, `morph_streams` 2. Streams exist only when the mask is nonzero,
-    /// so a rigid draw's vertex function has the same resources as before morph.
-    private func khronosVertex(morphMask: UInt32, capture: Bool) throws -> any MTLFunction {
-        var mask = morphMask
+    /// `morph_mask` 0, `morph_capture` 1, `morph_streams` 2, `has_skin` 3, `has_joints1` 4.
+    /// Streams exist only when the mask is nonzero, and skin buffers only when `hasSkin` is set,
+    /// so a rigid draw's vertex function has the same resources as before morph and skin.
+    private func khronosVertex(_ variant: VertexVariant, capture: Bool) throws -> any MTLFunction {
+        var mask = variant.morphMask
         var captureFlag = capture
-        var streams = morphMask != 0
+        var streams = variant.morphMask != 0
+        var skin = variant.hasSkin
+        var joints1 = variant.hasJoints1
         let values = MTLFunctionConstantValues()
         values.setConstantValue(&mask, type: .uint, index: 0)
         values.setConstantValue(&captureFlag, type: .bool, index: 1)
         values.setConstantValue(&streams, type: .bool, index: 2)
+        values.setConstantValue(&skin, type: .bool, index: 3)
+        values.setConstantValue(&joints1, type: .bool, index: 4)
         return try library.makeFunction(name: "khronos_vertex", constantValues: values)
     }
 
@@ -587,8 +703,69 @@ public final class MetalRenderer: @unchecked Sendable {
         return 0
     }
 
-    private static func morphInfo(_ draw: MetalDraw, mask: UInt32) -> SIMD4<UInt32> {
-        SIMD4(UInt32(draw.morphTargetCount), UInt32(draw.morphVertexCount), mask, 0)
+    private static func morphInfo(_ draw: MetalDraw, mask: UInt32, jointCount: Int = 0) -> SIMD4<UInt32> {
+        SIMD4(UInt32(draw.morphTargetCount), UInt32(draw.morphVertexCount), mask, UInt32(jointCount))
+    }
+
+    private static func jointCount(_ draw: MetalDraw, scene: MetalScene) -> Int {
+        guard draw.skinBuffer != nil, let index = draw.skinIndex, scene.skins.indices.contains(index) else { return 0 }
+        return scene.skins[index].jointNodeIndices.count
+    }
+
+    private static func vertexVariant(mask: UInt32, draw: MetalDraw) -> VertexVariant {
+        let skinned = draw.skinBuffer != nil
+        return VertexVariant(morphMask: mask, hasSkin: skinned, hasJoints1: skinned && draw.hasJoints1)
+    }
+
+    /// One palette per skin per frame, from the node worlds `framePose` already walked.
+    /// At most 32 joints go through `setVertexBytes`; larger palettes use a 3-deep buffer ring
+    /// so a frame still in flight is not overwritten. Every pass binds buffer 8.
+    private func beginJointFrame() {
+        jointSlot = (jointSlot + 1) % 3
+        jointUploaded.removeAll(keepingCapacity: true)
+        jointPalettes.removeAll(keepingCapacity: true)
+    }
+
+    private func bindSkin(_ encoder: any MTLRenderCommandEncoder, draw: MetalDraw, scene: MetalScene, worlds: [simd_float4x4]) throws {
+        guard let skinBuffer = draw.skinBuffer, let skinIndex = draw.skinIndex, scene.skins.indices.contains(skinIndex) else { return }
+        encoder.setVertexBuffer(skinBuffer, offset: 0, index: 7)
+        let palette = jointPalette(skinIndex: skinIndex, scene: scene, worlds: worlds)
+        let upload = palette.isEmpty
+            ? [GPUJointPair(joint: matrix_identity_float4x4, normal: matrix_identity_float4x4)]
+            : palette
+        let byteCount = upload.count * MemoryLayout<GPUJointPair>.stride
+        if byteCount <= MetalSkinning.vertexBytesLimit {
+            upload.withUnsafeBytes { raw in
+                encoder.setVertexBytes(raw.baseAddress!, length: raw.count, index: 8)
+            }
+            return
+        }
+        let buffer = try jointBuffer(skinIndex: skinIndex, byteCount: byteCount)
+        if jointUploaded.insert(skinIndex).inserted {
+            upload.withUnsafeBytes { raw in memcpy(buffer.contents(), raw.baseAddress!, raw.count) }
+        }
+        encoder.setVertexBuffer(buffer, offset: 0, index: 8)
+    }
+
+    private func jointPalette(skinIndex: Int, scene: MetalScene, worlds: [simd_float4x4]) -> [GPUJointPair] {
+        if let cached = jointPalettes[skinIndex] { return cached }
+        let built = MetalSkinning.palette(skin: scene.skins[skinIndex], worlds: worlds)
+        jointPalettes[skinIndex] = built
+        return built
+    }
+
+    private func jointBuffer(skinIndex: Int, byteCount: Int) throws -> any MTLBuffer {
+        var ring = jointRings[skinIndex] ?? []
+        if ring.count != 3 || ring[0].length < byteCount {
+            ring = try (0..<3).map { _ in
+                guard let made = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
+                    throw MetalRendererError.resource("joint buffer")
+                }
+                return made
+            }
+            jointRings[skinIndex] = ring
+        }
+        return ring[jointSlot]
     }
 
     /// `setVertexBytes` is capped at 4 KB. A mesh with more weights than that gets a buffer.
@@ -596,7 +773,7 @@ public final class MetalRenderer: @unchecked Sendable {
         guard mask != 0, let morphBuffer = draw.morphBuffer, !weights.isEmpty else { return }
         encoder.setVertexBuffer(morphBuffer, offset: 0, index: 4)
         let byteCount = weights.count * MemoryLayout<Float>.stride
-        if byteCount <= 4096 {
+        if byteCount <= MetalSkinning.vertexBytesLimit {
             weights.withUnsafeBytes { raw in
                 encoder.setVertexBytes(raw.baseAddress!, length: byteCount, index: 5)
             }
@@ -614,8 +791,9 @@ public final class MetalRenderer: @unchecked Sendable {
         return texture
     }
 
-    /// Object-space vertices after the morph the shader would apply for `pose`.
-    /// Points so every emitted vertex runs once; the write happens before the model transform.
+    /// Vertices after the morph and skin the shader applies for `pose`.
+    /// Points so every emitted vertex runs once. The write is after skin and before the mesh
+    /// node's model matrix, so a skinned position is already in world space.
     func captureMorphedVertices(drawIndex: Int, pose: AnimationPose?) throws -> [MetalVertex] {
         guard let scene else { throw MetalRendererError.noScene }
         guard scene.draws.indices.contains(drawIndex) else { throw MetalRendererError.resource("draw index") }
@@ -624,6 +802,9 @@ public final class MetalRenderer: @unchecked Sendable {
         guard count > 0 else { return [] }
         let weights = scene.morphWeights(for: draw, pose: pose)
         let mask = Self.activeMorphMask(draw, weights: weights, force: draw.morphTargetCount > 0)
+        let variant = Self.vertexVariant(mask: mask, draw: draw)
+        let worlds = scene.framePose(pose: pose).nodeWorlds
+        beginJointFrame()
         let byteCount = count * MemoryLayout<MetalVertex>.stride
         guard let captured = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
             throw MetalRendererError.resource("morph capture")
@@ -637,17 +818,18 @@ public final class MetalRenderer: @unchecked Sendable {
               let encoder = command.makeRenderCommandEncoder(descriptor: pass) else {
             throw MetalRendererError.resource("morph capture encoder")
         }
-        encoder.setRenderPipelineState(try capturePipeline(morphMask: mask))
+        encoder.setRenderPipelineState(try capturePipeline(variant))
         var frame = GPUFrame(viewProjection: matrix_identity_float4x4, cameraPosition: .zero,
                              environment: .zero, options: .zero, viewport: SIMD4(1, 1, 0, 0))
         encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
         var uniforms = GPUDraw(model: matrix_identity_float4x4, normalMatrix: matrix_identity_float4x4,
-                               morphInfo: Self.morphInfo(draw, mask: mask))
+                               morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
         var material = GPUMaterial(draw.material)
         encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
         encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
         Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+        try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
         encoder.setVertexBuffer(captured, offset: 0, index: 6)
         encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: count)
         encoder.endEncoding()
@@ -657,6 +839,12 @@ public final class MetalRenderer: @unchecked Sendable {
         let pointer = captured.contents().bindMemory(to: MetalVertex.self, capacity: count)
         return Array(UnsafeBufferPointer(start: pointer, count: count))
     }
+}
+
+private struct VertexVariant: Hashable {
+    var morphMask: UInt32 = 0
+    var hasSkin = false
+    var hasJoints1 = false
 }
 
 /// Port of the Khronos drawable lists: `prepareScene` grouping and `drawScene` ordering.

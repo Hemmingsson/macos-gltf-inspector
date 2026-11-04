@@ -117,8 +117,14 @@ public final class ModelCanvasController {
     public var playbackClock = AnimationPlaybackClock.live
 
     @ObservationIgnored private var loadedAnimationClips: [AnimationClip] = []
+    @ObservationIgnored private var defaultSelectedClipIndices: [Int] = []
     @ObservationIgnored private var matrixAuthoredNodes: Set<Int> = []
     @ObservationIgnored private var lastPlaybackInstant: ContinuousClock.Instant?
+
+    /// Longest active clip duration in seconds; 0 when nothing is selected.
+    public var activePlaybackDuration: Float { playbackDuration }
+    /// Disjoint clip set chosen on load (Khronos default).
+    public var defaultSelectedAnimationClipIndices: [Int] { defaultSelectedClipIndices }
 
     public init() {}
 
@@ -149,6 +155,43 @@ public final class ModelCanvasController {
         time = 0
         lastPlaybackInstant = nil
         playbackStateDidChange()
+    }
+
+    /// Khronos default: every disjoint clip in file order.
+    public func selectDefaultAnimationClips() {
+        guard !defaultSelectedClipIndices.isEmpty else { return }
+        selectedClipIndices = defaultSelectedClipIndices
+    }
+
+    /// One clip, or the default disjoint set when `index` is nil.
+    public func selectAnimationClip(at index: Int?) {
+        if let index, loadedAnimationClips.indices.contains(index) {
+            selectedClipIndices = [index]
+        } else {
+            selectDefaultAnimationClips()
+        }
+    }
+
+    public func togglePlayback() {
+        if isPlaying { pause() } else { play() }
+    }
+
+    /// Scene-graph node indices targeted by the given clip indices (TRS and node weights).
+    public func animatedSceneNodeIndices(forClipIndices indices: [Int]) -> Set<Int> {
+        var nodes = Set<Int>()
+        for index in indices where loadedAnimationClips.indices.contains(index) {
+            for channel in loadedAnimationClips[index].channels {
+                if let nodeIndex = channel.target.nodeIndexForMatrixSkip {
+                    nodes.insert(nodeIndex)
+                }
+            }
+        }
+        return nodes
+    }
+
+    /// Scene-graph nodes animated by the currently selected clips.
+    public func animatedSceneNodeIndicesInSelection() -> Set<Int> {
+        animatedSceneNodeIndices(forClipIndices: selectedClipIndices)
     }
 
     /// Pose passed to the renderer for the current time and clip selection.
@@ -213,6 +256,7 @@ public final class ModelCanvasController {
 
     private func reloadAnimationClips(from url: URL) {
         loadedAnimationClips = []
+        defaultSelectedClipIndices = []
         matrixAuthoredNodes = []
         animationClips = []
         selectedClipIndices = []
@@ -227,7 +271,8 @@ public final class ModelCanvasController {
             loadedAnimationClips = clips
             matrixAuthoredNodes = AnimationClipLoader.matrixAuthoredNodeIndices(sourceURL: url)
             animationClips = clips.map { AnimationClipDescriptor(name: $0.name, duration: $0.maxTime) }
-            selectedClipIndices = AnimationClip.defaultSelectedClipIndices(in: clips)
+            defaultSelectedClipIndices = AnimationClip.defaultSelectedClipIndices(in: clips)
+            selectedClipIndices = defaultSelectedClipIndices
         } catch {
             AppLog.error(AppLog.renderer, "animation clips failed \(url.lastPathComponent): \(error)")
         }
@@ -236,8 +281,8 @@ public final class ModelCanvasController {
 
     private func playbackStateDidChange(redrawOnly: Bool = false) {
         view?.isPlaybackRunning = isPlaying
-        if !redrawOnly { view?.refreshPlaybackDisplayLink() }
-        view?.requestRedraw()
+        if !redrawOnly { view?.updateDisplayLink() }
+        view?.redraw()
     }
 
     private func wirePlayback(on view: ModelView) {

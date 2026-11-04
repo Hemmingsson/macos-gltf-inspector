@@ -109,13 +109,20 @@ public struct MetalDraw {
     let morphVertexCount: Int
     /// Bits in `MorphSlot` order: position, normal, tangent, texcoord0, texcoord1, color0.
     let morphMask: UInt32
+    /// `{ushort4, ushort4, float4, float4}` per emitted vertex. Nil when the primitive is not skinned.
+    let skinBuffer: (any MTLBuffer)?
+    /// Index into `MetalScene.skins`.
+    let skinIndex: Int?
+    /// The primitive has JOINTS_1 and WEIGHTS_1. The shader specialization skips that set otherwise.
+    let hasJoints1: Bool
 
     init(vertexBuffer: any MTLBuffer, indexBuffer: any MTLBuffer, indexCount: Int,
          primitiveType: MTLPrimitiveType, worldTransform: simd_float4x4, instanceMatrix: simd_float4x4,
          material: MetalMaterial, nodeIndex: Int, negativeScale: Bool, centroid: SIMD3<Float> = .zero,
          opaqueGroup: String = "", meshIndex: Int = -1, restWeights: [Float] = [],
          morphBuffer: (any MTLBuffer)? = nil, morphTargetCount: Int = 0, morphVertexCount: Int = 0,
-         morphMask: UInt32 = 0) {
+         morphMask: UInt32 = 0, skinBuffer: (any MTLBuffer)? = nil, skinIndex: Int? = nil,
+         hasJoints1: Bool = false) {
         self.vertexBuffer = vertexBuffer
         self.indexBuffer = indexBuffer
         self.indexCount = indexCount
@@ -133,6 +140,9 @@ public struct MetalDraw {
         self.morphTargetCount = morphTargetCount
         self.morphVertexCount = morphVertexCount
         self.morphMask = morphMask
+        self.skinBuffer = skinBuffer
+        self.skinIndex = skinIndex
+        self.hasJoints1 = hasJoints1
     }
 }
 
@@ -160,17 +170,20 @@ public final class MetalScene: @unchecked Sendable {
     public let nodeParents: [Int]
     /// Load-time TRS and world matrix for each node, parallel to `asset.nodes`.
     let nodeRests: [MetalNodeRest]
+    /// Skins parallel to `asset.skins`. Draws point at these with `skinIndex`.
+    let skins: [MetalSkin]
     /// Children of each node, in index order. Used to push a posed parent into its subtree.
     let nodeChildren: [[Int]]
     let asset: GLTFAsset
 
-    init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight], asset: GLTFAsset, nodeRests: [MetalNodeRest]) {
+    init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight], asset: GLTFAsset, nodeRests: [MetalNodeRest], skins: [MetalSkin]) {
         self.draws = draws
         self.boundsMin = boundsMin
         self.boundsMax = boundsMax
         self.lights = lights
         self.asset = asset
         self.nodeRests = nodeRests
+        self.skins = skins
         let indices = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
         nodeParents = asset.nodes.map { node in node.parent.flatMap { indices[ObjectIdentifier($0)] } ?? -1 }
         var children = Array(repeating: [Int](), count: nodeParents.count)

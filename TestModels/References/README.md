@@ -10,7 +10,8 @@ loops in the other `GLTFInspectorTests/PixelDiff*.swift` files).
 
 | Set | Cases | How each is rendered |
 | --- | --- | --- |
-| `<sample>.png` | One per pinned Khronos sample in `manifest.json` | `MetalRenderer` at the manifest look, from the recorded camera pose (`PixelDiffMetalTests`) |
+| `<sample>.png` | One per pinned Khronos sample in `manifest.json` | `MetalRenderer` at the manifest look, from the recorded camera pose (`PixelDiffMetalTests`). Rest pose: no clip was active |
+| `Animated/<pose>.png` | `AnimatedMorphCube` at t = 0.5 and 1.0, `SimpleSkin` at t = 1.0 | Same look and a recorded camera, with one clip's `animation: {index, time}` (`AnimatedReferenceTests`). See [`Animated/README.md`](Animated/README.md) |
 | `Features/<case>.png` | Overlays, wireframe, orthographic, field of view, file cameras, a second scene, punctual lights, every debug channel, every environment and tone mapping | `ModelView` with its own fit, orbited to 30° / −20°, at 256² (`FeatureReferenceTests`, case list in `PixelDiffMetalTests.swift`) |
 
 ## The manifest
@@ -57,6 +58,10 @@ first.
 
 The generator is gated on a sentinel file (`REGENERATE`, `MEASURE_NOISE`) because `xcodebuild
 test` does not forward the shell environment.
+
+That script renders with Metal. It cannot mint a Khronos golden, and it rewrites every rest PNG
+in this folder. Animated poses are not entries here. Add them under [`Animated/`](Animated/README.md)
+and capture them with `./scripts/capture-khronos-animated-references.mjs`.
 
 The samples live in `TestModels/Khronos samples/` (gitignored). If a pinned sample is missing the
 suite **fails** rather than skipping: an empty run must not look like a passing one.

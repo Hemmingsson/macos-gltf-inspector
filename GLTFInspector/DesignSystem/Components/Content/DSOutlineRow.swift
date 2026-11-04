@@ -25,6 +25,8 @@ struct DSOutlineRow: View {
     private let isSelected: Bool
     private let isJoint: Bool
     private let badge: DSStatus?
+    /// Active animation clips target this scene-graph node.
+    private let showsAnimatedIndicator: Bool
     private let visibility: DSVisibility?
     private let onVisibility: (_ solo: Bool) -> Void
     private let onToggle: () -> Void
@@ -46,6 +48,7 @@ struct DSOutlineRow: View {
         isSelected: Bool = false,
         isJoint: Bool = false,
         badge: DSStatus? = nil,
+        showsAnimatedIndicator: Bool = false,
         visibility: DSVisibility? = nil,
         onVisibility: @escaping (_ solo: Bool) -> Void = { _ in },
         onToggle: @escaping () -> Void = {},
@@ -62,6 +65,7 @@ struct DSOutlineRow: View {
         self.isSelected = isSelected
         self.isJoint = isJoint
         self.badge = badge
+        self.showsAnimatedIndicator = showsAnimatedIndicator
         self.visibility = visibility
         self.onVisibility = onVisibility
         self.onToggle = onToggle
@@ -81,6 +85,12 @@ struct DSOutlineRow: View {
                     .font(.subheadline)
                     .foregroundStyle(badge.tint)
                     .accessibilityLabel(badge == .error ? "Has errors" : "Has warnings")
+            }
+            if showsAnimatedIndicator {
+                Image(systemName: "figure.walk.motion")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(DS.Color.Role.animation)
+                    .accessibilityLabel("Animated")
             }
             visibilityControl
         }

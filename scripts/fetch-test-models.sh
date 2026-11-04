@@ -3,26 +3,40 @@
 #
 #   ./scripts/fetch-test-models.sh
 #
-# The sample list is TestModels/References/manifest.json — the same file the pixel-diff
-# harness asserts against — so there is exactly one list to keep up to date. Each entry names
-# the upstream folder (`source`) and the files to fetch from it (`files`, primary model first);
-# the commit is pinned once at the top of the manifest (`samples.commit`).
+# The sample list is TestModels/References/manifest.json (rest stills) plus
+# TestModels/References/Animated/manifest.json (fixed-time poses). Both pin the same
+# commit. Each entry names the upstream folder (`source`) and the files to fetch
+# (`files`, primary model first). Animated entries use `sample` as the local folder
+# so a pose named AnimatedMorphCube-t0.5 reuses the AnimatedMorphCube download.
 # Opt-in. Not called from verify.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/TestModels/Khronos samples"
-MANIFEST="$ROOT/TestModels/References/manifest.json"
+MANIFESTS=(
+  "$ROOT/TestModels/References/manifest.json"
+  "$ROOT/TestModels/References/Animated/manifest.json"
+)
 
-# One "name<TAB>url<TAB>file" line per file to fetch.
-LIST="$(python3 - "$MANIFEST" <<'PY'
+# One "folder<TAB>url<TAB>file" line per file to fetch.
+LIST="$(python3 - "${MANIFESTS[@]}" <<'PY'
 import json, sys
-m = json.load(open(sys.argv[1]))
-s = m["samples"]
-base = f"https://raw.githubusercontent.com/{s['repository']}/{s['commit']}"
-for e in m["entries"]:
-    for f in e["files"]:
-        print(f"{e['name']}\t{base}/{e['source']}/{f}\t{f}")
+manifests = [json.load(open(path)) for path in sys.argv[1:]]
+pins = {(m["samples"]["repository"], m["samples"]["commit"]) for m in manifests}
+if len(pins) != 1:
+    raise SystemExit("reference manifests pin different sample commits: " + ", ".join(map(str, pins)))
+repository, commit = pins.pop()
+base = f"https://raw.githubusercontent.com/{repository}/{commit}"
+seen = set()
+for manifest in manifests:
+    for entry in manifest["entries"]:
+        folder = entry.get("sample", entry["name"])
+        for filename in entry["files"]:
+            key = (folder, filename)
+            if key in seen:
+                continue
+            seen.add(key)
+            print(f"{folder}\t{base}/{entry['source']}/{filename}\t{filename}")
 PY
 )"
 

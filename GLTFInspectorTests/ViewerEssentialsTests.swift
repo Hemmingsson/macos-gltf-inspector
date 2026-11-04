@@ -220,8 +220,8 @@ struct ViewerEssentialsTests {
         let one = overlayVertices(scene: scene, options: MetalOverlayOptions(selectedNode: 0)).count
         var both = MetalOverlayOptions(selectedNode: 0)
         both.selectedNodes = [0, 1]
-        #expect(one == 24)
-        #expect(overlayVertices(scene: scene, options: both).count == 48)
+        #expect(one == 0, "mesh selection uses the GPU silhouette, not an AABB overlay")
+        #expect(overlayVertices(scene: scene, options: both).count == 0)
     }
 
     // MARK: - ggq8r9uj auto-orthographic
@@ -351,7 +351,7 @@ struct ViewerEssentialsTests {
         #expect(overlayVertices(scene: scene, options: hovered).count == 24)
         var selected = MetalOverlayOptions(selectedNode: 1)
         selected.hoveredNode = 1
-        #expect(overlayVertices(scene: scene, options: selected).count == 24)
+        #expect(overlayVertices(scene: scene, options: selected).count == 0)
     }
 
     // MARK: - advg8yaq view modes

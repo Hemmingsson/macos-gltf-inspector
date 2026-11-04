@@ -39,6 +39,12 @@ struct CanvasRegion<Content: View>: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(DS.Color.Canvas.ground)
                         .ignoresSafeArea()
+                        .focusSection()
+                        .onKeyPress(.space) {
+                            guard view.canvas.showsAnimationTimeline else { return .ignored }
+                            view.canvas.togglePlayback()
+                            return .handled
+                        }
                         // The panes are the leading/trailing safe area: the renderer centres
                         // the model between them. The top band is title bar: drags there move
                         // the window. Written after layout, never during an update.
@@ -113,7 +119,15 @@ struct CanvasRegion<Content: View>: View {
                 DimensionsReadout(size: readout.size, name: readout.name)
                     .padding(OverlayMetrics.inset)
             }
+            .overlay(alignment: .bottom) {
+                if view.canvas.showsAnimationTimeline {
+                    AnimationTimelineHUD(canvas: view.canvas)
+                        .padding(.bottom, OverlayMetrics.inset)
+                        .padding(.horizontal, bottomOverlayClearance)
+                }
+            }
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: view.isCentered)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: view.canvas.showsAnimationTimeline)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isSidebarVisible)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isInspectorVisible)
     }
@@ -139,6 +153,11 @@ struct CanvasRegion<Content: View>: View {
         isInspectorVisible
             ? DS.Metrics.canvasClusterInset
             : DS.Metrics.glassControl + DS.Spacing.l + DS.Spacing.l + DS.Metrics.toolbarClearance
+    }
+
+    /// Keep the timeline between the navigation gizmo and the dimensions readout.
+    private var bottomOverlayClearance: CGFloat {
+        OverlayMetrics.inset + OverlayMetrics.navigationGizmoSize + DS.Spacing.xl
     }
 }
 

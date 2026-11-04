@@ -19,6 +19,9 @@ being added and verified as the review proceeds. This is a review, not a patch o
 
 ## Summary for the handoff (priority order)
 
+Backlog: epic `6ddtcd5k` ("Review fixes") breaks these findings into 11 L1s and 41 leaves, ordered by impact (`dex list 6ddtcd5k`).
+
+
 | ID | P | Defect | Probe |
 |----|---|--------|-------|
 | R15 | P1 | Frame Selection re-measures the scene: rest of model far-clipped, floor/gizmos resize | red |
@@ -44,8 +47,9 @@ being added and verified as the review proceeds. This is a review, not a patch o
 | A4 | P2 | `CanvasRegion` body and subtree bounds recomputed every camera frame | traced |
 | P-A1, P-A2 | P2 | (in progress) morph weights dropped without mesh defaults; malformed sampler traps | traced |
 | M03–M06, M08 | P2 | Overlays/bounds/lights on rest pose; frozen generated normals; dense morph memory; highlight ignores variants; clips parsed on main | traced |
+| H01–H06 | P2 | Playback/timeline: no replay after end, scrub fights playback, short clips loop with loop off, "All" mislabelled, HUD overlaps readout, vacuous tests | replay / traced |
 | V03, V05, V06 | P2 | Ortho retarget tilts view; turntable reads live camera; failed export destroys file | replay / traced |
-| R13, R14, A5–A8, P-A3, M07, M09, M10, V07–V11 | P3 | lookups, cycle guards, preview, range primary, pointer keys, highlight extent, skinned node transform, turntable pose, X-ray order, hover cost/insets, dimensions, totals | traced |
+| R13, R14, A5–A8, P-A3, M07, M09, M10, V07–V11, H07–H09 | P3 | lookups, cycle guards, preview, range primary, pointer keys, highlight extent, skinned node transform, turntable pose, X-ray order, hover cost/insets, dimensions, totals | traced |
 
 Common roots worth fixing once rather than per finding:
 0. **The animation pose reaches only `drawTransforms`** (M02, M03, M10, V04): picking, overlays,
@@ -838,6 +842,168 @@ accessor get that count once per primitive.
 `ggq8r9uj` (V01, V03). Partly — `lf9s93sq` (perspective zoom-to-pointer correct, ortho fails; V02/V03).
 **Not met with defaults** — `lusha0c3` (V02). `swrmm3ku`: frame count/duration tested, Quick Look
 playback never checked; V05/V06.
+
+## Pre-implementation notes for `huj04ed6` (GPU skinning), 2026-11-04 ~15:50
+
+Written while the ticket was in progress and before any loader or shader edits were on disk. The
+brief's shader formulas (`p = skin·pos` with no model matrix, the mesh node's normal matrix on
+`skinN·n`, `model·(skin·t)`) match research §2 and are the Khronos quirks, so this resolves M09.
+The risks are in what else must change when the CPU bake is removed:
+
+1. **Every pipeline needs the skin constants, not just the colour pass.** `MetalRenderer` keeps
+   three caches keyed only by `morphMask`: `pipeline` (`:533`), `pickPipeline` (`:521`) and
+   `capturePipeline` (`:558`). The transmission prepass and X-ray styles go through `pipeline`.
+   Today the CPU bake makes pick and capture correct for free. Once skin is GPU-only, any pass that
+   doesn't bind `hasSkin` and the joint buffer draws skinned meshes as raw bind-space positions
+   with no model matrix: wrong place, wrong pick, wrong capture. Add `hasSkin`/`hasJoints1` to all
+   three keys, and bind joints in `encodeScene`, `encodePick` and the capture encoder.
+2. **Picking needs the posed joints too (M02).** `pick` and `encodePick` pass `pose: nil`. With GPU
+   skinning that means bind or rest joints, while the canvas draws the posed ones. Thread
+   `animationPose` through `pick` → `sceneFrameSetup` → `encodePick` in the same change, or
+   skinned characters become unclickable during playback.
+3. **Morph before skin (M01).** In `khronos_vertex`, add the morph deltas to `pos/nrm/tan` before
+   applying `skin`/`skinN`. Defined test 2 already asserts this. Remove the CPU skin bake and the
+   post-skin morph in the same commit.
+4. **Rest bounds.** `boundsMin/Max` come from the baked vertices. Keep a one-off CPU skin for them,
+   applying morph first, then skin, as in M01. `bounds(ofNode:)` uses accessor min/max and is
+   unaffected; Frame Selection on a skinned mesh therefore still boxes the bind-space accessor
+   range × mesh world, which is the existing Khronos `subtreeAABB` behaviour.
+5. **Joints outside the scene / joint-count limits.** Joint worlds must come from the same posed walk
+   (`drawTransforms`) that already re-derives off-scene joints; `> 32` joints need a real buffer
+   (the brief says so). Bind it at the same index in all passes from item 1.
+6. **Rest-path identity.** With `hasSkin` false the rigid pipeline must be byte-identical, so the
+   pixel refs stay green. Skinned reference files (`rigged`, Fox, CesiumMan) will move by float
+   noise only if the CPU and GPU blends differ. Compare against the CPU bake within 1e-5 before
+   trusting the refs.
+
+## Pass 5 — playback model (`bi329hbl`) and timeline HUD (`sygpfhz7`)
+
+6.4a is in `c40b96a` plus an uncommitted `ModelCanvas.swift` diff; 6.4b is uncommitted. The
+playback logic (`play`/`tick`/`applyTimeDelta`, `wrappedAndClampedTime`) was replayed standalone.
+H01 and H06 were re-checked by the review lead (`play()` at `ModelCanvas.swift:131` has no rewind;
+`AnimationPlaybackTests` discards `waitUntil` results with `_ =`).
+
+Checked and correct: no jump on pause/resume; wall-clock × speed advance (no frame-rate drift);
+loop wrap handles large deltas; playback and auto-rotate share one display link; the link is
+invalidated off-window and at a non-loop end, with weak closures; `reset()` stops playback; a URL
+change resets clips and time; stale poses are index-guarded; sidebar rows map 1:1 to clips; 60 Hz
+invalidation stays inside `DSTimeline` except H08; Quick Look stays at rest; accessibility labels exist.
+
+### H01 · P2 · Play does nothing after a non-looping clip ends
+
+**Location:** `ModelCanvas.swift:131` (`play`), `:239–253` (`applyTimeDelta`).
+
+With loop off, playback stops at `time = duration`; `play()` doesn't rewind, so the next tick
+stops again. Play and Space only flicker until the user scrubs back. Same after switching to a
+shorter clip while paused past its end. Replayed: 2 s clip → `time=2.0 playing=false` after Play + tick.
+
+**Fix direction:** rewind in `play()` when `!loops && time >= playbackDuration`; clamp `time` when the selection changes.
+
+**Required regression:** loop off, past the end, `play()`, advance 0.1 → playing, `time ≈ 0.1`.
+
+### H02 · P2 · Scrubbing while playing fights the drag
+
+**Location:** `DSTimeline.swift:66–80` (no `onEditingChanged`), `ModelCanvas.swift:146` (`scrub` keeps playing).
+
+Holding the thumb still lets the clip run on under the cursor (replayed: 1.017, 1.033, 1.05 … with
+the drag held at 1.0); with loop off it can stop mid-drag.
+
+**Fix direction:** `isScrubbing` set from `Slider(onEditingChanged:)`; skip ticks while set; resume from the release time.
+
+**Required regression:** play, begin scrub, advance clock, tick → time unchanged; end scrub → advances.
+
+### H03 · P2 · With loop off, shorter clips still loop and stop at the wrong pose
+
+**Location:** `AnimationSampler.swift:98–109` (per-clip wrap), `ModelCanvas.swift:217` (global = longest clip).
+
+With clips of 1 s and 3 s and loop off, the short clip restarts at t = 1.33 (samples 0.33); the
+stopped frame shows it mid-cycle (1 s + 2.5 s → samples 0.5 instead of 1.0). Scrubbing has the same issue.
+
+**Fix direction:** when not looping, evaluate each clip at `min(time, clip.maxTime)` (a `wraps` flag on
+`AnimationPose(clips:at:)`); keep per-clip wrap for loop mode.
+
+**Required regression:** 1 s and 3 s clips, loop off, t = 2 → short clip's pose equals its t = 1 pose.
+
+### H04 · P2 · "All" is the disjoint default set, so the clip picker misreports what plays
+
+**Location:** `DSTimeline.swift:86,108–119`, `ModelCanvas.swift:167`, `AnimationClip.swift:34`.
+
+"All" maps to `defaultSelectedClipIndices` (first-come disjoint clips). On Fox (Survey, Walk, Run
+on one rig) "All" plays only Survey, and choosing Survey shows the title "All". No checkmarks.
+
+**Fix direction:** rename the entry ("Default"), or track an explicit selection; checkmark the current
+item; show the clip name when exactly one clip is active.
+
+**Required regression:** three same-target clips, select 0 → title is the clip name.
+
+### H05 · P2 · Timeline overlaps the dimensions readout at normal canvas widths (needs on-screen check)
+
+**Location:** `CanvasRegion.swift:119–127,159–161`, `DSTimeline.swift:35`.
+
+Side clearance is sized for the gizmo (108 pt each side), but the bottom-trailing readout is ~180 pt
+or wider and shares the bottom inset; the 520 pt HUD overlaps it below ~910 pt of canvas width, which
+is typical with both panes open. Below ~540 pt `minWidth: 320` pushes into the gizmo. The leaf's
+Result says on-screen was deferred.
+
+**Fix direction:** measure the readout for trailing clearance, or move the readout above the timeline while clips exist.
+
+**Required regression:** `CanvasRegion` at 800×600 with an animated fixture → HUD and readout frames
+don't intersect; light/dark screenshots.
+
+### H06 · P2 · Display-link and reload tests can't fail; HUD tests bypass the controls
+
+**Location:** `AnimationPlaybackTests.swift:19,117,122,132,144–155`; `TimelineHUDTests.swift:16,38–68,99–111`.
+
+`waitUntil` returns false on timeout and every call is `_ = try await waitUntil {…}`, so
+`displayLinkRunsOnlyWhilePlayingOrAutoRotating` passes even if the link never starts or stops (after a
+30 s wait). HUD tests call `canvas.play()` and set properties directly instead of pressing hosted
+controls; Space, the sidebar Animations row, the animated-row indicator and live morph weights are untested.
+
+**Fix direction:** `#expect(try await waitUntil {…})` (or `#require`); drive hosted controls via AX press/increment.
+
+**Required regression:** temporarily make `updateDisplayLink` never invalidate → the test fails.
+
+### H07 · P3 · Zero-duration selections play forever; time can sit past the clip end
+
+**Location:** `ModelCanvas.swift:103,131,239–244`.
+
+`play()` only checks that clips exist. A zero-duration clip (reachable from its sidebar row) makes
+time grow without bound at 60 Hz (replayed: 10 s of ticks → `time=10.0 playing=true`). Switching from
+3.5 s on a 4 s clip to a 1 s clip shows `00:03.50 / 00:01.00` with an out-of-range slider.
+
+**Fix direction:** guard `playbackDuration > 0` in `play()`; clamp `time` on selection change.
+
+**Required regression:** zero-duration clip, `play()` → not playing, link inactive.
+
+### H08 · P3 · Live morph weights re-render the whole Inspector at 60 Hz and miss node weights
+
+**Location:** `Inspector.swift:113–118`, `FactSections.swift:144–160`.
+
+`sections(for:)` reads `currentAnimationPose()` inside `Inspector.body`, so a selected morph during
+playback re-evaluates the whole Inspector and every active channel each frame on the main thread.
+It reads only `meshWeights`, so files whose weights channel targets node-authored weights show no live values.
+
+**Fix direction:** a small child view that reads the pose; look up `nodeWeights[node]` first; reuse the renderer's per-frame pose.
+
+**Required regression:** node-authored-weights fixture at mid-clip shows numeric weights.
+
+### H09 · P3 · DSTimeline breaks Design System layering; keyboard scrubbing is coarse
+
+**Location:** `DSTimeline.swift:1,22,35,52–80`, `DSOutlineRow.swift:89–94`.
+
+The only DS component that imports `Renderer`; depends on app-layer `OverlayMetrics.timelineHeight`;
+raw `Slider` with magic widths and fonts. `step: 0.01` snaps to 10 ms (1/30 s and 1/24 s keys can't
+be hit); arrows move 0.01 s per press.
+
+**Fix direction:** plain labels and a height token; a DS scrubber with `step: nil`, key snapping and
+~1/30 s and 1 s adjustable-action steps.
+
+**Required regression:** AX increment moves one frame step; the DS component builds without `import Renderer`.
+
+**Done-when status:** `bi329hbl` partly met — defined test 3 is vacuous (H06), no-loop and
+zero-duration behaviour wrong (H01, H03, H07). `sygpfhz7` **not met** — the required UI test of play and
+scrub through the controls and the light/dark on-screen screenshots are missing ("On-screen deferred");
+whether Space reaches `.onKeyPress` while `ModelView` is first responder is unverified.
 
 ## Provisional — animation clip/pose (in progress, not yet wired to the renderer)
 

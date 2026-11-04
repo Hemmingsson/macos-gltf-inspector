@@ -30,6 +30,7 @@ struct Sidebar: View {
                         view.frameSelection()
                     },
                     pointedNode: view.canvas.hoveredNode,
+                    animatedSceneNodes: view.canvas.animatedSceneNodeIndicesInSelection(),
                     showsTreeGuides: view.settings.showsTreeGuides
                 )
                 .documentReadyMarker()
@@ -88,6 +89,7 @@ struct Sidebar: View {
         switch item.id.kind {
         case .scene: view.sceneIndex = item.id.index
         case .camera: view.fileCameraNodeIndex = item.id.index
+        case .animation: view.canvas.selectAnimationClip(at: item.id.index)
         default: break
         }
     }

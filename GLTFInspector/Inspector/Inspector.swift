@@ -111,7 +111,11 @@ struct Inspector: View {
             AnimationSection(animation: document.animations[index])
             sectionEnd
         case .morph where document.morphs.indices.contains(index):
-            MorphSection(morph: document.morphs[index], meshName: document.displayName(of: id))
+            MorphSection(
+                morph: document.morphs[index],
+                meshName: document.displayName(of: id),
+                liveWeights: view.canvas.currentAnimationPose()?.meshWeights[document.morphs[index].meshIndex]
+            )
             sectionEnd
         case .scene where document.scenes.indices.contains(index):
             VStack(alignment: .leading, spacing: 0) {
