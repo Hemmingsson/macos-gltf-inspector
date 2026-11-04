@@ -15,15 +15,15 @@ public struct PreviewClip: Identifiable {
 
     /// Clips with positive finite duration from `entity.availableAnimations`.
     /// `id` is the index in that array (skipped unusable entries leave gaps).
-    /// When `document` is provided its authored name wins — GLTFKit2 invents `Animation1`
+    /// The `document` authored name wins — GLTFKit2 invents `Animation1`
     /// for clips the file left unnamed, and the inspector must not present that as authored.
     @MainActor
-    static func usable(on entity: Entity, document: GLTFSessionDocument? = nil) -> [PreviewClip] {
+    static func usable(on entity: Entity, document: GLTFSessionDocument) -> [PreviewClip] {
         var result: [PreviewClip] = []
         for (offset, resource) in entity.availableAnimations.enumerated() {
             guard let duration = EntityLoader.clipDuration(resource, on: entity) else { continue }
             let name: String
-            if let document, document.animations.indices.contains(offset) {
+            if document.animations.indices.contains(offset) {
                 name = document.animations[offset].name
                     .trimmingCharacters(in: .whitespacesAndNewlines)
             } else {
