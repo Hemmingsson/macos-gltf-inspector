@@ -414,7 +414,7 @@ final class ViewState {
         let nodes = Set(document.nodeIndices(usingMaterial: selection.index,
                                               materialVariantIndex: materialVariantIndex))
             .subtracting(hiddenNodes)
-        return (nodes, selection.index)
+        return (nodes, nodes.isEmpty ? nil : selection.index)
     }
 
     private func restoreStageAndLook() {
