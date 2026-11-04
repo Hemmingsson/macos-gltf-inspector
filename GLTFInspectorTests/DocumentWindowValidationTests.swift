@@ -78,8 +78,6 @@ struct DocumentWindowValidationTests {
         validatorVersion: "test",
         errorCount: 0,
         warningCount: 0,
-        infoCount: 0,
-        hintCount: 0,
         messages: []
     )
 }

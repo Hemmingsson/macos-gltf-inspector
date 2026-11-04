@@ -17,9 +17,6 @@ final class GLTFBinaryStore {
         self.fileURL = fileURL
     }
 
-    /// Empty store for callers that only have JSON (unit tests, sidecars we cannot reach).
-    static let unavailable = GLTFBinaryStore(json: [:], fileURL: nil)
-
     // MARK: - Accessors
 
     /// Float `SCALAR` accessor values — animation sampler inputs whose `min`/`max` are missing.

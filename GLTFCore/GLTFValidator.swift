@@ -19,8 +19,6 @@ public struct GLTFValidationReport: Sendable, Equatable {
     public var validatorVersion: String
     public var errorCount: Int
     public var warningCount: Int
-    public var infoCount: Int
-    public var hintCount: Int
     public var messages: [GLTFValidationIssue]
 
     /// Green badge when there are no errors or warnings (infos/hints OK).
@@ -32,11 +30,6 @@ public enum GLTFValidationState: Sendable, Equatable {
     case success(GLTFValidationReport)
     case failed(String)
     case skipped(String)
-
-    public var report: GLTFValidationReport? {
-        if case .success(let report) = self { return report }
-        return nil
-    }
 }
 
 /// Runs the official Khronos `gltf-validator` (Dart→JS) inside `JavaScriptCore`.
@@ -217,8 +210,6 @@ public enum GLTFValidator {
             validatorVersion: root["validatorVersion"] as? String ?? "unknown",
             errorCount: issues["numErrors"] as? Int ?? messages.filter(\.isError).count,
             warningCount: issues["numWarnings"] as? Int ?? messages.filter(\.isWarning).count,
-            infoCount: issues["numInfos"] as? Int ?? 0,
-            hintCount: issues["numHints"] as? Int ?? 0,
             messages: messages
         )
     }
