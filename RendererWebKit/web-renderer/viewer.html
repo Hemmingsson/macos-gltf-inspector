@@ -684,9 +684,7 @@ window.__viewer = {
         const parseMs = Math.round(performance.now() - t0);
         // A look scene of 0 keeps the file's default scene.
         state.sceneIndex = look.sceneIndex || (state.gltf.scene ?? 0);
-        const tFit = performance.now();
         fitCamera();
-        const fitMs = Math.round(performance.now() - tFit);
         const stats = view.gatherStatistics(state) ?? {};
         let firstFrameMs = 0;
         if (live) {
@@ -706,7 +704,6 @@ window.__viewer = {
             triangles: stats.faceCount ?? 0,
             meshes: stats.meshCount ?? 0,
             parseMs,
-            fitMs,
             firstFrameMs,
         };
     },

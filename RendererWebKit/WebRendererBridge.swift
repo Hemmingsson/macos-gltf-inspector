@@ -24,8 +24,6 @@ extension WebRendererHost {
         var height: Int
         /// Page-side `loadGltf` wall time in ms.
         var parseMs: Int
-        /// Page-side `fitCamera` wall time in ms.
-        var fitMs: Int
         /// Live only: first GPU `renderFrame` after parse. Zero in still mode.
         var firstFrameMs: Int
     }
@@ -43,7 +41,7 @@ extension WebRendererHost {
         var frameCount: Int
         var frameP50Ms: Double
         var frameP95Ms: Double
-        /// `polygonMode`, `cachedLines`, `perFrameCPU`, or `none`.
+        /// `polygonMode`, `cachedLines`, or `none`.
         var wireframePath: String
         /// Times `collectWireframe` ran. Must not grow on every still once the GPU/cached path is on.
         var wireframeCollects: Int
