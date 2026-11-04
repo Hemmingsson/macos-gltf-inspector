@@ -1,3 +1,4 @@
+import Metal
 import simd
 import Testing
 @testable import GLTFCore
@@ -19,6 +20,18 @@ struct SkeletonOverlayTests {
 
     private let accent = SIMD3<Float>(0.15, 0.75, 1)
     private let muted = SIMD3<Float>(0.45, 0.45, 0.45)
+
+    @Test func sceneJointNodeIndicesMatchLinearLookup() async throws {
+        let gpu = try #require(MTLCreateSystemDefaultDevice())
+        let scene = try await MetalSceneLoader.load(url: TestFixtures.rigged, device: gpu)
+        for skin in scene.asset.skins {
+            let linear = skin.joints.compactMap { joint in scene.asset.nodes.firstIndex(of: joint) }
+            #expect(scene.jointNodeIndices(skin: skin) == linear)
+        }
+        #expect(scene.isSkinJoint(1))
+        #expect(scene.isSkinJoint(2))
+        #expect(!scene.isSkinJoint(0))
+    }
 
     @Test func jointNodeIndicesMatchJSONJointOrder() {
         let document = GLTFDocumentJSON.makeDocument(json: [

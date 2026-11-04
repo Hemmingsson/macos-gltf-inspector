@@ -145,6 +145,25 @@ struct ModelCanvasControllerTests {
         #expect(try canvas.snapshot().width > 1)
     }
 
+    @Test func sceneClipsMatchLoaderAndSurviveFileRemoval() async throws {
+        let temp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("canvas-clips-\(UUID().uuidString).glb")
+        try FileManager.default.copyItem(at: TestFixtures.boxAnimated, to: temp)
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        let canvas = ModelCanvasController()
+        _ = mount(canvas, url: temp)
+        #expect(try await waitUntil { canvas.phase == .ready })
+        let scene = try #require(canvas.scene)
+        let expected = try AnimationClipLoader.loadClips(from: scene.asset)
+        #expect(scene.clips.map(\.name) == expected.map(\.name))
+        #expect(!canvas.animationClips.isEmpty)
+
+        try FileManager.default.removeItem(at: temp)
+        #expect(canvas.animationClips.count == expected.count)
+        #expect(canvas.scene?.clips.count == expected.count)
+    }
+
     @Test func zoomPercentFollowsCameraCommands() async throws {
         let canvas = ModelCanvasController()
         _ = mount(canvas, url: TestFixtures.cube)
