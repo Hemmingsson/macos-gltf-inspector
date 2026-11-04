@@ -16,7 +16,7 @@ struct EngineSceneModel: SceneModel {
     var skins: [SkinInfo]
     var morphs: [MorphInfo]
     var materialVariantNames: [String]
-    var stats: Stats
+    var fileSizeBytes: Int64?
     var dimensions: Dimensions
     var validation: ValidationResult
 
@@ -59,11 +59,11 @@ struct EngineSceneModel: SceneModel {
         self.animations = Self.mapAnimations(document.animations)
         self.skins = Self.mapSkins(document.skins)
         self.morphs = Self.mapMorphs(document.morphs)
-        self.stats = Self.mapStats(stats)
+        self.fileSizeBytes = stats.fileSizeBytes
         self.dimensions = dimensions
     }
 
-    /// Re-snapshot with a resolved validation outcome (same document / stats / dimensions).
+    /// Re-snapshot with a resolved validation outcome (same document / file size / dimensions).
     func replacingValidation(_ state: GLTFValidationState?) -> EngineSceneModel {
         var copy = self
         copy.validation = Self.mapValidation(state)
@@ -308,15 +308,6 @@ extension EngineSceneModel {
             index: index,
             meshName: displayName(morph.meshName, fallback: "Mesh \(morph.meshIndex)"),
             targetNames: morph.targetNames
-        )
-    }
-
-    private static func mapStats(_ stats: PreviewStats) -> Stats {
-        Stats(
-            triangleCount: stats.triangleCount,
-            textureCount: stats.textureCount,
-            maxTextureDimension: stats.maxTextureEdge,
-            fileSizeBytes: stats.fileSizeBytes
         )
     }
 

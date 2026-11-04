@@ -1,27 +1,5 @@
 import Foundation
 
-/// File facts under the sidebar's document card. Materials and animations are not counted here:
-/// the outliner lists them.
-public struct Stats: Sendable, Hashable {
-    public var triangleCount: Int
-    public var textureCount: Int
-    /// Largest texture edge in pixels ("max 2048²"). Nil when there are no textures.
-    public var maxTextureDimension: Int?
-    public var fileSizeBytes: Int64?
-
-    public init(
-        triangleCount: Int = 0,
-        textureCount: Int = 0,
-        maxTextureDimension: Int? = nil,
-        fileSizeBytes: Int64? = nil
-    ) {
-        self.triangleCount = triangleCount
-        self.textureCount = textureCount
-        self.maxTextureDimension = maxTextureDimension
-        self.fileSizeBytes = fileSizeBytes
-    }
-}
-
 /// glTF-validator output, surfaced verbatim — "is the file wrong, or are we?".
 public struct ValidationResult: Sendable, Hashable {
     public struct Issue: Sendable, Hashable, Identifiable {

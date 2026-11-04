@@ -26,7 +26,8 @@ public protocol SceneModel: Sendable {
     /// `KHR_materials_variants` names in file order. Empty when the extension is absent.
     var materialVariantNames: [String] { get }
 
-    var stats: Stats { get }
+    /// Shown on the sidebar document card. Nil when the size is unknown.
+    var fileSizeBytes: Int64? { get }
     var dimensions: Dimensions { get }
     /// glTF-validator findings, surfaced as-is.
     var validation: ValidationResult { get }

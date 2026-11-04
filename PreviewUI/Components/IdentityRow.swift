@@ -5,8 +5,7 @@ import SwiftUI
 struct IdentityRow: View {
     var name: String
     var subtitle: String
-    /// Nil draws the document glyph (the whole model is selected).
-    var role: DSTypeRole?
+    var role: DSTypeRole
 
     init(name: String, kind: NodeKind) {
         self.name = name
@@ -14,24 +13,9 @@ struct IdentityRow: View {
         self.role = DSTypeRole(rawValue: kind.rawValue) ?? .empty
     }
 
-    /// The whole model: file name and file kind beside the document glyph.
-    init(documentName: String, kind: String) {
-        self.name = documentName
-        self.subtitle = kind
-        self.role = nil
-    }
-
     var body: some View {
         HStack(alignment: .center, spacing: DS.Spacing.m) {
-            if let role {
-                DSTypeIcon(role)
-            } else {
-                Image(systemName: "cube")
-                    .font(DS.Font.body)
-                    .imageScale(.large)
-                    .foregroundStyle(DS.Color.accent)
-                    .accessibilityHidden(true)
-            }
+            DSTypeIcon(role)
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(name)

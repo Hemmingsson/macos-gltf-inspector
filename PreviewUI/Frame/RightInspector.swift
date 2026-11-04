@@ -1,29 +1,18 @@
 import DesignSystem
 import SwiftUI
 
-/// Right column — the selected outliner row, or the whole model when the document card is
-/// selected (name, file kind, validation). Closed when nothing is selected.
+/// Right column — the selected outliner row. Closed when nothing is selected.
 ///
 /// Node sections bind to `selection.detail` and omit fields the node type does not have.
 /// `openInMenu` is menu items (Finder, Blender, …); the header wraps them in `DSGlassMenuButton`.
 struct RightInspector<Selection: SelectionModel>: View {
     var selection: Selection
     var documentState: ShellDocumentState = .ready
-    /// Set while the whole model is selected; wins over `selection.detail`.
-    var document: DocumentSummary? = nil
     var openInMenu: AnyView
-
-    /// What the inspector shows for the whole model.
-    struct DocumentSummary {
-        var fileName: String
-        var validation: ValidationResult
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if documentState.isReady, let document {
-                documentInspector(document)
-            } else if documentState.isReady, let detail = selection.detail {
+            if documentState.isReady, let detail = selection.detail {
                 header(detail)
 
                 ScrollView {
@@ -50,22 +39,6 @@ struct RightInspector<Selection: SelectionModel>: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
-    }
-
-    private func documentInspector(_ document: DocumentSummary) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            IdentityRow(
-                documentName: DocumentIdentity.title(document.fileName),
-                kind: DocumentIdentity.kind(document.fileName) ?? "glTF"
-            )
-            ScrollView {
-                ValidationSection(validation: document.validation)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, DS.Spacing.xl)
-            }
-            .focusSection()
-        }
-        .accessibilityElement(children: .contain)
     }
 
     private func header(_ detail: NodeDetail) -> some View {

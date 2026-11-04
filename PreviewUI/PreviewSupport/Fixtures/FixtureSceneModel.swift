@@ -12,7 +12,7 @@ public struct FixtureSceneModel: SceneModel {
   public var skins: [SkinInfo]
   public var morphs: [MorphInfo]
   public var materialVariantNames: [String]
-  public var stats: Stats
+  public var fileSizeBytes: Int64?
   public var dimensions: Dimensions
   public var validation: ValidationResult
 
@@ -27,7 +27,7 @@ public struct FixtureSceneModel: SceneModel {
     skins: [SkinInfo] = [],
     morphs: [MorphInfo] = [],
     materialVariantNames: [String] = [],
-    stats: Stats,
+    fileSizeBytes: Int64? = nil,
     dimensions: Dimensions,
     validation: ValidationResult = ValidationResult()
   ) {
@@ -41,7 +41,7 @@ public struct FixtureSceneModel: SceneModel {
     self.skins = skins
     self.morphs = morphs
     self.materialVariantNames = materialVariantNames
-    self.stats = stats
+    self.fileSizeBytes = fileSizeBytes
     self.dimensions = dimensions
     self.validation = validation
   }
@@ -67,12 +67,7 @@ public struct FixtureSceneModel: SceneModel {
     scenes: [cubeScene],
     nodeTree: cubeNodeTree,
     materials: [MaterialFixtures.cube],
-    stats: Stats(
-      triangleCount: 12,
-      textureCount: 2,
-      maxTextureDimension: 256,
-      fileSizeBytes: 4_096
-    ),
+    fileSizeBytes: 4_096,
     dimensions: Dimensions(width: 1, height: 1, depth: 1)
   )
 
@@ -91,12 +86,7 @@ public struct FixtureSceneModel: SceneModel {
       ])
     ],
     materials: [MaterialFixtures.cube, MaterialFixtures.fullPBR],
-    stats: Stats(
-      triangleCount: 8_420,
-      textureCount: 6,
-      maxTextureDimension: 2048,
-      fileSizeBytes: 1_048_576
-    ),
+    fileSizeBytes: 1_048_576,
     dimensions: Dimensions(width: 12, height: 4, depth: 8)
   )
 
@@ -125,11 +115,6 @@ public struct FixtureSceneModel: SceneModel {
       )
     ],
     materials: [MaterialFixtures.cube],
-    stats: Stats(
-      triangleCount: 2_400,
-      textureCount: 2,
-      maxTextureDimension: 512
-    ),
     dimensions: Dimensions(width: 0.8, height: 1.2, depth: 0.8)
   )
 }

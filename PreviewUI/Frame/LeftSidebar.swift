@@ -1,8 +1,7 @@
 import DesignSystem
 import SwiftUI
 
-/// Left column — structure. The document card and its facts say which file this is; the outliner
-/// says what is in it.
+/// Left column — structure. The document says which file this is; the outliner says what is in it.
 ///
 /// Generic over both seam types rather than taking existentials: `SceneModel` has `Self`
 /// requirements through its default implementations.
@@ -15,10 +14,8 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
     /// Visual state of the leading chrome toggle (accent while the column is open).
     var isSidebarVisible: Bool = true
     var onToggleSidebar: () -> Void = {}
-    /// The whole model is selected (document inspector open).
-    var isDocumentSelected = false
-    /// Clicking the document card selects the whole model.
-    var onSelectDocument: () -> Void = {}
+    /// Measured height of the validation footer's content; the footer shows up to 280 pt of it.
+    @State private var validationHeight: CGFloat = 0
 
     var body: some View {
         Group {
@@ -29,10 +26,10 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
                     onActivate: activate
                 )
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        documentCard
-                        FileSection(stats: model.stats, fileName: model.fileName)
-                    }
+                    documentCard
+                }
+                .safeAreaBar(edge: .bottom, spacing: 0) {
+                    validationFooter
                 }
             } else {
                 VStack(alignment: .leading, spacing: 0) {
@@ -59,13 +56,27 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
     private var documentCard: some View {
         DocumentHeader(
             fileName: documentState.isReady ? model.fileName : documentState.panelDocumentTitle,
-            subtitle: documentState.isReady ? DocumentIdentity.kind(model.fileName) : nil,
+            fileSizeBytes: documentState.isReady ? model.fileSizeBytes : nil,
             variantNames: documentState.isReady ? model.materialVariantNames : [],
             selectedVariantIndex: viewport.selectedMaterialVariantIndex,
-            onSelectVariant: { viewport.setMaterialVariant($0) },
-            isSelected: documentState.isReady && isDocumentSelected,
-            onSelect: documentState.isReady ? onSelectDocument : nil
+            onSelectVariant: { viewport.setMaterialVariant($0) }
         )
+    }
+
+    /// glTF-validator result, pinned under the outliner. A long issue list scrolls inside a capped
+    /// footer rather than pushing the outliner off screen.
+    private var validationFooter: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider()
+            ScrollView {
+                ValidationSection(validation: model.validation)
+                    .padding(.bottom, DS.Spacing.s)
+                    .onGeometryChange(for: CGFloat.self, of: \.size.height) { validationHeight = $0 }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: min(validationHeight, 280))
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private func activate(_ item: OutlinerItem) {
