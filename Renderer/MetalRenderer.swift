@@ -311,7 +311,11 @@ public final class MetalRenderer: @unchecked Sendable {
 
     func frameDraws(options: ViewOptions, animationPose: AnimationPose?, view: simd_float4x4) -> MetalFrameDraws {
         guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
-        let posed = scene.framePose(pose: animationPose)
+        return frameDraws(options: options, posed: scene.framePose(pose: animationPose), view: view)
+    }
+
+    func frameDraws(options: ViewOptions, posed: SceneFramePose, view: simd_float4x4) -> MetalFrameDraws {
+        guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
         var order = drawLists.frame(draws: scene.draws, models: posed.transforms.map(\.model), view: view)
         let filter = MetalDrawFilter(options)
         if !filter.isEmpty {
@@ -351,7 +355,8 @@ public final class MetalRenderer: @unchecked Sendable {
             camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
         }
         let filter = MetalDrawFilter(options)
-        let nodeWorlds = scene.framePose(pose: animationPose).nodeWorlds
+        let posedFrame = scene.framePose(pose: animationPose)
+        let nodeWorlds = posedFrame.nodeWorlds
         let lights = scene.posedLights(filter.visibleLights(in: scene), worlds: nodeWorlds)
         var frame = GPUFrame(viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix,
                              cameraPosition: SIMD4(camera.eye, 1),
@@ -369,7 +374,7 @@ public final class MetalRenderer: @unchecked Sendable {
             viewportAspect = fileCamera.viewportAspect
         }
         let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
-        let posed = frameDraws(options: options, animationPose: animationPose, view: view)
+        let posed = frameDraws(options: options, posed: posedFrame, view: view)
         return SceneFrameSetup(frame: frame, view: view, viewport: viewport, viewportAspect: viewportAspect,
                                lights: lights, transforms: posed.transforms, nodeWorlds: posed.nodeWorlds,
                                mainDraws: posed.main,

@@ -404,11 +404,28 @@ extension MetalScene {
         guard asset.nodes.indices.contains(index) else { return nil }
         var box = Self.emptyBox
         var stack = [asset.nodes[index]]
-        while let node = stack.popLast() {
-            stack.append(contentsOf: node.childNodes)
-            let nodeIndex = asset.nodes.firstIndex(of: node)
-            let world = nodeIndex.flatMap { worldMatrix(ofNode: $0, worlds: worlds) } ?? worldMatrix(node)
-            expand(&box, node: node, world: world)
+        if let worlds {
+            // One identity map for the walk. `firstIndex(of:)` per child is quadratic on a large file.
+            var indexOf: [ObjectIdentifier: Int] = [:]
+            indexOf.reserveCapacity(asset.nodes.count)
+            for (nodeIndex, node) in asset.nodes.enumerated() {
+                indexOf[ObjectIdentifier(node)] = nodeIndex
+            }
+            while let node = stack.popLast() {
+                stack.append(contentsOf: node.childNodes)
+                let world: simd_float4x4
+                if let nodeIndex = indexOf[ObjectIdentifier(node)], worlds.indices.contains(nodeIndex) {
+                    world = worlds[nodeIndex]
+                } else {
+                    world = worldMatrix(node)
+                }
+                expand(&box, node: node, world: world)
+            }
+        } else {
+            while let node = stack.popLast() {
+                stack.append(contentsOf: node.childNodes)
+                expand(&box, node: node)
+            }
         }
         if !box.min.x.isFinite {
             guard let originMatrix = worldMatrix(ofNode: index, worlds: worlds) else { return nil }
