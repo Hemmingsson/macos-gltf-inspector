@@ -13,15 +13,15 @@ struct ViewSettingsPane: View {
             }
 
             Section("Appearance") {
-                DSMenuPicker("Background", selection: $settings.backdrop, options: BackdropStyle.allCases) { $0.title }
+                DSPicker("Background", selection: $settings.backdrop, options: BackdropStyle.allCases, style: .menu) { $0.title }
             }
 
             // Quick Look and thumbnails read these too, so a file's Finder icon matches how it opens.
             Section {
-                DSMenuPicker("Environment", selection: $settings.environment,
-                             options: LightingEnvironment.allCases) { $0.fullTitle }
-                DSMenuPicker("Tone mapping", selection: $settings.toneMapping,
-                             options: RenderLook.ToneMapping.allCases) { $0.title }
+                DSPicker("Environment", selection: $settings.environment,
+                         options: LightingEnvironment.allCases, style: .menu) { $0.fullTitle }
+                DSPicker("Tone mapping", selection: $settings.toneMapping,
+                         options: RenderLook.ToneMapping.allCases, style: .menu) { $0.title }
             }
         }
         .settingsFormChrome()

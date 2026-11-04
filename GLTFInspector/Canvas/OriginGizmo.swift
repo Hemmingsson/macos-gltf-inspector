@@ -55,7 +55,7 @@ struct OriginGizmo: View {
                 .allowsHitTesting(false)
 
                 Circle()
-                    .fill(DS.Color.textTertiary)
+                    .fill(.tertiary)
                     .frame(width: 6, height: 6)
                     .position(origin)
 
@@ -67,8 +67,8 @@ struct OriginGizmo: View {
                             horizontalPadding: DS.Spacing.m
                         ) {
                             Text(tag)
-                                .font(DS.Font.micro)
-                                .foregroundStyle(DS.Color.textSecondary)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .fixedSize()
                         }

@@ -13,13 +13,15 @@ struct ViewModeMenu: View {
             style: .titled(view.viewMode.title),
             isEngaged: view.viewMode != .shaded
         ) {
-            DSInlineMenuPicker("View mode", selection: $view.viewMode) {
+            Picker("View mode", selection: $view.viewMode) {
                 ForEach(view.viewModes, id: \.self) { mode in
                     Text(mode.title)
                         .tag(mode)
                         .keyboardShortcutIfAvailable(Shortcuts.viewMode(mode))
                 }
             }
+            .pickerStyle(.inline)
+            .labelsHidden()
         }
         .contentTransition(.identity)
     }

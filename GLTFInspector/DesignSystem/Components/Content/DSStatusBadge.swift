@@ -27,10 +27,10 @@ struct DSStatusBadge: View {
                 .foregroundStyle(status.tint)
                 .accessibilityHidden(true)
             Text(title)
-                .foregroundStyle(DS.Color.textPrimary)
+                .foregroundStyle(.primary)
             Spacer(minLength: 0)
         }
-        .font(DS.Font.body.weight(.medium))
+        .font(.body.weight(.medium))
         .padding(.horizontal, DS.Spacing.l)
         .padding(.vertical, DS.Spacing.m)
         .background(status.fill, in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))

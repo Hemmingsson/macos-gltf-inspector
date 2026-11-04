@@ -3,7 +3,7 @@ import SwiftUI
 /// A compact fact tag — "12 tris", "1 UV set", "Base", "Normal". Lay several out with
 /// `DSFlowLayout`.
 ///
-/// `.secondary` text on the quietest vibrant fill (`DS.Color.cardFill`, `.quinary`) at
+/// `.secondary` text on the quietest vibrant fill (`HierarchicalShapeStyle.quinary`, `.quinary`) at
 /// `DS.Radius.small`, so chips stay legible on glass without competing with values. Digits are
 /// monospaced so counts in neighbouring chips do not jitter. Not interactive.
 struct DSChip: View {
@@ -28,10 +28,10 @@ struct DSChip: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .font(DS.Font.subheadline.monospacedDigit())
-        .foregroundStyle(DS.Color.textSecondary)
+        .font(.subheadline.monospacedDigit())
+        .foregroundStyle(.secondary)
         .padding(.horizontal, DS.Spacing.m)
         .padding(.vertical, DS.Spacing.xxs)
-        .background(DS.Color.cardFill, in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
+        .background(.quinary, in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
     }
 }

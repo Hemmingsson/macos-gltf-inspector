@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One layer-list row: indent, type glyph, title — sized like a design tool's layer list
-/// (`DS.Font.outlineRow`, 11 pt).
+/// (`Font.subheadline`, 11 pt).
 ///
 /// A row with children has no separate disclosure column. Its glyph slot shows the type glyph
 /// (a folder for a group) and turns into a chevron while the pointer is over the row; clicking the
@@ -43,14 +43,14 @@ struct DSOutlineRow: View {
         HStack(spacing: DS.Spacing.s) {
             glyphSlot
             Text(title)
-                .font(DS.Font.outlineRow)
-                .foregroundStyle(DS.Color.textPrimary)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
             if let badge {
                 Image(systemName: badge.systemImage)
-                    .font(DS.Font.outlineRow)
+                    .font(.subheadline)
                     .foregroundStyle(badge.tint)
                     .accessibilityLabel(badge == .error ? "Has errors" : "Has warnings")
             }
@@ -69,9 +69,9 @@ struct DSOutlineRow: View {
         if let isExpanded, isHovered {
             Button(action: onToggle) {
                 Image(systemName: "chevron.right")
-                    .font(DS.Font.micro.weight(.semibold))
+                    .font(.caption2.weight(.semibold))
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .foregroundStyle(DS.Color.textPrimary)
+                    .foregroundStyle(.primary)
                     .frame(width: side, height: side)
                     .background(Circle().fill(.quaternary))
                     .contentShape(Circle())
@@ -83,7 +83,7 @@ struct DSOutlineRow: View {
                 role,
                 isGroup: isExpanded != nil,
                 isSelected: isSelected,
-                font: DS.Font.outlineRow
+                font: Font.subheadline
             )
         }
     }

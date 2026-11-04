@@ -15,13 +15,15 @@ struct ViewMenu: View {
         ) {
             ViewportZoomCommands(view: view)
             Divider()
-            DSInlineMenuPicker("Camera", selection: preset) {
+            Picker("Camera", selection: preset) {
                 ForEach(CameraPreset.allCases) { preset in
                     Label(preset.title, systemImage: preset.systemImage)
                         .tag(Optional(preset))
                         .keyboardShortcutIfAvailable(Shortcuts.cameraPreset(preset))
                 }
             }
+            .pickerStyle(.inline)
+            .labelsHidden()
         }
     }
 

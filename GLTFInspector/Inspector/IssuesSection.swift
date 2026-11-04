@@ -11,7 +11,7 @@ struct IssuesSection: View {
         if !issues.isEmpty {
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
                 ForEach(issues) { issue in
-                    DSInlineIssue(issue.message, status: issue.severity.dsStatus)
+                    InlineIssue(issue.message, status: issue.severity.dsStatus)
                 }
             }
             .padding(.horizontal, DS.Spacing.l)
@@ -19,6 +19,46 @@ struct IssuesSection: View {
             .padding(.bottom, DS.Spacing.xs)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Validation issues")
+        }
+    }
+}
+
+/// One finding on the status wash, where it applies.
+private struct InlineIssue: View {
+    private let text: String
+    private let status: DSStatus
+
+    init(_ text: String, status: DSStatus = .warning) {
+        self.text = text
+        self.status = status
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.m) {
+            Image(systemName: status.systemImage)
+                .font(.caption)
+                .foregroundStyle(status.tint)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, DS.Spacing.l)
+        .padding(.vertical, DS.Spacing.m)
+        .background(status.fill, in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(verbatim: "\(Self.spokenPrefix(status)) \(text)"))
+    }
+
+    private static func spokenPrefix(_ status: DSStatus) -> String {
+        switch status {
+        case .error: "Error:"
+        case .warning: "Warning:"
+        case .note: "Note:"
+        case .valid, .pending: ""
         }
     }
 }

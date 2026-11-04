@@ -64,13 +64,13 @@ struct DSDocumentCard<Accessory: View>: View {
         .background {
             ZStack {
                 shape.fill(DS.Color.controlBackground)
-                if isSelected { shape.fill(DS.Color.selectionFill) }
+                if isSelected { shape.fill(Color.accentColor.opacity(0.14)) }
             }
         }
         .overlay(
             shape.strokeBorder(
-                isSelected ? AnyShapeStyle(DS.Color.accent) : AnyShapeStyle(DS.Color.separator),
-                lineWidth: DS.Metrics.cellStrokeWidth
+                isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(DS.Color.separator),
+                lineWidth: DS.Metrics.hairline
             )
         )
     }
@@ -78,21 +78,21 @@ struct DSDocumentCard<Accessory: View>: View {
     private var titleRow: some View {
         HStack(spacing: DS.Spacing.m) {
             Image(systemName: systemImage)
-                .font(DS.Font.body)
+                .font(.body)
                 .imageScale(.large)
-                .foregroundStyle(DS.Color.accent)
+                .foregroundStyle(Color.accentColor)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(title)
-                    .font(DS.Font.bodyEmphasized)
-                    .foregroundStyle(DS.Color.textPrimary)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 if let subtitle {
                     Text(subtitle)
-                        .font(DS.Font.subheadline)
-                        .foregroundStyle(DS.Color.textSecondary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }

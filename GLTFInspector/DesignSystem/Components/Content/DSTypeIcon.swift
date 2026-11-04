@@ -49,12 +49,12 @@ struct DSTypeIcon: View {
 
     /// - Parameters:
     ///   - isGroup: an empty node that holds children — drawn as a folder, like a layer group.
-    ///   - font: glyph size; a compact row passes `DS.Font.outlineRow`.
+    ///   - font: glyph size; a compact row passes `Font.subheadline`.
     init(
         _ role: NodeKind,
         isGroup: Bool = false,
         isSelected: Bool = false,
-        font: Font = DS.Font.body
+        font: Font = Font.body
     ) {
         self.role = role
         self.isGroup = isGroup
@@ -69,7 +69,7 @@ struct DSTypeIcon: View {
     var body: some View {
         Image(systemName: systemImage)
             .font(font)
-            .foregroundStyle(isSelected ? AnyShapeStyle(DS.Color.textPrimary) : AnyShapeStyle(role.tint))
+            .foregroundStyle(isSelected ? AnyShapeStyle(HierarchicalShapeStyle.primary) : AnyShapeStyle(role.tint))
             .frame(width: side, height: side)
             .accessibilityHidden(true)
     }

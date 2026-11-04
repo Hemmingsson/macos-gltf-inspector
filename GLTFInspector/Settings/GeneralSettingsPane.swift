@@ -15,7 +15,7 @@ struct GeneralSettingsPane: View {
     var body: some View {
         Form {
             Section("Appearance") {
-                DSMenuPicker("Appearance", selection: $settings.appearance, options: AppAppearance.allCases) { $0.title }
+                DSPicker("Appearance", selection: $settings.appearance, options: AppAppearance.allCases, style: .menu) { $0.title }
             }
 
             if showsDefaultApp {
@@ -42,7 +42,7 @@ struct GeneralSettingsPane: View {
             if let defaultAppError {
                 Section {
                     Text(defaultAppError)
-                        .foregroundStyle(DS.Color.error)
+                        .foregroundStyle(Color.red)
                 }
             }
         }

@@ -17,12 +17,12 @@ struct LightingPopover: View {
                          reading: { $0.formatted(.number.precision(.fractionLength(1)).sign(strategy: .always())) + " EV" })
                 DSSlider("Environment", value: $view.environmentYaw, in: 0...360, step: 1,
                          accessibilityLabel: "Environment rotation", reading: degrees)
-                DSSegmentedPicker("Environment", selection: $view.environment,
-                                  options: LightingEnvironment.allCases) { $0.title }
+                DSPicker("Environment", selection: $view.environment,
+                         options: LightingEnvironment.allCases, style: .segmented) { $0.title }
                 // A glTF file carries no tone mapping, so this is the app's call and it belongs
                 // on screen.
-                DSMenuPicker("Tone mapping", selection: $view.toneMapping,
-                             options: RenderLook.ToneMapping.allCases) { $0.title }
+                DSPicker("Tone mapping", selection: $view.toneMapping,
+                         options: RenderLook.ToneMapping.allCases, style: .menu) { $0.title }
             }
         }
     }

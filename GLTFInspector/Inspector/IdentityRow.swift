@@ -18,12 +18,12 @@ struct IdentityRow: View {
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(name)
-                    .font(DS.Font.bodyEmphasized)
-                    .foregroundStyle(DS.Color.textPrimary)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(subtitle)
-                    .font(DS.Font.subheadline)
-                    .foregroundStyle(DS.Color.textSecondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 

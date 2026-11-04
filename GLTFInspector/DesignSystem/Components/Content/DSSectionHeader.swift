@@ -17,7 +17,7 @@ struct DSSectionHeader: View {
     var body: some View {
         Text(title)
             .dsSectionHeader()
-            .foregroundStyle(DS.Color.textSecondary)
+            .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
     }

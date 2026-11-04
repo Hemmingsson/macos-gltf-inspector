@@ -21,10 +21,11 @@ struct DocumentHeader: View {
                 DSDocumentCard(title, subtitle: subtitle)
             } else {
                 DSDocumentCard(title, subtitle: subtitle) {
-                    DSMenuPicker(
+                    DSPicker(
                         "Material variant",
                         selection: $selectedVariantIndex,
                         options: [nil] + variantNames.indices.map { Optional($0) },
+                        style: .menu,
                         labelVisibility: .hidden
                     ) { $0.map { variantNames[$0] } ?? "Default" }
                     .controlSize(.small)

@@ -28,20 +28,20 @@ enum DSStatus: Sendable, Hashable, CaseIterable {
     /// Glyph colour.
     var tint: AnyShapeStyle {
         switch self {
-        case .valid: AnyShapeStyle(DS.Color.success)
-        case .warning: AnyShapeStyle(DS.Color.warning)
-        case .error: AnyShapeStyle(DS.Color.error)
-        case .pending, .note: AnyShapeStyle(DS.Color.textSecondary)
+        case .valid: AnyShapeStyle(Color.green)
+        case .warning: AnyShapeStyle(Color.orange)
+        case .error: AnyShapeStyle(Color.red)
+        case .pending, .note: AnyShapeStyle(HierarchicalShapeStyle.secondary)
         }
     }
 
     /// Background wash behind a badge or card.
     var fill: AnyShapeStyle {
         switch self {
-        case .valid: AnyShapeStyle(DS.Color.successFill)
-        case .warning: AnyShapeStyle(DS.Color.warningFill)
-        case .error: AnyShapeStyle(DS.Color.errorFill)
-        case .pending, .note: AnyShapeStyle(DS.Color.cardFill)
+        case .valid: AnyShapeStyle(Color.green.opacity(0.14))
+        case .warning: AnyShapeStyle(Color.orange.opacity(0.14))
+        case .error: AnyShapeStyle(Color.red.opacity(0.14))
+        case .pending, .note: AnyShapeStyle(HierarchicalShapeStyle.quinary)
         }
     }
 }

@@ -17,8 +17,8 @@ struct DSValueCell: View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
 
         Text(text)
-            .font(DS.Font.value)
-            .foregroundStyle(DS.Color.textPrimary)
+            .font(.callout.monospacedDigit())
+            .foregroundStyle(.primary)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .textSelection(.enabled)
@@ -27,6 +27,6 @@ struct DSValueCell: View {
             .padding(.vertical, DS.Spacing.xs)
             .background(DS.Color.controlBackground, in: shape)
             // `strokeBorder`, not `stroke`: a stroke straddles the edge and spills outside it.
-            .overlay(shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.cellStrokeWidth))
+            .overlay(shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline))
     }
 }

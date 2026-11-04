@@ -6,7 +6,7 @@ import SwiftUI
 /// Label leading in `.secondary` callout; the bar takes the trailing half of the row so stacked
 /// rows line up whatever their label length. The bar is a `DSValueCell`-style box (opaque
 /// `DS.Color.controlBackground`, `DS.Color.separator` hairline, `DS.Radius.small`) filled from the
-/// leading edge by `DS.Color.factorFill` in proportion to `value` within `range`, with the reading
+/// leading edge by `Color.accentColor.opacity(0.45)` in proportion to `value` within `range`, with the reading
 /// centred in monospaced digits. It is not a control: this is a viewer. VoiceOver reads it as one
 /// element ("Roughness, 0.650").
 struct DSFactorRow: View {
@@ -35,8 +35,8 @@ struct DSFactorRow: View {
     var body: some View {
         HStack(spacing: DS.Spacing.m) {
             Text(label)
-                .font(DS.Font.callout)
-                .foregroundStyle(DS.Color.textSecondary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             DSFactorBar(fraction: fraction, reading: reading)
@@ -63,8 +63,8 @@ struct DSFactorBar: View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
 
         Text(reading)
-            .font(DS.Font.value)
-            .foregroundStyle(DS.Color.textPrimary)
+            .font(.callout.monospacedDigit())
+            .foregroundStyle(.primary)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .frame(maxWidth: .infinity)
@@ -74,13 +74,13 @@ struct DSFactorBar: View {
                 ZStack(alignment: .leading) {
                     DS.Color.controlBackground
                     GeometryReader { proxy in
-                        DS.Color.factorFill
+                        Color.accentColor.opacity(0.45)
                             .frame(width: proxy.size.width * fraction)
                     }
                 }
                 .clipShape(shape)
             }
             // `strokeBorder`, not `stroke`: a stroke straddles the edge and spills outside it.
-            .overlay(shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.cellStrokeWidth))
+            .overlay(shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline))
     }
 }

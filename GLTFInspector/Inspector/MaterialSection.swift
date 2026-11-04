@@ -43,8 +43,8 @@ struct MaterialSection: View {
             HStack(spacing: DS.Spacing.m) {
                 DSTypeIcon(.material)
                 Text(name)
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Color.textPrimary)
+                    .font(.body)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
             if !material.textures.isEmpty {
@@ -107,19 +107,19 @@ struct MaterialSection: View {
         HStack(spacing: DS.Spacing.m) {
             mapThumb(texture)
             Text(texture.kind.title)
-                .font(DS.Font.callout)
-                .foregroundStyle(DS.Color.textSecondary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
             Spacer(minLength: DS.Spacing.m)
             if let width = texture.width, let height = texture.height {
                 Text("\(width)×\(height)")
-                    .font(DS.Font.value)
-                    .foregroundStyle(DS.Color.textPrimary)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.primary)
             }
             if texture.texCoord != 0 {
                 Text("UV\(texture.texCoord)")
-                    .font(DS.Font.subheadline.monospacedDigit())
-                    .foregroundStyle(DS.Color.textTertiary)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.vertical, DS.Spacing.xxs)
@@ -135,7 +135,7 @@ struct MaterialSection: View {
                     .interpolation(.medium)
                     .clipShape(shape)
             } else {
-                shape.fill(DS.Color.cardFill)
+                shape.fill(.quinary)
             }
         }
         .frame(width: 28, height: 28)

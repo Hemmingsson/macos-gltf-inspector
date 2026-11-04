@@ -38,8 +38,8 @@ struct DSDisclosureCard<Content: View>: View {
                     .foregroundStyle(status.tint)
                     .accessibilityHidden(true)
                 Text(title)
-                    .font(DS.Font.bodyEmphasized)
-                    .foregroundStyle(DS.Color.textPrimary)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
             }
         }
         .disclosureGroupStyle(DSDisclosureCardStyle(status: status))
@@ -95,12 +95,12 @@ struct DSDisclosureMessageList: View {
                 }
                 HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.m) {
                     Image(systemName: (message.status ?? status).systemImage)
-                        .font(DS.Font.caption)
+                        .font(.caption)
                         .foregroundStyle((message.status ?? status).tint)
                         .accessibilityHidden(true)
                     Text(message.text)
-                        .font(DS.Font.callout)
-                        .foregroundStyle(DS.Color.textPrimary)
+                        .font(.callout)
+                        .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
                 }
@@ -142,8 +142,8 @@ private struct DSDisclosureCardBody: View {
                     configuration.label
                     Spacer(minLength: DS.Spacing.m)
                     Image(systemName: "chevron.down")
-                        .font(DS.Font.caption.weight(.semibold))
-                        .foregroundStyle(DS.Color.textSecondary)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(configuration.isExpanded ? 0 : -90))
                         .accessibilityHidden(true)
                 }

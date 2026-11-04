@@ -65,13 +65,13 @@ extension View {
     /// `chevron.down` reads as a checkmark.
     func dsGlassControlLabel(_ shape: DSGlassControlShape, isHighlighted: Bool) -> some View {
         let ink: AnyShapeStyle = isHighlighted
-            ? AnyShapeStyle(DS.Color.selectionText)
-            : AnyShapeStyle(DS.Color.textPrimary)
+            ? AnyShapeStyle(TintShapeStyle.tint)
+            : AnyShapeStyle(HierarchicalShapeStyle.primary)
 
         return Group {
             if shape == .circle {
                 self
-                    .font(DS.Font.body)
+                    .font(.body)
                     .imageScale(.medium)
                     .foregroundStyle(ink)
             } else {
@@ -93,20 +93,20 @@ extension View {
 
     /// Primary glyph in a wide / titled glass label — body size, independent of the chevron.
     func dsGlassPrimaryGlyph(isHighlighted: Bool) -> some View {
-        font(DS.Font.body)
+        font(.body)
             .imageScale(.medium)
             .foregroundStyle(
                 isHighlighted
-                    ? AnyShapeStyle(DS.Color.selectionText)
-                    : AnyShapeStyle(DS.Color.textPrimary)
+                    ? AnyShapeStyle(TintShapeStyle.tint)
+                    : AnyShapeStyle(HierarchicalShapeStyle.primary)
             )
     }
 
     /// Small secondary chevron for controls that open a menu or popover.
     func dsGlassChevronStyle() -> some View {
-        font(DS.Font.micro.weight(.semibold))
+        font(.caption2.weight(.semibold))
             .imageScale(.small)
-            .foregroundStyle(DS.Color.textSecondary)
+            .foregroundStyle(.secondary)
     }
 }
 

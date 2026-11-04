@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A radio group of circular colour swatches in one glass island (the backdrop picker).
 ///
-/// Each swatch is a `DS.Metrics.swatch` disc — a colour or the `DSCheckerboard` — with a hairline
+/// Each swatch is a `DS.Metrics.swatch` disc — a colour or the checkerboard — with a hairline
 /// `DS.Color.separator` edge so white still reads on white. The selected swatch takes a
 /// `DS.Metrics.swatchRingWidth` accent ring outside a clear `DS.Metrics.swatchRingGap`, so the
 /// island's glass shows between disc and ring.
@@ -69,7 +69,7 @@ struct DSSwatchPicker<ID: Hashable>: View {
                 .overlay {
                     if isSelected {
                         Circle()
-                            .strokeBorder(DS.Color.accent, lineWidth: DS.Metrics.swatchRingWidth)
+                            .strokeBorder(Color.accentColor, lineWidth: DS.Metrics.swatchRingWidth)
                             .frame(width: Self.ringDiameter, height: Self.ringDiameter)
                             .allowsHitTesting(false)
                     }
@@ -88,7 +88,7 @@ struct DSSwatchPicker<ID: Hashable>: View {
         Group {
             switch fill {
             case .color(let color): color
-            case .checkerboard: DSCheckerboard()
+            case .checkerboard: Checkerboard()
             }
         }
         .frame(width: DS.Metrics.swatch, height: DS.Metrics.swatch)
@@ -100,5 +100,36 @@ struct DSSwatchPicker<ID: Hashable>: View {
 
     private static var ringDiameter: CGFloat {
         DS.Metrics.swatch + 2 * (DS.Metrics.swatchRingGap + DS.Metrics.swatchRingWidth)
+    }
+}
+
+/// "No backdrop": light-grey squares on white in either appearance.
+private struct Checkerboard: View {
+    /// Side of one square.
+    var cell: CGFloat
+
+    init(cell: CGFloat = DS.Metrics.checkerboardCell) {
+        self.cell = cell
+    }
+
+    var body: some View {
+        Canvas { context, size in
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(DS.Color.Backdrop.white))
+            let columns = Int((size.width / cell).rounded(.up))
+            let rows = Int((size.height / cell).rounded(.up))
+            var squares = Path()
+            for row in 0..<rows {
+                for column in 0..<columns where (row + column).isMultiple(of: 2) {
+                    squares.addRect(CGRect(
+                        x: CGFloat(column) * cell,
+                        y: CGFloat(row) * cell,
+                        width: cell,
+                        height: cell
+                    ))
+                }
+            }
+            context.fill(squares, with: .color(DS.Color.Backdrop.checker))
+        }
+        .accessibilityHidden(true)
     }
 }

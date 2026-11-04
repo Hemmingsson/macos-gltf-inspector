@@ -73,13 +73,13 @@ struct DSSlider<Value: BinaryFloatingPoint>: View where Value.Stride: BinaryFloa
         VStack(alignment: .leading, spacing: DS.Spacing.m) {
             HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.m) {
                 Text(title)
-                    .foregroundStyle(DS.Color.textPrimary)
+                    .foregroundStyle(.primary)
                 Spacer(minLength: DS.Spacing.m)
                 Text(currentReading)
                     .monospacedDigit()
-                    .foregroundStyle(DS.Color.textSecondary)
+                    .foregroundStyle(.secondary)
             }
-            .font(DS.Font.body)
+            .font(.body)
             .lineLimit(1)
             // The slider below carries both strings for VoiceOver.
             .accessibilityHidden(true)

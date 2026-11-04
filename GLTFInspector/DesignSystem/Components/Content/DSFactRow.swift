@@ -33,7 +33,7 @@ extension DSFactRow where Value == Text {
 }
 
 /// `LabeledContent` as a fact row: label leading in `.secondary` callout, value trailing in
-/// `.primary` monospaced-digit callout (`DS.Font.value`), selectable, wrapping trailing-aligned
+/// `.primary` monospaced-digit callout (`Font.callout.monospacedDigit()`), selectable, wrapping trailing-aligned
 /// when long.
 struct DSFactLabeledContentStyle: LabeledContentStyle {
     init() {}
@@ -41,12 +41,12 @@ struct DSFactLabeledContentStyle: LabeledContentStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.m) {
             configuration.label
-                .font(DS.Font.callout)
-                .foregroundStyle(DS.Color.textSecondary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
             Spacer(minLength: DS.Spacing.m)
             configuration.content
-                .font(DS.Font.value)
-                .foregroundStyle(DS.Color.textPrimary)
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.trailing)
                 .textSelection(.enabled)
         }

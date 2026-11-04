@@ -108,8 +108,8 @@ private struct NameList: View {
     var body: some View {
         if !names.isEmpty {
             Text(names.joined(separator: ", "))
-                .font(DS.Font.callout)
-                .foregroundStyle(DS.Color.textSecondary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
                 .padding(.vertical, DS.Spacing.xs)
         }
     }

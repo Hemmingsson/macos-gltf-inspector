@@ -7,14 +7,14 @@ struct DimensionsReadout: View {
     var body: some View {
         DSHUDCapsule(height: OverlayMetrics.dimensionsHeight) {
             Image(systemName: "cube")
-                .font(DS.Font.callout)
+                .font(.callout)
                 .symbolRenderingMode(.monochrome)
-                .foregroundStyle(DS.Color.textSecondary)
+                .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
 
             Text(label)
-                .font(DS.Font.value)
-                .foregroundStyle(DS.Color.textPrimary)
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.primary)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)

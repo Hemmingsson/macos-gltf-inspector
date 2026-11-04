@@ -96,11 +96,11 @@ struct DSGlassMenuButton<MenuContent: View>: View {
                         .dsGlassPrimaryGlyph(isHighlighted: isEngaged)
                 }
                 Text(value)
-                    .font(DS.Font.body)
+                    .font(.body)
                     .foregroundStyle(
                         isEngaged
-                            ? AnyShapeStyle(DS.Color.selectionText)
-                            : AnyShapeStyle(DS.Color.textPrimary)
+                            ? AnyShapeStyle(TintShapeStyle.tint)
+                            : AnyShapeStyle(HierarchicalShapeStyle.primary)
                     )
                     .lineLimit(1)
                     // Ancestor glass `isEngaged` animation interpolates this string otherwise.

@@ -18,7 +18,7 @@ struct OrientationGizmo: View {
 
             GeometryReader { geo in
                 Circle()
-                    .fill(DS.Color.textTertiary)
+                    .fill(.tertiary)
                     .frame(width: 4.8, height: 4.8)
                     .position(Self.origin(in: geo.size))
             }

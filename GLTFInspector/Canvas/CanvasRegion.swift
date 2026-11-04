@@ -51,7 +51,7 @@ struct CanvasRegion<Content: View>: View {
             .overlay {
                 if dropTargeted {
                     RoundedRectangle(cornerRadius: DS.Radius.pane, style: .continuous)
-                        .strokeBorder(DS.Color.textTertiary, lineWidth: DS.Metrics.hairline)
+                        .strokeBorder(.tertiary, lineWidth: DS.Metrics.hairline)
                         .padding(DS.Spacing.l)
                         .allowsHitTesting(false)
                 }

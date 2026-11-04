@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Foundation
 
 /// Quiet filler for a non-ready document. Copy and chrome stay per placement.
 struct DocumentStatusView: View {
@@ -45,9 +44,16 @@ struct DocumentStatusView: View {
     private var status: some View {
         switch state {
         case .loading:
-            DSStatusView.loading(Copy.loadingTitle)
+            VStack(spacing: DS.Spacing.m) {
+                ProgressView()
+                    .accessibilityHidden(true)
+                Text(Copy.loadingTitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
         case .failed(let message):
-            DSStatusView.failed(Copy.failedTitle, message: message)
+            ContentUnavailableView(Copy.failedTitle, systemImage: "exclamationmark.triangle", description: Text(message))
         case .empty:
             emptyStatus
         case .ready:
@@ -59,15 +65,16 @@ struct DocumentStatusView: View {
         }
     }
 
-    private var emptyStatus: DSStatusView {
+    @ViewBuilder
+    private var emptyStatus: some View {
         if placement == .inspector {
-            .empty(
-                "Nothing to inspect",
-                systemImage: "sidebar.right",
-                message: state == .empty ? "Open a file to see node and file details." : nil
-            )
+            ContentUnavailableView {
+                Label("Nothing to inspect", systemImage: "sidebar.right")
+            } description: {
+                if state == .empty { Text("Open a file to see node and file details.") }
+            }
         } else {
-            .empty(Copy.emptyTitle, systemImage: "cube", message: Copy.emptySidebarDetail)
+            ContentUnavailableView(Copy.emptyTitle, systemImage: "cube", description: Text(Copy.emptySidebarDetail))
         }
     }
 

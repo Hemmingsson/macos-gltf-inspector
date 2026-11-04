@@ -13,13 +13,17 @@ struct FieldOfViewPopover: View {
         ) {
             DSPopoverPanel {
                 if view.isOrthographic {
-                    DSButton("Use Perspective", variant: .prominent, size: .small) { view.isOrthographic = false }
+                    Button("Use Perspective") { view.isOrthographic = false }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                 } else {
                     DSSlider("Field of View", value: $view.fieldOfView, in: ViewState.fieldOfViewRange,
                              step: 1, reading: degrees)
                     HStack {
                         Spacer(minLength: DS.Spacing.m)
-                        DSButton("Reset", size: .small) { view.fieldOfView = ViewState.defaultFieldOfView }
+                        Button("Reset") { view.fieldOfView = ViewState.defaultFieldOfView }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                     }
                 }
             }

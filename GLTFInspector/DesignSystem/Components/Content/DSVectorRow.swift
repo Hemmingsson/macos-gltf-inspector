@@ -35,8 +35,8 @@ struct DSVectorRow: View {
     var body: some View {
         HStack(spacing: DS.Spacing.s) {
             Text(shortTitle ?? title)
-                .font(DS.Font.callout)
-                .foregroundStyle(DS.Color.textSecondary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(minWidth: labelWidth, alignment: .leading)
 
