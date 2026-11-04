@@ -135,30 +135,6 @@ enum StillRenderer {
         )
     }
 
-    /// Offscreen re-render at `cameraPose`, sized from `pixelHeight` × `aspect`.
-    static func renderImage(
-        root: Entity,
-        cameraPose: StillCameraPose,
-        background: CGColor,
-        intensityExponent: Float,
-        environmentYaw: Float,
-        pixelHeight: Int = 1080,
-        aspect: Float = 16 / 9
-    ) async throws -> CGImage {
-        let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : (16 / 9)
-        let height = max(64, pixelHeight)
-        let width = max(64, Int((Float(height) * safeAspect).rounded()))
-        return try await render(
-            root: root,
-            cameraPose: cameraPose,
-            width: width,
-            height: height,
-            background: background,
-            intensityExponent: intensityExponent,
-            environmentYaw: environmentYaw
-        )
-    }
-
     private static func capture(
         root: Entity,
         camera: Entity,
