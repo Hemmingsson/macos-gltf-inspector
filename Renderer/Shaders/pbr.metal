@@ -34,11 +34,17 @@ struct JointPair {
     float4x4 joint;
     float4x4 normal;
 };
-float4 morph_sum(uint slot,uint vid,constant float *weights,device const float4 *morphs,constant MetalDrawUniforms &draw) {
-    uint targets=draw.morphInfo.x, verts=draw.morphInfo.y;
+float4 morph_sum(uint slot,uint vid,constant uint *activeMorph,device const float4 *morphs,device const uint *sourceOf,constant MetalDrawUniforms &draw) {
+    uint targets=draw.morphInfo.x, sourceCount=draw.morphInfo.y;
+    uint sourceIndex=sourceOf[vid];
     uint ordinal=uint(popcount(morph_mask & ((1u<<slot)-1u)));
+    uint activeCount=activeMorph[0];
     float4 sum=float4(0);
-    for(uint t=0;t<targets;++t) sum+=weights[t]*morphs[(ordinal*targets+t)*verts+vid];
+    for(uint i=0;i<activeCount;++i) {
+        uint t=activeMorph[1+i*2];
+        float w=as_type<float>(activeMorph[2+i*2]);
+        sum+=w*morphs[(ordinal*targets+t)*sourceCount+sourceIndex];
+    }
     return sum;
 }
 vertex MetalVaryings khronos_vertex(uint id [[vertex_id]],
@@ -47,7 +53,8 @@ vertex MetalVaryings khronos_vertex(uint id [[vertex_id]],
     constant MetalDrawUniforms &draw [[buffer(2)]],
     constant MetalMaterialUniforms &m [[buffer(3)]],
     device const float4 *morphs [[buffer(4), function_constant(morph_streams)]],
-    constant float *weights [[buffer(5), function_constant(morph_streams)]],
+    constant uint *activeMorph [[buffer(5), function_constant(morph_streams)]],
+    device const uint *sourceOf [[buffer(9), function_constant(morph_streams)]],
     device MetalVertex *capture [[buffer(6), function_constant(morph_capture)]],
     device const SkinVertex *skinVerts [[buffer(7), function_constant(has_skin)]],
     constant JointPair *jointPairs [[buffer(8), function_constant(has_skin)]]) {
@@ -59,12 +66,12 @@ vertex MetalVaryings khronos_vertex(uint id [[vertex_id]],
     float2 uv0=v.uv0, uv1=v.uv1;
     // Morph deltas first, then skin. Skinning the already-morphed vertex is R·(v+d).
     if(morph_streams) {
-        if(morph_mask&1u) pos+=morph_sum(0,id,weights,morphs,draw).xyz;
-        if(morph_mask&2u) nrm+=morph_sum(1,id,weights,morphs,draw).xyz;
-        if(morph_mask&4u) tan.xyz+=morph_sum(2,id,weights,morphs,draw).xyz;
-        if(morph_mask&8u) uv0+=morph_sum(3,id,weights,morphs,draw).xy;
-        if(morph_mask&16u) uv1+=morph_sum(4,id,weights,morphs,draw).xy;
-        if(morph_mask&32u) col=clamp(col+morph_sum(5,id,weights,morphs,draw),0.0f,1.0f);
+        if(morph_mask&1u) pos+=morph_sum(0,id,activeMorph,morphs,sourceOf,draw).xyz;
+        if(morph_mask&2u) nrm+=morph_sum(1,id,activeMorph,morphs,sourceOf,draw).xyz;
+        if(morph_mask&4u) tan.xyz+=morph_sum(2,id,activeMorph,morphs,sourceOf,draw).xyz;
+        if(morph_mask&8u) uv0+=morph_sum(3,id,activeMorph,morphs,sourceOf,draw).xy;
+        if(morph_mask&16u) uv1+=morph_sum(4,id,activeMorph,morphs,sourceOf,draw).xy;
+        if(morph_mask&32u) col=clamp(col+morph_sum(5,id,activeMorph,morphs,sourceOf,draw),0.0f,1.0f);
     }
     if(has_skin) {
         SkinVertex s=skinVerts[id];

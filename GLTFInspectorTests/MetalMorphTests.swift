@@ -169,6 +169,23 @@ import Testing
         #expect(abs(vertices(tilted)[0].tangent.y) > 0.4, "rigid meshes without morph targets still get MikkTSpace tangents")
     }
 
+    @Test func morphBufferLengthMatchesSourceVertexLayout() async throws {
+        let scene = try await MetalSceneLoader.load(url: TestFixtures.morph, device: device())
+        let draw = try #require(scene.draws.first)
+        let slots = draw.morphMask.nonzeroBitCount
+        let expected = slots * draw.morphTargetCount * draw.morphSourceVertexCount * MemoryLayout<SIMD4<Float>>.stride
+        #expect(draw.morphBuffer?.length == expected)
+    }
+
+    @Test func twinDrawsShareMorphAndSourceOfBuffers() async throws {
+        let url = try writeTwinNodeMorphGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let scene = try await MetalSceneLoader.load(url: url, device: device())
+        #expect(scene.draws.count == 2)
+        #expect(scene.draws[0].morphBuffer === scene.draws[1].morphBuffer)
+        #expect(scene.draws[0].morphSourceOfBuffer === scene.draws[1].morphSourceOfBuffer)
+    }
+
     @Test func morphWithoutAuthoredNormalLeavesZeroNormalsInBuffer() async throws {
         let scene = try await MetalSceneLoader.load(url: TestFixtures.morph, device: device())
         let draw = try #require(scene.draws.first)
@@ -196,6 +213,32 @@ private struct MorphFile {
     var targets: [Target]
     var meshWeights: [Float]
     var nodeWeights: [Float]? = nil
+}
+
+private func writeTwinNodeMorphGLB() throws -> URL {
+    let positions: [SIMD3<Float>] = [[0, 0, 0], [1, 0, 0], [0, 1, 0]]
+    let target = MorphFile.Target(position: [[0, 0, 1], .zero, .zero])
+    var bin = floatTriangleBin()
+    var targetBlob = Data()
+    appendFloats([0, 0, 1, 0, 0, 0, 0, 0, 0], to: &targetBlob)
+    bin.append(targetBlob)
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [
+            ["buffer": 0, "byteOffset": 0, "byteLength": 36],
+            ["buffer": 0, "byteOffset": 36, "byteLength": 36],
+        ],
+        "accessors": [
+            ["bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "max": [1, 1, 0], "min": [0, 0, 0]],
+            ["bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC3", "max": [0, 0, 1], "min": [0, 0, 0]],
+        ],
+        "meshes": [["primitives": [["attributes": ["POSITION": 0], "targets": [["POSITION": 1]]]]]],
+        "nodes": [["mesh": 0], ["mesh": 0]],
+        "scenes": [["nodes": [0, 1]]],
+        "scene": 0,
+    ]
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "metal-morph-twin")
 }
 
 private func write(_ file: MorphFile) throws -> URL {

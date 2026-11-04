@@ -25,7 +25,7 @@ struct MetalFrameUniforms {
 struct MetalDrawUniforms {
     float4x4 model;
     float4x4 normalMatrix;
-    // x target count, y emitted vertex count, z attribute mask, w unused.
+    // x morph target count, y source vertex count, z attribute mask, w skin joint count.
     uint4 morphInfo;
 };
 struct MetalMaterialUniforms {

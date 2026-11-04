@@ -32,13 +32,17 @@ enum MorphSlot {
 
 extension MetalDraw {
     /// One gathered delta. `slot` is a `MorphSlot` index, not a packed ordinal.
-    func morphDelta(slot: Int, target: Int, vertex: Int) -> SIMD4<Float>? {
-        guard let morphBuffer, (0..<MorphSlot.count).contains(slot),
+    func morphDelta(slot: Int, target: Int, vertex emitted: Int) -> SIMD4<Float>? {
+        guard let morphBuffer, let morphSourceOfBuffer, (0..<MorphSlot.count).contains(slot),
               morphMask & (1 << UInt32(slot)) != 0,
               (0..<morphTargetCount).contains(target),
-              (0..<morphVertexCount).contains(vertex) else { return nil }
+              (0..<morphVertexCount).contains(emitted),
+              morphSourceVertexCount > 0 else { return nil }
+        let map = morphSourceOfBuffer.contents().bindMemory(to: UInt32.self, capacity: morphVertexCount)
+        let source = Int(map[emitted])
+        guard source >= 0, source < morphSourceVertexCount else { return nil }
         let ordinal = MorphSlot.ordinal(mask: morphMask, slot: slot)
-        let index = (ordinal * morphTargetCount + target) * morphVertexCount + vertex
+        let index = (ordinal * morphTargetCount + target) * morphSourceVertexCount + source
         let count = morphBuffer.length / MemoryLayout<SIMD4<Float>>.stride
         guard index < count else { return nil }
         return morphBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: count)[index]

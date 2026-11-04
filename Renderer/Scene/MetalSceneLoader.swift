@@ -31,6 +31,8 @@ private final class Builder {
     var maximum = SIMD3<Float>(repeating: -.infinity)
     var world: [ObjectIdentifier: simd_float4x4] = [:]
     var skins: [MetalSkin] = []
+    var morphBufferCache: [ObjectIdentifier: any MTLBuffer] = [:]
+    var morphSourceOfCache: [ObjectIdentifier: any MTLBuffer] = [:]
     var nodeIndexByIdentity: [ObjectIdentifier: Int] = [:]
     var meshIndexByIdentity: [ObjectIdentifier: Int] = [:]
     var skinIndexByIdentity: [ObjectIdentifier: Int] = [:]
@@ -342,9 +344,10 @@ private final class Builder {
         if let morph, morph.mask & (1 << MorphSlot.position) != 0, restWeights.contains(where: { $0 != 0 }) {
             let ordinal = MorphSlot.ordinal(mask: morph.mask, slot: MorphSlot.position)
             for vertex in boundsVertices.indices {
+                let source = Int(sourceOf[vertex])
                 var position = boundsVertices[vertex].position
                 for target in 0..<morph.targetCount where target < restWeights.count && restWeights[target] != 0 {
-                    let delta = morph.deltas[(ordinal * morph.targetCount + target) * morph.vertexCount + vertex]
+                    let delta = morph.deltas[(ordinal * morph.targetCount + target) * morph.sourceCount + source]
                     position += SIMD4(delta.x, delta.y, delta.z, 0) * restWeights[target]
                 }
                 boundsVertices[vertex].position = position
@@ -389,13 +392,31 @@ private final class Builder {
             }
         }
         guard let vb = device.makeBuffer(bytes: vertices, length: vertices.count*MemoryLayout<MetalVertex>.stride, options: .storageModeShared), let ib = device.makeBuffer(bytes:indices,length:indices.count*4,options:.storageModeShared) else { throw MetalSceneError.invalid("Metal buffer allocation failed") }
+        let primitiveKey = ObjectIdentifier(primitive)
         let morphBuffer: (any MTLBuffer)?
         if let morph, !morph.deltas.isEmpty {
-            guard let buffer = device.makeBuffer(bytes: morph.deltas, length: morph.deltas.count * MemoryLayout<SIMD4<Float>>.stride, options: .storageModeShared) else {
-                throw MetalSceneError.invalid("Metal buffer allocation failed")
+            if let cached = morphBufferCache[primitiveKey] {
+                morphBuffer = cached
+            } else {
+                guard let buffer = device.makeBuffer(bytes: morph.deltas, length: morph.deltas.count * MemoryLayout<SIMD4<Float>>.stride, options: .storageModeShared) else {
+                    throw MetalSceneError.invalid("Metal buffer allocation failed")
+                }
+                morphBufferCache[primitiveKey] = buffer
+                morphBuffer = buffer
             }
-            morphBuffer = buffer
         } else { morphBuffer = nil }
+        let morphSourceOfBuffer: (any MTLBuffer)?
+        if morphBuffer != nil {
+            if let cached = morphSourceOfCache[primitiveKey] {
+                morphSourceOfBuffer = cached
+            } else {
+                guard let buffer = device.makeBuffer(bytes: sourceOf, length: sourceOf.count * MemoryLayout<UInt32>.stride, options: .storageModeShared) else {
+                    throw MetalSceneError.invalid("Metal buffer allocation failed")
+                }
+                morphSourceOfCache[primitiveKey] = buffer
+                morphSourceOfBuffer = buffer
+            }
+        } else { morphSourceOfBuffer = nil }
         let skinBuffer: (any MTLBuffer)?
         if !skinVerts.isEmpty {
             guard let buffer = device.makeBuffer(bytes: skinVerts, length: skinVerts.count * MemoryLayout<MetalSkinVertex>.stride, options: .storageModeShared) else {
@@ -410,7 +431,7 @@ private final class Builder {
         m.hasNormal = normal != nil
         // MikkTSpace above fills TANGENT when the mesh has UVs but no authored tangent.
         m.hasTangent = tangent != nil || (uv0 != nil && topology == .triangle && !morphPositionTargets)
-        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,gltfMaterialIndex:gltfMaterialIndex,nodeIndex:nodeIndex(node),negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
+        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,gltfMaterialIndex:gltfMaterialIndex,nodeIndex:nodeIndex(node),negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphSourceVertexCount:morph?.sourceCount ?? 0,morphSourceOfBuffer:morphSourceOfBuffer,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
     }
 
     func makeSkins() throws -> [MetalSkin] {
@@ -472,7 +493,7 @@ private final class Builder {
 
     /// Deltas for the emitted vertices. Layout is `[present slot][target][vertex]`, slot order
     /// matching `MorphSlot` (only attributes some target actually carries).
-    func gatherMorph(_ primitive: GLTFPrimitive, sourceCount: Int, sourceOf: [UInt32]) throws -> (deltas: [SIMD4<Float>], mask: UInt32, targetCount: Int, vertexCount: Int)? {
+    func gatherMorph(_ primitive: GLTFPrimitive, sourceCount: Int, sourceOf: [UInt32]) throws -> (deltas: [SIMD4<Float>], mask: UInt32, targetCount: Int, sourceCount: Int)? {
         let targets = primitive.targets
         guard !targets.isEmpty else { return nil }
         var mask: UInt32 = 0
@@ -481,29 +502,26 @@ private final class Builder {
                 if let slot = MorphSlot.index(for: attribute.name ?? "") { mask |= 1 << UInt32(slot) }
             }
         }
-        let vertexCount = sourceOf.count
         let targetCount = targets.count
-        guard mask != 0 else { return (deltas: [], mask: 0, targetCount: targetCount, vertexCount: vertexCount) }
+        guard mask != 0 else { return (deltas: [], mask: 0, targetCount: targetCount, sourceCount: sourceCount) }
         var present: [Int] = []
         for slot in 0..<MorphSlot.count where mask & (1 << UInt32(slot)) != 0 { present.append(slot) }
-        var deltas = [SIMD4<Float>](repeating: .zero, count: present.count * targetCount * vertexCount)
+        var deltas = [SIMD4<Float>](repeating: .zero, count: present.count * targetCount * sourceCount)
         for (targetIndex, target) in targets.enumerated() {
             for attribute in target {
                 guard let slot = MorphSlot.index(for: attribute.name ?? ""), let ordinal = present.firstIndex(of: slot) else { continue }
                 let components = Int(GLTFComponentCountForDimension(attribute.accessor.dimension))
                 guard attribute.accessor.count == sourceCount else { throw MetalSceneError.invalid("Mismatched morph accessor count") }
                 let data = try values(attribute.accessor, components: components)
-                for vertex in 0..<vertexCount {
-                    let source = Int(sourceOf[vertex])
-                    guard sourceCount > source else { throw MetalSceneError.invalid("Morph delta is outside the accessor") }
+                for source in 0..<sourceCount {
                     var value = SIMD4<Float>(repeating: 0)
                     let base = source * components
                     for component in 0..<min(components, 4) { value[component] = data[base + component] }
-                    deltas[(ordinal * targetCount + targetIndex) * vertexCount + vertex] = value
+                    deltas[(ordinal * targetCount + targetIndex) * sourceCount + source] = value
                 }
             }
         }
-        return (deltas, mask, targetCount, vertexCount)
+        return (deltas, mask, targetCount, sourceCount)
     }
 
     func values(_ accessor: GLTFAccessor, components: Int) throws -> [Float] {

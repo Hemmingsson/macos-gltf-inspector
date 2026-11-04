@@ -104,10 +104,14 @@ public struct MetalDraw {
     let meshIndex: Int
     /// Authored `node.weights`, otherwise `mesh.weights`, otherwise zeros. One entry per target.
     let restWeights: [Float]
-    /// Packed `float4` deltas, `[presentSlot][target][emittedVertex]`. Nil when nothing is morphed.
+    /// Packed `float4` deltas, `[presentSlot][target][sourceVertex]`. Nil when nothing is morphed.
     let morphBuffer: (any MTLBuffer)?
     let morphTargetCount: Int
-    /// Emitted vertex count. The shader indexes this buffer with `vertex_id`.
+    /// Authored POSITION accessor vertex count. Delta layout uses this stride.
+    let morphSourceVertexCount: Int
+    /// One source vertex index per emitted vertex (`vertex_id`). Nil when not morphed.
+    let morphSourceOfBuffer: (any MTLBuffer)?
+    /// Emitted vertex count for bounds and capture.
     let morphVertexCount: Int
     /// Bits in `MorphSlot` order: position, normal, tangent, texcoord0, texcoord1, color0.
     let morphMask: UInt32
@@ -123,7 +127,8 @@ public struct MetalDraw {
          material: MetalMaterial, gltfMaterialIndex: Int? = nil, nodeIndex: Int, negativeScale: Bool,
          centroid: SIMD3<Float> = .zero,
          opaqueGroup: String = "", meshIndex: Int = -1, restWeights: [Float] = [],
-         morphBuffer: (any MTLBuffer)? = nil, morphTargetCount: Int = 0, morphVertexCount: Int = 0,
+         morphBuffer: (any MTLBuffer)? = nil, morphTargetCount: Int = 0, morphSourceVertexCount: Int = 0,
+         morphSourceOfBuffer: (any MTLBuffer)? = nil, morphVertexCount: Int = 0,
          morphMask: UInt32 = 0, skinBuffer: (any MTLBuffer)? = nil, skinIndex: Int? = nil,
          hasJoints1: Bool = false) {
         self.vertexBuffer = vertexBuffer
@@ -142,6 +147,8 @@ public struct MetalDraw {
         self.restWeights = restWeights
         self.morphBuffer = morphBuffer
         self.morphTargetCount = morphTargetCount
+        self.morphSourceVertexCount = morphSourceVertexCount
+        self.morphSourceOfBuffer = morphSourceOfBuffer
         self.morphVertexCount = morphVertexCount
         self.morphMask = morphMask
         self.skinBuffer = skinBuffer

@@ -38,6 +38,8 @@ public final class MetalRenderer: @unchecked Sendable {
     private var jointRings: [Int: [any MTLBuffer]] = [:]
     private var jointUploaded: Set<Int> = []
     private var jointPalettes: [Int: [GPUJointPair]] = [:]
+    private var morphWeightSlot = 0
+    private var morphWeightRing: [any MTLBuffer] = []
     private let tonePipeline: any MTLRenderPipelineState
     private let depthWrite: any MTLDepthStencilState
     private let depthRead: any MTLDepthStencilState
@@ -520,7 +522,7 @@ public final class MetalRenderer: @unchecked Sendable {
             }
             materialResources[resourceKey]?.bind(encoder)
             encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
-            Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+            try bindMorph(encoder, draw: draw, weights: weights, mask: mask)
             try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
             encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
                                           indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
@@ -564,7 +566,7 @@ public final class MetalRenderer: @unchecked Sendable {
             var drawID = UInt32(drawIndex + 1)
             encoder.setFragmentBytes(&drawID, length: MemoryLayout<UInt32>.stride, index: 6)
             encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
-            Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+            try bindMorph(encoder, draw: draw, weights: weights, mask: mask)
             try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
             encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
                                           indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
@@ -641,7 +643,7 @@ public final class MetalRenderer: @unchecked Sendable {
             var nodeID = UInt32(draw.nodeIndex + 1)
             encoder.setFragmentBytes(&nodeID, length: MemoryLayout<UInt32>.stride, index: 6)
             encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
-            Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+            try bindMorph(encoder, draw: draw, weights: weights, mask: mask)
             try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
             encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
                                           indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
@@ -724,7 +726,7 @@ public final class MetalRenderer: @unchecked Sendable {
     }
 
     private static func morphInfo(_ draw: MetalDraw, mask: UInt32, jointCount: Int = 0) -> SIMD4<UInt32> {
-        SIMD4(UInt32(draw.morphTargetCount), UInt32(draw.morphVertexCount), mask, UInt32(jointCount))
+        SIMD4(UInt32(draw.morphTargetCount), UInt32(draw.morphSourceVertexCount), mask, UInt32(jointCount))
     }
 
     private static func jointCount(_ draw: MetalDraw, scene: MetalScene) -> Int {
@@ -742,6 +744,7 @@ public final class MetalRenderer: @unchecked Sendable {
     /// so a frame still in flight is not overwritten. Every pass binds buffer 8.
     private func beginJointFrame() {
         jointSlot = (jointSlot + 1) % 3
+        morphWeightSlot = (morphWeightSlot + 1) % 3
         jointUploaded.removeAll(keepingCapacity: true)
         jointPalettes.removeAll(keepingCapacity: true)
     }
@@ -788,18 +791,41 @@ public final class MetalRenderer: @unchecked Sendable {
         return ring[jointSlot]
     }
 
-    /// `setVertexBytes` is capped at 4 KB. A mesh with more weights than that gets a buffer.
-    private static func bindMorph(_ encoder: any MTLRenderCommandEncoder, draw: MetalDraw, weights: [Float], mask: UInt32, device: any MTLDevice) {
-        guard mask != 0, let morphBuffer = draw.morphBuffer, !weights.isEmpty else { return }
+    /// Active (index, weight) pairs for morph targets; large payloads use a 3-deep ring buffer.
+    private func bindMorph(_ encoder: any MTLRenderCommandEncoder, draw: MetalDraw, weights: [Float], mask: UInt32) throws {
+        guard mask != 0, let morphBuffer = draw.morphBuffer, let sourceOf = draw.morphSourceOfBuffer else { return }
         encoder.setVertexBuffer(morphBuffer, offset: 0, index: 4)
-        let byteCount = weights.count * MemoryLayout<Float>.stride
+        encoder.setVertexBuffer(sourceOf, offset: 0, index: 9)
+        var active: [UInt32] = []
+        for (index, weight) in weights.enumerated() where weight != 0 {
+            active.append(UInt32(index))
+            active.append(weight.bitPattern)
+        }
+        guard !active.isEmpty else { return }
+        var payload = [UInt32(active.count / 2)]
+        payload.append(contentsOf: active)
+        let byteCount = payload.count * MemoryLayout<UInt32>.stride
         if byteCount <= MetalSkinning.vertexBytesLimit {
-            weights.withUnsafeBytes { raw in
+            payload.withUnsafeBytes { raw in
                 encoder.setVertexBytes(raw.baseAddress!, length: byteCount, index: 5)
             }
-        } else if let buffer = device.makeBuffer(bytes: weights, length: byteCount, options: .storageModeShared) {
-            encoder.setVertexBuffer(buffer, offset: 0, index: 5)
+            return
         }
+        let buffer = try morphWeightBuffer(byteCount: byteCount)
+        payload.withUnsafeBytes { raw in memcpy(buffer.contents(), raw.baseAddress!, raw.count) }
+        encoder.setVertexBuffer(buffer, offset: 0, index: 5)
+    }
+
+    private func morphWeightBuffer(byteCount: Int) throws -> any MTLBuffer {
+        if morphWeightRing.count != 3 || morphWeightRing[0].length < byteCount {
+            morphWeightRing = try (0..<3).map { _ in
+                guard let made = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
+                    throw MetalRendererError.resource("morph weight buffer")
+                }
+                return made
+            }
+        }
+        return morphWeightRing[morphWeightSlot]
     }
 
     private func texture(_ format: MTLPixelFormat, _ width: Int, _ height: Int, _ usage: MTLTextureUsage,
@@ -848,7 +874,7 @@ public final class MetalRenderer: @unchecked Sendable {
         var material = GPUMaterial(draw.material)
         encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
         encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
-        Self.bindMorph(encoder, draw: draw, weights: weights, mask: mask, device: device)
+        try bindMorph(encoder, draw: draw, weights: weights, mask: mask)
         try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
         encoder.setVertexBuffer(captured, offset: 0, index: 6)
         encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: count)
