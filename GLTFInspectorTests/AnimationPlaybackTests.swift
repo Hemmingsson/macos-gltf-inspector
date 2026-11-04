@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import Foundation
 import Testing
 @testable import GLTFInspector
@@ -63,6 +64,44 @@ struct AnimationPlaybackTests {
         #expect(!posed.nodeOverrides.isEmpty, "scrub evaluates selected clips")
         let animatedY = posed.nodeOverrides.values.compactMap(\.translation?.y).max() ?? 0
         #expect(animatedY > 0.5)
+    }
+
+    @Test func scrubToZeroEvaluatesFirstKeyStopReturnsToRest() async throws {
+        let canvas = ModelCanvasController()
+        try await ready(canvas, url: TestFixtures.boxAnimated)
+        canvas.scrub(to: 0.5)
+        canvas.scrub(to: 0)
+        #expect(canvas.currentAnimationPose() != nil, "scrub to 0 shows the clip's first key, not rest")
+        canvas.stopPlayback()
+        #expect(canvas.currentAnimationPose() == nil)
+        #expect(canvas.time == 0)
+    }
+
+    @Test func turntableFirstFrameMatchesSnapshotWhenPausedMidClip() async throws {
+        let canvas = ModelCanvasController()
+        let container = mount(canvas, url: TestFixtures.boxAnimated)
+        _ = try await waitUntil { canvas.phase == .ready }
+        canvas.scrub(to: 0.5)
+        canvas.pause()
+        let view = try #require(canvas.view)
+        view.layoutSubtreeIfNeeded()
+        let snapshot = try canvas.snapshot()
+        let width = snapshot.width
+        let height = snapshot.height
+        var turntableFrame: CGImage?
+        try await canvas.turntable(count: 1, width: width, height: height) { index, image in
+            #expect(index == 0)
+            turntableFrame = image
+        }
+        let exported = try #require(turntableFrame)
+        let tolerance = try PixelDiffManifest.load().tolerance
+        let (metrics, verdict) = try PixelDiff.compare(
+            PixelDiff.raster(from: exported),
+            to: PixelDiff.raster(from: snapshot),
+            tolerance: tolerance
+        )
+        #expect(verdict.isMatch, "turntable frame 0 must match snapshot at the same size (\(metrics.summary()))")
+        _ = container
     }
 
     @Test func speedIsClamped() async throws {
