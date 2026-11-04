@@ -39,6 +39,10 @@ public extension DS {
         /// (HIG › Color › "selected content background").
         public static let selectionFill = SwiftUI.Color.accentColor.opacity(0.14)
 
+        /// Filled portion of a read-only factor bar (`DSFactorRow`): `accent` at 45 %, so the
+        /// primary-text reading on top stays legible in either appearance.
+        public static let factorFill = SwiftUI.Color.accentColor.opacity(0.45)
+
         /// Label / glyph colour inside a selected custom row. SwiftUI `TintShapeStyle` (`.tint`),
         /// so it follows the accent and any local `.tint(_:)` override.
         public static let selectionText = TintShapeStyle.tint

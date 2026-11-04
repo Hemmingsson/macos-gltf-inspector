@@ -151,3 +151,28 @@ struct VectorRowPage: View {
         }
     }
 }
+
+struct FactorRowPage: View {
+    var body: some View {
+        CatalogPageView(page: .factorRow) {
+            StateGroup(title: "States") {
+                StateRow("Stacked") {
+                    VStack(spacing: DS.Spacing.s) {
+                        DSFactorRow("Metallic", value: 0)
+                        DSFactorRow("Roughness", value: 0.65)
+                        DSFactorRow("Occlusion", value: 1)
+                    }
+                    .frame(maxWidth: DS.Metrics.inspectorWidth)
+                }
+                StateRow("Out of range") {
+                    DSFactorRow("Strength", value: 1.4)
+                        .frame(maxWidth: DS.Metrics.inspectorWidth)
+                }
+                StateRow("Custom range") {
+                    DSFactorRow("IOR", value: 1.5, in: 1...3)
+                        .frame(maxWidth: DS.Metrics.inspectorWidth)
+                }
+            }
+        }
+    }
+}

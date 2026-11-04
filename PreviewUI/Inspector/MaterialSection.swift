@@ -67,18 +67,18 @@ struct MaterialSection: View {
                 )
             }
 
-            VStack(spacing: 0) {
+            VStack(spacing: DS.Spacing.xs) {
                 if MaterialInspectorSupport.showsBaseColorFactor(material),
                    let factor = material.baseColorFactor {
                     factorColorRow("Base color", factor)
                 }
                 if MaterialInspectorSupport.showsMetallic(material),
                    let value = material.metallicFactor {
-                    DSFactRow("Metallic", value: MaterialInspectorSupport.scalarLabel(value))
+                    DSFactorRow("Metallic", value: value)
                 }
                 if MaterialInspectorSupport.showsRoughness(material),
                    let value = material.roughnessFactor {
-                    DSFactRow("Roughness", value: MaterialInspectorSupport.scalarLabel(value))
+                    DSFactorRow("Roughness", value: value)
                 }
                 if MaterialInspectorSupport.showsEmissive(material) {
                     factorColorRow("Emissive", material.emissiveFactor ?? .black)
@@ -93,7 +93,7 @@ struct MaterialSection: View {
                 }
                 if MaterialInspectorSupport.showsOcclusionStrength(material),
                    let value = material.occlusionStrength {
-                    DSFactRow("Occlusion", value: MaterialInspectorSupport.scalarLabel(value))
+                    DSFactorRow("Occlusion", value: value)
                 }
             }
 
