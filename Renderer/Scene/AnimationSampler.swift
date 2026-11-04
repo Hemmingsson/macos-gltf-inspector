@@ -54,7 +54,7 @@ public struct AnimationSampler: Sendable {
 
         switch interpolation {
         case .step:
-            return copyValue(atKey: prevKey)
+            return copyValue(atKey: lastKeyIndex(atOrBefore: t))
         case .linear:
             let a = copyValue(atKey: prevKey)
             let b = copyValue(atKey: nextKey)
@@ -118,6 +118,15 @@ public struct AnimationSampler: Sendable {
             nextKey = 1
         }
         return nextKey
+    }
+
+    /// Largest key index whose time is at or before `t`. `t` is already clamped to the key range, so index 0 is the floor.
+    private func lastKeyIndex(atOrBefore t: Float) -> Int {
+        var key = 0
+        for i in 0 ..< input.count where input[i] <= t {
+            key = i
+        }
+        return key
     }
 
     private func copyValue(atKey key: Int) -> [Float] {

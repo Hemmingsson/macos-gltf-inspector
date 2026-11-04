@@ -121,4 +121,16 @@ struct AnimationSamplerTests {
         // t=7 → 7 % 10 = 7, clamp to 2 → value at last key 4.
         #expect(abs(sampler.evaluate(at: 7)[0] - 4) < 1e-5)
     }
+
+    @Test func stepReturnsTheExactKeyValueAndHoldsTheLastKey() {
+        let short = scalarSampler(input: [0, 1, 2], values: [0, 10, 20], interpolation: .step, clipMaxTime: 2)
+        #expect(short.evaluate(at: 1) == [10], "exact key 1 must return its own value")
+        #expect(short.evaluate(at: 0) == [0])
+        #expect(short.evaluate(at: 2) == [20])
+        #expect(short.evaluate(at: 0.999) == [0])
+        #expect(short.evaluate(at: 1.001) == [10])
+
+        let inLongClip = scalarSampler(input: [0, 1, 2], values: [0, 10, 20], interpolation: .step, clipMaxTime: 10)
+        #expect(inLongClip.evaluate(at: 7) == [20], "past the channel's last key the last value holds")
+    }
 }
