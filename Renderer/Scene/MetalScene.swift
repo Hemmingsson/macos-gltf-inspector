@@ -217,9 +217,9 @@ public enum MetalSceneError: LocalizedError {
 /// (`getSceneExtents`, `subtreeAABB`): accessor `min`/`max` corners, transformed by the node's
 /// world matrix, instancing and skinning ignored.
 extension MetalScene {
-    /// The scene drawn for `ViewOptions.sceneIndex` (0 keeps the file's default scene).
-    func gltfSceneIndex(for lookIndex: Int) -> Int? {
-        if lookIndex != 0 { return asset.scenes.indices.contains(lookIndex) ? lookIndex : nil }
+    /// The scene drawn for `ViewOptions.sceneIndex` (nil keeps the file's default scene).
+    func gltfSceneIndex(for sceneIndex: Int?) -> Int? {
+        if let sceneIndex { return asset.scenes.indices.contains(sceneIndex) ? sceneIndex : nil }
         if let scene = asset.defaultScene, let index = asset.scenes.firstIndex(where: { $0 === scene }) { return index }
         return asset.scenes.isEmpty ? nil : 0
     }

@@ -85,7 +85,7 @@ public final class ModelView: NSView {
             defer { if modelURL == nil { modelURL = previousURL } }
             try await apply(next)
         }
-        try await renderer.load(url: url, sceneIndex: options.sceneIndex == 0 ? nil : options.sceneIndex,
+        try await renderer.load(url: url, sceneIndex: options.sceneIndex,
                                 materialVariantIndex: options.materialVariantIndex)
         modelURL = url
         drawFailed = false
@@ -110,7 +110,7 @@ public final class ModelView: NSView {
         applyOptions(next)
         let sceneChanged = previous.sceneIndex != next.sceneIndex
         if let modelURL, sceneChanged || previous.materialVariantIndex != next.materialVariantIndex {
-            try await renderer.load(url: modelURL, sceneIndex: next.sceneIndex == 0 ? nil : next.sceneIndex,
+            try await renderer.load(url: modelURL, sceneIndex: next.sceneIndex,
                                     materialVariantIndex: next.materialVariantIndex)
         }
         if renderer.scene != nil, sceneChanged || previous.isCentered != next.isCentered {

@@ -148,7 +148,8 @@ final class ViewState {
             fieldOfView: fieldOfView,
             fileCameraNodeIndex: fileCameraNodeIndex,
             materialVariantIndex: materialVariantIndex,
-            sceneIndex: sceneIndex,
+            // Only a document with scenes has a real index to draw; an empty one keeps the default.
+            sceneIndex: document.scenes.indices.contains(sceneIndex) ? sceneIndex : nil,
             showsFloor: showsFloor,
             showsSceneGizmos: showsSceneGizmos,
             isCentered: isCentered,
