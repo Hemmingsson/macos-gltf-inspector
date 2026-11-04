@@ -6,7 +6,7 @@ import SwiftUI
 /// (DESIGN.md › menu bar = full command set).
 enum Shortcuts {
     enum Action: String, CaseIterable, Sendable {
-        case orthographic, center, fit, reset, autoRotate, zoomIn, zoomOut
+        case orthographic, center, fit, reset, autoRotate, zoomIn, zoomOut, toggleSidebar
     }
 
     static func viewMode(_ mode: RenderViewMode) -> KeyboardShortcut? {
@@ -40,6 +40,7 @@ enum Shortcuts {
         case .autoRotate: KeyboardShortcut("r", modifiers: .command)
         case .zoomIn: KeyboardShortcut("+", modifiers: .command)
         case .zoomOut: KeyboardShortcut("-", modifiers: .command)
+        case .toggleSidebar: KeyboardShortcut("b", modifiers: .command)
         }
     }
 

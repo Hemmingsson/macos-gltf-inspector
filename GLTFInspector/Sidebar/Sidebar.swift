@@ -35,8 +35,7 @@ struct Sidebar: View {
         .background(DS.Color.paneFill, ignoresSafeAreaEdges: .all)
     }
 
-    /// Clears the toolbar band so the file card sits under the system sidebar toggle,
-    /// which is the only sidebar button.
+    /// Clears the toolbar band so the file card sits under the traffic lights.
     private var sidebarChrome: some View {
         Color.clear
             .frame(height: DS.Metrics.toolbarBandHeight)

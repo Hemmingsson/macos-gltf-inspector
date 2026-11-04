@@ -27,8 +27,9 @@ public final class ModelView: NSView {
     private var fitDistance: Double?
     private var reportedZoom: Int?
     private var drawFailed = false
-    /// Points along each edge that a pane covers. The orbit camera centres and fits the model in
-    /// the rest of the view; the canvas itself still draws under the panes.
+    /// Points along each edge that window chrome covers. Left and right are the panes: the orbit
+    /// camera centres and fits the model between them. Top is the title-bar band: a press there
+    /// moves the window instead of the camera. The canvas itself still draws under all of it.
     public var contentInsets = NSEdgeInsets() {
         didSet {
             guard contentInsets.left != oldValue.left || contentInsets.right != oldValue.right else { return }
@@ -268,7 +269,36 @@ public final class ModelView: NSView {
 
     override public var acceptsFirstResponder: Bool { true }
     override public func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override public func mouseDown(with event: NSEvent) { beginDrag(event, pan: event.modifierFlags.contains(.shift)) }
+    /// The window moves only from the title-bar band (`mouseDown`), never with a camera drag.
+    override public var mouseDownCanMoveWindow: Bool { false }
+
+    override public func mouseDown(with event: NSEvent) {
+        if isInTitleBarBand(event) {
+            titleBarPress(event)
+            return
+        }
+        beginDrag(event, pan: event.modifierFlags.contains(.shift))
+    }
+
+    private func isInTitleBarBand(_ event: NSEvent) -> Bool {
+        guard contentInsets.top > 0 else { return false }
+        let point = convert(event.locationInWindow, from: nil)
+        return (isFlipped ? point.y : bounds.height - point.y) < contentInsets.top
+    }
+
+    /// What the title bar does: drag moves the window, double-click runs the system action.
+    private func titleBarPress(_ event: NSEvent) {
+        guard let window else { return }
+        if event.clickCount == 2 {
+            switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+            case "Minimize": window.performMiniaturize(nil)
+            case "None": break
+            default: window.performZoom(nil)
+            }
+        } else {
+            window.performDrag(with: event)
+        }
+    }
     override public func otherMouseDown(with event: NSEvent) { beginDrag(event, pan: event.buttonNumber == 2) }
     override public func mouseDragged(with event: NSEvent) { drag(event) }
     override public func otherMouseDragged(with event: NSEvent) { drag(event) }

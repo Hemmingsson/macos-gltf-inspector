@@ -40,10 +40,12 @@ struct CanvasRegion<Content: View>: View {
                         .background(DS.Color.Canvas.ground)
                         .ignoresSafeArea()
                         // The panes are the leading/trailing safe area: the renderer centres
-                        // the model between them. Written after layout, never during an update.
+                        // the model between them. The top band is title bar: drags there move
+                        // the window. Written after layout, never during an update.
                         .onGeometryChange(for: EdgeInsets.self, of: \.safeAreaInsets) { insets in
                             view.canvas.contentInsets = NSEdgeInsets(
-                                top: 0, left: insets.leading, bottom: 0, right: insets.trailing
+                                top: DS.Metrics.toolbarBandHeight, left: insets.leading,
+                                bottom: 0, right: insets.trailing
                             )
                         }
                 case .empty, .loading, .failed:
@@ -122,11 +124,10 @@ struct CanvasRegion<Content: View>: View {
     private var authoredOrigin: SIMD3<Float> { bounds?.authoredOrigin ?? .zero }
 
     private var stageLeadingInset: CGFloat {
-        // Collapsed: the system sidebar toggle stays in the band after the traffic lights.
+        // Collapsed: Stage follows the traffic lights in the band (no sidebar toggle; ⌘B).
         isSidebarVisible
             ? DS.Metrics.canvasClusterInset
-            : DS.Metrics.trafficLightLeadingClearance + DS.Metrics.glassControl
-                + DS.Metrics.toolbarClearance + DS.Metrics.clusterSpacing
+            : DS.Metrics.trafficLightLeadingClearance + DS.Metrics.canvasClusterInset
     }
 
     private var cameraTrailingInset: CGFloat {

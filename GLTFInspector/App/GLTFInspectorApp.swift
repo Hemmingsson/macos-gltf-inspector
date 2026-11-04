@@ -75,9 +75,11 @@ struct GLTFInspectorApp: App {
         .defaultLaunchBehavior(.presented)
         .restorationBehavior(.disabled)
         .commands {
-            // `SidebarCommands()` owns ⌃⌘S and drives the split view directly. The View menu
-            // items go after it, never in a `CommandMenu("View")`.
-            SidebarCommands()
+            // ⌘B toggles the sidebar; there is no toolbar button for it. The View menu items go
+            // after it, never in a `CommandMenu("View")`.
+            CommandGroup(replacing: .sidebar) {
+                ToggleSidebarCommand()
+            }
             CommandGroup(after: .sidebar) {
                 ViewMenuCommands()
             }

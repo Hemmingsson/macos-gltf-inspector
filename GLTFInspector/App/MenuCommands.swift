@@ -48,6 +48,17 @@ struct DocumentFileCommands: View {
     }
 }
 
+/// View ▸ Toggle Sidebar (⌘B), the only way to show or hide the sidebar. Sent up the responder
+/// chain to the window's split view, which keeps `NavigationSplitView`'s column visibility.
+struct ToggleSidebarCommand: View {
+    var body: some View {
+        Button("Toggle Sidebar") {
+            NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+        }
+        .keyboardShortcut(Shortcuts.action(.toggleSidebar))
+    }
+}
+
 /// File ▸ Export PNG for the key document window. Dimmed, not hidden, when no window can export
 /// (HIG: keep unavailable menu items visible).
 struct ExportPNGCommand: View {
@@ -67,7 +78,7 @@ struct ExportPNGCommand: View {
 /// same shortcuts as the canvas controls.
 ///
 /// Lives in `CommandGroup(after: .sidebar)`, never `CommandMenu("View")`. Sidebar visibility is
-/// `SidebarCommands()` (⌃⌘S).
+/// `ToggleSidebarCommand` (⌘B).
 struct ViewMenuCommands: View {
     @FocusedValue(\.documentWindow) private var window
 

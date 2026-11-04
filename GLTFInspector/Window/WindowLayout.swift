@@ -11,7 +11,7 @@ struct WindowLayout<Canvas: View>: View {
     let canvasState: DocumentState
     @ViewBuilder let canvas: () -> Canvas
 
-    /// Sidebar shown or collapsed; `SidebarCommands()` (⌃⌘S) toggles it through the split view.
+    /// Sidebar shown or collapsed; `ToggleSidebarCommand` (⌘B) toggles it through the split view.
     @State private var columnVisibility = NavigationSplitViewVisibility.all
     /// Full screen shows the toolbar only on hover, so the sidebar keeps its band clear itself.
     @State private var isFullScreen = false
@@ -22,6 +22,17 @@ struct WindowLayout<Canvas: View>: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             Sidebar(document: window.document, fileName: window.fileName, validation: validation,
                         view: window.view, documentState: window.phase)
+                .toolbar(removing: .sidebarToggle)
+                .toolbar {
+                    // ⌘B replaces the sidebar toggle, but an empty toolbar collapses the title
+                    // bar and the traffic lights lose their inset off the canvas clusters' line.
+                    ToolbarItem(placement: .navigation) {
+                        Color.clear
+                            .frame(width: 1, height: DS.Metrics.glassControl)
+                            .accessibilityHidden(true)
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                }
                 // The hover toolbar adds no safe area: keep its band clear for the traffic
                 // lights and sidebar toggle, so the card sits where it does in a window.
                 .safeAreaPadding(.top, isFullScreen ? DS.Metrics.toolbarBandHeight : 0)
@@ -120,10 +131,18 @@ private struct FullScreenObserver: NSViewRepresentable {
                 center.addObserver(forName: NSWindow.willExitFullScreenNotification, object: window, queue: .main) { [weak self] _ in
                     MainActor.assumeIsolated { self?.onChange(false) }
                 },
-                center.addObserver(forName: NSWindow.didEnterFullScreenNotification, object: window, queue: .main) { _ in
-                    MainActor.assumeIsolated { Self.clearFullScreenTitleBars() }
-                },
             ]
+            // AppKit restores the toolbar strip's background when the window enters full screen
+            // and again whenever its key state changes, so clear it after each of those.
+            for name in [NSWindow.didEnterFullScreenNotification, NSWindow.didBecomeKeyNotification,
+                         NSWindow.didResignKeyNotification] {
+                tokens.append(center.addObserver(forName: name, object: window, queue: .main) { [weak window] _ in
+                    MainActor.assumeIsolated {
+                        guard window?.styleMask.contains(.fullScreen) == true else { return }
+                        Self.clearFullScreenTitleBars()
+                    }
+                })
+            }
             // Only a window that is already full screen needs reporting: false is the default,
             // and a late `false` would undo a full-screen entry that started meanwhile.
             if window.styleMask.contains(.fullScreen) {
@@ -132,8 +151,8 @@ private struct FullScreenObserver: NSViewRepresentable {
         }
 
         /// In full screen the toolbar slides in from a separate `NSToolbarFullScreenWindow` whose
-        /// background views paint an opaque strip over the canvas clusters. Hiding them leaves
-        /// its traffic lights and sidebar toggle over the canvas, as in a window.
+        /// background views paint an opaque strip over the canvas clusters. Clearing them leaves
+        /// its traffic lights over the canvas, as in a window.
         private static func clearFullScreenTitleBars() {
             for window in NSApp.windows where String(describing: type(of: window)) == "NSToolbarFullScreenWindow" {
                 guard let root = window.contentView else { continue }
@@ -143,7 +162,7 @@ private struct FullScreenObserver: NSViewRepresentable {
 
         private static func hideTitlebarBackgrounds(in view: NSView) {
             if String(describing: type(of: view)) == "NSTitlebarBackgroundView" {
-                view.isHidden = true
+                view.alphaValue = 0
                 return
             }
             view.subviews.forEach(hideTitlebarBackgrounds)
