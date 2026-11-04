@@ -454,7 +454,6 @@ private struct GPUFrame {
     var options: SIMD4<UInt32>
     var viewport: SIMD4<Float>
 }
-
 private struct GPUDraw { var model: simd_float4x4; var normalMatrix: simd_float4x4 }
 private func toneMap(_ mapping: RenderLook.ToneMapping) -> UInt32 {
     switch mapping { case .pbrNeutral: 0; case .none: 1; case .acesNarkowicz: 2; case .acesHill: 3 }
