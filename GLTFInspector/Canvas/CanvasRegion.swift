@@ -40,6 +40,13 @@ struct CanvasRegion<Content: View>: View {
                         .background(DS.Color.Canvas.ground)
                         .ignoresSafeArea()
                         .focusSection()
+                        .overlay {
+                            if view.canvas.showsAnimationTimeline {
+                                SpaceKeyView { view.canvas.togglePlayback() }
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                         .onKeyPress(.space) {
                             guard view.canvas.showsAnimationTimeline else { return .ignored }
                             view.canvas.togglePlayback()
@@ -118,7 +125,10 @@ struct CanvasRegion<Content: View>: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 DimensionsReadout(size: readout.size, name: readout.name)
-                    .padding(OverlayMetrics.inset)
+                    .padding(.trailing, OverlayMetrics.inset)
+                    .padding(.bottom, view.canvas.showsAnimationTimeline
+                        ? OverlayMetrics.inset + OverlayMetrics.timelineHeight + DS.Spacing.m
+                        : OverlayMetrics.inset)
             }
             .overlay(alignment: .bottom) {
                 if view.canvas.showsAnimationTimeline {
@@ -135,12 +145,7 @@ struct CanvasRegion<Content: View>: View {
 
     /// The selected scene node's drawn box when it has one, otherwise the whole model.
     private var readout: (size: SIMD3<Float>, name: String?) {
-        // A camera, light or empty without drawn geometry has no size of its own.
-        if let id = view.selection, id.kind.isSceneNode, let box = view.canvas.bounds(ofNode: id.index),
-           (box.max - box.min).max() > 0 {
-            return (box.max - box.min, view.document.displayName(of: id))
-        }
-        return (bounds?.size ?? .zero, nil)
+        SelectionDimensions.readout(view: view, fileBounds: bounds)
     }
 
     private var stageLeadingInset: CGFloat {

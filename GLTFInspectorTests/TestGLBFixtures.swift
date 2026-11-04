@@ -331,6 +331,106 @@ func writeTempCameraPickGLB(prefix: String = "camera-pick") throws -> URL {
     return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
 }
 
+/// One translation clip whose only key time is 0 (zero playback duration).
+func writeTempZeroDurationClipGLB(prefix: String = "zero-duration-clip") throws -> URL {
+    var times = Data()
+    appendFloats([0], to: &times)
+    var values = Data()
+    appendFloats([0, 0, 0], to: &values)
+    let meshBin = floatTriangleBin()
+    var fullBin = meshBin
+    fullBin.append(times)
+    fullBin.append(values)
+    let tOff = meshBin.count
+    let vOff = tOff + times.count
+    let fixedJson: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": fullBin.count]],
+        "bufferViews": [
+            ["buffer": 0, "byteOffset": 0, "byteLength": meshBin.count],
+            ["buffer": 0, "byteOffset": tOff, "byteLength": times.count],
+            ["buffer": 0, "byteOffset": vOff, "byteLength": values.count],
+        ],
+        "accessors": [
+            ["bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+             "max": [1, 1, 0], "min": [0, 0, 0]],
+            ["bufferView": 1, "componentType": 5126, "count": 1, "type": "SCALAR"],
+            ["bufferView": 2, "componentType": 5126, "count": 1, "type": "VEC3"],
+        ],
+        "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+        "nodes": [["name": "Mesh", "mesh": 0]],
+        "animations": [[
+            "name": "Still",
+            "samplers": [["input": 1, "output": 2, "interpolation": "LINEAR"]],
+            "channels": [["sampler": 0, "target": ["node": 0, "path": "translation"]]],
+        ]],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: fixedJson, bin: fullBin), prefix: prefix)
+}
+
+/// Two translation clips on one node: `shortDuration` s and `longDuration` s.
+func writeTempTwoDurationClipsGLB(shortDuration: Float = 1, longDuration: Float = 3,
+                                  prefix: String = "two-duration-clips") throws -> URL {
+    var shortTimes = Data()
+    appendFloats([0, shortDuration], to: &shortTimes)
+    var shortValues = Data()
+    appendFloats([0, 0, 0, 0, 1, 0], to: &shortValues)
+    var longTimes = Data()
+    appendFloats([0, longDuration], to: &longTimes)
+    var longValues = Data()
+    appendFloats([0, 0, 0, 0, 3, 0], to: &longValues)
+    let meshBin = floatTriangleBin()
+    var bin = meshBin
+    let shortTimesOff = bin.count
+    bin.append(shortTimes)
+    let shortValuesOff = bin.count
+    bin.append(shortValues)
+    let longTimesOff = bin.count
+    bin.append(longTimes)
+    let longValuesOff = bin.count
+    bin.append(longValues)
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [
+            ["buffer": 0, "byteOffset": 0, "byteLength": meshBin.count],
+            ["buffer": 0, "byteOffset": shortTimesOff, "byteLength": shortTimes.count],
+            ["buffer": 0, "byteOffset": shortValuesOff, "byteLength": shortValues.count],
+            ["buffer": 0, "byteOffset": longTimesOff, "byteLength": longTimes.count],
+            ["buffer": 0, "byteOffset": longValuesOff, "byteLength": longValues.count],
+        ],
+        "accessors": [
+            ["bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+             "max": [1, 3, 0], "min": [0, 0, 0]],
+            ["bufferView": 1, "componentType": 5126, "count": 2, "type": "SCALAR",
+             "min": [0], "max": [shortDuration]],
+            ["bufferView": 2, "componentType": 5126, "count": 2, "type": "VEC3"],
+            ["bufferView": 3, "componentType": 5126, "count": 2, "type": "SCALAR",
+             "min": [0], "max": [longDuration]],
+            ["bufferView": 4, "componentType": 5126, "count": 2, "type": "VEC3"],
+        ],
+        "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+        "nodes": [["name": "Mesh", "mesh": 0]],
+        "animations": [
+            [
+                "name": "Short",
+                "samplers": [["input": 1, "output": 2, "interpolation": "LINEAR"]],
+                "channels": [["sampler": 0, "target": ["node": 0, "path": "translation"]]],
+            ],
+            [
+                "name": "Long",
+                "samplers": [["input": 3, "output": 4, "interpolation": "LINEAR"]],
+                "channels": [["sampler": 0, "target": ["node": 0, "path": "translation"]]],
+            ],
+        ],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
+}
+
 func writeTempOneNodeMeshGLB(nodeName: String, prefix: String = "one-node") throws -> URL {
     let bin = floatTriangleBin()
     let json: [String: Any] = [

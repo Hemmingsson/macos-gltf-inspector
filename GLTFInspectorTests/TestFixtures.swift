@@ -30,6 +30,7 @@ enum TestFixtures {
     static let missingChannels = fixture("missing-channels/basecolor-only.gltf")
     static let rigged = fixture("rigged/two-joint-skin.gltf")
     static let morph = fixture("morph/morph-triangle.gltf")
+    static let animatedMorphCube = url("TestModels/Khronos samples/AnimatedMorphCube/AnimatedMorphCube.glb")
     static let corrupt = fixture("corrupt/truncated.glb")
 
     static func exists(_ url: URL) -> Bool {

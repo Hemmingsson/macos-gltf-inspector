@@ -1,4 +1,4 @@
-import Renderer
+import AppKit
 import SwiftUI
 
 /// Canvas-bottom animation transport: play/pause, scrubber, clip picker, loop, and speed.
@@ -11,15 +11,19 @@ struct DSTimeline: View {
     @Binding var loops: Bool
     @Binding var speed: Float
     let duration: Float
-    let clips: [AnimationClipDescriptor]
+    let capsuleHeight: CGFloat
+    let clipTitles: [String]
     let selectedClipIndices: [Int]
     let defaultClipIndices: [Int]
     var onSelectClip: (Int?) -> Void
+    var onScrubbingChanged: (Bool) -> Void = { _ in }
 
     private static let speedChoices: [Float] = [0.25, 0.5, 1, 1.5, 2]
+    private static let frameStep: Float = 1 / 30
+    private static let largeStep: Float = 1
 
     var body: some View {
-        DSHUDCapsule(height: OverlayMetrics.timelineHeight, horizontalPadding: DS.Spacing.m, spacing: DS.Spacing.s) {
+        DSHUDCapsule(height: capsuleHeight, horizontalPadding: DS.Spacing.m, spacing: DS.Spacing.s) {
             playPauseButton
             DSGlassIslandDivider()
             timeReadout
@@ -47,6 +51,7 @@ struct DSTimeline: View {
         .dsGlassControlSurface(isEngaged: isPlaying)
         .help(isPlaying ? "Pause" : "Play")
         .accessibilityLabel(isPlaying ? "Pause" : "Play")
+        .accessibilityAction(named: "Toggle playback") { isPlaying.toggle() }
     }
 
     private var timeReadout: some View {
@@ -66,31 +71,64 @@ struct DSTimeline: View {
     private var scrubber: some View {
         Slider(
             value: $time,
-            in: 0 ... max(duration, 0.001),
-            step: 0.01
+            in: 0 ... max(duration, 0.001)
         ) {
             Text("Timeline")
         } minimumValueLabel: {
             Text(PlaybackTimeFormat.string(time))
         } maximumValueLabel: {
             Text(PlaybackTimeFormat.string(duration))
+        } onEditingChanged: { editing in
+            onScrubbingChanged(editing)
         }
         .labelsHidden()
         .frame(maxWidth: .infinity)
         .accessibilityLabel("Timeline")
         .accessibilityValue("\(PlaybackTimeFormat.string(time)) of \(PlaybackTimeFormat.string(duration))")
+        .accessibilityAdjustableAction { direction in
+            let step = Self.scrubStep(large: NSEvent.modifierFlags.contains(.option))
+            switch direction {
+            case .increment:
+                time = min(time + step, max(duration, 0.001))
+            case .decrement:
+                time = max(time - step, 0)
+            @unknown default:
+                break
+            }
+        }
+        .accessibilityAction(named: "Step timeline forward") {
+            time = min(time + Self.frameStep, max(duration, 0.001))
+        }
+    }
+
+    private static func scrubStep(large: Bool) -> Float {
+        large ? largeStep : frameStep
     }
 
     private var clipPicker: some View {
         DSGlassMenuButton("Animation clip", systemImage: "stopwatch", style: .text(clipPickerTitle), isEngaged: isSingleClipSelected) {
-            Button("All") {
+            Button {
                 onSelectClip(nil)
+            } label: {
+                clipMenuRow(title: "Default", isChecked: selectedClipIndices == defaultClipIndices)
             }
             Divider()
-            ForEach(Array(clips.enumerated()), id: \.offset) { index, clip in
-                Button(clipLabel(clip, index: index)) {
+            ForEach(Array(clipTitles.enumerated()), id: \.offset) { index, title in
+                Button {
                     onSelectClip(index)
+                } label: {
+                    clipMenuRow(title: title, isChecked: selectedClipIndices == [index])
                 }
+            }
+        }
+    }
+
+    private func clipMenuRow(title: String, isChecked: Bool) -> some View {
+        HStack {
+            Text(title)
+            Spacer(minLength: DS.Spacing.m)
+            if isChecked {
+                Image(systemName: "checkmark")
             }
         }
     }
@@ -111,16 +149,12 @@ struct DSTimeline: View {
 
     private var clipPickerTitle: String {
         if selectedClipIndices == defaultClipIndices {
-            return "All"
+            return "Default"
         }
-        if selectedClipIndices.count == 1, let index = selectedClipIndices.first, clips.indices.contains(index) {
-            return clipLabel(clips[index], index: index)
+        if selectedClipIndices.count == 1, let index = selectedClipIndices.first, clipTitles.indices.contains(index) {
+            return clipTitles[index]
         }
-        return "All"
-    }
-
-    private func clipLabel(_ clip: AnimationClipDescriptor, index: Int) -> String {
-        clip.name?.isEmpty == false ? clip.name! : "Clip \(index + 1)"
+        return "Default"
     }
 
     private var speedLabel: String {

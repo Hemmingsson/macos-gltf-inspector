@@ -29,6 +29,7 @@ struct DimensionsReadout: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(name.map { "Dimensions of \($0)" } ?? "Dimensions")
         .accessibilityValue(label)
+        .accessibilityIdentifier("dimensions-readout")
     }
 
     private var label: String {

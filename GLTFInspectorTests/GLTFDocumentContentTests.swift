@@ -186,6 +186,23 @@ struct GLTFDocumentContentTests {
         #expect(document.nodes[2].jointOfSkinIndices == [0])
     }
 
+    @Test func sharedPositionAccessorCountsVerticesOncePerMesh() {
+        let document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "accessors": [["componentType": 5126, "count": 12, "type": "VEC3"]],
+            "meshes": [[
+                "primitives": [
+                    ["attributes": ["POSITION": 0]],
+                    ["attributes": ["POSITION": 0]],
+                ],
+            ]],
+            "nodes": [["mesh": 0]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+        ])
+        #expect(document.nodes[0].vertexCount == 12)
+    }
+
     @Test func textureSlotsAreSizedAndThumbedFromTheFilesOwnImages() throws {
         let url = try TestGLB.writeTemp(try texturedGLB(), prefix: "texture-slots")
         defer { try? FileManager.default.removeItem(at: url) }

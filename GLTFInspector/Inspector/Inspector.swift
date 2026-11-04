@@ -114,7 +114,8 @@ struct Inspector: View {
             MorphSection(
                 morph: document.morphs[index],
                 meshName: document.displayName(of: id),
-                liveWeights: view.canvas.currentAnimationPose()?.meshWeights[document.morphs[index].meshIndex]
+                document: document,
+                canvas: view.canvas
             )
             sectionEnd
         case .scene where document.scenes.indices.contains(index):

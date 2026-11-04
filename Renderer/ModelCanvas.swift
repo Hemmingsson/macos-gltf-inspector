@@ -101,9 +101,23 @@ public final class ModelCanvasController {
     public private(set) var animationClips: [AnimationClipDescriptor] = []
     /// Indices into `animationClips` / the loaded clip list that are evaluated together.
     public var selectedClipIndices: [Int] = [] {
-        didSet { playbackStateDidChange() }
+        didSet {
+            let duration = playbackDuration
+            if duration > 0, time > duration {
+                time = duration
+            }
+            playbackStateDidChange()
+        }
     }
     public private(set) var isPlaying = false
+    /// True while the user is dragging the timeline scrubber; playback time does not advance.
+    public var isScrubbing = false {
+        didSet {
+            if oldValue, !isScrubbing, isPlaying {
+                lastPlaybackInstant = playbackClock.now()
+            }
+        }
+    }
     /// Current time in seconds along the active clips; 0 at rest when the window opens.
     public var time: Float = 0
     public var loops = true
@@ -130,6 +144,10 @@ public final class ModelCanvasController {
 
     public func play() {
         guard !animationClips.isEmpty else { return }
+        guard playbackDuration > 0 else { return }
+        if !loops, time >= playbackDuration {
+            time = 0
+        }
         isPlaying = true
         lastPlaybackInstant = playbackClock.now()
         playbackStateDidChange()
@@ -206,7 +224,7 @@ public final class ModelCanvasController {
 
     /// Advances playback by `elapsed` seconds of clip time (honours `speed`). For unit tests.
     func advancePlayback(elapsed: Float) {
-        guard isPlaying, !selectedClipIndices.isEmpty else { return }
+        guard isPlaying, !isScrubbing, !selectedClipIndices.isEmpty else { return }
         applyTimeDelta(elapsed * speed)
     }
 
@@ -222,11 +240,11 @@ public final class ModelCanvasController {
         let clips = selectedClipIndices.compactMap { loadedAnimationClips.indices.contains($0) ? loadedAnimationClips[$0] : nil }
         guard !clips.isEmpty else { return nil }
         if !isPlaying, time == 0 { return nil }
-        return AnimationPose(clips: clips, at: time, matrixAuthoredNodes: matrixAuthoredNodes)
+        return AnimationPose(clips: clips, at: time, matrixAuthoredNodes: matrixAuthoredNodes, wraps: loops)
     }
 
     func tickAnimationFromDisplayLink() {
-        guard isPlaying else { return }
+        guard isPlaying, !isScrubbing else { return }
         let now = playbackClock.now()
         defer { lastPlaybackInstant = now }
         guard let last = lastPlaybackInstant else { return }
@@ -304,6 +322,16 @@ public final class ModelCanvasController {
     public func bounds(ofNode index: Int) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
         _ = sceneGeneration
         return view?.renderer.scene?.bounds(ofNode: index)
+    }
+
+    public func localMeshSize(ofNode index: Int) -> SIMD3<Float>? {
+        _ = sceneGeneration
+        return view?.renderer.scene?.localMeshSize(ofNode: index)
+    }
+
+    public func worldScale(ofNode index: Int) -> SIMD3<Float>? {
+        _ = sceneGeneration
+        return view?.renderer.scene?.worldScale(ofNode: index)
     }
 
     /// One frame at the canvas's pixel size. The caller writes the file.

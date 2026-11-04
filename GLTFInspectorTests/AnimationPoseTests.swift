@@ -4,6 +4,7 @@ import simd
 import Testing
 @testable import Renderer
 
+@Suite(.serialized)
 struct AnimationPoseTests {
     private func loadAsset(_ url: URL) throws -> GLTFAsset {
         GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
@@ -244,6 +245,40 @@ struct AnimationPoseTests {
             AnimationClipChannel(target: .pointer(path), sampler: sampler),
         ])
         #expect(AnimationClip.defaultSelectedClipIndices(in: [a, b]) == [0])
+    }
+
+    @Test func nonLoopingPoseHoldsShortClipAtItsEnd() {
+        let short = AnimationClip(name: "short", channels: [
+            AnimationClipChannel(
+                target: .translation(nodeIndex: 0),
+                sampler: AnimationSampler(
+                    input: [0, 1],
+                    output: [0, 0, 0, 0, 1, 0],
+                    componentCount: 3,
+                    interpolation: .linear,
+                    clipMaxTime: 1
+                )
+            ),
+        ])
+        let long = AnimationClip(name: "long", channels: [
+            AnimationClipChannel(
+                target: .translation(nodeIndex: 1),
+                sampler: AnimationSampler(
+                    input: [0, 3],
+                    output: [0, 0, 0, 0, 3, 0],
+                    componentCount: 3,
+                    interpolation: .linear,
+                    clipMaxTime: 3
+                )
+            ),
+        ])
+        let held = AnimationPose(clips: [short, long], at: 2, wraps: false)
+        let shortEnd = AnimationPose(clips: [short], at: 1, wraps: false)
+        #expect(abs((held.nodeOverrides[0]?.translation?.y ?? -1) - (shortEnd.nodeOverrides[0]?.translation?.y ?? -2)) < 1e-5)
+        #expect(abs((held.nodeOverrides[1]?.translation?.y ?? -1) - 2) < 1e-5)
+        let wrapped = AnimationPose(clips: [short], at: 2, wraps: true)
+        #expect(abs((wrapped.nodeOverrides[0]?.translation?.y ?? -1) - 1) < 1e-5,
+                "an exact multiple of the clip length still samples the end pose")
     }
 
     @Test func clipMaxTimeIsMaximumInputEnd() throws {

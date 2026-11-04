@@ -352,9 +352,14 @@ public enum GLTFDocumentJSON {
     ) -> MeshGeometry {
         var stamp = MeshGeometry()
         var maxUV = 0
+        var countedPositionAccessors = Set<Int>()
         for primitive in mesh["primitives"] as? [[String: Any]] ?? [] {
             let attributes = primitive["attributes"] as? [String: Any] ?? [:]
-            stamp.vertexCount += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
+            if let position = GLTFJSON.int(attributes["POSITION"]),
+               position >= 0, position < accessors.count,
+               countedPositionAccessors.insert(position).inserted {
+                stamp.vertexCount += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
+            }
             if attributes["TANGENT"] != nil { stamp.hasTangents = true }
             if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) { stamp.hasVertexColors = true }
             for uv in 0..<8 where attributes["TEXCOORD_\(uv)"] != nil {
