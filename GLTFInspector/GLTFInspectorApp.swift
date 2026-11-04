@@ -109,6 +109,16 @@ struct GLTFInspectorApp: App {
             }
         }
 
+        // Same pages as the Design Catalog app. The scene title is the Window menu item; choosing
+        // it again brings this window forward.
+        Window("Design System", id: DesignSystemWindow.id) {
+            CatalogRootView()
+        }
+        .defaultSize(width: 1320, height: 900)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified)
+        .restorationBehavior(.disabled)
+
         Settings {
             PreviewSettingsRoot(store: AppDefaultsStore.appGroup)
         }

@@ -226,6 +226,10 @@ targets:
     platform: macOS
     sources:
       - GLTFInspector
+      # The catalog's pages, opened from the Window menu. The catalog app keeps its own @main.
+      - path: DesignCatalog
+        excludes:
+          - App/DesignCatalogApp.swift
       - path: assets/ICON.icon
         type: file
         buildPhase: resources

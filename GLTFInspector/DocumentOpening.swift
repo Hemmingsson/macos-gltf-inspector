@@ -47,6 +47,10 @@ enum WelcomeWindow {
     static let id = "welcome"
 }
 
+enum DesignSystemWindow {
+    static let id = "design-system"
+}
+
 @MainActor
 private final class RecentMenuTarget: NSObject {
     static let shared = RecentMenuTarget()
