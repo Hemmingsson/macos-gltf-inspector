@@ -157,9 +157,8 @@ public final class ModelView: NSView {
         let box = boxes.dropFirst().reduce(first) { (simd_min($0.min, $1.min), simd_max($0.max, $1.max)) }
         cancelRetarget()
         camera.isOrthographic = options.isOrthographic
-        let extents = (SIMD3<Double>(box.min), SIMD3<Double>(box.max))
-        if let fitted = camera.fit(extents: extents, centered: options.isCentered, aspect: canvasAspect) {
-            fitDistance = fitted
+        if let framed = camera.frame(box: (SIMD3<Double>(box.min), SIMD3<Double>(box.max)), aspect: canvasAspect) {
+            fitDistance = framed
         }
         redraw()
     }

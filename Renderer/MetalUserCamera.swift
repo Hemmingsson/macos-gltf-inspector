@@ -154,6 +154,24 @@ public struct MetalUserCamera: Sendable, Equatable {
         return fitted
     }
 
+    /// Selection framing (`ModelView.frame`): moves the orbit target to the centre of `box` and
+    /// dollies to the shared padded distance for it at the current angles. Unlike `fit`, it keeps
+    /// the scene extents, pan speed and zoom base, so floor, gizmos and zoom stay scene-relative.
+    /// The clip planes still cover the whole scene from the new eye. Returns the framed distance.
+    @discardableResult
+    public mutating func frame(box: (min: SIMD3<Double>, max: SIMD3<Double>), aspect: Double) -> Double? {
+        guard box.min.x.isFinite, box.min.y.isFinite, box.min.z.isFinite,
+              box.max.x.isFinite, box.max.y.isFinite, box.max.z.isFinite else { return nil }
+        let toCamera = SIMD3(sin(rotAroundY) * cos(rotAroundX), -sin(rotAroundX), cos(rotAroundY) * cos(rotAroundX))
+        let distance = Self.sharedFitDistance(extent: box.max - box.min, toCamera: toCamera, aspect: aspect,
+                                              fieldOfViewDegrees: yfov * 180 / .pi)
+        guard distance.isFinite else { return nil }
+        setDistanceFromTarget(distance, (box.min + box.max) / 2)
+        fitCameraPlanesToExtents(simd_min(sceneMin, box.min), simd_max(sceneMax, box.max))
+        applyProjection()
+        return distance
+    }
+
     /// `applySharedFitDistance`: projected-AABB + near-face + 1.02, at the current angles.
     @discardableResult
     public mutating func applySharedFitDistance(aspect: Double) -> Double? {

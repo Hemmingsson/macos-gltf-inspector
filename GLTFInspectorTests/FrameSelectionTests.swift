@@ -81,4 +81,74 @@ struct FrameSelectionTests {
         #expect(view.fileCameraNodeIndex == nil)
         #expect(view.activeCameraPreset == nil)
     }
+
+    /// Two-sided quads (two triangles each) at the given z, spanning ±h in x/y around cx.
+    private func quads(_ specs: [(cx: Float, z: Float, h: Float)]) throws -> URL {
+        var bin = Data()
+        var bufferViews: [[String: Any]] = [], accessors: [[String: Any]] = [], meshes: [[String: Any]] = []
+        var nodes: [[String: Any]] = []
+        for (i, q) in specs.enumerated() {
+            let a: [Float] = [q.cx - q.h, -q.h, q.z, q.cx + q.h, -q.h, q.z, q.cx + q.h, q.h, q.z,
+                              q.cx - q.h, -q.h, q.z, q.cx + q.h, q.h, q.z, q.cx - q.h, q.h, q.z]
+            let offset = bin.count
+            appendFloats(a, to: &bin)
+            bufferViews.append(["buffer": 0, "byteOffset": offset, "byteLength": 72])
+            accessors.append(["bufferView": i, "componentType": 5126, "count": 6, "type": "VEC3",
+                              "min": [q.cx - q.h, -q.h, q.z], "max": [q.cx + q.h, q.h, q.z]])
+            meshes.append(["primitives": [["attributes": ["POSITION": i], "material": 0]]])
+            nodes.append(["mesh": i])
+        }
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"], "buffers": [["byteLength": bin.count]],
+            "bufferViews": bufferViews, "accessors": accessors,
+            "materials": [["doubleSided": true]], "meshes": meshes, "nodes": nodes,
+            "scenes": [["nodes": Array(0..<nodes.count)]], "scene": 0,
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "frame-selection-quads")
+    }
+
+    private func pixels(_ image: CGImage) -> [UInt8] {
+        let width = image.width, height = image.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let context = CGContext(data: &bytes, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return bytes
+    }
+
+    @Test func frameSelectionKeepsTheRestOfTheSceneInsideTheClipRange() async throws {
+        // Small quad at the origin; big quad 20 units behind it (further from the front camera).
+        let url = try quads([(cx: 0, z: 0, h: 0.05), (cx: 0, z: -20, h: 5)])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(url)
+        let sceneMin = view.camera.sceneMin, sceneMax = view.camera.sceneMax
+        view.frame(nodeIndex: 0)
+        let eye = view.camera.position
+        let depth = simd_dot(SIMD3<Double>(0, 0, -20) - eye, view.camera.lookDirection)
+        #expect(view.camera.zfar > depth, "zfar \(view.camera.zfar) clips the background quad at depth \(depth)")
+        #expect(view.camera.sceneMin == sceneMin && view.camera.sceneMax == sceneMax,
+                "floor/gizmo extents changed from \(sceneMin)…\(sceneMax) to \(view.camera.sceneMin)…\(view.camera.sceneMax)")
+    }
+
+    @Test func frameSelectionStillDrawsTheFarMesh() async throws {
+        let withFar = try quads([(cx: 0, z: 0, h: 0.05), (cx: 0, z: -20, h: 20)])
+        let alone = try quads([(cx: 0, z: 0, h: 0.05)])
+        defer {
+            try? FileManager.default.removeItem(at: withFar)
+            try? FileManager.default.removeItem(at: alone)
+        }
+        let framedWithFar = ModelView(renderer: try MetalRenderer())
+        try await framedWithFar.load(withFar)
+        framedWithFar.frame(nodeIndex: 0)
+        let framedAlone = ModelView(renderer: try MetalRenderer())
+        try await framedAlone.load(alone)
+        framedAlone.frame(nodeIndex: 0)
+        // The near quad is identical in both renders, so any difference is the far quad.
+        let far = pixels(try framedWithFar.image(width: 96, height: 96))
+        let near = pixels(try framedAlone.image(width: 96, height: 96))
+        let changed = zip(far, near).filter { abs(Int($0) - Int($1)) > 8 }.count
+        #expect(changed > 0, "the far quad must still be drawn after framing")
+    }
 }
