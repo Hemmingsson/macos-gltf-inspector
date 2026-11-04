@@ -217,4 +217,17 @@ struct SceneGizmoTests {
         let vertices = overlayVertices(scene: try #require(renderer.scene), options: MetalOverlayOptions(selectedNode: 2))
         #expect(vertices.count >= 14, "two joints need three cross segments each in addition to their connecting bone")
     }
+
+    @Test func nestedGroupSelectionShowsItsDescendantBox() async throws {
+        let url = try writeTempNestedGroupedMeshGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        let vertices = overlayVertices(
+            scene: try #require(renderer.scene),
+            options: MetalOverlayOptions(selectedNode: 1)
+        )
+        #expect(vertices.count == 24, "a non-joint group needs its 12-edge subtree box")
+        #expect(vertices.contains { $0.position.x > 9 })
+    }
 }

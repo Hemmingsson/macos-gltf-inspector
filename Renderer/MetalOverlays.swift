@@ -352,16 +352,6 @@ private func collectSelectionGizmo(
     if useSilhouetteSelectionOutline,
        usesSilhouetteSelectionOutline(nodeIndex: nodeIndex, scene: scene) { return }
 
-    if node.mesh == nil, scene.nodeParents.indices.contains(nodeIndex), scene.nodeParents[nodeIndex] >= 0 {
-        let parent = scene.nodeParents[nodeIndex]
-        if let parentWorld = scene.worldMatrix(ofNode: parent) {
-            let a = SIMD3(parentWorld.columns.3.x, parentWorld.columns.3.y, parentWorld.columns.3.z)
-            let b = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
-            line(a, b, OverlayGizmoColors.selectionHighlight)
-            return
-        }
-    }
-
     collectNodeAABB(scene: scene, nodeIndex: nodeIndex, color: OverlayGizmoColors.selectionHighlight, line: line)
 }
 

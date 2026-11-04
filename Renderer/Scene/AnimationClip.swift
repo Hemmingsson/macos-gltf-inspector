@@ -113,9 +113,7 @@ public enum AnimationClipLoader {
         case "weights":
             if let nodeWeights = node.weights, !nodeWeights.isEmpty {
                 target = .weightsOnNode(nodeIndex: nodeIndex)
-            } else if let mesh = node.mesh, let meshIndex = asset.meshes.firstIndex(of: mesh),
-                      let meshWeights = mesh.weights, !meshWeights.isEmpty
-            {
+            } else if let mesh = node.mesh, let meshIndex = asset.meshes.firstIndex(of: mesh) {
                 target = .weightsOnMesh(meshIndex: meshIndex)
             } else {
                 target = .weightsOnNode(nodeIndex: nodeIndex)
@@ -134,10 +132,10 @@ public enum AnimationClipLoader {
         case .rotation:
             4
         case .weightsOnNode:
-            node.weights?.count ?? node.mesh?.weights?.count ?? 0
+            try weightCount(mesh: node.mesh, authored: node.weights)
         case let .weightsOnMesh(meshIndex):
             asset.meshes.indices.contains(meshIndex)
-                ? (asset.meshes[meshIndex].weights?.count ?? 0)
+                ? try weightCount(mesh: asset.meshes[meshIndex], authored: asset.meshes[meshIndex].weights)
                 : 0
         case .pointer:
             AnimationAccessorFloats.componentCount(for: channel.sampler.output)
@@ -147,6 +145,20 @@ public enum AnimationClipLoader {
             target: target,
             sampler: try sampler(from: channel.sampler, path: path, componentCount: componentCount)
         )
+    }
+
+    /// Morph weight count is the mesh's target count. Authored `weights` arrays are only a fallback
+    /// for a mesh with no targets, since they are optional defaults in glTF.
+    private static func weightCount(mesh: GLTFMesh?, authored: [NSNumber]?) throws -> Int {
+        let targetCount = try mesh.map(morphTargetCount) ?? 0
+        return targetCount > 0 ? targetCount : (authored?.count ?? 0)
+    }
+
+    /// Target count shared by every primitive of `mesh`; primitives that disagree are rejected.
+    private static func morphTargetCount(of mesh: GLTFMesh) throws -> Int {
+        let counts = Set(mesh.primitives.map { $0.targets.count })
+        guard counts.count <= 1 else { throw AnimationClipError.mismatchedMorphTargets }
+        return counts.first ?? 0
     }
 
     private static func sampler(
@@ -161,6 +173,14 @@ public enum AnimationClipLoader {
         case .linear: .linear
         case .cubic: .cubicSpline
         @unknown default: .linear
+        }
+        // CUBICSPLINE stores in-tangent, value and out-tangent per key. A channel with no components
+        // (no morph targets to drive) never evaluates, so only check channels that will.
+        if componentCount > 0 {
+            let stride = interpolation == .cubicSpline ? 3 : 1
+            guard output.count == input.count * componentCount * stride else {
+                throw AnimationClipError.mismatchedSampler
+            }
         }
         return ParsedSampler(
             input: input,
@@ -188,6 +208,8 @@ public enum AnimationClipLoader {
 public enum AnimationClipError: Error, Equatable {
     case unsupportedTarget(String)
     case truncatedAccessor
+    case mismatchedSampler
+    case mismatchedMorphTargets
 }
 
 enum AnimationAccessorFloats {

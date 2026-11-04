@@ -162,6 +162,41 @@ func writeTempGroupedMeshGLB(prefix: String = "grouped-mesh") throws -> URL {
     return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
 }
 
+/// Root → group → mesh; mesh translated on X (default +10).
+func writeTempNestedGroupedMeshGLB(
+    meshTranslation: [Float] = [10, 0, 0],
+    prefix: String = "nested-group-mesh"
+) throws -> URL {
+    let bin = floatQuadWithUVBin()
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [
+            ["buffer": 0, "byteOffset": 0, "byteLength": 48],
+            ["buffer": 0, "byteOffset": 48, "byteLength": 32],
+            ["buffer": 0, "byteOffset": 80, "byteLength": 12],
+        ],
+        "accessors": [
+            ["bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
+             "min": [-1, -1, 0], "max": [1, 1, 0]],
+            ["bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC2"],
+            ["bufferView": 2, "componentType": 5123, "count": 6, "type": "SCALAR"],
+        ],
+        "meshes": [["primitives": [[
+            "attributes": ["POSITION": 0, "TEXCOORD_0": 1],
+            "indices": 2,
+        ]]]],
+        "nodes": [
+            ["name": "Root", "children": [1]],
+            ["name": "Group", "children": [2]],
+            ["name": "Mesh", "mesh": 0, "translation": meshTranslation],
+        ],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
+}
+
 /// MASK quad in front of an opaque quad; texture center is transparent.
 func writeTempMaskOverOpaqueGLB(prefix: String = "mask-over-opaque") throws -> URL {
     let meshBin = floatQuadWithUVBin()
