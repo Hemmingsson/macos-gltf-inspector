@@ -30,7 +30,7 @@ struct EngineSelectionModelTests {
         let sidebar = HostSidebarModel(document: loaded.document)
         let selection = EngineSelectionModel(sidebar: sidebar)
 
-        let rootIndex = try #require(sidebar.layerRootIndices().first)
+        let rootIndex = try #require(loaded.document.scenes[0].rootNodeIndices.first)
         let id = NodeID(kind: Self.nodeKind(loaded.document, index: rootIndex), index: rootIndex)
 
         selection.select(id)
@@ -72,7 +72,7 @@ struct EngineSelectionModelTests {
         let sidebar = HostSidebarModel(document: loaded.document)
         let selection = EngineSelectionModel(sidebar: sidebar)
 
-        let rootIndex = try #require(sidebar.layerRootIndices().first)
+        let rootIndex = try #require(loaded.document.scenes[0].rootNodeIndices.first)
         selection.select(NodeID(kind: .mesh, index: rootIndex))
         #expect(sidebar.selectedNodeIndex == rootIndex)
 

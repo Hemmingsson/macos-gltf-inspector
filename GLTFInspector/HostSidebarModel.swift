@@ -31,16 +31,6 @@ final class HostSidebarModel {
         self.activeSceneIndex = document.defaultSceneIndex
     }
 
-    func layerRootIndices() -> [Int] {
-        guard document.scenes.indices.contains(activeSceneIndex) else { return [] }
-        return document.scenes[activeSceneIndex].rootNodeIndices
-    }
-
-    func selectNode(_ id: Int) {
-        selectedNodeIndex = selectedNodeIndex == id ? nil : id
-        overlayRevision += 1
-    }
-
     /// Isolate `id`'s subtree (toggle off if already isolating that node).
     func isolate(_ id: Int) {
         soloRoot = soloRoot == id ? nil : id

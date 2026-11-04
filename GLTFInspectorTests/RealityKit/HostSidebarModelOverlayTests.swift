@@ -3,6 +3,7 @@ import Foundation
 @testable import GLTFInspector
 import RealityKit
 @testable import RendererRealityKit
+import PreviewUI
 import simd
 import Testing
 
@@ -34,8 +35,9 @@ struct HostSidebarModelOverlayTests {
             testNode(index: 1, name: "Other", children: []),
         ]
         let model = HostSidebarModel(document: doc)
+        let selection = EngineSelectionModel(sidebar: model)
 
-        model.selectNode(0)
+        selection.select(NodeID(kind: .mesh, index: 0))
         model.applyIfNeeded(to: root)
 
         #expect(node0.components[OpacityComponent.self] == nil)
@@ -45,7 +47,7 @@ struct HostSidebarModelOverlayTests {
         #expect(node0.components.has(InputTargetComponent.self))
         #expect(node0.components.has(CollisionComponent.self))
 
-        model.selectNode(0)
+        selection.select(nil)
         model.applyIfNeeded(to: root)
         #expect(node0.components[OpacityComponent.self] == nil)
         #expect(node1.components[OpacityComponent.self] == nil)
@@ -62,7 +64,7 @@ struct HostSidebarModelOverlayTests {
 
         let loaded = try await EntityLoader.load(from: url, includeAnimations: false)
         let model = HostSidebarModel(document: loaded.document)
-        model.selectNode(0)
+        EngineSelectionModel(sidebar: model).select(NodeID(kind: .mesh, index: 0))
         model.hide.insert(0)
         model.overlayRevision += 1
         model.applyIfNeeded(to: loaded.entity)
