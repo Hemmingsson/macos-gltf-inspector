@@ -13,7 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
         AppSettings.shared.appearance.apply()
         UserDefaults.standard.set("preferred", forKey: "AppleWindowTabbingMode")
-        MainMenuSymbols.shared.install()
         UserDefaults.standard.removeObject(forKey: staleWelcomeFrameAutosaveKey)
         if wasLaunchedToOpenDocuments() {
             // Welcome uses defaultLaunchBehavior(.presented); dismiss once the run loop settles.
