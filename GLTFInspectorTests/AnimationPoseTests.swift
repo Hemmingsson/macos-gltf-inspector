@@ -236,7 +236,8 @@ struct AnimationPoseTests {
         #expect(abs((held.nodeOverrides[0]?.translation?.y ?? -1) - (shortEnd.nodeOverrides[0]?.translation?.y ?? -2)) < 1e-5)
         #expect(abs((held.nodeOverrides[1]?.translation?.y ?? -1) - 2) < 1e-5)
         let wrapped = AnimationPose(clips: [short], at: 2, wraps: true)
-        #expect(abs((wrapped.nodeOverrides[0]?.translation?.y ?? -1) - 0) < 1e-5)
+        #expect(abs((wrapped.nodeOverrides[0]?.translation?.y ?? -1) - 1) < 1e-5,
+                "an exact multiple of the clip length still samples the end pose")
     }
 
     @Test func clipMaxTimeIsMaximumInputEnd() throws {
