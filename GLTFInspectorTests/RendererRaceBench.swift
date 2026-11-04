@@ -3,7 +3,7 @@ import GLTFCore
 import Testing
 @testable import RendererWebKit
 
-/// Filament against the WebKit page on the same files, the same look and the same 512 px still.
+/// Filament and the native Metal port against the WebKit page on the same files, the same look and the same 512 px still.
 ///
 /// Sections (`bench|<section>|<file>|<metric>|median|spread|n`):
 /// - `race.proc-cold.<renderer>`: the first host in this process — engine or WebContent start,
@@ -16,12 +16,13 @@ extension PerfBench {
     @MainActor
     @Suite struct RendererRace {
         enum Renderer: String, CaseIterable {
-            case filament, webkit
+            case filament, webkit, metal
 
             @MainActor func makeHost() throws -> any CanvasRendererHost {
                 switch self {
                 case .filament: FilamentRendererHost(mode: .still, size: PerfBench.stillSize)
                 case .webkit: try WebRendererHost(mode: .still, size: PerfBench.stillSize, timeout: .seconds(180))
+                case .metal: KhronosMetalRendererHost(mode: .still, size: PerfBench.stillSize)
                 }
             }
         }
