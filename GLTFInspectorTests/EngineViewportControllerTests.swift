@@ -258,7 +258,6 @@ struct EngineViewportControllerTests {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let viewport = EngineViewportController(
             sidebar: sidebar,
-            lookStore: lookStore,
             previewSession: session
         )
 

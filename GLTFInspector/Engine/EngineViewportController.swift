@@ -19,7 +19,6 @@ import SwiftUI
 @Observable
 final class EngineViewportController: ViewportController {
     var sidebar: HostSidebarModel
-    let lookStore: AppLookStore
 
     /// Host-owned canvas session.
     let previewSession: PreviewSession
@@ -43,14 +42,12 @@ final class EngineViewportController: ViewportController {
 
     init(
         sidebar: HostSidebarModel,
-        lookStore: AppLookStore? = nil,
         previewSession: PreviewSession? = nil,
         commands: FocusedPreviewCommands? = nil,
         saveScreenshot: ((CGImage) async -> Void)? = nil,
         features: Set<RendererFeature> = Set(RendererFeature.allCases)
     ) {
         self.sidebar = sidebar
-        self.lookStore = lookStore ?? .shared
         self.previewSession = previewSession ?? PreviewSession()
         self.commands = commands
         self.saveScreenshot = saveScreenshot
@@ -97,7 +94,7 @@ final class EngineViewportController: ViewportController {
             exposure: Double(previewSession.exposureEV),
             environmentRotationDegrees: Double(previewSession.environmentYaw) * 180 / .pi,
             usesFileLights: previewSession.dimStudioForFileLights,
-            usesStudioEnvironment: lookStore.look.useEnvironmentMap,
+            usesStudioEnvironment: settings.default(for: .useEnvironmentMap),
             environment: environment,
             toneMapping: toneMapping
         )
@@ -156,7 +153,7 @@ final class EngineViewportController: ViewportController {
                 exposure: resetExposureAndYaw ? 0 : lighting.exposure,
                 environmentRotationDegrees: resetExposureAndYaw ? 0 : lighting.environmentRotationDegrees,
                 usesFileLights: dimStudioForFileLights,
-                usesStudioEnvironment: lookStore.look.useEnvironmentMap,
+                usesStudioEnvironment: settings.default(for: .useEnvironmentMap),
                 environment: environment,
                 toneMapping: toneMapping
             )
@@ -181,7 +178,7 @@ final class EngineViewportController: ViewportController {
                 exposure: 0,
                 environmentRotationDegrees: 0,
                 usesFileLights: false,
-                usesStudioEnvironment: lookStore.look.useEnvironmentMap,
+                usesStudioEnvironment: settings.default(for: .useEnvironmentMap),
                 environment: defaultEnvironment,
                 toneMapping: defaultToneMapping
             )
