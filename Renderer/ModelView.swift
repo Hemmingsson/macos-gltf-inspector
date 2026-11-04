@@ -447,6 +447,12 @@ public final class ModelView: NSView {
         return (isFlipped ? point.y : bounds.height - point.y) < contentInsets.top
     }
 
+    private func isInSideInset(_ event: NSEvent) -> Bool {
+        guard contentInsets.left > 0 || contentInsets.right > 0 else { return false }
+        let point = convert(event.locationInWindow, from: nil)
+        return point.x < contentInsets.left || point.x > bounds.width - contentInsets.right
+    }
+
     /// What the title bar does: drag moves the window, double-click runs the system action.
     private func titleBarPress(_ event: NSEvent) {
         guard let window else { return }
@@ -507,6 +513,8 @@ public final class ModelView: NSView {
         }
     }
 
+    private static let pickDepthEpsilon: Float = 1e-4
+
     /// Camera / light gizmo under the point when they are drawn, else the mesh node under it.
     private func nodeIndex(atWindowPoint location: NSPoint) throws -> Int? {
         let viewPoint = convert(location, from: nil)
@@ -515,25 +523,29 @@ public final class ModelView: NSView {
         let point = SIMD2(min(max(Int(viewPoint.x * scale), 0), width - 1),
                           min(max(Int(yDown * scale), 0), height - 1))
         let pointPoints = SIMD2(Float(viewPoint.x), Float(yDown))
+        let cameraPose = pose(width: width, height: height)
+        let center = centerOffset(pixelWidth: width)
+        let mesh = try renderer.pickResult(options, pose: cameraPose, width: width, height: height,
+                                           centerOffset: center, point: point,
+                                           animationPose: animationPoseProvider?())
         if options.showsSceneGizmos, let scene = renderer.scene {
-            let center = centerOffset(pixelWidth: width)
-            let frame = try renderer.gizmoPickFrame(options: options, pose: pose(width: width, height: height),
+            let frame = try renderer.gizmoPickFrame(options: options, pose: cameraPose,
                                                     width: width, height: height, centerOffset: center)
             let overlayOptions = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
             let segments = overlayGizmoSegments(scene: scene, options: overlayOptions)
             let hitViewport = GizmoHitViewport(viewWidthPoints: Float(bounds.width),
                                                viewHeightPoints: Float(bounds.height),
                                                contentAspect: frame.viewportAspect)
-            if let node = gizmoHit(at: pointPoints, segments: segments, viewProjection: frame.viewProjection,
-                                   viewport: hitViewport) {
-                return node
+            if let gizmo = gizmoHitResult(at: pointPoints, segments: segments, viewProjection: frame.viewProjection,
+                                          viewport: hitViewport) {
+                if options.fileCameraNodeIndex != nil
+                    || mesh.nodeIndex == nil
+                    || gizmo.depth <= mesh.depth + Self.pickDepthEpsilon {
+                    return gizmo.nodeIndex
+                }
             }
         }
-        return try renderer.pick(options, pose: pose(width: width, height: height),
-                                 width: width, height: height,
-                                 centerOffset: centerOffset(pixelWidth: width),
-                                 point: point,
-                                 animationPose: animationPoseProvider?())
+        return mesh.nodeIndex
     }
 
     /// The canvas's pixel size and backing scale, as picking and pointer zoom measure it.
@@ -649,7 +661,9 @@ public final class ModelView: NSView {
 
     override public func mouseMoved(with event: NSEvent) {
         super.mouseMoved(with: event)
-        guard onHover != nil, renderer.scene != nil, !isInTitleBarBand(event) else { return clearHover() }
+        if isInTitleBarBand(event) { return clearHover() }
+        if isInSideInset(event) { return clearHover(notifyEvenWhenIdle: true) }
+        guard onHover != nil, renderer.scene != nil else { return clearHover() }
         hoverPoint = event.locationInWindow
         let isBusy = dragAnchor != nil || options.autoRotates || isPlaybackRunning
         guard !hoverPending, let delay = hoverThrottle.delay(at: CACurrentMediaTime(), isBusy: isBusy) else {
@@ -679,9 +693,9 @@ public final class ModelView: NSView {
         redraw()
     }
 
-    private func clearHover() {
+    private func clearHover(notifyEvenWhenIdle: Bool = false) {
         hoverPoint = nil
-        guard hoveredNode != nil else { return }
+        guard hoveredNode != nil || notifyEvenWhenIdle else { return }
         hoveredNode = nil
         onHover?(nil, nil)
         redraw()

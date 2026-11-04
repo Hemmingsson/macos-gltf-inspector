@@ -123,6 +123,45 @@ func rgbaPNG(width: Int, height: Int, opaqueCenter: Bool = true) -> Data {
     return data
 }
 
+/// Two-sided quads (two triangles each) at the given z, spanning ±h in x/y around cx.
+func reviewQuadsGLB(
+    _ specs: [(cx: Float, z: Float, h: Float)],
+    extraNodes: [[String: Any]] = [],
+    extensions: [String: Any]? = nil,
+    prefix: String = "review-quads"
+) throws -> URL {
+    var bin = Data()
+    var bufferViews: [[String: Any]] = [], accessors: [[String: Any]] = [], meshes: [[String: Any]] = []
+    var nodes: [[String: Any]] = []
+    for (i, q) in specs.enumerated() {
+        let a: [Float] = [
+            q.cx - q.h, -q.h, q.z, q.cx + q.h, -q.h, q.z, q.cx + q.h, q.h, q.z,
+            q.cx - q.h, -q.h, q.z, q.cx + q.h, q.h, q.z, q.cx - q.h, q.h, q.z,
+        ]
+        let offset = bin.count
+        appendFloats(a, to: &bin)
+        bufferViews.append(["buffer": 0, "byteOffset": offset, "byteLength": 72])
+        accessors.append([
+            "bufferView": i, "componentType": 5126, "count": 6, "type": "VEC3",
+            "min": [q.cx - q.h, -q.h, q.z], "max": [q.cx + q.h, q.h, q.z],
+        ])
+        meshes.append(["primitives": [["attributes": ["POSITION": i], "material": 0]]])
+        nodes.append(["mesh": i])
+    }
+    nodes += extraNodes
+    var json: [String: Any] = [
+        "asset": ["version": "2.0"], "buffers": [["byteLength": bin.count]],
+        "bufferViews": bufferViews, "accessors": accessors,
+        "materials": [["doubleSided": true]], "meshes": meshes, "nodes": nodes,
+        "scenes": [["nodes": Array(0..<nodes.count)]], "scene": 0,
+    ]
+    if let extensions {
+        json["extensions"] = extensions
+        json["extensionsUsed"] = Array(extensions.keys)
+    }
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
+}
+
 /// Two quads stacked on Z: node 0 at z = -1 (back), node 1 at z = 0 (front).
 func writeTempStackedQuadsGLB(prefix: String = "stacked-quads") throws -> URL {
     let bin = floatQuadWithUVBin()

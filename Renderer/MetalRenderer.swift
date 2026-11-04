@@ -140,13 +140,21 @@ public final class MetalRenderer: @unchecked Sendable {
         guard scene != nil else { throw MetalRendererError.noScene }
         let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
                                         centerOffset: centerOffset, scene: scene!)
-        return (setup.camera.openGLProjectionMatrix * setup.camera.viewMatrix, setup.viewportAspect)
+        return (setup.frame.viewProjection, setup.viewportAspect)
     }
 
     /// glTF node index under `point` (x right, y down), or nil for background / mask holes.
     func pick(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
               centerOffset: SIMD2<Float> = .zero, point: SIMD2<Int>,
               animationPose: AnimationPose? = nil) throws -> Int? {
+        try pickResult(options, pose: pose, width: width, height: height, centerOffset: centerOffset,
+                       point: point, animationPose: animationPose).nodeIndex
+    }
+
+    /// Mesh pick at `point` plus stored depth (Metal 0…1; 1 when nothing was drawn).
+    func pickResult(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                    centerOffset: SIMD2<Float> = .zero, point: SIMD2<Int>,
+                    animationPose: AnimationPose? = nil) throws -> MetalPickResult {
         guard let scene else { throw MetalRendererError.noScene }
         guard width > 0, height > 0, width <= 16384, height <= 16384 else {
             throw MetalRendererError.resource("invalid image size")
@@ -154,7 +162,7 @@ public final class MetalRenderer: @unchecked Sendable {
         let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
                                         centerOffset: centerOffset, scene: scene, animationPose: animationPose)
         let pickTarget = try texture(.r32Uint, width, height, [.renderTarget, .shaderRead])
-        let depth = try texture(.depth32Float, width, height, [.renderTarget])
+        let depth = try texture(.depth32Float, width, height, [.renderTarget, .shaderRead])
         guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
         command.label = "Khronos pick"
         let pass = MTLRenderPassDescriptor()
@@ -171,19 +179,27 @@ public final class MetalRenderer: @unchecked Sendable {
                        viewport: setup.viewport, animationPose: animationPose)
         let x = min(max(point.x, 0), width - 1)
         let y = min(max(point.y, 0), height - 1)
-        let readback = try texture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
+        let idReadback = try texture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
+        let depthReadback = try texture(.depth32Float, 1, 1, [.shaderRead], storage: .shared)
         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("pick blit") }
         blit.copy(from: pickTarget, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: x, y: y, z: 0), sourceSize: MTLSize(width: 1, height: 1, depth: 1),
-                  to: readback, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+                  to: idReadback, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(from: depth, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: x, y: y, z: 0), sourceSize: MTLSize(width: 1, height: 1, depth: 1),
+                  to: depthReadback, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         command.commit()
         command.waitUntilCompleted()
         if let error = command.error { throw MetalRendererError.gpu(error.localizedDescription) }
         var drawID: UInt32 = 0
-        readback.getBytes(&drawID, bytesPerRow: 4, from: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0)
-        guard drawID > 0, Int(drawID) <= scene.draws.count else { return nil }
-        return scene.draws[Int(drawID) - 1].nodeIndex
+        idReadback.getBytes(&drawID, bytesPerRow: 4, from: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0)
+        var storedDepth: Float = 1
+        depthReadback.getBytes(&storedDepth, bytesPerRow: 4, from: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0)
+        guard drawID > 0, Int(drawID) <= scene.draws.count else {
+            return MetalPickResult(nodeIndex: nil, depth: storedDepth)
+        }
+        return MetalPickResult(nodeIndex: scene.draws[Int(drawID) - 1].nodeIndex, depth: storedDepth)
     }
 
     func renderTexture(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
@@ -529,7 +545,8 @@ public final class MetalRenderer: @unchecked Sendable {
             let mask = Self.activeMorphMask(draw, weights: weights)
             let variant = Self.vertexVariant(mask: mask, draw: draw)
             encoder.setRenderPipelineState(try pickPipeline(variant))
-            encoder.setDepthStencilState(blend ? depthRead : depthWrite)
+            // Every draw writes depth so the nearest surface wins regardless of draw order.
+            encoder.setDepthStencilState(depthWrite)
             let transform = frameTransform(transforms, drawIndex, draw)
             encoder.setCullMode(draw.material.doubleSided ? .none : .back)
             encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
@@ -604,7 +621,8 @@ public final class MetalRenderer: @unchecked Sendable {
             let mask = Self.activeMorphMask(draw, weights: weights)
             let variant = Self.vertexVariant(mask: mask, draw: draw)
             encoder.setRenderPipelineState(try pickPipeline(variant))
-            encoder.setDepthStencilState(blend ? depthRead : depthWrite)
+            // Every draw writes depth so the nearest surface wins regardless of draw order.
+            encoder.setDepthStencilState(depthWrite)
             let transform = frameTransform(transforms, drawIndex, draw)
             encoder.setCullMode(draw.material.doubleSided ? .none : .back)
             encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)

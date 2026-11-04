@@ -441,6 +441,9 @@ fragment float4 khronos_selection_outline_fragment(FullscreenVaryings in [[stage
     return float4(0);
 }
 
+// BLEND texels below this alpha are see-through for picking: they neither hit nor occlude.
+constant float pickBlendAlphaThreshold = 0.05;
+
 fragment uint khronos_pick_fragment(MetalVaryings in [[stage_in]],
     constant MetalFrameUniforms &frame [[buffer(1)]],
     constant MetalDrawUniforms &draw [[buffer(2)]],
@@ -451,5 +454,6 @@ fragment uint khronos_pick_fragment(MetalVaryings in [[stage_in]],
     if(m.flags.x&1u) base*=materialTextures.maps[0].sample(materialTextures.samplers[0],materialUV(in,m,0));
     if(m.flags.y==0) base.a=1;
     if(m.flags.y==1 && base.a<m.surface.w) discard_fragment();
+    if(m.flags.y==2 && base.a<pickBlendAlphaThreshold) discard_fragment();
     return drawID;
 }

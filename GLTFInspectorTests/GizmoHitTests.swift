@@ -66,6 +66,58 @@ struct GizmoHitTests {
         #expect(gizmoHit(at: SIMD2(50, 50), segments: segments, viewProjection: vp, viewport: viewport) == nil)
     }
 
+    @Test func segmentCrossingTheWholeViewportIsPickable() {
+        let segment = MetalGizmoSegment(a: SIMD3(-2, 0, 0), b: SIMD3(2, 0, 0), nodeIndex: 7)
+        #expect(gizmoHit(at: SIMD2(50, 50), segments: [segment], viewProjection: matrix_identity_float4x4,
+                         viewport: GizmoHitViewport(width: 100, height: 100)) == 7)
+    }
+
+    @Test func verticalSegmentCrossingTheWholeViewportIsPickable() {
+        let segment = MetalGizmoSegment(a: SIMD3(0, -2, 0), b: SIMD3(0, 2, 0), nodeIndex: 8)
+        #expect(gizmoHit(at: SIMD2(50, 50), segments: [segment], viewProjection: matrix_identity_float4x4,
+                         viewport: GizmoHitViewport(width: 100, height: 100)) == 8)
+    }
+
+    @Test func segmentBeyondTheFarPlaneIsNotPickable() {
+        let segment = MetalGizmoSegment(a: SIMD3(-0.5, 0, 2), b: SIMD3(0.5, 0, 2), nodeIndex: 7)
+        #expect(gizmoHit(at: SIMD2(50, 50), segments: [segment], viewProjection: matrix_identity_float4x4,
+                         viewport: GizmoHitViewport(width: 100, height: 100)) == nil)
+    }
+
+    @Test func segmentBeforeTheNearPlaneIsNotPickable() {
+        // Ortho camera: distance 10, near 0.1. World z = 9.95 is 0.05 in front of the eye (inside near).
+        let vp = frontOrthoViewProjection()
+        let viewport = GizmoHitViewport(width: 200, height: 200)
+        let segments = [MetalGizmoSegment(a: SIMD3(-2, 0, 9.95), b: SIMD3(2, 0, 9.95), nodeIndex: 6)]
+        #expect(gizmoHit(at: SIMD2(100, 100), segments: segments, viewProjection: vp, viewport: viewport) == nil)
+    }
+
+    @Test func segmentInFrontOfTheNearPlaneIsPickable() {
+        let vp = frontOrthoViewProjection()
+        let viewport = GizmoHitViewport(width: 200, height: 200)
+        let segments = [MetalGizmoSegment(a: SIMD3(-2, 0, 9.8), b: SIMD3(2, 0, 9.8), nodeIndex: 6)]
+        #expect(gizmoHit(at: SIMD2(100, 100), segments: segments, viewProjection: vp, viewport: viewport) == 6)
+    }
+
+    @Test func orthoSegmentBehindTheEyeIsNotPickable() {
+        let vp = frontOrthoViewProjection()
+        let viewport = GizmoHitViewport(width: 200, height: 200)
+        let segments = [MetalGizmoSegment(a: SIMD3(-2, 0, 20), b: SIMD3(2, 0, 20), nodeIndex: 6)]
+        #expect(gizmoHit(at: SIMD2(100, 100), segments: segments, viewProjection: vp, viewport: viewport) == nil)
+    }
+
+    @Test func segmentCrossingTheNearPlaneStaysPickable() {
+        // Runs along the view axis from in front of the eye to behind it. The part in front of the
+        // near plane projects onto the screen centre, so a click there must still hit.
+        let pose = MetalCameraPose(azimuth: 0, elevation: 0, distance: 5, target: .zero,
+                                   yfov: .pi / 4, znear: 0.1, zfar: 100)
+        let camera = MetalCamera(pose: pose, isOrthographic: false, aspect: 1)
+        let vp = camera.openGLProjectionMatrix * camera.viewMatrix
+        let viewport = GizmoHitViewport(width: 100, height: 100)
+        let segments = [MetalGizmoSegment(a: SIMD3(0, 0, 0), b: SIMD3(0, 0, 6), nodeIndex: 3)]
+        #expect(gizmoHit(at: SIMD2(50, 50), segments: segments, viewProjection: vp, viewport: viewport) == 3)
+    }
+
     @Test func sceneGizmosOverlaySegmentsAreNonEmptyForFixtures() async throws {
         let renderer = try MetalRenderer()
         try await renderer.load(url: TestFixtures.cameras)
