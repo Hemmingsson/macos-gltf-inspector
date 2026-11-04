@@ -100,6 +100,10 @@ public struct MetalUserCamera: Sendable, Equatable {
     /// the page records as `fitDistance` (100% zoom).
     @discardableResult
     public mutating func fit(extents: (min: SIMD3<Double>, max: SIMD3<Double>), centered: Bool, aspect: Double) -> Double? {
+        // A non-finite box (Draco accessors arrive without min/max) must not move the camera:
+        // the assignments below would store NaN and the next still would be empty.
+        guard extents.min.x.isFinite, extents.min.y.isFinite, extents.min.z.isFinite,
+              extents.max.x.isFinite, extents.max.y.isFinite, extents.max.z.isFinite else { return nil }
         sceneMin = extents.min
         sceneMax = extents.max
         fitDistanceToExtents(sceneMin, sceneMax)

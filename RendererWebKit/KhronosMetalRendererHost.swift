@@ -254,8 +254,15 @@ public final class KhronosMetalRendererHost: CanvasRendererHost {
     private func fitCamera() {
         guard let scene = renderer?.scene, let index = scene.gltfSceneIndex(for: look.sceneIndex) else { return }
         camera.isOrthographic = look.isOrthographic
-        if let fitted = camera.fit(extents: scene.pageExtents(sceneIndex: index), centered: look.isCentered,
-                                   aspect: canvasAspect) {
+        var extents = scene.pageExtents(sceneIndex: index)
+        // Draco decompression replaces POSITION with an accessor that has no min/max, so
+        // `pageExtents` stays ±infinity. The decoded vertex bounds are the same box.
+        if !extents.min.x.isFinite || !extents.max.x.isFinite {
+            let lo = scene.boundsMin, hi = scene.boundsMax
+            extents = (SIMD3(Double(lo.x), Double(lo.y), Double(lo.z)),
+                       SIMD3(Double(hi.x), Double(hi.y), Double(hi.z)))
+        }
+        if let fitted = camera.fit(extents: extents, centered: look.isCentered, aspect: canvasAspect) {
             fitDistance = fitted
         }
     }

@@ -253,14 +253,34 @@ fragment MetalFragmentOutput khronos_fragment(MetalVaryings in [[stage_in]],bool
         float2 fragCoord=float2(in.position.x,frame.viewport.y-in.position.y);
         float2 v1=step(0.5f,fract(0.02f*fragCoord)),v2=step(0.5f,float2(1.0f)-fract(0.02f*fragCoord));
         color=float3(0.9f+v1.x*v1.y+v2.x*v2.y);
-        // flags.w: bit0 TEXCOORD_0, bit1 KHR_materials_clearcoat, bit2 KHR_materials_specular.
+        // flags.w: bit0 TEXCOORD_0, bit1 clearcoat, bit2 specular, bit3 TANGENT, bit4 NORMAL.
         bool hasUV0=m.flags.w&1u,hasClearcoat=m.flags.w&2u,hasSpecular=m.flags.w&4u;
         switch(frame.options.y) {
             case 1: color=linearTosRGB(base.rgb); break;
             case 2: if(m.flags.x&4u) color=(normalTex+1.0f)/2.0f; break;
             case 3: color=float3(metallic); break;
             case 4: color=float3(roughness); break;
-            case 5: color=(t+1.0f)/2.0f; break;
+            case 5: {
+                // No TANGENT attribute: Khronos getNormalInfo's derivative tangent, not the
+                // (1,0,0) stand-in packed for the shading TBN. Missing NORMAL uses dFdx×dFdy.
+                float3 debugT=t;
+                if((m.flags.w&8u)==0u) {
+                    float3 basis=ng;
+                    if((m.flags.w&16u)==0u) {
+                        basis=normalize(cross(dfdx(in.worldPosition),-dfdy(in.worldPosition)));
+                        if(!front) basis=-basis;
+                    }
+                    float2 uv=materialUV(in,m,2);
+                    float2 uvDx=dfdx(uv),uvDy=-dfdy(uv);
+                    if(length(uvDx)<=1e-2f) uvDx=float2(1,0);
+                    if(length(uvDy)<=1e-2f) uvDy=float2(0,1);
+                    float3 generated=(uvDy.y*dfdx(in.worldPosition)-uvDx.y*-dfdy(in.worldPosition))/(uvDx.x*uvDy.y-uvDy.x*uvDx.y);
+                    debugT=normalize(generated-basis*dot(basis,generated));
+                    if(!front) debugT=-debugT;
+                }
+                color=(debugT+1.0f)/2.0f;
+                break;
+            }
             case 6: if(hasUV0) color=float3(in.uv0,0); break;
             case 7: if(m.flags.x&8u) color=float3(materialTextures.maps[3].sample(materialTextures.samplers[3],materialUV(in,m,3)).r); break;
             case 8: color=linearTosRGB(emissive); break;

@@ -70,8 +70,11 @@ public struct MetalMaterial {
     public var isSpecularGlossiness = false
     public var glossiness: Float = 1
     /// What the Khronos debug channels test with `#ifdef` (`HAS_TEXCOORD_0_VEC2`,
-    /// `MATERIAL_CLEARCOAT`, `MATERIAL_SPECULAR`); absent data shows the checkerboard.
+    /// `HAS_NORMAL_VEC3`, `HAS_TANGENT_VEC4`, `MATERIAL_CLEARCOAT`, `MATERIAL_SPECULAR`);
+    /// absent data shows the checkerboard, and a missing tangent uses screen-space derivatives.
     public var hasTexCoord0 = false
+    public var hasNormal = false
+    public var hasTangent = false
     public var hasClearcoat = false
     public var hasSpecular = false
     public var textures: [MetalTextureSlot: MetalTextureBinding] = [:]
