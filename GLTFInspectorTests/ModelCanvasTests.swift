@@ -147,6 +147,32 @@ struct ModelViewTests {
     }
 
     /// A variant change redraws but does not refit; a scene change refits.
+    @Test func cameraOnlySceneRendersPickAndFitWithoutCrashing() async throws {
+        var json = try GLBBox.peekDocumentJSON(from: TestFixtures.cameras)
+        json["scenes"] = [["nodes": [1, 2]]]
+        let url = try TestGLB.writeTempGLB(json: json, prefix: "camera-only")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let view = try await loaded(url)
+        #expect(view.renderer.scene?.draws.isEmpty == true)
+        #expect(try view.image(width: 64, height: 64).width == 64)
+        view.fit()
+        #expect(view.renderer.scene != nil)
+    }
+
+    @Test func failedSceneApplyRestoresOptionsAndRetries() async throws {
+        let view = try await loaded(TestFixtures.multiScene, options: ViewOptions(sceneIndex: 0))
+        let previous = view.options
+        var bad = view.options
+        bad.sceneIndex = 999
+        await #expect(throws: (any Error).self) { try await view.apply(bad) }
+        #expect(view.options == previous)
+        var good = view.options
+        good.sceneIndex = 1
+        try await view.apply(good)
+        #expect(view.options.sceneIndex == 1)
+    }
+
     @Test func optionChangesRefitOnlyForSceneAndCentring() async throws {
         let view = try await loaded(TestFixtures.multiScene)
         view.orbit(azimuth: 50, elevation: 10)
