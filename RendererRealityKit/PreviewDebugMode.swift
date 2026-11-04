@@ -23,22 +23,7 @@ public enum PreviewDebugMode: Equatable, Hashable {
     static func channel(
         for visualization: ModelDebugOptionsComponent.VisualizationMode
     ) -> RenderViewMode.Channel? {
-        switch visualization {
-        case .baseColor: .baseColor
-        case .metallic: .metallic
-        case .roughness: .roughness
-        case .normal: .normals
-        case .tangent: .tangents
-        case .textureCoordinates: .textureCoordinates
-        case .ambientOcclusion: .ambientOcclusion
-        case .emissive: .emissive
-        case .finalAlpha: .alpha
-        case .specular: .specular
-        case .clearcoat: .clearcoat
-        case .clearcoatRoughness: .clearcoatRoughness
-        case .clearcoatNormal: .clearcoatNormal
-        default: nil
-        }
+        RenderViewMode.Channel.allCases.first { Self.visualization(for: $0) == visualization }
     }
 
     /// Modes present and used in `json`, in cycle order: the file's channels
