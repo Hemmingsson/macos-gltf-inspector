@@ -9,6 +9,7 @@
 #include <filament/IndirectLight.h>
 #include <filament/Options.h>
 #include <filament/RenderableManager.h>
+#include <filament/RenderTarget.h>
 #include <filament/Renderer.h>
 #include <filament/Scene.h>
 #include <filament/SwapChain.h>
@@ -166,7 +167,9 @@ struct Shared {
     Entity _cameraEntity;
     Camera* _camera;
     SwapChain* _liveSwap;
-    SwapChain* _stillSwap;
+    RenderTarget* _stillTarget;
+    Texture* _stillColor;
+    Texture* _stillDepth;
     NSInteger _stillWidth;
     NSInteger _stillHeight;
     FilamentAsset* _asset;
@@ -225,7 +228,7 @@ struct Shared {
     if (_light) engine->destroy(_light);
     if (_grading) engine->destroy(_grading);
     if (_liveSwap) engine->destroy(_liveSwap);
-    if (_stillSwap) engine->destroy(_stillSwap);
+    [self destroyStillTarget];
     engine->destroyCameraComponent(_cameraEntity);
     EntityManager::get().destroy(_cameraEntity);
     engine->destroy(_view);
@@ -444,17 +447,40 @@ struct Shared {
 
 // MARK: Still
 
+- (void)destroyStillTarget {
+    Engine* engine = _shared->engine;
+    if (_stillTarget) engine->destroy(_stillTarget);
+    if (_stillColor) engine->destroy(_stillColor);
+    if (_stillDepth) engine->destroy(_stillDepth);
+    _stillTarget = nullptr;
+    _stillColor = nullptr;
+    _stillDepth = nullptr;
+}
+
+/// Renders the view once into its own render target (`renderStandaloneView`), so a still never
+/// waits on the swap-chain frame pacing that `beginFrame` applies.
 - (nullable CGImageRef)copyStillWithWidth:(NSInteger)width height:(NSInteger)height error:(NSError**)error {
     Engine* engine = _shared->engine;
     if (width <= 0 || height <= 0) {
         fail(error, 4, @"Still size is empty");
         return nullptr;
     }
-    if (!_stillSwap || _stillWidth != width || _stillHeight != height) {
-        if (_stillSwap) engine->destroy(_stillSwap);
-        _stillSwap = engine->createSwapChain(
-            uint32_t(width), uint32_t(height),
-            SwapChain::CONFIG_TRANSPARENT | SwapChain::CONFIG_READABLE);
+    if (!_stillTarget || _stillWidth != width || _stillHeight != height) {
+        [self destroyStillTarget];
+        _stillColor = Texture::Builder()
+            .width(uint32_t(width)).height(uint32_t(height)).levels(1)
+            .format(Texture::InternalFormat::RGBA8)
+            .usage(Texture::Usage::COLOR_ATTACHMENT | Texture::Usage::SAMPLEABLE | Texture::Usage::BLIT_SRC)
+            .build(*engine);
+        _stillDepth = Texture::Builder()
+            .width(uint32_t(width)).height(uint32_t(height)).levels(1)
+            .format(Texture::InternalFormat::DEPTH32F)
+            .usage(Texture::Usage::DEPTH_ATTACHMENT)
+            .build(*engine);
+        _stillTarget = RenderTarget::Builder()
+            .texture(RenderTarget::AttachmentPoint::COLOR, _stillColor)
+            .texture(RenderTarget::AttachmentPoint::DEPTH, _stillDepth)
+            .build(*engine);
         _stillWidth = width;
         _stillHeight = height;
     }
@@ -462,26 +488,22 @@ struct Shared {
 
     const size_t rowBytes = size_t(width) * 4;
     auto* pixels = static_cast<uint8_t*>(calloc(rowBytes * size_t(height), 1));
-    int drawn = 0;
-    for (int attempt = 0; attempt < 16 && drawn < 2; ++attempt) {
-        if (!_renderer->beginFrame(_stillSwap)) {
-            engine->flushAndWait();
-            continue;
-        }
-        _renderer->render(_view);
-        if (drawn == 1) {
-            _renderer->readPixels(0, 0, uint32_t(width), uint32_t(height),
-                backend::PixelBufferDescriptor(pixels, rowBytes * size_t(height),
-                    backend::PixelDataFormat::RGBA, backend::PixelDataType::UBYTE));
-        }
-        _renderer->endFrame();
-        ++drawn;
-    }
+    _view->setRenderTarget(_stillTarget);
+    _renderer->renderStandaloneView(_view);
+    _renderer->readPixels(_stillTarget, 0, 0, uint32_t(width), uint32_t(height),
+        backend::PixelBufferDescriptor(pixels, rowBytes * size_t(height),
+            backend::PixelDataFormat::RGBA, backend::PixelDataType::UBYTE));
+    _view->setRenderTarget(nullptr);
     engine->flushAndWait();
-    if (drawn < 2) {
-        free(pixels);
-        fail(error, 5, @"Filament never started a frame");
-        return nullptr;
+
+    // A standalone view ignores the renderer's clear color: composite the background here.
+    if (_clear.w > 0) {
+        for (size_t i = 0; i < rowBytes * size_t(height); i += 4) {
+            const double keep = 1.0 - pixels[i + 3] / 255.0;
+            for (int c = 0; c < 4; ++c) {
+                pixels[i + c] = uint8_t(std::min(255.0, pixels[i + c] + _clear[c] * 255.0 * keep + 0.5));
+            }
+        }
     }
 
     // Metal's readPixels is already top-down, which is what CGImage wants.
