@@ -206,7 +206,7 @@ Gate (bench-only timings, no longer logged): fresh-process `visibleMs` (page + I
 BoomBox and Corset, KEEP at ≥ 12 % faster with tiny not > 15 % slower. The wait is the page start,
 not model parse: session-first ~1850 ms visible (page ~1170, IBL ~660), process-cold with WebKit
 warm ~300–530 ms. Landed: IBL after the first frame (EXP-002, `iblMs` → 0), our module minified
-6.1 → 3.2 MB (EXP-010), cached Finder icon under the live canvas (EXP-008), Quick Look page
+6.1 → 3.2 MB (EXP-010), App Group poster under the live canvas (EXP-008; it replaced the cached Finder icon), Quick Look page
 prestart in `loadView` (EXP-009).
 
 **Measured slower or flat — do not retry without a materially different approach:**

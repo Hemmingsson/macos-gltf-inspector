@@ -7,11 +7,6 @@ public struct GLBBox {
     public var json: [String: Any]
     public var bin: Data
 
-    public init(json: [String: Any], bin: Data) {
-        self.json = json
-        self.bin = bin
-    }
-
     public enum Error: Swift.Error, LocalizedError, Equatable {
         case invalidGLB
 

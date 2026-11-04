@@ -12,8 +12,6 @@ struct GLTFInspectorFileDocument: FileDocument {
 
     static var writableContentTypes: [UTType] { [] }
 
-    init() {}
-
     init(configuration: ReadConfiguration) throws {
         // Intentionally ignore FileWrapper bytes — the page loads from the file URL, so sidecar
         // buffers and textures resolve against its folder.

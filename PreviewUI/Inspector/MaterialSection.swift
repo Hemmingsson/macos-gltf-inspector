@@ -81,7 +81,7 @@ struct MaterialSection: View {
                     DSFactRow("Roughness", value: MaterialInspectorSupport.scalarLabel(value))
                 }
                 if MaterialInspectorSupport.showsEmissive(material) {
-                    emissiveRow
+                    factorColorRow("Emissive", material.emissiveFactor ?? .black)
                 }
                 if MaterialInspectorSupport.showsEmissiveStrength(material),
                    let value = material.emissiveStrength {
@@ -159,21 +159,6 @@ struct MaterialSection: View {
                 }
                 .accessibilityHidden(true)
         }
-    }
-
-    @ViewBuilder
-    private var emissiveRow: some View {
-        let factor = material.emissiveFactor ?? .black
-        DSFactRow("Emissive") {
-            HStack(spacing: DS.Spacing.s) {
-                MaterialSwatch(color: Color(rgb: factor), size: 12)
-                Text(emissiveValueLabel(factor))
-            }
-        }
-    }
-
-    private func emissiveValueLabel(_ factor: RGBColor) -> String {
-        MaterialInspectorSupport.hexLabel(factor)
     }
 
     private func factorColorRow(_ label: String, _ color: RGBColor) -> some View {

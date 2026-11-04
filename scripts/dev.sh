@@ -9,6 +9,7 @@
 #   ./scripts/dev.sh logs                 # tail .build/logs/debug.log (or unified log stream)
 #   ./scripts/dev.sh fixtures             # list fixture ids
 #   ./scripts/dev.sh catalog [-page id]   # build DesignCatalog + launch in background (open -g)
+#   ./scripts/dev.sh bench                # opt-in PerfBench table → .build/bench/
 set -euo pipefail
 
 source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
@@ -16,7 +17,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
 DEFAULT_FIXTURE=cube
 
 usage() {
-  sed -n '2,11p' "$0"
+  sed -n '2,12p' "$0"
 }
 
 require_xcodegen() {
@@ -26,37 +27,34 @@ require_xcodegen() {
   }
 }
 
-dev_build() {
+# xcodegen + xcodebuild for one scheme in this branch's DerivedData; the rest is xcodebuild args.
+xcb() {
+  local scheme="$1"
+  shift
   require_xcodegen
   cd "$ROOT"
   xcodegen generate
   DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-    xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
-    -derivedDataPath "$DERIVED_DATA" build
+    xcodebuild -scheme "$scheme" -destination 'platform=macOS' \
+    -derivedDataPath "$DERIVED_DATA" "$@"
+}
+
+dev_build() {
+  xcb GLTFInspector build
 }
 
 # The opt-in perf bench (`dev.sh bench`) is left out entirely, not just skipped, so the test
 # count stays the suite's own.
 dev_test() {
-  require_xcodegen
-  cd "$ROOT"
-  xcodegen generate
-  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-    xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
-    -derivedDataPath "$DERIVED_DATA" test -skip-testing:GLTFInspectorTests/PerfBench "$@"
+  xcb GLTFInspector test -skip-testing:GLTFInspectorTests/PerfBench "$@"
 }
 
 # Real-window XCUITest flows (separate scheme, never part of `test`). Takes focus while it runs.
 dev_uitest() {
-  require_xcodegen
-  cd "$ROOT"
-  xcodegen generate
   local result="$ROOT/.build/uitest.xcresult"
   mkdir -p "$ROOT/.build"
   rm -rf "$result"
-  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-    xcodebuild -scheme GLTFInspectorUITests -destination 'platform=macOS' \
-    -derivedDataPath "$DERIVED_DATA" -resultBundlePath "$result" test "$@"
+  xcb GLTFInspectorUITests -resultBundlePath "$result" test "$@"
 }
 
 # Copy the built app as signed. After a `dev.sh test` the hosted GLTFInspectorTests.xctest is
@@ -102,7 +100,6 @@ dev_run() {
   cat >"$(dirname "$LOCAL_APP")/dev-env" <<EOF
 GLTF_REPO_ROOT=$ROOT
 GLTF_LOG_FILE=$LOG_FILE
-GLTF_VERBOSE=1
 EOF
 
   echo "run $fixture → $model"
@@ -128,12 +125,7 @@ dev_logs() {
 # Relaunches (quits only this build's catalog process) so the new build and any args apply.
 # Args pass through to the app, e.g. `-page colors -appearance dark`.
 dev_catalog() {
-  require_xcodegen
-  cd "$ROOT"
-  xcodegen generate
-  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-    xcodebuild -scheme DesignCatalog -destination 'platform=macOS' \
-    -derivedDataPath "$DERIVED_DATA" build
+  xcb DesignCatalog build
   # Process path is /private/tmp/... even when CATALOG_APP is /tmp/...
   pkill -f "DesignCatalog.app/Contents/MacOS/DesignCatalog" 2>/dev/null || true
   echo "launch $CATALOG_APP"
@@ -164,7 +156,7 @@ case "$cmd" in
     dev_uitest "$@"
     ;;
   run)
-    dev_run "${1:-$DEFAULT_FIXTURE}"
+    dev_run "$@"
     ;;
   logs)
     dev_logs
@@ -179,18 +171,13 @@ case "$cmd" in
     # Opt-in perf bench (`PerfBench` suites, GLTF_BENCH=1): a table on stdout and in
     # .build/bench/<stamp>.txt (raw xcodebuild log beside it). GLTF_BENCH_RUNS=N (default 3).
     # Wall-clock numbers — run on an idle machine, never alongside another build.
-    require_xcodegen
-    cd "$ROOT"
-    xcodegen generate
     mkdir -p "$ROOT/.build/bench"
     stamp="$(date +%Y%m%d-%H%M%S)"
     raw="$ROOT/.build/bench/$stamp.log"
     table="$ROOT/.build/bench/$stamp.txt"
     status=0
     TEST_RUNNER_GLTF_BENCH=1 TEST_RUNNER_GLTF_BENCH_RUNS="${GLTF_BENCH_RUNS:-3}" \
-      DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-      xcodebuild -scheme GLTFInspector -destination 'platform=macOS' \
-      -derivedDataPath "$DERIVED_DATA" test -only-testing:GLTFInspectorTests/PerfBench "$@" \
+      xcb GLTFInspector test -only-testing:GLTFInspectorTests/PerfBench "$@" \
       >"$raw" 2>&1 || status=$?
     {
       echo "# bench $stamp $(git rev-parse --short HEAD) runs=${GLTF_BENCH_RUNS:-3} load=$(sysctl -n vm.loadavg)"

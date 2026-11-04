@@ -161,7 +161,7 @@ struct WebRendererControlsTests {
         #expect(png(restored) == png(shaded), "leaving debug mode did not restore shaded output")
     }
 
-    /// `setEnvironment` re-samples the IBL probe, which is the expensive path and the one most
+    /// `apply` re-samples the IBL probe, which is the expensive path and the one most
     /// likely to silently no-op.
     @Test(.enabled(if: TestModels.hasKhronosSamples))
     func switchingEnvironmentChangesTheLighting() async throws {

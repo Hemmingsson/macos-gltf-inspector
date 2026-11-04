@@ -1,14 +1,13 @@
 import DesignSystem
 import SwiftUI
 
-/// Authored (or fitted) TRS grid for the selected node — Position / Rotation / Scale.
+/// Authored TRS grid for the selected node — Position / Rotation / Scale.
 struct TransformSection: View {
     var transform: TransformInfo
-    var isAuthored: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            InspectorSectionHeader(isAuthored ? "Transform · authored" : "Transform · fitted")
+            InspectorSectionHeader("Transform · authored")
 
             Grid(alignment: .leading, horizontalSpacing: DS.Spacing.s, verticalSpacing: DS.Spacing.s) {
                 GridRow {
@@ -45,7 +44,7 @@ struct TransformSection: View {
             .padding(.bottom, DS.Spacing.m)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(isAuthored ? "Transform, authored" : "Transform, fitted")
+        .accessibilityLabel("Transform, authored")
     }
 
     private func format(_ value: Double, suffix: String? = nil) -> String {
@@ -60,19 +59,6 @@ struct TransformSection: View {
 #Preview("authored") {
     PreviewCanvas(width: DS.Metrics.inspectorWidth) {
         let detail = NodeDetailFixtures.mesh
-        TransformSection(
-            transform: detail.transform!,
-            isAuthored: detail.isTransformAuthored
-        )
-    }
-}
-
-#Preview("fitted") {
-    PreviewCanvas(width: DS.Metrics.inspectorWidth) {
-        let detail = NodeDetailFixtures.mesh
-        TransformSection(
-            transform: detail.transform!,
-            isAuthored: false
-        )
+        TransformSection(transform: detail.transform!)
     }
 }

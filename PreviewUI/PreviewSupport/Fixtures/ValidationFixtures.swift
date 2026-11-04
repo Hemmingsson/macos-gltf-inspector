@@ -4,13 +4,11 @@ import Foundation
 enum ValidationFixtures {
   static let clean = ValidationResult(
     issues: [],
-    formatLabel: "glTF 2.0",
     status: .ready
   )
 
   static let pending = ValidationResult(
     issues: [],
-    formatLabel: "glTF 2.0",
     status: .pending
   )
 
@@ -27,7 +25,6 @@ enum ValidationFixtures {
         pointer: "/meshes/0/primitives/0/attributes/NORMAL"
       )
     ],
-    formatLabel: "glTF 2.0",
     status: .ready
   )
 }

@@ -88,17 +88,9 @@ extension EngineSceneModel {
                         pointer: message.pointer
                     )
                 },
-                formatLabel: "glTF 2.0",
                 status: .ready
             )
-        case .failed(let message):
-            return ValidationResult(
-                issues: [
-                    ValidationResult.Issue(severity: .warning, message: message)
-                ],
-                status: .unavailable
-            )
-        case .skipped(let message):
+        case .failed(let message), .skipped(let message):
             return ValidationResult(
                 issues: [
                     ValidationResult.Issue(severity: .warning, message: message)
@@ -143,21 +135,13 @@ extension EngineSceneModel {
 
         func build(_ index: Int, path: Set<Int>) -> SceneNode? {
             guard let node = byIndex[index] else { return nil }
-            guard !path.contains(index) else {
-                return SceneNode(
-                    kind: nodeKind(node.kind),
-                    index: node.index,
-                    name: displayName(node.name, fallback: "Node \(node.index)")
-                )
-            }
             var nextPath = path
             nextPath.insert(index)
-            let children = node.children.compactMap { build($0, path: nextPath) }
             return SceneNode(
                 kind: nodeKind(node.kind),
                 index: node.index,
                 name: displayName(node.name, fallback: "Node \(node.index)"),
-                children: children
+                children: path.contains(index) ? [] : node.children.compactMap { build($0, path: nextPath) }
             )
         }
 
@@ -316,13 +300,15 @@ extension EngineSceneModel {
     }
 
     private static func mapMorphs(_ morphs: [GLTFSessionDocument.Morph]) -> [MorphInfo] {
-        morphs.enumerated().map { index, morph in
-            MorphInfo(
-                index: index,
-                meshName: displayName(morph.meshName, fallback: "Mesh \(morph.meshIndex)"),
-                targetNames: morph.targetNames
-            )
-        }
+        morphs.enumerated().map { index, morph in morphInfo(morph, index: index) }
+    }
+
+    static func morphInfo(_ morph: GLTFSessionDocument.Morph, index: Int) -> MorphInfo {
+        MorphInfo(
+            index: index,
+            meshName: displayName(morph.meshName, fallback: "Mesh \(morph.meshIndex)"),
+            targetNames: morph.targetNames
+        )
     }
 
     private static func mapStats(_ stats: PreviewStats, document: GLTFSessionDocument) -> Stats {

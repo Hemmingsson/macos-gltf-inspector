@@ -131,7 +131,6 @@ final class EngineSelectionModel: SelectionModel {
             id: id,
             name: name,
             transform: transform,
-            isTransformAuthored: true,
             geometry: geometry,
             material: material,
             light: light,
@@ -161,9 +160,7 @@ final class EngineSelectionModel: SelectionModel {
 
     private static func morphDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
         guard document.morphs.indices.contains(index) else { return nil }
-        let morph = document.morphs[index]
-        let meshName = EngineSceneModel.displayName(morph.meshName, fallback: "Mesh \(morph.meshIndex)")
-        let info = MorphInfo(index: index, meshName: meshName, targetNames: morph.targetNames)
+        let info = EngineSceneModel.morphInfo(document.morphs[index], index: index)
         return NodeDetail(id: info.id, name: info.meshName, morph: info)
     }
 

@@ -25,11 +25,10 @@ struct DimensionsReadout: View {
 
     private var label: String {
         String(
-            format: "%.2f × %.2f × %.2f %@",
+            format: "%.2f × %.2f × %.2f m",
             dimensions.width,
             dimensions.height,
-            dimensions.depth,
-            dimensions.unit
+            dimensions.depth
         )
     }
 }

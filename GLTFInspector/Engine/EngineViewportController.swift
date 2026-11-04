@@ -39,12 +39,10 @@ final class EngineViewportController: ViewportController {
     init(
         sidebar: HostSidebarModel,
         previewSession: PreviewSession? = nil,
-        commands: FocusedPreviewCommands? = nil,
         saveScreenshot: ((CGImage) async -> Void)? = nil
     ) {
         self.sidebar = sidebar
         self.previewSession = previewSession ?? PreviewSession()
-        self.commands = commands
         self.saveScreenshot = saveScreenshot
     }
 
