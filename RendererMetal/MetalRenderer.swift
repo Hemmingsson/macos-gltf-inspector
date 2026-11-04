@@ -76,15 +76,19 @@ public final class MetalRenderer: @unchecked Sendable {
     }
 
     public func still(look: RenderLook, pose: MetalCameraPose, size: Int, orthographic: Bool = false,
-                      debugOutput: Int = 0, wireframe: Bool = false, overlays: MetalOverlayOptions = .init(), fileCameraNodeIndex: Int? = nil) throws -> CGImage {
+                      debugOutput: Int = 0, wireframe: Bool = false, overlays: MetalOverlayOptions = .init(), fileCameraNodeIndex: Int? = nil,
+                      transmissionResolution: Int = 1024) throws -> CGImage {
         try image(look: look, pose: pose, width: size, height: size, orthographic: orthographic,
-                  debugOutput: debugOutput, wireframe: wireframe, overlays: overlays, fileCameraNodeIndex: fileCameraNodeIndex)
+                  debugOutput: debugOutput, wireframe: wireframe, overlays: overlays, fileCameraNodeIndex: fileCameraNodeIndex,
+                  transmissionResolution: transmissionResolution)
     }
 
     public func image(look: RenderLook, pose: MetalCameraPose, width: Int, height: Int,
-                      orthographic: Bool = false, debugOutput: Int = 0, wireframe: Bool = false, overlays: MetalOverlayOptions = .init(), fileCameraNodeIndex: Int? = nil) throws -> CGImage {
+                      orthographic: Bool = false, debugOutput: Int = 0, wireframe: Bool = false, overlays: MetalOverlayOptions = .init(), fileCameraNodeIndex: Int? = nil,
+                      transmissionResolution: Int = 1024) throws -> CGImage {
         let output = try renderTexture(look: look, pose: pose, width: width, height: height,
-                                       orthographic: orthographic, debugOutput: debugOutput, wireframe: wireframe, overlays: overlays, fileCameraNodeIndex: fileCameraNodeIndex)
+                                       orthographic: orthographic, debugOutput: debugOutput, wireframe: wireframe, overlays: overlays, fileCameraNodeIndex: fileCameraNodeIndex,
+                                       transmissionResolution: transmissionResolution)
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         output.getBytes(&bytes, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         // WebGL's premultiplied canvas is quantized to RGBA8 before PNG unpremultiplication.
@@ -107,7 +111,8 @@ public final class MetalRenderer: @unchecked Sendable {
 
     public func renderTexture(look: RenderLook, pose: MetalCameraPose, width: Int, height: Int,
                               orthographic: Bool = false, debugOutput: Int = 0,
-                              wireframe: Bool = false, overlays: MetalOverlayOptions = .init(), fileCameraNodeIndex: Int? = nil) throws -> any MTLTexture {
+                              wireframe: Bool = false, overlays: MetalOverlayOptions = .init(), fileCameraNodeIndex: Int? = nil,
+                              transmissionResolution: Int = 1024) throws -> any MTLTexture {
         guard let scene else { throw MetalRendererError.noScene }
         guard width > 0, height > 0, width <= 16384, height <= 16384 else {
             throw MetalRendererError.resource("invalid image size")
@@ -162,7 +167,7 @@ public final class MetalRenderer: @unchecked Sendable {
         var background: any MTLTexture = black
         if let prepass = order.transmissionPrepass {
             background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass,
-                                                    fallback: black, wireframe: wireframe)
+                                                    fallback: black, wireframe: wireframe, resolution: transmissionResolution)
         }
         try encodeScene(command: command, pass: pass, frame: frame, scene: scene,
                         draws: order.main, background: background, wireframe: wireframe, viewport: viewport)
@@ -220,8 +225,10 @@ public final class MetalRenderer: @unchecked Sendable {
 
     private func transmissionBackground(command: any MTLCommandBuffer, frame: GPUFrame,
                                         scene: MetalScene, draws: [Int],
-                                        fallback: any MTLTexture, wireframe: Bool = false) throws -> any MTLTexture {
-        let resolution = 1024
+                                        fallback: any MTLTexture, wireframe: Bool = false,
+                                        resolution requested: Int = 1024) throws -> any MTLTexture {
+        // The page's prepass is 1024². Thumbnail stills pass a smaller edge; never grow past 1024.
+        let resolution = min(1024, max(1, requested))
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
             width: resolution, height: resolution, mipmapped: true)
         d.storageMode = .private

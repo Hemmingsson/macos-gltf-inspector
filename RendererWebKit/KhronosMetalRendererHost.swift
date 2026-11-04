@@ -35,6 +35,9 @@ public final class KhronosMetalRendererHost: CanvasRendererHost {
     public var onZoom: ((Int) -> Void)?
     public var view: NSView { metalView }
     public var rendererName: String { "Metal · Khronos 863b981" }
+    /// Set by `ThumbnailRenderer`. Still renders at ≤256px then allocate a matching transmission
+    /// target. Live frames and larger stills keep the page's 1024² MSAA targets.
+    var usesThumbnailTransmissionTarget = false
     public var logID: String { "mtl-" + String(UInt(bitPattern: ObjectIdentifier(self).hashValue), radix: 36) }
 
     public init(mode: WebRendererMode, size: Int = 512) {
@@ -187,7 +190,8 @@ public final class KhronosMetalRendererHost: CanvasRendererHost {
                                       width: pixels.width, height: pixels.height,
                                       orthographic: look.isOrthographic, debugOutput: debugOutput,
                                       wireframe: look.viewMode == .wireframe, overlays: overlays,
-                                      fileCameraNodeIndex: look.fileCameraNodeIndex)
+                                      fileCameraNodeIndex: look.fileCameraNodeIndex,
+                                      transmissionResolution: transmissionResolution(width: pixels.width, height: pixels.height))
         } catch {
             throw WebRendererError.callFailed("still: \(error.localizedDescription)")
         }
@@ -205,6 +209,13 @@ public final class KhronosMetalRendererHost: CanvasRendererHost {
     }
 
     // MARK: - Frame inputs
+
+    /// Page-sized transmission prepass, except Finder thumbnails at ≤256px, which match the image.
+    private func transmissionResolution(width: Int, height: Int) -> Int {
+        let edge = max(width, height)
+        guard mode == .still, usesThumbnailTransmissionTarget, edge <= 256 else { return 1024 }
+        return max(edge, 1)
+    }
 
     /// The canvas the page would draw into: the still square, or the live drawable.
     private var canvasPixels: (width: Int, height: Int) {

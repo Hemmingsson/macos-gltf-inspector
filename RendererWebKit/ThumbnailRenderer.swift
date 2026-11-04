@@ -73,6 +73,9 @@ public final class ThumbnailRenderer {
             return shared.host
         }
         let host = try CanvasRenderer.makeHost(mode: .still, size: pixel, backend: backend)
+        if let metal = host as? KhronosMetalRendererHost {
+            metal.usesThumbnailTransmissionTarget = true
+        }
         try await host.start()
         // Cheap before the first model: the page loads the HDR after `load`, `renderStill` waits.
         try await host.apply(look)
