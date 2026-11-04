@@ -34,7 +34,6 @@ Pixels, bridge, failure: [`docs/pipeline-web-renderer.md`](docs/pipeline-web-ren
 ./scripts/dev.sh run cube  # logs → .build/logs/debug.log
 ./scripts/dev.sh logs
 ./scripts/build.sh         # open /Applications + verify (main checkout only)
-./scripts/build.sh --install-only
 ./scripts/verify.sh
 ./scripts/release.sh
 ./scripts/fetch-test-models.sh

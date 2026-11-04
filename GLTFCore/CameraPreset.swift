@@ -38,7 +38,7 @@ public enum RenderCamera {
         let direction = radius > 1e-4 ? toCamera / radius : SIMD3(0, 0, 1)
         let axes = framingAxes(toCamera: direction)
         let half = extent * 0.5
-        let safeAspect = (aspect > 0.05 && aspect < 20) ? aspect : 1
+        let safeAspect = clampedAspect(aspect)
         let vHalfFOV = clampedFieldOfView(fieldOfViewInDegrees) * .pi / 360
         let hHalfFOV = atan(tan(vHalfFOV) * safeAspect)
         let distanceV = projectedHalf(axes.up, halfExtent: half) / tan(vHalfFOV)
@@ -59,6 +59,17 @@ public enum RenderCamera {
         )
     }
 
+    /// Vertical world height that frames `extent` along `toCamera` for an orthographic camera
+    /// (horizontal span is height × aspect), before padding.
+    public static func orthographicHeight(extent: SIMD3<Float>, toCamera: SIMD3<Float>, aspect: Float) -> Float {
+        let axes = framingAxes(toCamera: toCamera)
+        let half = extent * 0.5
+        let height = 2 * projectedHalf(axes.up, halfExtent: half)
+        let width = 2 * projectedHalf(axes.right, halfExtent: half)
+        return max(height, width / clampedAspect(aspect))
+    }
+
+    /// Camera-space basis for projected AABB framing. When look ‖ world +Y, pick +X as right.
     private static func framingAxes(toCamera: SIMD3<Float>) -> (
         forward: SIMD3<Float>,
         right: SIMD3<Float>,
@@ -71,7 +82,13 @@ public enum RenderCamera {
         return (forward, right, up)
     }
 
+    /// Half-extent of an axis-aligned box projected onto a unit axis (closed form).
     private static func projectedHalf(_ axis: SIMD3<Float>, halfExtent: SIMD3<Float>) -> Float {
         abs(axis.x) * halfExtent.x + abs(axis.y) * halfExtent.y + abs(axis.z) * halfExtent.z
+    }
+
+    /// Layout can report ~0 before the first frame; clamp so Fit does not explode.
+    private static func clampedAspect(_ aspect: Float) -> Float {
+        (aspect > 0.05 && aspect < 20) ? aspect : 1
     }
 }

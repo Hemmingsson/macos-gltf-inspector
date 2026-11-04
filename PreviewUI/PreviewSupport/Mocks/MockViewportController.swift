@@ -53,9 +53,7 @@ public final class MockViewportController: ViewportController {
     public func setFieldOfViewDegrees(_ degrees: Float) { fieldOfViewDegrees = degrees }
 
     public func fit() {}
-    public func reset() {}
     public func applyCameraPreset(_ preset: CameraPreset) { activeCameraPreset = preset }
-    public func screenshot() {}
     public func setScene(_ id: NodeID) { activeSceneID = id }
     public func setMaterialVariant(_ index: Int?) { selectedMaterialVariantIndex = index }
     public func setFileCamera(_ id: NodeID?) {

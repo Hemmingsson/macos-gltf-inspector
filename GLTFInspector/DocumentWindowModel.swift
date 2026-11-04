@@ -136,7 +136,6 @@ final class DocumentWindowModel {
             let summary = try await load(url)
             guard generation == loadGeneration else { return }
             let modelSidebar = HostSidebarModel(document: summary.document)
-            modelSidebar.materialVariantNames = summary.materialVariantNames
             sidebar = modelSidebar
             previewSession.viewModes = summary.viewModes.isEmpty ? [.shaded] : summary.viewModes
             engineViewport.setViewMode(.shaded)

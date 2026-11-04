@@ -150,7 +150,7 @@ goldens use yaw 0 as well (manifest rotation 90).
 
 `DocumentWindow` draws `WebPreviewCanvas` as soon as the file is opening; the canvas
 region's state (`ShellRootView(canvasState:)`) follows the page, not the JSON panels. The
-window holds one `WebCanvasController` across the shell's `.id(mountID)` remount; the next
+window holds one `WebCanvasController` across the shell's `.id(window.loadGeneration)` remount; the next
 mount adopts the running `WKWebView` (log: `viewport adopt`).
 
 **Commands.** `FocusedPreviewCommands` (fit / preset / reset / screenshot → `CGImage`) is
@@ -202,7 +202,7 @@ rebuild from source (`npm ci`), which this repo does not do; not measured.
 
 ### First-paint experiments (EXP-001…016, 2026-09-30)
 
-Gate: fresh-process `visibleMs` (page + IBL + load) or `stillMs` (first GPU frame + PNG) on
+Gate (bench-only timings, no longer logged): fresh-process `visibleMs` (page + IBL + load) or `stillMs` (first GPU frame + PNG) on
 BoomBox and Corset, KEEP at ≥ 12 % faster with tiny not > 15 % slower. The wait is the page start,
 not model parse: session-first ~1850 ms visible (page ~1170, IBL ~660), process-cold with WebKit
 warm ~300–530 ms. Landed: IBL after the first frame (EXP-002, `iblMs` → 0), our module minified

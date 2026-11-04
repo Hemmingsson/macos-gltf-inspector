@@ -54,7 +54,6 @@ public enum NodeDetailFixtures {
             index: 0,
             name: "Key Light",
             kind: .directional,
-            color: .white,
             intensity: 3.14
         )
     )

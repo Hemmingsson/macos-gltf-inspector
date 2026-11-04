@@ -108,14 +108,14 @@ public struct DSDisclosureMessageList: View {
 }
 
 /// `DisclosureGroup` as a status card. See `DSDisclosureCard`.
-public struct DSDisclosureCardStyle: DisclosureGroupStyle {
+struct DSDisclosureCardStyle: DisclosureGroupStyle {
     private let status: DSStatus
 
-    public init(status: DSStatus) {
+    init(status: DSStatus) {
         self.status = status
     }
 
-    public func makeBody(configuration: Configuration) -> some View {
+    func makeBody(configuration: Configuration) -> some View {
         DSDisclosureCardBody(configuration: configuration, status: status)
     }
 }

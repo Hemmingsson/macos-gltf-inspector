@@ -5,6 +5,7 @@ Equirectangular HDRs vendored from the Khronos
 `low_resolution_hdrs` branch — the same files the
 [Sample Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) loads at runtime.
 Do not replace these with Git LFS pointer files from `main`.
+Fetched by [`scripts/vendor-khronos-environments.sh`](../../../scripts/vendor-khronos-environments.sh).
 
 | File | Title | SPDX |
 |---|---|---|

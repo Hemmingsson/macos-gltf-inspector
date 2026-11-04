@@ -44,18 +44,4 @@ enum MaterialFixtures {
     occlusionStrength: 1,
     usedByMeshNames: ["Body", "Trim"]
   )
-
-  static let baseColorOnly = MaterialInfo(
-    index: 3,
-    name: "BaseColorOnly",
-    workflow: .metallicRoughness,
-    maps: [.baseColor],
-    textures: [
-      MaterialTextureInfo(map: .baseColor, width: 128, height: 128)
-    ],
-    baseColorFactor: RGBColor(red: 0.8, green: 0.8, blue: 0.82),
-    metallicFactor: 0,
-    roughnessFactor: 1,
-    usedByMeshNames: ["Plane"]
-  )
 }

@@ -53,11 +53,9 @@ struct FieldOfViewControls<Viewport: ViewportController>: View {
 // MARK: - Previews
 
 private struct FieldOfViewControlsPreviewHost: View {
-    var projection: Projection
     @State private var viewport: MockViewportController
 
     init(projection: Projection) {
-        self.projection = projection
         _viewport = State(
             initialValue: MockViewportController(
                 projection: projection,
@@ -74,11 +72,9 @@ private struct FieldOfViewControlsPreviewHost: View {
 }
 
 private struct FieldOfViewPopoverPreviewHost: View {
-    var projection: Projection
     @State private var viewport: MockViewportController
 
     init(projection: Projection) {
-        self.projection = projection
         _viewport = State(
             initialValue: MockViewportController(
                 projection: projection,

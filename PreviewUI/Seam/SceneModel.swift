@@ -16,7 +16,6 @@ public protocol SceneModel: Sendable {
     /// Typed node hierarchy (mesh / camera / light / skin / empty), roots first.
     var nodeTree: [SceneNode] { get }
 
-    var cameras: [CameraInfo] { get }
     var lights: [LightInfo] { get }
     /// Materials with the set of maps each one actually carries.
     var materials: [MaterialInfo] { get }

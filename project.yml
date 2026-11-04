@@ -14,9 +14,7 @@ schemes:
         targets:
           GLTFInspector: all
       run:
-        config: Debug
       test:
-        config: Debug
         targets:
           - GLTFInspectorTests
 
@@ -27,7 +25,6 @@ schemes:
           GLTFInspector: all
           GLTFInspectorUITests: [test]
       test:
-        config: Debug
         targets:
           - GLTFInspectorUITests
 
@@ -41,7 +38,6 @@ schemes:
         targets:
           DesignCatalog: all
       run:
-        config: Debug
 
 # Shared across every target so signing and versions live in one place.
 settings:
@@ -67,9 +63,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.DesignSystem
-        PRODUCT_MODULE_NAME: DesignSystem
         GENERATE_INFOPLIST_FILE: YES
-        DEFINES_MODULE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
 
   PreviewUI:
@@ -80,9 +74,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.PreviewUI
-        PRODUCT_MODULE_NAME: PreviewUI
         GENERATE_INFOPLIST_FILE: YES
-        DEFINES_MODULE: YES
       configs:
         Debug:
           ENABLE_DEBUG_DYLIB: YES
@@ -100,8 +92,6 @@ targets:
       - DesignCatalog
     settings:
       base:
-        PRODUCT_NAME: DesignCatalog
-        PRODUCT_MODULE_NAME: DesignCatalog
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.design-catalog
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Design Catalog
@@ -133,9 +123,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.GLTFCore
-        PRODUCT_MODULE_NAME: GLTFCore
         GENERATE_INFOPLIST_FILE: YES
-        DEFINES_MODULE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
 
   # The renderer: one WKWebView page (the vendored Khronos glTF Sample Renderer) driven from
@@ -155,9 +143,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.RendererWebKit
-        PRODUCT_MODULE_NAME: RendererWebKit
         GENERATE_INFOPLIST_FILE: YES
-        DEFINES_MODULE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
     dependencies:
       - target: GLTFCore
@@ -368,7 +354,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.tests
         GENERATE_INFOPLIST_FILE: YES
-        ENABLE_TESTING_SEARCH_PATHS: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/glTF Inspector.app/Contents/MacOS/glTF Inspector"
         BUNDLE_LOADER: "$(TEST_HOST)"
     dependencies:
@@ -393,6 +378,5 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.uitests
         GENERATE_INFOPLIST_FILE: YES
-        TEST_TARGET_NAME: GLTFInspector
     dependencies:
       - target: GLTFInspector

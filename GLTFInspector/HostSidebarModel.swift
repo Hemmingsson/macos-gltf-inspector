@@ -18,7 +18,6 @@ final class HostSidebarModel {
     var selectedNodeIndex: Int?
     /// Nil keeps authored primitive materials; index applies `KHR_materials_variants`.
     var selectedMaterialVariantIndex: Int?
-    var materialVariantNames: [String] = []
     let document: GLTFSessionDocument
 
     init(document: GLTFSessionDocument) {

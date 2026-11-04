@@ -1,1 +1,0 @@
-../../.agents/agents/repository-simplification.md

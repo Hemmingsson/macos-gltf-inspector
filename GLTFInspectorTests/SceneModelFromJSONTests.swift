@@ -43,23 +43,6 @@ struct SceneModelFromJSONTests {
         #expect(!document.materials[0].maps.normal)
     }
 
-    @Test func nodeMatrixIsDecomposedIntoTRS() {
-        let json: [String: Any] = [
-            "asset": ["version": "2.0"],
-            "nodes": [[
-                "name": "Matrixed",
-                // Column-major: uniform scale 2, no rotation, translation (1, 2, 3).
-                "matrix": [2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 1, 2, 3, 1],
-            ]],
-            "scenes": [["nodes": [0]]],
-            "scene": 0,
-        ]
-        let node = GLTFDocumentJSON.makeDocument(json: json).nodes[0]
-        #expect(node.translation == SIMD3<Float>(1, 2, 3))
-        #expect(node.scale == SIMD3<Float>(2, 2, 2))
-        #expect(abs(node.rotation.real - 1) < 0.0001)
-    }
-
     @Test func clipDurationFallsBackToTheBinaryWhenMinMaxIsMissing() {
         var times = Data()
         appendFloats([0, 1.5], to: &times)

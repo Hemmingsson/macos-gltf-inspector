@@ -14,11 +14,8 @@ struct ShellStatusView: View {
 
     var body: some View {
         switch placement {
-        case .sidebar:
-            sidebar
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .inspector:
-            inspector
+        case .sidebar, .inspector:
+            status
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .canvas:
             status
@@ -29,57 +26,38 @@ struct ShellStatusView: View {
         }
     }
 
-    @ViewBuilder
-    private var sidebar: some View {
-        switch state {
-        case .empty:
-            DSStatusView.empty(
-                ShellStatusCopy.emptyTitle,
-                systemImage: "cube",
-                message: "No file open"
-            )
-        case .loading:
-            DSStatusView.loading(ShellStatusCopy.loadingTitle)
-        case .failed(let message):
-            DSStatusView.failed(ShellStatusCopy.failedTitle, message: message)
-        case .ready:
-            EmptyView()
-        }
-    }
-
-    @ViewBuilder
-    private var inspector: some View {
-        switch state {
-        case .empty, .ready:
-            DSStatusView.empty(
-                "Nothing to inspect",
-                systemImage: "sidebar.right",
-                message: state == .empty
-                    ? "Open a file to see node and file details."
-                    : nil
-            )
-        case .loading:
-            DSStatusView.loading(ShellStatusCopy.loadingTitle)
-        case .failed(let message):
-            DSStatusView.failed(ShellStatusCopy.failedTitle, message: message)
-        }
-    }
-
+    /// Loading and failure copy is shared; only the empty state differs per placement. A ready
+    /// document leaves the sidebar and canvas blank, while the inspector keeps its empty state.
     @ViewBuilder
     private var status: some View {
         switch state {
-        case .empty:
-            DSStatusView.empty(
-                ShellStatusCopy.emptyTitle,
-                systemImage: "cube",
-                message: ShellStatusCopy.emptyDetail
-            )
         case .loading:
             DSStatusView.loading(ShellStatusCopy.loadingTitle)
         case .failed(let message):
             DSStatusView.failed(ShellStatusCopy.failedTitle, message: message)
+        case .empty:
+            emptyStatus
         case .ready:
-            EmptyView()
+            if placement == .inspector {
+                emptyStatus
+            } else {
+                EmptyView()
+            }
+        }
+    }
+
+    private var emptyStatus: DSStatusView {
+        switch placement {
+        case .sidebar:
+            .empty(ShellStatusCopy.emptyTitle, systemImage: "cube", message: "No file open")
+        case .inspector:
+            .empty(
+                "Nothing to inspect",
+                systemImage: "sidebar.right",
+                message: state == .empty ? "Open a file to see node and file details." : nil
+            )
+        case .canvas:
+            .empty(ShellStatusCopy.emptyTitle, systemImage: "cube", message: ShellStatusCopy.emptyDetail)
         }
     }
 

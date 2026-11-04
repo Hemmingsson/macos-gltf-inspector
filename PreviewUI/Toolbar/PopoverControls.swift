@@ -1,4 +1,3 @@
-import DesignSystem
 import SwiftUI
 
 /// Shared bindings and readings for the Lighting and Field of View popovers.
