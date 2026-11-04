@@ -71,6 +71,7 @@ public final class ModelCanvasController {
     private(set) var boundsEvaluations = 0
     @ObservationIgnored private var boundsCache: [Int: (min: SIMD3<Float>, max: SIMD3<Float>)] = [:]
     @ObservationIgnored private var boundsCacheGeneration = -1
+    @ObservationIgnored private var boundsCachePoseSignature: UInt64 = 0
 
     @ObservationIgnored private(set) var view: ModelView?
     @ObservationIgnored private var reportedViewRotation = matrix_identity_float3x3
@@ -334,16 +335,28 @@ public final class ModelCanvasController {
     /// World-space box of one node's subtree in the loaded scene, or nil before a load or for a
     /// node with no drawn geometry. Re-read when `sceneGeneration` changes.
     public func bounds(ofNode index: Int) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
-        if boundsCacheGeneration != sceneGeneration {
+        let poseSignature = boundsPoseSignature()
+        if boundsCacheGeneration != sceneGeneration || boundsCachePoseSignature != poseSignature {
             boundsCache.removeAll(keepingCapacity: true)
             boundsCacheGeneration = sceneGeneration
+            boundsCachePoseSignature = poseSignature
             boundsEvaluations = 0
         }
         if let cached = boundsCache[index] { return cached }
         boundsEvaluations += 1
-        guard let box = view?.renderer.scene?.bounds(ofNode: index) else { return nil }
+        guard let scene = view?.renderer.scene else { return nil }
+        let worlds = scene.framePose(pose: animationPoseForRender()).nodeWorlds
+        guard let box = scene.bounds(ofNode: index, worlds: worlds) else { return nil }
         boundsCache[index] = box
         return box
+    }
+
+    private func boundsPoseSignature() -> UInt64 {
+        guard animationPoseForRender() != nil else { return 0 }
+        var hasher = Hasher()
+        hasher.combine(time)
+        hasher.combine(selectedClipIndices)
+        return UInt64(bitPattern: Int64(hasher.finalize()))
     }
 
     public func localMeshSize(ofNode index: Int) -> SIMD3<Float>? {

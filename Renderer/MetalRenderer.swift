@@ -212,9 +212,10 @@ public final class MetalRenderer: @unchecked Sendable {
             throw MetalRendererError.resource("invalid image size")
         }
         let wireframe = options.viewMode == .wireframe
-        let overlays = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
         let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
                                         centerOffset: centerOffset, scene: scene, animationPose: animationPose)
+        var overlays = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
+        overlays.nodeWorlds = setup.nodeWorlds
         var frame = setup.frame
         let viewportAspect = setup.viewportAspect
         let viewport = setup.viewport
@@ -312,7 +313,11 @@ public final class MetalRenderer: @unchecked Sendable {
 
     func frameDraws(options: ViewOptions, animationPose: AnimationPose?, view: simd_float4x4) -> MetalFrameDraws {
         guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
-        let posed = scene.framePose(pose: animationPose)
+        return frameDraws(options: options, posed: scene.framePose(pose: animationPose), view: view)
+    }
+
+    func frameDraws(options: ViewOptions, posed: SceneFramePose, view: simd_float4x4) -> MetalFrameDraws {
+        guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
         let xray = MetalDrawStyle(options.viewMode) == .xray
         var order = drawLists.frame(draws: scene.draws, models: posed.transforms.map(\.model), view: view, xray: xray)
         let filter = MetalDrawFilter(options)
@@ -353,7 +358,9 @@ public final class MetalRenderer: @unchecked Sendable {
             camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
         }
         let filter = MetalDrawFilter(options)
-        let lights = filter.visibleLights(in: scene)
+        let posedFrame = scene.framePose(pose: animationPose)
+        let nodeWorlds = posedFrame.nodeWorlds
+        let lights = scene.posedLights(filter.visibleLights(in: scene), worlds: nodeWorlds)
         var frame = GPUFrame(viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix,
                              cameraPosition: SIMD4(camera.eye, 1),
                              environment: SIMD4(Float((90 + look.environmentYawDegrees) * .pi / 180),
@@ -363,14 +370,14 @@ public final class MetalRenderer: @unchecked Sendable {
                              viewport: SIMD4(Float(width), Float(height), 0, 0))
         var view = camera.viewMatrix
         var viewportAspect: Float? = orthographic ? 1 : nil
-        if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
+        if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height), worlds: nodeWorlds) {
             frame.viewProjection = fileCamera.viewProjection
             frame.cameraPosition = SIMD4(fileCamera.eye, 1)
             view = fileCamera.view
             viewportAspect = fileCamera.viewportAspect
         }
         let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
-        let posed = frameDraws(options: options, animationPose: animationPose, view: view)
+        let posed = frameDraws(options: options, posed: posedFrame, view: view)
         return SceneFrameSetup(frame: frame, view: view, viewport: viewport, viewportAspect: viewportAspect,
                                lights: lights, transforms: posed.transforms, nodeWorlds: posed.nodeWorlds,
                                mainDraws: posed.main,
