@@ -90,6 +90,8 @@ public struct MetalDraw {
     /// `EXT_mesh_gpu_instancing` transform for this draw, or identity.
     public let instanceMatrix: simd_float4x4
     public let material: MetalMaterial
+    /// glTF material index after variant resolution, when the primitive had a material.
+    public let gltfMaterialIndex: Int?
     public let nodeIndex: Int
     public let negativeScale: Bool
     /// Khronos `Primitive.computeCentroid`: mean of the authored POSITIONs over the authored indices
@@ -118,7 +120,8 @@ public struct MetalDraw {
 
     init(vertexBuffer: any MTLBuffer, indexBuffer: any MTLBuffer, indexCount: Int,
          primitiveType: MTLPrimitiveType, worldTransform: simd_float4x4, instanceMatrix: simd_float4x4,
-         material: MetalMaterial, nodeIndex: Int, negativeScale: Bool, centroid: SIMD3<Float> = .zero,
+         material: MetalMaterial, gltfMaterialIndex: Int? = nil, nodeIndex: Int, negativeScale: Bool,
+         centroid: SIMD3<Float> = .zero,
          opaqueGroup: String = "", meshIndex: Int = -1, restWeights: [Float] = [],
          morphBuffer: (any MTLBuffer)? = nil, morphTargetCount: Int = 0, morphVertexCount: Int = 0,
          morphMask: UInt32 = 0, skinBuffer: (any MTLBuffer)? = nil, skinIndex: Int? = nil,
@@ -130,6 +133,7 @@ public struct MetalDraw {
         self.worldTransform = worldTransform
         self.instanceMatrix = instanceMatrix
         self.material = material
+        self.gltfMaterialIndex = gltfMaterialIndex
         self.nodeIndex = nodeIndex
         self.negativeScale = negativeScale
         self.centroid = centroid
@@ -240,37 +244,46 @@ extension MetalScene {
         guard let mesh = node.mesh else { return }
         let world = worldMatrix(node)
         for primitive in mesh.primitives {
-            guard let accessor = primitive.attribute(forName: "POSITION")?.accessor,
-                  accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { continue }
-            func value(_ number: NSNumber) -> Float {
-                let raw = number.floatValue
-                guard accessor.isNormalized else { return raw }
-                switch accessor.componentType {
-                case .byte: return Swift.max(raw / 127, -1)
-                case .unsignedByte: return raw / 255
-                case .short: return Swift.max(raw / 32767, -1)
-                case .unsignedShort: return raw / 65535
-                default: return raw
-                }
-            }
-            let lo = SIMD3(value(accessor.minValues[0]), value(accessor.minValues[1]), value(accessor.minValues[2]))
-            let hi = SIMD3(value(accessor.maxValues[0]), value(accessor.maxValues[1]), value(accessor.maxValues[2]))
-            var primitive = Self.emptyBox
-            for i in 0..<8 {
-                let corner = SIMD4<Float>(i & 4 == 0 ? lo.x : hi.x, i & 2 == 0 ? lo.y : hi.y, i & 1 == 0 ? lo.z : hi.z, 1)
-                let p = world * corner
-                let point = SIMD3<Double>(Double(p.x), Double(p.y), Double(p.z))
-                primitive.min = simd_min(primitive.min, point)
-                primitive.max = simd_max(primitive.max, point)
-            }
-            if sphere {
-                let center = (primitive.max + primitive.min) * 0.5
-                let radius = simd_length(primitive.max - center)
-                primitive = (center - radius, center + radius)
-            }
-            box.min = simd_min(box.min, primitive.min)
-            box.max = simd_max(box.max, primitive.max)
+            expandPrimitive(&box, primitive: primitive, world: world, sphere: sphere)
         }
+    }
+
+    private func expandPrimitive(
+        _ box: inout (min: SIMD3<Double>, max: SIMD3<Double>),
+        primitive: GLTFPrimitive,
+        world: simd_float4x4,
+        sphere: Bool = false
+    ) {
+        guard let accessor = primitive.attribute(forName: "POSITION")?.accessor,
+              accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { return }
+        func value(_ number: NSNumber) -> Float {
+            let raw = number.floatValue
+            guard accessor.isNormalized else { return raw }
+            switch accessor.componentType {
+            case .byte: return Swift.max(raw / 127, -1)
+            case .unsignedByte: return raw / 255
+            case .short: return Swift.max(raw / 32767, -1)
+            case .unsignedShort: return raw / 65535
+            default: return raw
+            }
+        }
+        let lo = SIMD3(value(accessor.minValues[0]), value(accessor.minValues[1]), value(accessor.minValues[2]))
+        let hi = SIMD3(value(accessor.maxValues[0]), value(accessor.maxValues[1]), value(accessor.maxValues[2]))
+        var primitiveBox = Self.emptyBox
+        for i in 0..<8 {
+            let corner = SIMD4<Float>(i & 4 == 0 ? lo.x : hi.x, i & 2 == 0 ? lo.y : hi.y, i & 1 == 0 ? lo.z : hi.z, 1)
+            let p = world * corner
+            let point = SIMD3<Double>(Double(p.x), Double(p.y), Double(p.z))
+            primitiveBox.min = simd_min(primitiveBox.min, point)
+            primitiveBox.max = simd_max(primitiveBox.max, point)
+        }
+        if sphere {
+            let center = (primitiveBox.max + primitiveBox.min) * 0.5
+            let radius = simd_length(primitiveBox.max - center)
+            primitiveBox = (center - radius, center + radius)
+        }
+        box.min = simd_min(box.min, primitiveBox.min)
+        box.max = simd_max(box.max, primitiveBox.max)
     }
 
     private static var emptyBox: (min: SIMD3<Double>, max: SIMD3<Double>) {
@@ -288,6 +301,22 @@ extension MetalScene {
             expand(&box, node: node, sphere: true)
         }
         return box
+    }
+
+    /// Node-local AABB from only this node's primitives that use `materialIndex` (not its subtree).
+    public func bounds(ofNode index: Int, usingMaterial materialIndex: Int) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
+        guard asset.nodes.indices.contains(index) else { return nil }
+        let node = asset.nodes[index]
+        guard node.mesh != nil else { return nil }
+        var box = Self.emptyBox
+        let world = worldMatrix(node)
+        for primitive in node.mesh!.primitives {
+            let resolved = primitive.material.flatMap { mat in asset.materials.firstIndex { $0 === mat } }
+            guard resolved == materialIndex else { continue }
+            expandPrimitive(&box, primitive: primitive, world: world)
+        }
+        guard box.min.x.isFinite else { return nil }
+        return (SIMD3<Float>(box.min), SIMD3<Float>(box.max))
     }
 
     /// `subtreeAABB`: the node's subtree, or its world origin when it has no mesh.

@@ -320,12 +320,13 @@ private final class Builder {
             skinBuffer = buffer
         } else { skinBuffer = nil }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
+        let gltfMaterialIndex = material.flatMap { mat in asset.materials.firstIndex { $0 === mat } }
         var m = try convert(material)
         m.hasTexCoord0 = uv0 != nil
         m.hasNormal = normal != nil
         // MikkTSpace above fills TANGENT when the mesh has UVs but no authored tangent.
         m.hasTangent = tangent != nil || (uv0 != nil && topology == .triangle)
-        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
+        draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,instanceMatrix:instance,material:m,gltfMaterialIndex:gltfMaterialIndex,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup,meshIndex:meshIndex,restWeights:restWeights,morphBuffer:morphBuffer,morphTargetCount:targetCount,morphVertexCount:vertices.count,morphMask:morph?.mask ?? 0,skinBuffer:skinBuffer,skinIndex:skinVerts.isEmpty ? nil : skinIndex,hasJoints1:hasJoints1 && !skinVerts.isEmpty))
     }
 
     func makeSkins() throws -> [MetalSkin] {

@@ -157,7 +157,8 @@ final class ViewState {
             selectedNodeIndices: Set(storedSelectedIDs.filter { $0.kind == .mesh || $0.kind == .empty }.map(\.index)),
             orbitsAroundSelection: settings.orbitsAroundSelection,
             zoomsTowardPointer: settings.zoomsTowardPointer,
-            highlightedNodeIndices: materialHighlightNodeIndices,
+            highlightedNodeIndices: materialHighlightNodeIndices.nodes,
+            materialHighlightMaterialIndex: materialHighlightNodeIndices.materialIndex,
             gizmoSelectedNodeIndex: selection.flatMap { $0.kind.isSceneNode ? $0.index : nil },
             selectedSkinIndex: selection.flatMap { $0.kind == .skin ? $0.index : nil },
             hiddenNodeIndices: hiddenNodes,
@@ -408,9 +409,12 @@ final class ViewState {
         }
     }
 
-    private var materialHighlightNodeIndices: Set<Int> {
-        guard let selection, selection.kind == .material else { return [] }
-        return Set(document.nodeIndices(usingMaterial: selection.index))
+    private var materialHighlightNodeIndices: (nodes: Set<Int>, materialIndex: Int?) {
+        guard let selection, selection.kind == .material else { return ([], nil) }
+        let nodes = Set(document.nodeIndices(usingMaterial: selection.index,
+                                              materialVariantIndex: materialVariantIndex))
+            .subtracting(hiddenNodes)
+        return (nodes, selection.index)
     }
 
     private func restoreStageAndLook() {

@@ -162,6 +162,46 @@ func writeTempGroupedMeshGLB(prefix: String = "grouped-mesh") throws -> URL {
     return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
 }
 
+/// Parent mesh (material 0) with a child mesh (material 1) offset on +X.
+func writeTempDualMaterialParentChildGLB(prefix: String = "dual-material-parent-child") throws -> URL {
+    let bin = floatQuadWithUVBin()
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [
+            ["buffer": 0, "byteOffset": 0, "byteLength": 48],
+            ["buffer": 0, "byteOffset": 48, "byteLength": 32],
+            ["buffer": 0, "byteOffset": 80, "byteLength": 12],
+        ],
+        "accessors": [
+            ["bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
+             "min": [-1, -1, 0], "max": [1, 1, 0]],
+            ["bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC2"],
+            ["bufferView": 2, "componentType": 5123, "count": 6, "type": "SCALAR"],
+        ],
+        "materials": [["name": "ParentMat"], ["name": "ChildMat"]],
+        "meshes": [
+            ["primitives": [[
+                "attributes": ["POSITION": 0, "TEXCOORD_0": 1],
+                "indices": 2,
+                "material": 0,
+            ]]],
+            ["primitives": [[
+                "attributes": ["POSITION": 0, "TEXCOORD_0": 1],
+                "indices": 2,
+                "material": 1,
+            ]]],
+        ],
+        "nodes": [
+            ["name": "Parent", "mesh": 0, "children": [1]],
+            ["name": "Child", "mesh": 1, "translation": [5, 0, 0]],
+        ],
+        "scenes": [["nodes": [0]]],
+        "scene": 0,
+    ]
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
+}
+
 /// MASK quad in front of an opaque quad; texture center is transparent.
 func writeTempMaskOverOpaqueGLB(prefix: String = "mask-over-opaque") throws -> URL {
     let meshBin = floatQuadWithUVBin()

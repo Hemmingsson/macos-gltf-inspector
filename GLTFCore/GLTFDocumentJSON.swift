@@ -296,6 +296,20 @@ public enum GLTFDocumentJSON {
         var hasVertexColors = false
     }
 
+    private static func materialVariantMappings(_ primitive: [String: Any], materialCount: Int) -> [GLTFDocument.MaterialVariantMapping] {
+        let extensions = primitive["extensions"] as? [String: Any] ?? [:]
+        let payload = extensions["KHR_materials_variants"] as? [String: Any] ?? [:]
+        let entries = payload["mappings"] as? [[String: Any]] ?? []
+        return entries.compactMap { entry in
+            let variants = (entry["variants"] as? [Any])?.compactMap { GLTFJSON.int($0) } ?? []
+            guard !variants.isEmpty,
+                  let material = GLTFJSON.int(entry["material"]),
+                  material >= 0, material < materialCount
+            else { return nil }
+            return GLTFDocument.MaterialVariantMapping(variantIndices: variants, materialIndex: material)
+        }
+    }
+
     private static func meshPrimitives(
         _ mesh: [String: Any],
         accessors: [[String: Any]],
@@ -306,8 +320,10 @@ public enum GLTFDocumentJSON {
                 $0 >= 0 && $0 < materialCount ? $0 : nil
             }
             let mode = GLTFJSON.int(primitive["mode"]) ?? 4
+            let variantMappings = materialVariantMappings(primitive, materialCount: materialCount)
             return GLTFDocument.MeshPrimitive(
                 materialIndex: material,
+                variantMappings: variantMappings,
                 triangleCount: GLTFJSON.triangleCount(primitive, accessors: accessors),
                 mode: mode
             )
