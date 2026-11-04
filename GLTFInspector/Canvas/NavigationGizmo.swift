@@ -108,6 +108,12 @@ enum NavigationGizmoLayout {
         if activePreset == preset { return axis.opposite.cameraPreset }
         return preset
     }
+
+    /// Drag delta for the gizmo; SwiftUI locations are y-down, matching a downward drag to positive `dy`
+    /// like AppKit window coordinates in `ModelView.drag`.
+    static func dragDelta(from start: CGPoint, to location: CGPoint) -> (dx: Double, dy: Double) {
+        (Double(location.x - start.x), Double(location.y - start.y))
+    }
 }
 
 /// Bottom-leading view-orientation control: ± axis balls, preset snaps and drag-to-orbit.
@@ -191,10 +197,9 @@ struct NavigationGizmo: View {
             .onChanged { value in
                 if dragAnchor == nil { dragAnchor = value.startLocation }
                 guard let start = dragAnchor else { return }
-                let dx = Double(value.location.x - start.x)
-                let dy = Double(start.y - value.location.y)
+                let delta = NavigationGizmoLayout.dragDelta(from: start, to: value.location)
                 dragAnchor = value.location
-                onOrbit(dx, dy)
+                onOrbit(delta.dx, delta.dy)
             }
             .onEnded { _ in dragAnchor = nil }
     }
