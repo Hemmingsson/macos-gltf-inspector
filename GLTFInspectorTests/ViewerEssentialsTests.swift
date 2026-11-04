@@ -482,9 +482,8 @@ struct ViewerEssentialsTests {
 
         var failed = false
         do {
-            try await TurntableExport.write(.mp4, from: state.canvas, to: output) { _, url, _, _ in
-                ThrowingEncoder(url: url, failAfter: 3)
-            }
+            try await TurntableExport.write(.mp4, from: state.canvas, to: output,
+                                            makeEncoder: { _, url, _, _ in ThrowingEncoder(url: url, failAfter: 3) })
         } catch is ThrowingEncoder.Failure {
             failed = true
         }
@@ -492,6 +491,99 @@ struct ViewerEssentialsTests {
         #expect(try Data(contentsOf: output) == original, "the destination keeps its original bytes")
         let listing = try FileManager.default.contentsOfDirectory(atPath: directory.path)
         #expect(listing == ["orbit.mp4"], "no temp file may remain: \(listing)")
+    }
+
+    /// Holds a task so a frame callback can cancel the export that is running it.
+    @MainActor
+    final class ExportBox {
+        var task: Task<Void, Error>?
+        var done = 0
+    }
+
+    private func pixelBytes(_ image: CGImage) throws -> [UInt8] {
+        var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
+        try bytes.withUnsafeMutableBytes { buffer in
+            let context = try #require(CGContext(
+                data: buffer.baseAddress, width: image.width, height: image.height, bitsPerComponent: 8,
+                bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        }
+        return bytes
+    }
+
+    private func turntablePixels(_ canvas: ModelCanvasController, count: Int) async throws -> [[UInt8]] {
+        var frames: [[UInt8]] = []
+        try await canvas.turntable(count: count, width: 96, height: 96) { _, image in
+            frames.append(try pixelBytes(image))
+        }
+        return frames
+    }
+
+    @Test func turntableFramesIgnoreCameraInputDuringTheExport() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "turntable-camera")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let (state, container) = try await loadedState(url)
+        defer { state.canvas.view?.removeFromSuperview(); _ = container }
+        let quiet = try await turntablePixels(state.canvas, count: 4)
+        var disturbed: [[UInt8]] = []
+        try await state.canvas.turntable(count: 4, width: 96, height: 96) { index, image in
+            if index == 1 {
+                state.canvas.zoom(by: 0.5)
+                state.canvas.orbit(dx: 120, dy: 60)
+            }
+            disturbed.append(try pixelBytes(image))
+        }
+        #expect(disturbed == quiet, "live zoom and orbit must not change the frames of one export")
+    }
+
+    @Test func turntableFramesHaveNoSelectionOutline() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "turntable-selection")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let (state, container) = try await loadedState(url)
+        defer { state.canvas.view?.removeFromSuperview(); _ = container }
+        let view = try #require(state.canvas.view)
+        let plain = try await turntablePixels(state.canvas, count: 1)
+        var selected = view.options
+        selected.selectedNodeIndex = 0
+        selected.selectedNodeIndices = [0]
+        selected.hoveredNodeIndex = 1
+        try await view.apply(selected)
+        let withSelection = try await turntablePixels(state.canvas, count: 1)
+        #expect(withSelection == plain, "selection and hover must not be drawn into exported frames")
+    }
+
+    @Test func cancelledTurntableStopsAndKeepsTheDestination() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "turntable-cancel")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let (state, container) = try await loadedState(url)
+        defer { state.canvas.view?.removeFromSuperview(); _ = container }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("turntable-cancel-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("orbit.gif")
+        let original = Data([9, 8, 7])
+        try original.write(to: output)
+
+        let box = ExportBox()
+        box.task = Task {
+            try await TurntableExport.write(.gif, from: state.canvas, to: output) { done in
+                box.done = done
+                if done == 3 { box.task?.cancel() }
+            }
+        }
+        var cancelled = false
+        do {
+            try await box.task?.value
+        } catch is CancellationError {
+            cancelled = true
+        }
+        #expect(cancelled, "a cancelled export must throw CancellationError")
+        #expect(box.done == 3, "the export must stop at the frame that cancelled it")
+        #expect(try Data(contentsOf: output) == original, "the destination keeps its original bytes")
+        let listing = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        #expect(listing == ["orbit.gif"], "no partial file may remain: \(listing)")
     }
 
 }

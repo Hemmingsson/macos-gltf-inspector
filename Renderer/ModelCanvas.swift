@@ -82,6 +82,10 @@ public final class ModelCanvasController {
     @ObservationIgnored public var onPick: ((Int?) -> Void)? {
         didSet { view?.onPick = onPick }
     }
+    /// Ignores canvas pointer and wheel input while a turntable export runs; forwards to the live `ModelView`.
+    @ObservationIgnored public var inputLocked = false {
+        didSet { view?.inputLocked = inputLocked }
+    }
     /// ⌘- / ⇧-click on a node; forwards to the live `ModelView`.
     @ObservationIgnored public var onTogglePick: ((Int) -> Void)? {
         didSet { view?.onTogglePick = onTogglePick }
@@ -349,6 +353,7 @@ public final class ModelCanvasController {
                     viewRotation = rotation
                 }
                 view.contentInsets = contentInsets
+                view.inputLocked = inputLocked
                 wirePlayback(on: view)
                 self.view = view
             } catch {

@@ -343,16 +343,38 @@ final class ViewState {
     }
 
     /// Share ▸ Export Turntable: one orbit as a video or GIF, through a save panel. Ignored while
-    /// one is already being written.
+    /// one is already being written. The canvas ignores camera input until it finishes or Cancel.
     func exportTurntable(_ format: TurntableExport.Format, suggestedName: String) {
         guard !isExportingTurntable, canvas.phase == .ready else { return }
         isExportingTurntable = true
-        Task {
-            await TurntableExport.save(format, from: canvas, suggestedName: suggestedName)
+        canvas.inputLocked = true
+        turntableProgress = TurntableProgress(done: 0, total: format.frameCount)
+        turntableTask = Task { [weak self] in
+            guard let self else { return }
+            await TurntableExport.save(format, from: canvas, suggestedName: suggestedName) { done in
+                self.turntableProgress?.done = done
+            }
+            turntableTask = nil
+            turntableProgress = nil
+            canvas.inputLocked = false
             isExportingTurntable = false
         }
     }
+
+    /// Stops the running turntable export; its temp file is removed and the destination is kept.
+    func cancelTurntableExport() {
+        turntableTask?.cancel()
+    }
+
     private(set) var isExportingTurntable = false
+    /// Frames written so far of the running turntable export, nil when none runs.
+    private(set) var turntableProgress: TurntableProgress?
+    @ObservationIgnored private var turntableTask: Task<Void, Never>?
+
+    struct TurntableProgress: Equatable {
+        var done: Int
+        let total: Int
+    }
 
     /// File ▸ Export PNG: the canvas at its pixel size, through a save panel.
     func exportPNG(suggestedName: String) {

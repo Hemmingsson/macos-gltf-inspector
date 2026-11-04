@@ -54,6 +54,11 @@ public final class ModelView: NSView {
     var isPlaybackRunning = false
     var onAnimationPlaybackStep: (() -> Void)?
     var animationPoseProvider: (() -> AnimationPose?)?
+    /// True while a turntable export runs: pointer, wheel, pinch and hover input are ignored so
+    /// the export's view and selection cannot change under it.
+    public var inputLocked = false {
+        didSet { if inputLocked { clearHover() } }
+    }
 
     public init(renderer: MetalRenderer) {
         self.renderer = renderer
@@ -249,23 +254,35 @@ public final class ModelView: NSView {
 
     /// One full orbit around the current target for a turntable export: `count` frames at
     /// `width`×`height`, starting from the current angle. Each frame goes to `frame` as it is
-    /// drawn (so a long export never holds every image), which may throw to stop. The live camera
-    /// is left as it was.
+    /// drawn (so a long export never holds every image), which may throw to stop; a cancelled
+    /// task stops with `CancellationError`. The orbit, the bounds and the animation pose are read
+    /// once before the first frame, so live input during the export cannot change the frames. The
+    /// export draws without selection, hover or highlight, and the live camera is left as it was.
     public func turntable(count: Int, width: Int, height: Int,
                           frame: (Int, CGImage) async throws -> Void) async throws {
         guard renderer.scene != nil, count > 0 else { throw MetalRendererError.noScene }
-        // Orbits a copy, so live redraws during the export keep the person's view.
         var orbit = camera
         orbit.aspectRatio = Double(width) / Double(height)
+        let azimuth = camera.rotAroundY * 180 / .pi, elevation = camera.rotAroundX * 180 / .pi
+        let distance = camera.distance, target = camera.target
+        let frozenExtents = extents
+        let pose = animationPoseProvider?()
         var turntableOptions = options
         turntableOptions.fileCameraNodeIndex = nil
-        let azimuth = camera.rotAroundY * 180 / .pi, elevation = camera.rotAroundX * 180 / .pi
+        turntableOptions.selectedNodeIndex = nil
+        turntableOptions.selectedNodeIndices = []
+        turntableOptions.gizmoSelectedNodeIndex = nil
+        turntableOptions.selectedSkinIndex = nil
+        turntableOptions.highlightedNodeIndices = []
+        turntableOptions.hoveredNodeIndex = nil
         for index in 0..<count {
+            try Task.checkCancellation()
             orbit.orbitTo(azimuth: azimuth + 360 * Double(index) / Double(count), elevation: elevation,
-                          distance: camera.distance, target: camera.target)
+                          distance: distance, target: target)
             orbit.applyProjection()
             try await frame(index, renderer.image(turntableOptions, pose: orbit.pose, width: width, height: height,
-                                                  extents: extents, transmissionResolution: transmissionResolution))
+                                                  extents: frozenExtents, transmissionResolution: transmissionResolution,
+                                                  animationPose: pose))
         }
     }
 
@@ -460,6 +477,7 @@ public final class ModelView: NSView {
     }
 
     private func beginDrag(_ event: NSEvent, pan: Bool) {
+        guard !inputLocked else { return }
         cancelRetarget()
         clearHover()
         let location = event.locationInWindow
@@ -631,7 +649,7 @@ public final class ModelView: NSView {
     /// With `zoomsTowardPointer` (perspective only: the Khronos wheel keeps the orthographic
     /// scale) the dolly heads for the spot under the pointer instead of the orbit target.
     private func wheel(deltaY: Double, at windowPoint: NSPoint) {
-        guard renderer.scene != nil else { return }
+        guard renderer.scene != nil, !inputLocked else { return }
         cancelRetarget()
         if options.zoomsTowardPointer, !options.isOrthographic,
            let pointer = pointerWorldPoint(atViewPoint: convert(windowPoint, from: nil)) {
@@ -661,7 +679,7 @@ public final class ModelView: NSView {
 
     override public func mouseMoved(with event: NSEvent) {
         super.mouseMoved(with: event)
-        guard onHover != nil, renderer.scene != nil, !isInTitleBarBand(event) else { return clearHover() }
+        guard onHover != nil, renderer.scene != nil, !inputLocked, !isInTitleBarBand(event) else { return clearHover() }
         hoverPoint = event.locationInWindow
         let isBusy = dragAnchor != nil || options.autoRotates || isPlaybackRunning || retargetTask != nil
         guard !hoverPending, let delay = hoverThrottle.delay(at: CACurrentMediaTime(), isBusy: isBusy) else {
