@@ -162,15 +162,29 @@ public struct MetalUserCamera: Sendable, Equatable {
     public mutating func frame(box: (min: SIMD3<Double>, max: SIMD3<Double>), aspect: Double) -> Double? {
         guard box.min.x.isFinite, box.min.y.isFinite, box.min.z.isFinite,
               box.max.x.isFinite, box.max.y.isFinite, box.max.z.isFinite else { return nil }
+        // Point-sized or flat boxes (cameras, lights, empties, joints, zero-area meshes) get a
+        // finite volume: each thin axis is widened to 15% of the scene span, as the gizmos are.
+        let minimumSpan = max(simd_length(sceneMax - sceneMin) * Self.minimumFramingFraction, 1e-3)
+        let centre = (box.min + box.max) / 2
+        let half = simd_max((box.max - box.min) / 2, SIMD3(repeating: minimumSpan / 2))
+        let framed = (min: centre - half, max: centre + half)
         let toCamera = SIMD3(sin(rotAroundY) * cos(rotAroundX), -sin(rotAroundX), cos(rotAroundY) * cos(rotAroundX))
-        let distance = Self.sharedFitDistance(extent: box.max - box.min, toCamera: toCamera, aspect: aspect,
+        let distance = Self.sharedFitDistance(extent: framed.max - framed.min, toCamera: toCamera, aspect: aspect,
                                               fieldOfViewDegrees: yfov * 180 / .pi)
         guard distance.isFinite else { return nil }
-        setDistanceFromTarget(distance, (box.min + box.max) / 2)
-        fitCameraPlanesToExtents(simd_min(sceneMin, box.min), simd_max(sceneMax, box.max))
+        setDistanceFromTarget(distance, centre)
+        fitCameraPlanesToExtents(simd_min(sceneMin, framed.min), simd_max(sceneMax, framed.max))
+        // Keep the planes valid: 0 < znear < zfar, both finite, whatever the scene looked like.
+        if !(zfar.isFinite && znear.isFinite && znear > 0 && znear < zfar) {
+            zfar = max(distance * 2, 1e-3)
+            znear = zfar / Self.maxNearFarRatio
+        }
         applyProjection()
         return distance
     }
+
+    /// Gizmo span as a fraction of the scene span (`ModelView` gizmo sizing).
+    static let minimumFramingFraction = 0.15
 
     /// `applySharedFitDistance`: projected-AABB + near-face + 1.02, at the current angles.
     @discardableResult

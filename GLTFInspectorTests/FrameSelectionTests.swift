@@ -151,4 +151,56 @@ struct FrameSelectionTests {
         let changed = zip(far, near).filter { abs(Int($0) - Int($1)) > 8 }.count
         #expect(changed > 0, "the far quad must still be drawn after framing")
     }
+
+    /// Selecting a point-sized or zero-area node and framing it must leave a finite, valid
+    /// projection and a renderable frame (s1pmqv4t).
+    private func assertFiniteFrame(_ url: URL, node: Int, _ label: String) async throws {
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(url)
+        view.frame(nodeIndex: node)
+        let camera = view.camera
+        #expect(camera.zfar > camera.znear && camera.znear > 0, "\(label): znear \(camera.znear) zfar \(camera.zfar)")
+        let projection = MetalCamera(pose: camera.pose, isOrthographic: false, aspect: 1).openGLProjectionMatrix
+        #expect((0..<4).allSatisfy { column in (0..<4).allSatisfy { projection[column][$0].isFinite } },
+                "\(label): non-finite projection")
+        _ = try view.image(width: 64, height: 64)
+    }
+
+    @Test func frameCameraLeavesAFiniteProjection() async throws {
+        try await assertFiniteFrame(TestFixtures.cameras, node: 1, "perspective camera")
+        try await assertFiniteFrame(TestFixtures.cameras, node: 2, "orthographic camera")
+    }
+
+    @Test func frameLightLeavesAFiniteProjection() async throws {
+        try await assertFiniteFrame(TestFixtures.lights, node: 1, "light")
+    }
+
+    @Test func frameJointLeavesAFiniteProjection() async throws {
+        try await assertFiniteFrame(TestFixtures.rigged, node: 1, "joint")
+        try await assertFiniteFrame(TestFixtures.rigged, node: 2, "leaf joint")
+    }
+
+    /// With Center Model off, selection framing must still target the selection's own centre,
+    /// not a point between it and the origin (zeif47se).
+    @Test func frameSelectionTargetsTheSelectionWhenCentringIsOff() async throws {
+        let url = try quads([(cx: 10.5, z: 0, h: 0.5)])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(url, options: ViewOptions(isCentered: false))
+        view.orbit(azimuth: 40, elevation: -15)
+        let azimuth = view.camera.rotAroundY, elevation = view.camera.rotAroundX
+
+        view.frame(nodeIndex: 0)
+        #expect(simd_distance(view.camera.target, SIMD3(10.5, 0, 0)) < 1e-3, "frame target \(view.camera.target)")
+        #expect(abs(view.camera.rotAroundY - azimuth) < 1e-12 && abs(view.camera.rotAroundX - elevation) < 1e-12)
+
+        view.fit(nodeIndex: 0)
+        #expect(simd_distance(view.camera.target, SIMD3(10.5, 0, 0)) < 1e-3, "fit target \(view.camera.target)")
+    }
+
+    @Test func frameZeroAreaMeshLeavesAFiniteProjection() async throws {
+        let url = try quads([(cx: 0, z: 0, h: 0)])
+        defer { try? FileManager.default.removeItem(at: url) }
+        try await assertFiniteFrame(url, node: 0, "zero-area mesh")
+    }
 }
