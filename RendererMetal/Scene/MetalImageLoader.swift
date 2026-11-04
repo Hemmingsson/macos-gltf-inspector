@@ -6,13 +6,21 @@ import Metal
 
 /// Raster images preserve the encoded RGB numbers (no conversion to the display colour profile).
 /// The temporary premultiplied bitmap is converted back to straight alpha before GPU upload.
+///
+/// Each image is decoded once (`decode`); its linear and sRGB textures are both made from those
+/// bytes (`makeTexture`), and one command buffer generates every texture's mips (`generateMipmaps`).
 enum MetalImageLoader {
-    static func load(image: GLTFImage, device: any MTLDevice, sRGB: Bool) throws -> any MTLTexture {
-        if image.inferMediaType() == GLTFMediaTypeKTX2 { return try loadKTX2(image: image, device: device) }
+    /// Straight-alpha RGBA8 rows, or a finished KTX2 texture (which keeps its own transfer function).
+    enum Decoded: @unchecked Sendable {
+        case pixels(Data, width: Int, height: Int, bytesPerRow: Int)
+        case texture(any MTLTexture)
+    }
+
+    static func decode(image: GLTFImage, device: any MTLDevice) throws -> Decoded {
+        if image.inferMediaType() == GLTFMediaTypeKTX2 { return .texture(try loadKTX2(image: image, device: device)) }
         guard let cg = image.newCGImage()?.takeRetainedValue() else { throw MetalSceneError.invalid("Image decoding failed") }
         let width = cg.width, height = cg.height
         guard width > 0, height > 0 else { throw MetalSceneError.invalid("Image dimensions are empty") }
-        var pixels = [UInt8](repeating:0,count:width*height*4)
         let alpha = cg.alphaInfo
         let order = cg.bitmapInfo.intersection(.byteOrderMask)
         let directRGBA = cg.bitsPerComponent == 8 && cg.bitsPerPixel == 32
@@ -23,45 +31,68 @@ enum MetalImageLoader {
            CFDataGetLength(data) >= cg.bytesPerRow * height, let bytes = CFDataGetBytePtr(data) {
             // ImageIO's straight component provider avoids an 8-bit premultiply/unpremultiply
             // roundtrip, preserving RGB values in semitransparent texels exactly.
-            let components = directRGBA ? 4 : 3
-            for y in 0..<height {
-                for x in 0..<width {
-                    let src = y * cg.bytesPerRow + x * components
-                    let dst = (y * width + x) * 4
-                    pixels[dst] = bytes[src]; pixels[dst+1] = bytes[src+1]; pixels[dst+2] = bytes[src+2]
-                    pixels[dst+3] = directRGBA && alpha == .last ? bytes[src+3] : 255
-                }
+            if directRGBA && alpha == .last {
+                // Already straight RGBA8: upload ImageIO's rows as they are.
+                return .pixels(data as Data, width: width, height: height, bytesPerRow: cg.bytesPerRow)
             }
-        } else {
-            // Less common grayscale/16-bit encodings use a bitmap with a device colour tag;
-            // changing the tag before drawing prevents an ICC display-profile conversion.
-            let sourceSpace = cg.colorSpace?.model == .monochrome ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB()
-            let untagged = cg.copy(colorSpace: sourceSpace) ?? cg
-            let ok = pixels.withUnsafeMutableBytes { raw -> Bool in
-                guard let context = CGContext(data:raw.baseAddress,width:width,height:height,bitsPerComponent:8,bytesPerRow:width*4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return false }
-                context.interpolationQuality = .none
-                context.draw(untagged,in:CGRect(x:0,y:0,width:width,height:height))
-                return true
+            var pixels = Data(count: width * height * 4)
+            pixels.withUnsafeMutableBytes { raw in
+                GLTFMetalExpandRGBA8(bytes, cg.bytesPerRow, directRGBA ? 4 : 3, false, width, height,
+                                     raw.baseAddress!.assumingMemoryBound(to: UInt8.self))
             }
-            guard ok else { throw MetalSceneError.invalid("Image bitmap allocation failed") }
-            for i in stride(from:0,to:pixels.count,by:4) {
-                let a = Int(pixels[i+3])
-                if a > 0 && a < 255 {
-                    for c in 0..<3 {
-                        let value = (Int(pixels[i+c]) * 255 + a/2) / a
-                        pixels[i+c] = UInt8(min(255, value))
-                    }
-                }
-            }
+            return .pixels(pixels, width: width, height: height, bytesPerRow: width * 4)
+        }
+        // Less common grayscale/16-bit encodings use a bitmap with a device colour tag;
+        // changing the tag before drawing prevents an ICC display-profile conversion.
+        let sourceSpace = cg.colorSpace?.model == .monochrome ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB()
+        let untagged = cg.copy(colorSpace: sourceSpace) ?? cg
+        var pixels = Data(count: width * height * 4)
+        let ok = pixels.withUnsafeMutableBytes { raw -> Bool in
+            guard let context = CGContext(data:raw.baseAddress,width:width,height:height,bitsPerComponent:8,bytesPerRow:width*4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue) else { return false }
+            context.interpolationQuality = .none
+            context.draw(untagged,in:CGRect(x:0,y:0,width:width,height:height))
+            GLTFMetalUnpremultiplyRGBA8(raw.baseAddress!.assumingMemoryBound(to: UInt8.self), width * height)
+            return true
+        }
+        guard ok else { throw MetalSceneError.invalid("Image bitmap allocation failed") }
+        return .pixels(pixels, width: width, height: height, bytesPerRow: width * 4)
+    }
+
+    /// Level 0 of a mipmapped RGBA8 texture; its mips come from `generateMipmaps`. sRGB colour mips
+    /// must be filtered through the sRGB format (as WebGL does), so sRGB is its own texture.
+    static func makeTexture(_ decoded: Decoded, device: any MTLDevice, sRGB: Bool) throws -> any MTLTexture {
+        guard case let .pixels(pixels, width, height, bytesPerRow) = decoded else {
+            if case let .texture(texture) = decoded { return texture }
+            throw MetalSceneError.invalid("Unreachable image state")
         }
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat:sRGB ? .rgba8Unorm_srgb : .rgba8Unorm,width:width,height:height,mipmapped:true)
         descriptor.storageMode = .shared; descriptor.usage = [.shaderRead,.pixelFormatView]
         guard let texture = device.makeTexture(descriptor:descriptor) else { throw MetalSceneError.invalid("Metal texture allocation failed") }
-        pixels.withUnsafeBytes { raw in texture.replace(region:MTLRegionMake2D(0,0,width,height),mipmapLevel:0,withBytes:raw.baseAddress!,bytesPerRow:width*4) }
-        guard let queue = device.makeCommandQueue(), let command = queue.makeCommandBuffer(), let blit = command.makeBlitCommandEncoder() else { throw MetalSceneError.invalid("Metal mip generation failed") }
-        blit.generateMipmaps(for:texture); blit.endEncoding(); command.commit(); command.waitUntilCompleted()
-        if let error = command.error { throw error }
+        pixels.withUnsafeBytes { raw in texture.replace(region:MTLRegionMake2D(0,0,width,height),mipmapLevel:0,withBytes:raw.baseAddress!,bytesPerRow:bytesPerRow) }
         return texture
+    }
+
+    /// Fills every mip chain in one command buffer on a queue shared by all loads on the device.
+    static func generateMipmaps(_ textures: [any MTLTexture], device: any MTLDevice) throws {
+        guard !textures.isEmpty else { return }
+        guard let queue = queue(for: device), let command = queue.makeCommandBuffer(), let blit = command.makeBlitCommandEncoder() else {
+            throw MetalSceneError.invalid("Metal mip generation failed")
+        }
+        command.label = "Scene texture mips"
+        for texture in textures { blit.generateMipmaps(for: texture) }
+        blit.endEncoding(); command.commit(); command.waitUntilCompleted()
+        if let error = command.error { throw error }
+    }
+
+    private static let queueLock = NSLock()
+    nonisolated(unsafe) private static var queues: [UInt64: any MTLCommandQueue] = [:]
+    private static func queue(for device: any MTLDevice) -> (any MTLCommandQueue)? {
+        queueLock.lock(); defer { queueLock.unlock() }
+        if let queue = queues[device.registryID] { return queue }
+        let queue = device.makeCommandQueue()
+        queue?.label = "Scene loader"
+        queues[device.registryID] = queue
+        return queue
     }
 
     /// The page uploads KTX2 through libktx's glUpload: Basis payloads become ASTC 4x4 and the

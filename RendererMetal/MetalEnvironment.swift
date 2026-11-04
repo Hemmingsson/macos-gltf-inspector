@@ -30,6 +30,21 @@ final class MetalEnvironment {
     private let textures: [String: any MTLTexture]
     private let sampler: any MTLSamplerState
 
+    /// The last environment loaded in this process, shared by every renderer on the same device:
+    /// a new Quick Look or thumbnail host does not decompress and upload the bake again.
+    /// One entry, so at most one environment outlives the renderers that use it.
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var cache: (device: UInt64, environment: KhronosEnvironments, value: MetalEnvironment)?
+
+    static func shared(device: any MTLDevice, library: any MTLLibrary, queue: any MTLCommandQueue,
+                       environment: KhronosEnvironments) throws -> MetalEnvironment {
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        if let cache, cache.device == device.registryID, cache.environment == environment { return cache.value }
+        let value = try MetalEnvironment(device: device, library: library, queue: queue, environment: environment)
+        cache = (device.registryID, environment, value)
+        return value
+    }
+
     init(device: any MTLDevice, library: any MTLLibrary, queue: any MTLCommandQueue, environment: KhronosEnvironments) throws {
         guard let hdr = environment.bundledURL else { throw MetalRendererError.resource("environment HDR") }
         let url = hdr.deletingPathExtension().appendingPathExtension("metalibl")

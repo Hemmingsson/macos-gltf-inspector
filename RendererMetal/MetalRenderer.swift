@@ -112,7 +112,7 @@ public final class MetalRenderer: @unchecked Sendable {
             throw MetalRendererError.resource("invalid image size")
         }
         if environmentID != look.environment {
-            environment = try MetalEnvironment(device: device, library: library, queue: queue, environment: look.environment)
+            environment = try MetalEnvironment.shared(device: device, library: library, queue: queue, environment: look.environment)
             environmentID = look.environment
         }
         let camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))

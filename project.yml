@@ -152,9 +152,12 @@ targets:
     type: framework
     platform: macOS
     sources:
+      # Per-vertex/per-texel load loops stay optimised in Debug too (bench and tests); plain C, so
+      # -O2 changes speed only, not results.
       - path: Vendor/mikktspace
         includes: [mikktspace.c, mikktspace.h]
         headerVisibility: private
+        compilerFlags: [-O2]
       - path: Vendor/meshoptimizer
         includes: [meshoptimizer.h, vertexcodec.cpp, indexcodec.cpp, vertexfilter.cpp]
         headerVisibility: private
@@ -162,7 +165,10 @@ targets:
         excludes:
           - Shaders/UPSTREAM.md
           - Shaders/LICENSE
+          - Scene/MetalLoadKernels.c
         headerVisibility: public
+      - path: RendererMetal/Scene/MetalLoadKernels.c
+        compilerFlags: [-O2]
     settings:
       base:
         MTL_FAST_MATH: NO
