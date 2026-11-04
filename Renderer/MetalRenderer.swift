@@ -278,7 +278,10 @@ public final class MetalRenderer: @unchecked Sendable {
         let order = MetalDrawLists.Frame(transmissionPrepass: setup.transmissionPrepass, main: setup.mainDraws)
         var reservedPresentationSlot = false
         if waitPolicy == .submitForPresentation {
-            presentationSlots.wait()
+            // Drop the frame instead of stalling the main thread when three are already on the GPU.
+            guard presentationSlots.wait(timeout: .now()) == .success else {
+                throw MetalRendererError.presentationBackpressure
+            }
             reservedPresentationSlot = true
         }
         defer {
@@ -364,11 +367,14 @@ public final class MetalRenderer: @unchecked Sendable {
         if waitPolicy == .submitForPresentation {
             liveRingIndex = (liveRingIndex + 1) % 3
             reservedPresentationSlot = false
+            // The handler owns the semaphore until it signals. A weak self would skip the signal
+            // if the view is gone, and deinit then disposes a semaphore that is still in use.
+            let slots = presentationSlots
             command.addCompletedHandler { [weak self] finished in
                 if finished.error == nil {
                     self?.gpuMilliseconds = max(0, finished.gpuEndTime - finished.gpuStartTime) * 1000
                 }
-                self?.presentationSlots.signal()
+                slots.signal()
             }
             command.commit()
         } else {
