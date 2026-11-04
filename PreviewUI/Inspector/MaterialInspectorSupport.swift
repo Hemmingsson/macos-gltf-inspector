@@ -6,7 +6,7 @@ public enum MaterialInspectorSupport {
     public static func workflowTitle(_ workflow: MaterialInfo.Workflow) -> String {
         switch workflow {
         case .metallicRoughness: return "Metallic Roughness"
-        case .specularGlossiness: return "Specular Glossiness (converted)"
+        case .specularGlossiness: return "Specular Glossiness"
         case .unlit: return "Unlit"
         }
     }

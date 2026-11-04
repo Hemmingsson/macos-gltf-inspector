@@ -1,30 +1,28 @@
 import DesignSystem
 import SwiftUI
 
-/// The lighting chip and its popover: exposure · environment · tone mapping · file-vs-studio.
+/// The lighting chip and its popover: exposure · environment · tone mapping.
 ///
 /// A popover rather than a menu because these are continuous values. A menu is for picking one of
 /// n; dragging an exposure slider while watching the model is the whole point, and a menu closes
 /// on the first click.
-struct LightingPopover<Capabilities: Availability, Viewport: ViewportController>: View {
-    var availability: Capabilities
+struct LightingPopover<Viewport: ViewportController>: View {
     var viewport: Viewport
 
     var body: some View {
         DSGlassPopoverButton(
             "Lighting",
             systemImage: "sun.max",
-            help: "Lighting — exposure · environment · file vs studio"
+            help: "Lighting — exposure · environment · tone mapping"
         ) {
-            LightingControls(availability: availability, viewport: viewport)
+            LightingControls(viewport: viewport)
         }
     }
 }
 
 /// The popover's body. Split out so the chip stays about *presentation* and this stays about the
-/// lighting values (exposure, environment, tone mapping, file-vs-studio).
-struct LightingControls<Capabilities: Availability, Viewport: ViewportController>: View {
-    var availability: Capabilities
+/// lighting values (exposure, environment, tone mapping).
+struct LightingControls<Viewport: ViewportController>: View {
     var viewport: Viewport
 
     var body: some View {
@@ -61,84 +59,26 @@ struct LightingControls<Capabilities: Availability, Viewport: ViewportController
                 selection: PopoverControls.lighting(\.toneMapping, on: viewport),
                 options: ToneMapping.allCases
             ) { $0.title }
-
-            // Adaptive, per DESIGN.md: with no punctual lights in the file there is nothing to
-            // switch *to*, so the control is absent rather than present-and-useless. The engine
-            // still lights the model with the studio IBL either way.
-            if availability.hasLights {
-                DSSegmentedPicker(
-                    "Lights",
-                    selection: PopoverControls.lighting(\.usesFileLights, on: viewport),
-                    options: [false, true]
-                ) { $0 ? "File" : "Studio" }
-            }
         }
     }
 }
 
 // MARK: - Previews
 
-private struct LightingControlsPreviewHost: View {
-    var hasLights: Bool
-    @State private var viewport: MockViewportController
-
-    init(hasLights: Bool) {
-        self.hasLights = hasLights
-        _viewport = State(
-            initialValue: MockViewportController(
-                lighting: LightingSettings(
-                    exposure: 0.5,
-                    environmentRotationDegrees: 120,
-                    usesFileLights: false,
-                    usesStudioEnvironment: true
-                )
-            )
-        )
-    }
-
-    var body: some View {
-        PreviewCanvas(width: 260, background: .chrome) {
-            LightingControls(
-                availability: MockAvailability(hasLights: hasLights),
-                viewport: viewport
-            )
-        }
+#Preview("controls", traits: .fixedLayout(width: 260, height: 160)) {
+    @Previewable @State var viewport = MockViewportController(
+        lighting: LightingSettings(exposure: 0.5, environmentRotationDegrees: 120)
+    )
+    PreviewCanvas(width: 260, background: .chrome) {
+        LightingControls(viewport: viewport)
     }
 }
 
-private struct LightingPopoverPreviewHost: View {
-    var hasLights: Bool
-    @State private var viewport: MockViewportController
-
-    init(hasLights: Bool) {
-        self.hasLights = hasLights
-        _viewport = State(initialValue: MockViewportController())
-    }
-
-    var body: some View {
-        PreviewCanvas(width: 400, height: 80, background: .canvas) {
-            LightingPopover(
-                availability: MockAvailability(hasLights: hasLights),
-                viewport: viewport
-            )
+#Preview("popover", traits: .fixedLayout(width: 400, height: 80)) {
+    @Previewable @State var viewport = MockViewportController()
+    PreviewCanvas(width: 400, height: 80, background: .canvas) {
+        LightingPopover(viewport: viewport)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(DS.Spacing.xxl)
-        }
     }
-}
-
-#Preview("controls studio", traits: .fixedLayout(width: 260, height: 160)) {
-    LightingControlsPreviewHost(hasLights: false)
-}
-
-#Preview("controls file lights", traits: .fixedLayout(width: 260, height: 220)) {
-    LightingControlsPreviewHost(hasLights: true)
-}
-
-#Preview("popover studio", traits: .fixedLayout(width: 400, height: 80)) {
-    LightingPopoverPreviewHost(hasLights: false)
-}
-
-#Preview("popover file lights", traits: .fixedLayout(width: 400, height: 80)) {
-    LightingPopoverPreviewHost(hasLights: true)
 }

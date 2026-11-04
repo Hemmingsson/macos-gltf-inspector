@@ -56,7 +56,7 @@ public struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
     public var height: Int?
     /// glTF `texCoord`. Inspector omits the UV set when this is 0.
     public var texCoord: Int
-    /// Small PNG thumb stamped at convert (max edge 96). Nil when decode failed / KTX2.
+    /// Small PNG thumb decoded from the file (max edge 96). Nil when decode failed / KTX2.
     public var thumbnailPNG: Data?
 
     public var id: MaterialMap { map }
@@ -85,7 +85,7 @@ public struct MaterialTextureInfo: Sendable, Hashable, Identifiable {
 public struct MaterialInfo: Sendable, Hashable, Identifiable {
     public enum Workflow: String, Sendable, Hashable, Codable {
         case metallicRoughness
-        /// Authored as KHR_materials_pbrSpecularGlossiness and converted on import.
+        /// Authored as KHR_materials_pbrSpecularGlossiness.
         case specularGlossiness
         case unlit
     }

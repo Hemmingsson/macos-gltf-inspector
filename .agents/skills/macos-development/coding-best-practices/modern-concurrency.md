@@ -26,11 +26,11 @@ struct Loader: Sendable {
 }
 ```
 
-I/O and convert off the main actor; hop back only to mutate UI. Do not mark `nonisolated` then read isolated state.
+I/O and parsing off the main actor; hop back only to mutate UI. Do not mark `nonisolated` then read isolated state.
 
 ## MainActor
 
-UI, `@Observable` UI state, AppKit UI callbacks → `@MainActor`. File I/O / networking / convert → not. Prefer `await` onto a `@MainActor` method over `MainActor.run` / `DispatchQueue.main`.
+UI, `@Observable` UI state, AppKit UI callbacks → `@MainActor`. File I/O / networking / parsing → not. Prefer `await` onto a `@MainActor` method over `MainActor.run` / `DispatchQueue.main`.
 
 `Task { }` from `@MainActor` inherits isolation. `Task.detached` drops it — pass `Sendable` values only.
 

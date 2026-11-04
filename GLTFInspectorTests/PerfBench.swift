@@ -3,9 +3,9 @@ import Testing
 
 /// Opt-in performance bench: `./scripts/dev.sh bench` (sets `GLTF_BENCH=1` for the test runner).
 ///
-/// Skipped by the default `dev.sh test` and free of wall-clock assertions: the renderer suites
-/// nested in this one (`PerfBench.WebKitBench`, `PerfBench.RealityKitBench`) only print
-/// `bench|…` rows, which `dev.sh bench` turns into a table. Serialized so no two renders share
+/// Skipped by the default `dev.sh test` and free of wall-clock assertions: the suite nested in
+/// this one (`PerfBench.WebKitBench`) only prints `bench|…` rows, which `dev.sh bench` turns into
+/// a table. Serialized so no two renders share
 /// the GPU; numbers are a baseline on whatever else the machine is doing, not a gate.
 @Suite(.serialized, .enabled(if: BenchEnvironment.isEnabled, "set GLTF_BENCH=1 (./scripts/dev.sh bench)"))
 struct PerfBench {
@@ -30,8 +30,6 @@ enum BenchCorpus {
     struct File: Sendable {
         var name: String
         var url: URL
-        /// Too heavy for the web page (14 M triangles hangs or kills WebContent).
-        var realityKitOnly = false
         /// Worth timing view-mode switches on (geometry, materials, nodes or joints).
         var viewModes = false
     }
@@ -63,11 +61,10 @@ enum BenchCorpus {
     static var stress: [File] {
         let downloads = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
         let names = (try? FileManager.default.contentsOfDirectory(atPath: downloads.path)) ?? []
-        let wanted: [(prefix: String, short: String, realityKitOnly: Bool)] = [
-            ("Warrior_Girl_2", "WarriorGirl2", true),
-            ("Flame_Knight", "FlameKnight", false),
-            ("2024_Porsche_992_GT3_R", "Porsche992", false),
-            ("EMMA_FROST", "EmmaFrost", false),
+        let wanted: [(prefix: String, short: String)] = [
+            ("Flame_Knight", "FlameKnight"),
+            ("2024_Porsche_992_GT3_R", "Porsche992"),
+            ("EMMA_FROST", "EmmaFrost"),
         ]
         return wanted.compactMap { item in
             guard let match = names.sorted().first(where: { $0.hasPrefix(item.prefix) && $0.hasSuffix(".glb") })
@@ -78,7 +75,6 @@ enum BenchCorpus {
             return File(
                 name: item.short,
                 url: downloads.appendingPathComponent(match),
-                realityKitOnly: item.realityKitOnly,
                 viewModes: true
             )
         }

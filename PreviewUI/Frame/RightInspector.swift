@@ -9,9 +9,6 @@ struct RightInspector<Selection: SelectionModel>: View {
     var selection: Selection
     var documentState: ShellDocumentState = .ready
     var openInMenu: AnyView
-    /// Live morph weights from the host (`PreviewMorph`); shown when a morph is selected.
-    var morphTargets: [MorphTargetControl] = []
-    var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -21,10 +18,6 @@ struct RightInspector<Selection: SelectionModel>: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         nodeSections(detail)
-
-                        if detail.kind == .morph, !morphTargets.isEmpty {
-                            MorphWeightsSection(targets: morphTargets, onSetWeight: onSetMorphWeight)
-                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, DS.Spacing.xl)
@@ -142,9 +135,7 @@ private struct RightInspectorPreviewHost: View {
             RightInspector(
                 selection: selection,
                 documentState: documentState,
-                openInMenu: AnyView(PreviewOpenInItems()),
-                morphTargets: mode == .morph ? MorphFixtures.faceControls : [],
-                onSetMorphWeight: { _, _ in }
+                openInMenu: AnyView(PreviewOpenInItems())
             )
         }
     }

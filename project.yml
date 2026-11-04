@@ -56,16 +56,9 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: "2.9.6"
-  GLTFKit2:
-    url: https://github.com/warrenm/GLTFKit2
-    from: "0.5.15"
-  DracoSwift:
-    url: https://github.com/warrenm/DracoSwift
-    from: "1.5.7"
 
 targets:
-  # DS tokens + components (Liquid Glass wrappers). Extension-safe: RendererRealityKit's Quick
-  # Look chrome links it, so the extensions resolve it from the host's embedded copy.
+  # DS tokens + components (Liquid Glass wrappers).
   DesignSystem:
     type: framework
     platform: macOS
@@ -120,9 +113,9 @@ targets:
       - target: PreviewUI
         embed: true
 
-  # Renderer-neutral, extension-safe core: glTF file model, validator, stats, App Group
-  # settings, bundled Khronos HDRs. Linked by the host (embedded once), both extensions and the
-  # tests. Must not import RealityKit, WebKit, AppKit or PreviewUI.
+  # Extension-safe core: glTF file model, validator, stats, App Group settings, the bundled
+  # Khronos HDRs the page lights with. Linked by the host (embedded once), both extensions and the
+  # tests. Must not import WebKit, AppKit or PreviewUI.
   GLTFCore:
     type: framework
     platform: macOS
@@ -145,42 +138,7 @@ targets:
         DEFINES_MODULE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
 
-  # RealityKit renderer: glTF → GLTFKit2 → convert → RealityKit entities, the
-  # RealityView canvas, look / camera / floor, and offscreen stills. Extension-safe (no NSApp;
-  # the host owns the PNG save panel). The only target that links GLTFKit2 and DracoSwift.
-  # GLBTry.h is public because framework targets cannot use a bridging header.
-  RendererRealityKit:
-    type: framework
-    platform: macOS
-    sources:
-      - path: RendererRealityKit
-        excludes:
-          - GLBDracoDecompressor.h
-          - GLBTry.h
-          - RendererRealityKit.h
-      - path: RendererRealityKit/RendererRealityKit.h
-        headerVisibility: public
-      - path: RendererRealityKit/GLBTry.h
-        headerVisibility: public
-      - path: RendererRealityKit/GLBDracoDecompressor.h
-        headerVisibility: project
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.RendererRealityKit
-        PRODUCT_MODULE_NAME: RendererRealityKit
-        GENERATE_INFOPLIST_FILE: YES
-        DEFINES_MODULE: YES
-        APPLICATION_EXTENSION_API_ONLY: YES
-    dependencies:
-      - target: GLTFCore
-        embed: false
-      # Quick Look chrome (PreviewQuickLookChrome) uses the DS glass buttons.
-      - target: DesignSystem
-        embed: false
-      - package: GLTFKit2
-      - package: DracoSwift
-
-  # WebKit renderer: one WKWebView page (the vendored Khronos glTF Sample Renderer) driven from
+  # The renderer: one WKWebView page (the vendored Khronos glTF Sample Renderer) driven from
   # Swift — host, scheme handler, command bridge, the SwiftUI canvas. Extension-safe. The page
   # ships once, inside this framework; `WebRendererHost` finds it with `Bundle(for:)` (the HDRs
   # come from GLTFCore).
@@ -213,8 +171,8 @@ targets:
       - path: assets/ICON.icon
         type: file
         buildPhase: resources
-    # Not sandboxed. The only entitlement is the App Group, so Settings (group suite + look.json
-    # in the group container) is visible to both extensions.
+    # Not sandboxed. The only entitlement is the App Group, so Settings (the group suite) and the
+    # cached posters (the group container) are visible to both extensions.
     entitlements:
       path: GLTFInspector/GLTFInspector.entitlements
       properties:
@@ -296,8 +254,6 @@ targets:
         embed: true
       - target: GLTFCore
         embed: true
-      - target: RendererRealityKit
-        embed: true
       - target: RendererWebKit
         embed: true
       - target: PreviewUI
@@ -308,10 +264,6 @@ targets:
         embed: true
       - package: Sparkle
         product: Sparkle
-      # RendererRealityKit is the only code that uses GLTFKit2 (a dynamic framework). A framework
-      # target does not embed package products, so the host carries it once for the framework and
-      # both extensions to resolve through @rpath.
-      - package: GLTFKit2
 
   PreviewExtension:
     type: app-extension
@@ -356,8 +308,6 @@ targets:
         ENABLE_DEBUG_DYLIB: NO
     dependencies:
       - target: GLTFCore
-        embed: false
-      - target: RendererRealityKit
         embed: false
       - target: RendererWebKit
         embed: false
@@ -406,8 +356,6 @@ targets:
     dependencies:
       - target: GLTFCore
         embed: false
-      - target: RendererRealityKit
-        embed: false
       - target: RendererWebKit
         embed: false
 
@@ -427,8 +375,6 @@ targets:
       - target: GLTFInspector
       - target: GLTFCore
         embed: false
-      - target: RendererRealityKit
-        embed: false
       - target: RendererWebKit
         embed: false
       - target: DesignSystem
@@ -436,8 +382,8 @@ targets:
       - target: PreviewUI
         embed: false
 
-  # Real-window flows over accessibility only (open, view modes, outliner → inspector, Settings
-  # renderer switch, launch / open-to-content metrics). Imports no renderer and no app module.
+  # Real-window flows over accessibility only (open, view modes, outliner → inspector,
+  # launch / open-to-content metrics). Imports no app module.
   GLTFInspectorUITests:
     type: bundle.ui-testing
     platform: macOS

@@ -20,7 +20,8 @@ LOG_DIR="$ROOT/.build/logs"
 LOG_FILE="$LOG_DIR/debug.log"
 MANIFEST="$ROOT/scripts/fixtures.manifest.json"
 
-if [[ "$ROOT" == *"/.worktrees/"* ]]; then
+# A linked worktree (any location) has its own git dir; only the main checkout installs system-wide.
+if [[ "$(git -C "$ROOT" rev-parse --git-dir 2>/dev/null)" != "$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null)" ]]; then
   INSTALL_KIND=worktree
 else
   INSTALL_KIND=main

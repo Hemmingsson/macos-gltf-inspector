@@ -3,23 +3,20 @@ import GLTFCore
 import Observation
 import PreviewUI
 
-/// Per-window lazy overlay on the app defaults (`EngineAppDefaultsBridge`).
+/// Per-window lazy overlay on the app defaults (`AppDefaultsStore`).
 ///
 /// Untouched keys track the observed app default live. `center` / `projection` are
 /// session-only — never written as app defaults.
 @MainActor
 @Observable
 final class EngineSettingsStore {
-    let appDefaults: EngineAppDefaultsBridge
+    let appDefaults: AppDefaultsStore
 
     /// This window's overrides by key name; a value is always its key's `Value`.
     private var overrides: [String: any Sendable] = [:]
 
-    init(
-        defaultsStore: AppDefaultsStore? = nil,
-        lookStore: AppLookStore? = nil
-    ) {
-        appDefaults = EngineAppDefaultsBridge(defaultsStore: defaultsStore, lookStore: lookStore)
+    init(defaultsStore: AppDefaultsStore? = nil) {
+        appDefaults = defaultsStore ?? .appGroup
     }
 
     func `default`<Value>(for key: SettingKey<Value>) -> Value {
@@ -45,4 +42,10 @@ final class EngineSettingsStore {
         key.name == SettingKey<Bool>.center.name
             || key.name == SettingKey<Projection>.projection.name
     }
+}
+
+extension AppDefaultsStore {
+    /// The host's app-defaults store, backed by the App Group suite so the Quick Look and
+    /// thumbnail extensions read what Settings writes.
+    static let appGroup = AppDefaultsStore(defaults: AppGroupSettings.defaults)
 }

@@ -4,9 +4,9 @@ import Observation
 import PreviewUI
 import simd
 
-/// Selection / visibility / isolation adapter over `HostSidebarModel`.
+/// Selection adapter over `HostSidebarModel`.
 ///
-/// Mesh selection drives canvas highlight via `selectedNodeIndex`. All other outliner kinds
+/// Node selection drives the canvas highlight via `selectedNodeIndex`. All other outliner kinds
 /// live in `resourceSelection` so material/camera/… IDs are never confused with node indices.
 @MainActor
 @Observable
@@ -15,12 +15,8 @@ final class EngineSelectionModel: SelectionModel {
     /// Non-mesh outliner selection (material, camera, light, scene, animation, morph, skin).
     private(set) var resourceSelection: NodeID?
 
-    /// From the mounted renderer's `RendererFeature.nodeVisibility`.
-    let canHideNodes: Bool
-
-    init(sidebar: HostSidebarModel, canHideNodes: Bool = true) {
+    init(sidebar: HostSidebarModel) {
         self.sidebar = sidebar
-        self.canHideNodes = canHideNodes
     }
 
     var selected: NodeID? {
@@ -30,85 +26,26 @@ final class EngineSelectionModel: SelectionModel {
         return resourceSelection
     }
 
-    var isolated: NodeID? {
-        guard let index = sidebar.soloRoot else { return nil }
-        return Self.nodeID(index: index, in: sidebar.document)
-    }
-
     var detail: NodeDetail? {
         guard let id = selected else { return nil }
         return Self.detail(for: id, document: sidebar.document)
     }
 
     func select(_ id: NodeID?) {
-        guard let id else {
-            clearMeshSelection()
-            resourceSelection = nil
-            return
-        }
-        switch id.kind {
+        switch id?.kind {
         case .mesh, .empty:
             resourceSelection = nil
-            setMeshSelection(id.index)
+            sidebar.selectedNodeIndex = id?.index
         case .camera, .light, .skin, .material, .animation, .morph, .scene:
-            clearMeshSelection()
+            sidebar.selectedNodeIndex = nil
             resourceSelection = id
+        case nil:
+            sidebar.selectedNodeIndex = nil
+            resourceSelection = nil
         }
-    }
-
-    func isolate(_ id: NodeID?) {
-        let target = Self.meshNodeIndex(id)
-        let current = sidebar.soloRoot
-        guard target != current else { return }
-        // `isolate` toggles: a new target solos it, nil un-solos the current root.
-        if let target {
-            sidebar.isolate(target)
-        } else if let current {
-            sidebar.isolate(current)
-        }
-    }
-
-    func setVisible(_ id: NodeID, _ isVisible: Bool) {
-        guard let index = Self.meshNodeIndex(id) else { return }
-        if isVisible {
-            sidebar.hide.remove(index)
-        } else {
-            sidebar.hide.insert(index)
-        }
-        sidebar.overlayRevision += 1
-    }
-
-    func isVisible(_ id: NodeID) -> Bool {
-        guard let index = Self.meshNodeIndex(id) else { return true }
-        return !sidebar.hide.contains(index) && !sidebar.soloHides(index)
-    }
-
-    // MARK: - Mesh selection (set semantics)
-
-    private func setMeshSelection(_ index: Int) {
-        guard sidebar.selectedNodeIndex != index else { return }
-        sidebar.selectedNodeIndex = index
-        sidebar.overlayRevision += 1
-    }
-
-    private func clearMeshSelection() {
-        guard sidebar.selectedNodeIndex != nil else { return }
-        sidebar.selectedNodeIndex = nil
-        sidebar.overlayRevision += 1
     }
 
     // MARK: - Mapping
-
-    /// Only scene-graph nodes participate in canvas highlight / visibility.
-    private static func meshNodeIndex(_ id: NodeID?) -> Int? {
-        guard let id else { return nil }
-        switch id.kind {
-        case .mesh, .empty:
-            return id.index
-        case .scene, .material, .animation, .morph, .camera, .light, .skin:
-            return nil
-        }
-    }
 
     private static func nodeID(index: Int, in document: GLTFSessionDocument) -> NodeID? {
         guard let node = document.nodes.first(where: { $0.index == index }) else {
@@ -119,15 +56,12 @@ final class EngineSelectionModel: SelectionModel {
 
     static func detail(for id: NodeID, document: GLTFSessionDocument) -> NodeDetail? {
         switch id.kind {
-        case .mesh, .empty:
+        // Camera and light rows are scene-tree nodes, like meshes.
+        case .mesh, .empty, .camera, .light:
             guard let node = document.nodes.first(where: { $0.index == id.index }) else {
                 return nil
             }
             return nodeDetail(node: node, document: document)
-        case .camera:
-            return cameraDetail(index: id.index, document: document)
-        case .light:
-            return lightDetail(index: id.index, document: document)
         case .skin:
             return skinDetail(index: id.index, document: document)
         case .material:
@@ -210,20 +144,6 @@ final class EngineSelectionModel: SelectionModel {
         guard document.materials.indices.contains(index) else { return nil }
         let material = EngineSceneModel.materialInfo(index: index, document: document)
         return NodeDetail(id: material.id, name: material.name, material: material)
-    }
-
-    private static func cameraDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
-        guard let camera = EngineSceneModel.cameraInfo(index: index, document: document) else {
-            return nil
-        }
-        return NodeDetail(id: camera.id, name: camera.name, camera: camera)
-    }
-
-    private static func lightDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {
-        guard let light = EngineSceneModel.lightInfo(index: index, document: document) else {
-            return nil
-        }
-        return NodeDetail(id: light.id, name: light.name, light: light)
     }
 
     private static func skinDetail(index: Int, document: GLTFSessionDocument) -> NodeDetail? {

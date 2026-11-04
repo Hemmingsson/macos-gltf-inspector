@@ -31,7 +31,6 @@ enum TestFixtures {
     static let rigged = fixture("rigged/two-joint-skin.gltf")
     static let morph = fixture("morph/morph-triangle.gltf")
     static let corrupt = fixture("corrupt/truncated.glb")
-    static let missingTexture = fixture("missing-texture/missing-image.gltf")
 
     static func exists(_ url: URL) -> Bool {
         FileManager.default.fileExists(atPath: url.path)
@@ -43,10 +42,6 @@ enum TestModels {
 
     static var hasKhronosSamples: Bool {
         !khronosGLBs.isEmpty
-    }
-
-    static var boomBox: URL {
-        khronosDirectory.appendingPathComponent("BoomBox/BoomBox.glb")
     }
 
     static var khronosGLBs: [URL] {

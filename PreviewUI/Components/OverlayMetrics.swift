@@ -1,15 +1,11 @@
 import DesignSystem
 import SwiftUI
 
-
 /// Shared numbers for the canvas-bottom overlays.
 enum OverlayMetrics {
     static let inset = DS.Spacing.xl
     /// Slightly under `DS.Metrics.glassControl` so the readout stays compact.
     static let dimensionsHeight: CGFloat = 30
-    /// Taller than a glass control so the scrubber sits comfortably.
-    static let playbackHeight: CGFloat = 42
-    static let scrubWidth: CGFloat = 250
     static let orientationSize: CGFloat = 66
 
     static func strokeAxis(

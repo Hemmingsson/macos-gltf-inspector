@@ -16,8 +16,6 @@ public struct FixtureSceneModel: SceneModel {
   public var stats: Stats
   public var dimensions: Dimensions
   public var validation: ValidationResult
-  public var pipelineReport: PipelineReport
-  public var convertProblems: ConvertProblemList
 
   public init(
     fileName: String,
@@ -33,11 +31,7 @@ public struct FixtureSceneModel: SceneModel {
     materialVariantNames: [String] = [],
     stats: Stats,
     dimensions: Dimensions,
-    validation: ValidationResult = ValidationResult(),
-    pipelineReport: PipelineReport = PipelineReport(entries: [
-      PipelineReport.Entry(kind: .lighting, title: "Studio environment", detail: "Bundled IBL")
-    ]),
-    convertProblems: ConvertProblemList = ConvertProblemList()
+    validation: ValidationResult = ValidationResult()
   ) {
     self.fileName = fileName
     self.scenes = scenes
@@ -53,8 +47,6 @@ public struct FixtureSceneModel: SceneModel {
     self.stats = stats
     self.dimensions = dimensions
     self.validation = validation
-    self.pipelineReport = pipelineReport
-    self.convertProblems = convertProblems
   }
 
   private static let cubeScene = SceneInfo(
@@ -147,9 +139,6 @@ public struct FixtureSceneModel: SceneModel {
       textureCount: 2,
       maxTextureDimension: 512
     ),
-    dimensions: Dimensions(width: 0.8, height: 1.2, depth: 0.8),
-    pipelineReport: PipelineReport(entries: [
-      PipelineReport.Entry(kind: .lighting, title: "File lights", detail: "3 punctual lights")
-    ])
+    dimensions: Dimensions(width: 0.8, height: 1.2, depth: 0.8)
   )
 }

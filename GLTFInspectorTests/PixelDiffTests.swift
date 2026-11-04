@@ -1,9 +1,8 @@
 import Foundation
 import Testing
 
-/// The renderer-neutral pixel-diff tests: the comparator and the manifest. Rendering and each
-/// renderer's goldens are checked in `RealityKit/PixelDiffRealityKitTests.swift` and
-/// `WebKit/PixelDiffWebKitTests.swift`.
+/// The pixel-diff tests that render nothing: the comparator and the manifest. Rendering and the
+/// goldens are checked in `PixelDiffWebKitTests.swift`.
 
 // MARK: - The comparator itself
 
@@ -13,18 +12,12 @@ import Testing
 /// test below is decoration, so its failure modes are tested directly rather than only being
 /// demonstrated by hand once.
 struct PixelDiffComparisonTests {
-    /// The first reference on disk, with its renderer's budget. The comparator is
-    /// renderer-agnostic; one real reference is enough to exercise it.
+    /// The first reference, with the manifest budget. One real reference is enough to exercise
+    /// the comparator.
     private func loadFirstReference() throws -> (PixelDiff.Tolerance, PixelDiff.Raster) {
         let manifest = try PixelDiffManifest.load()
         let entry = try #require(manifest.entries.first)
-        let renderer = try #require(PixelDiffRendererKind.allCases.first {
-            FileManager.default.fileExists(atPath: entry.referenceURL(for: $0).path)
-        }, "no reference PNG for \(entry.name)")
-        return (
-            try manifest.tolerance(for: renderer),
-            try PixelDiff.raster(contentsOf: entry.referenceURL(for: renderer))
-        )
+        return (manifest.tolerance, try PixelDiff.raster(contentsOf: entry.referenceURL))
     }
 
     /// Paints a solid block, in the corner opposite the origin so it lands on model or
@@ -123,7 +116,7 @@ struct PixelDiffComparisonTests {
     /// whatever the renderer produced.
     @Test func aMissingImageFileThrows() {
         #expect(throws: PixelDiff.Failure.self) {
-            _ = try PixelDiff.raster(contentsOf: PixelDiffPaths.reference("no-such-reference", renderer: .webkit))
+            _ = try PixelDiff.raster(contentsOf: PixelDiffPaths.reference("no-such-reference"))
         }
     }
 

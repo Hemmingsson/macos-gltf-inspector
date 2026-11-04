@@ -107,9 +107,8 @@ struct GLTFDocumentJSONTests {
             "scene": 0,
         ])
         #expect(document.skins.map(\.name) == ["Full", "Tip"])
-        #expect(document.skins[0].jointParentIndices == [nil, 0, 1])
-        #expect(document.skins[1].jointParentIndices == [nil, 0])
-        #expect(document.skins[1].jointNodeIndices == [1, 2])
+        #expect(document.skins[0].jointNames == ["Root", "Mid", "Leaf"])
+        #expect(document.skins[1].jointNames == ["Mid", "Leaf"])
     }
 
     @Test func instanceForestIsDeterministicAndRoundTripsJSON() throws {

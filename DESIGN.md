@@ -43,16 +43,16 @@ When this doc and the app disagree, **code wins**.
 - **Hide, don't disable** — if the file lacks animations, cameras, lights, morphs, maps, or extra
   scenes, omit that UI. Greyed-out placeholders are noise.
 - **Honest rendering** — the user must be able to tell *file wrong* from *we didn't render it*.
-  Validation, leftover convert/pipeline reports, and viewer limits are separate stories; nothing
-  silent. The sidebar describes the **file JSON**, not the subset a native convert kept.
+  Validation and viewer limits are separate stories; nothing silent. The sidebar describes the
+  **file JSON**, not what the renderer kept.
 
 ## Inspector honesty
 
 The inspector answers *"is the file wrong, or are we?"*
 
 - Surface **validation** (spec / structural issues in the file).
-- Surface **convert & pipeline truth** (textures we dropped, extensions we ignored, paths we
-  changed) — a valid file can still look wrong in our viewer.
+- Surface **viewer limits** (what the renderer could not draw) — a valid file can still look
+  wrong in our viewer.
 - Read **dimensions and stats from the real model**, not placeholders.
 - When the user turns off centering, show the **authored origin** — don't pretend every asset was
   built at the world origin.

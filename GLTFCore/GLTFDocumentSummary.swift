@@ -1,9 +1,8 @@
 import Foundation
 
-/// Everything the inspector chrome needs about a file, read from its JSON alone — no renderer.
-///
-/// The WebKit window uses this instead of a RealityKit convert. Animation count is the file's
-/// clips with a duration (what the outliner lists), not what a converter could play.
+/// Everything the inspector chrome needs about a file, read from its JSON alone — the page loads
+/// the file for drawing on its own. Animation count is the file's clips with a duration (what the
+/// outliner lists).
 public struct GLTFDocumentSummary {
     public var document: GLTFSessionDocument
     public var stats: PreviewStats

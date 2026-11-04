@@ -3,8 +3,8 @@ import simd
 /// Axis-aligned model bounds in authored glTF space (meters), from the JSON alone.
 ///
 /// Each mesh node contributes its `POSITION` accessor `min`/`max` box, transformed by the node's
-/// world matrix; the boxes are unioned with the same outlier rule the renderers use for framing.
-/// No vertex data is read, so this is cheap and renderer-free. Deliberate simplifications: skins
+/// world matrix, and the boxes are unioned. No vertex data is read, so this is cheap. Deliberate
+/// simplifications: skins
 /// and morph targets are ignored (bind pose / base shape, from the accessor bounds), and
 /// `EXT_mesh_gpu_instancing` instances are not expanded.
 public struct ModelBounds: Sendable, Equatable {
@@ -18,10 +18,6 @@ public struct ModelBounds: Sendable, Equatable {
 
     public var size: SIMD3<Float> { max - min }
     public var center: SIMD3<Float> { (min + max) * 0.5 }
-
-    /// A single mesh node whose longest edge exceeds the median by this factor is treated as a
-    /// leftover (a km-scale ground plane, a stray helper) and left out of the union.
-    public static let outlierExtentRatio: Float = 32
 
     /// Bounds of the default scene (`scene`, else scene 0, else every root node). Nil when no
     /// mesh node carries usable `POSITION` bounds.
@@ -60,21 +56,10 @@ public struct ModelBounds: Sendable, Equatable {
         return union(boxes)
     }
 
-    /// Union of `boxes`, dropping non-finite ones and — with three or more — any whose longest
-    /// edge is over `outlierExtentRatio` × the median.
-    public static func union(_ boxes: [ModelBounds]) -> ModelBounds? {
-        let finite = boxes.filter { $0.isFinite && !$0.isEmpty }
-        guard !finite.isEmpty else { return nil }
-        let extents = finite.map { longest($0.size) }
-        var kept = finite
-        if finite.count >= 3 {
-            let mid = median(extents)
-            if mid > 0 {
-                let limit = mid * outlierExtentRatio
-                let filtered = zip(finite, extents).compactMap { box, extent in extent <= limit ? box : nil }
-                if !filtered.isEmpty { kept = filtered }
-            }
-        }
+    /// Union of `boxes`, dropping non-finite and empty ones.
+    static func union(_ boxes: [ModelBounds]) -> ModelBounds? {
+        let kept = boxes.filter { $0.isFinite && !$0.isEmpty }
+        guard !kept.isEmpty else { return nil }
         var minBound = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
         var maxBound = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
         for box in kept {
@@ -88,16 +73,6 @@ public struct ModelBounds: Sendable, Equatable {
 
     var isFinite: Bool {
         (0..<3).allSatisfy { min[$0].isFinite && max[$0].isFinite }
-    }
-
-    private static func longest(_ extent: SIMD3<Float>) -> Float {
-        Swift.max(extent.x, Swift.max(extent.y, extent.z))
-    }
-
-    private static func median(_ values: [Float]) -> Float {
-        let sorted = values.sorted()
-        let mid = sorted.count / 2
-        return sorted.count.isMultiple(of: 2) ? (sorted[mid - 1] + sorted[mid]) * 0.5 : sorted[mid]
     }
 
     private func transformed(by matrix: simd_double4x4) -> ModelBounds {

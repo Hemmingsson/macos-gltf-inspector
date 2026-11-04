@@ -1,14 +1,13 @@
-# glTF → WebKit (Khronos Sample Renderer)
+# glTF → pixels (Khronos Sample Renderer in WebKit)
 
-How a file becomes pixels on the WebKit renderer. Every surface uses the same page
+How a file becomes pixels. Every surface uses the same page
 (`RendererWebKit/web-renderer/viewer.html`) inside a `WKWebView` owned by `WebRendererHost`.
 All of it lives in the extension-safe `RendererWebKit` framework; the page ships once, inside
 `RendererWebKit.framework`, and is found with `Bundle(for:)`. The HDRs come from `GLTFCore`
 (`KhronosEnvironments.bundledURL`, served by name at `/environments/<stem>.hdr`).
 
-This is **not** the RealityKit convert path: in WebKit mode no convert runs. The window's panels
-read the file's JSON (`GLTFDocumentSummary`) — see
-[`pipeline-gltf-to-realitykit.md`](pipeline-gltf-to-realitykit.md) for the other renderer.
+The page loads the file itself. The window's panels read the file's JSON
+(`GLTFDocumentSummary`), so the sidebar describes the file, not what a renderer kept.
 
 ---
 
@@ -16,10 +15,37 @@ read the file's JSON (`GLTFDocumentSummary`) — see
 
 | You need | Go here |
 | --- | --- |
-| Why WebKit, not RealityKit | [`decision-web-renderer.md`](decision-web-renderer.md) |
+| Why a web renderer, and why Khronos | [Why this renderer](#why-this-renderer) |
 | What the page draws, and how Swift drives it | This file |
-| How to catch a JS renderer regression | [`../TestModels/References/README.md`](../TestModels/References/README.md) |
+| How to catch a renderer regression | [`../TestModels/References/README.md`](../TestModels/References/README.md) |
 | Update the vendored Khronos bundle | [Vendored bundle](#vendored-bundle) |
+
+---
+
+## Why this renderer
+
+glTF Inspector is a pre-flight tool for people working with glTF **for the web**: check what a
+file contains and how it renders before opening it in Blender or wiring it into a project.
+Fidelity is the product, so the renderer is the reference one: the
+[Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
+(Apache-2.0). It renders every `KHR_materials_*` extension as authored (transmission, volume,
+iridescence, anisotropy, dispersion, sheen, specular, spec-gloss), plus
+`KHR_materials_variants`, `KHR_animation_pointer` and `KHR_texture_basisu`, with no rewrite of
+the file first. It also ships the debug output channels behind the view modes.
+
+One hard constraint shapes the rest: **window, Quick Look and Finder thumbnail use the same
+renderer.** A file must not look one way in Finder and another when opened. A `WKWebView`
+renders WebGL inside the sandboxed, non-UI `QLThumbnailProvider` once the extension has
+`com.apple.security.network.client` (see [Stills](#stills-and-the-thumbnail-reply)).
+
+Against three.js (prototyped 2026-08-24, same file and machine) the Khronos renderer parsed
+glTF 5–10× faster (11–23 ms vs 114–122 ms) and reached a first frame from a cold process
+sooner (490–535 ms vs 557–581 ms); its cost is a one-time shader compile per process. Vendor
+from git — the npm package is stale.
+
+Costs, measured once: a cold thumbnail through the real sandboxed extension takes ~1.8 s for a
+10–13 MB file (thumbnails are async and cached), and the WebKit process family is ~430 MB RSS
+showing BoomBox.
 
 ---
 
@@ -27,9 +53,9 @@ read the file's JSON (`GLTFDocumentSummary`) — see
 
 | Surface | Swift side | Mode | Look |
 | --- | --- | --- | --- |
-| Document window | `WebDocumentWindow` → `WebPreviewCanvas` + `WebCanvasController` | `.live` | the window's viewport (`EngineLookBridge`) |
-| Quick Look preview | `WebQuickLookController` (prestarted host) | `.live` | `Look.stored(showsFloor: true)` |
-| Finder thumbnail | `WebThumbnail`, one warm `WebRendererHost` per process | `.still` | `Look.stored()` |
+| Document window | `DocumentWindow` → `WebPreviewCanvas` + `WebCanvasController` | `.live` | the window's viewport (`EngineLookBridge`) |
+| Quick Look preview | `PreviewViewController` (prestarted host) | `.live` | `Look.stored(showsFloor: true)` |
+| Finder thumbnail | `ThumbnailProvider`, one warm `WebRendererHost` per process | `.still` | `Look.stored()` |
 
 `.still` never adds the web view to a window. Pixels come from `canvas.toDataURL()` —
 required for non-UI `QLThumbnailProvider`. `.live` runs a `requestAnimationFrame` loop in the
@@ -78,7 +104,7 @@ relative to the scheme root. Classic scripts before the module, or construction 
 
 ## Look
 
-The look is one value, `WebPreviewCanvas.Look`: the renderer-neutral `GLTFCore.RenderLook`
+The look is one value, `WebPreviewCanvas.Look`: the settings-level `GLTFCore.RenderLook`
 plus the canvas's view state (view mode, projection, field of view, scene, variant, floor,
 centring, selection). It is sent **whole** on every change; the page keeps the last one and only
 redoes the expensive parts when they changed: a new environment is prefiltered (IBL), centring
@@ -90,16 +116,14 @@ records the HDR; `open` starts it after the model so first paint does not wait o
 
 | `RenderLook` | Page | Source |
 | --- | --- | --- |
-| yaw Y (degrees) | `environmentRotation` = 90 + Y — yaw 0 is the Khronos default view | measured (look probes) |
+| yaw Y (degrees) | `environmentRotation` = 90 + Y — yaw 0 is the Khronos default view | measured |
 | exposure EV | `exposure` = 2^EV | measured |
 | environment intensity E | `iblIntensity` = E | measured (1:1) |
 | tone mapping | `toneMap` (raw value = Khronos name) | by definition |
 | background | page background behind a transparent canvas | by definition |
-| file lights, uses environment | not mapped: lights as authored, IBL always on | assumed |
 
 Settings live in the App Group (`GLTFCore/AppGroupSettings.swift`). `Look.stored()` builds the
-look from `AppGroupSettings.rendererLook()` (environment from `look.json`, tone map from the
-suite) for Quick Look and the thumbnail, so both light a file the same way; the pixel-diff
+look from `AppGroupSettings.rendererLook()` (environment and tone map from the suite) for Quick Look and the thumbnail, so both light a file the same way; the pixel-diff
 goldens use yaw 0 as well (manifest rotation 90).
 
 ---
@@ -124,7 +148,7 @@ goldens use yaw 0 as well (manifest rotation 90).
 
 ## Window
 
-`WebDocumentWindow` draws `WebPreviewCanvas` as soon as the file is opening; the canvas
+`DocumentWindow` draws `WebPreviewCanvas` as soon as the file is opening; the canvas
 region's state (`ShellRootView(canvasState:)`) follows the page, not the JSON panels. The
 window holds one `WebCanvasController` across the shell's `.id(mountID)` remount; the next
 mount adopts the running `WKWebView` (log: `viewport adopt`).
@@ -168,7 +192,7 @@ rebuild from source (`npm ci`), which this repo does not do; not measured.
 
 ---
 
-## Measured and not adopted (seam 10.6, 2026-09-30, 3 runs each)
+## Measured and not adopted (2026-09-30, 3 runs each)
 
 | Idea | Result | Verdict |
 | --- | --- | --- |
@@ -200,10 +224,26 @@ prestart in `loadView` (EXP-009).
 
 ---
 
+## Traps worth not rediscovering
+
+- **Sandboxed settings.** `UserDefaults(suiteName:)` in an extension reads its own container,
+  so `defaults write` on a shared suite never arrives — hence App Group settings written by the
+  host only. `homeDirectoryForCurrentUser` / `NSHomeDirectory()` return the *container* home;
+  `getpwuid(getuid())->pw_dir` gives the real one.
+- **Assertions that pass on a wrong image.** "More than N distinct colours" passes on a
+  near-black silhouette. Look at the PNG.
+- **Skipped means not tested.** `TestModels/Khronos samples/` is gitignored, and
+  `FileManager.enumerator` does not descend a symlinked root — which is why missing samples
+  fail the pixel-diff run instead of skipping.
+- **Stale registered app copies.** `lsregister -dump` can list the app from many locations, and
+  `pluginkit` may resolve the thumbnail extension to an old DerivedData build. Check which copy
+  is active before trusting a Finder thumbnail.
+- **`qlmanage` is not Finder.** It hangs headless here, and `qlmanage -x` uses a different
+  reply path. Verify through `QLThumbnailGenerator.generateBestRepresentation`.
+
+---
+
 ## What this path does not do
 
-- It does not convert materials to `PhysicallyBasedMaterial` or run any RealityKit prepare.
-- It does not play clips, set morph weights, hide/solo nodes or toggle file lights
-  (`WebPreviewCanvas.features`).
 - It does not share one in-memory glTF parse between Swift and the page — the window's panels
   read the JSON and the page loads the file itself.

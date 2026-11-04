@@ -15,7 +15,7 @@ LABEL="${1:-$(git rev-parse --short HEAD)}"
 TESTS="${2:-}"
 BASE="$ROOT/.agents/research/tidy-baseline"
 OUT="$BASE/$LABEL"
-PROD_DIRS=(GLTFCore RendererRealityKit RendererWebKit GLTFInspector PreviewUI DesignSystem DesignCatalog PreviewExtension ThumbnailExtension)
+PROD_DIRS=(GLTFCore RendererWebKit GLTFInspector PreviewUI DesignSystem DesignCatalog PreviewExtension ThumbnailExtension)
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
 for tool in periphery swiftlint npx xcodegen; do

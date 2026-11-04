@@ -56,14 +56,12 @@ struct GlassTokensPage: View {
 struct MotionPage: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isShifted = false
-    @State private var isHovering = false
 
     var body: some View {
         CatalogPageView(page: .motion) {
             StateGroup(title: "Tokens") {
                 VStack(spacing: DS.Spacing.s) {
                     DSFactRow("DS.Motion.chromeDuration", value: "\(DS.Motion.chromeDuration.formatted()) s · easeInOut")
-                    DSFactRow("DS.Motion.hoverDuration", value: "\(DS.Motion.hoverDuration.formatted()) s · easeInOut")
                     DSFactRow("Reduce Motion (system)", value: reduceMotion ? "On — curves are nil" : "Off")
                 }
                 .frame(maxWidth: 520)
@@ -81,18 +79,6 @@ struct MotionPage: View {
                         .frame(width: 220, alignment: .leading)
                         .accessibilityHidden(true)
                 }
-                HStack(spacing: DS.Spacing.m) {
-                    Text("Hover here")
-                        .font(DS.Font.body)
-                        .foregroundStyle(DS.Color.textSecondary)
-                    Image(systemName: "eye")
-                        .foregroundStyle(DS.Color.textPrimary)
-                        .opacity(isHovering ? 1 : 0)
-                        .animation(DS.Motion.hoverFade(reduceMotion: reduceMotion), value: isHovering)
-                }
-                .padding(DS.Spacing.m)
-                .background(DS.Color.cardFill, in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
-                .onHover { isHovering = $0 }
             }
         }
     }

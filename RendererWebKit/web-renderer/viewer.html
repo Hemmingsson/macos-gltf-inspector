@@ -194,8 +194,8 @@ function fitCamera() {
 }
 
 /**
- * Khronos `fitDistanceToExtents` fills the XY box with no margin. RealityKit Fit uses a
- * projected AABB + near-face depth + 1.02 padding (`RenderCamera.fitDistance`). Same numbers.
+ * Khronos `fitDistanceToExtents` fills the XY box with no margin. Fit instead uses the
+ * projected AABB + near-face depth + 1.02 padding, the same rule as `RenderCamera.fitDistance`.
  */
 const FIT_PADDING = 1.02;
 
@@ -534,8 +534,7 @@ function drawOverlays() {
  * Orbit, dolly and pan are handled here rather than round-tripping every mouse delta through
  * Swift — input has to feel immediate, and a bridge hop per event would not.
  *
- * Carried over from the RealityKit implementation, per AGENTS.md: scroll is an *infinite*
- * dolly rather than a clamped zoom, and shift-drag pans.
+ * Scroll is an *infinite* dolly rather than a clamped zoom, and shift-drag pans.
  */
 function installPointerControls() {
     let dragging = false;

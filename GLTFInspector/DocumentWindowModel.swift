@@ -3,9 +3,8 @@ import GLTFCore
 import Observation
 import PreviewUI
 
-/// Per-window state both renderer windows share: sidebar, settings overlay, viewport, the
-/// open / validation lifecycle and the chrome snapshot. Renderer state (convert result, page
-/// controller) lives in the window root under `RealityKit/` or `WebKit/`.
+/// Per-window state: sidebar, settings overlay, viewport, the open / validation lifecycle and the
+/// chrome snapshot. The web page controller lives in the window root (`DocumentWindow`).
 @MainActor
 @Observable
 final class DocumentWindowModel {
@@ -19,19 +18,15 @@ final class DocumentWindowModel {
     }
 
     var documentURL: URL?
-    /// Panel state (sidebar / inspector); the renderer root decides the canvas region's.
+    /// Panel state (sidebar / inspector); `DocumentWindow` decides the canvas region's.
     private(set) var phase: ShellDocumentState = .loading
     private(set) var sidebar: HostSidebarModel? {
         didSet {
-            selection = EngineSelectionModel(sidebar: activeSidebar, canHideNodes: canHideNodes)
+            selection = EngineSelectionModel(sidebar: activeSidebar)
             engineViewport.sidebar = activeSidebar
         }
     }
     let placeholderSidebar = HostSidebarModel(document: GLTFSessionDocument())
-    /// From the mounted renderer's `RendererFeature.nodeVisibility`.
-    let canHideNodes: Bool
-    /// Mounted renderer's capabilities. The View menu and `RendererAvailability` both read this.
-    let features: Set<RendererFeature>
     /// Window-owned selection adapter over `activeSidebar`, rebuilt only when the sidebar is
     /// replaced (open / adopt / failure) — never in a view body, so `ShellRootView` keeps it.
     /// The viewport follows the same sidebar.
@@ -50,21 +45,11 @@ final class DocumentWindowModel {
     /// `sceneModel`.
     private var loadedSceneModel: EngineSceneModel?
 
-    init(
-        documentURL: URL?,
-        canHideNodes: Bool? = nil,
-        features: Set<RendererFeature> = Set(RendererFeature.allCases)
-    ) {
+    init(documentURL: URL?) {
         self.documentURL = documentURL
-        self.features = features
-        self.canHideNodes = canHideNodes ?? features.contains(.nodeVisibility)
-        selection = EngineSelectionModel(sidebar: placeholderSidebar, canHideNodes: self.canHideNodes)
+        selection = EngineSelectionModel(sidebar: placeholderSidebar)
         previewSession = PreviewSession(settings: settings)
-        engineViewport = EngineViewportController(
-            sidebar: placeholderSidebar,
-            previewSession: previewSession,
-            features: features
-        )
+        engineViewport = EngineViewportController(sidebar: placeholderSidebar, previewSession: previewSession)
         engineViewport.saveScreenshot = { [weak self] image in
             await ScreenshotCameraPose.save(image, suggestedName: self?.exportName ?? "export")
         }
@@ -96,8 +81,8 @@ final class DocumentWindowModel {
         phase = .failed("The document URL is missing.")
     }
 
-    /// Resets the window for `url`. The caller loads its renderer's chrome and ends with
-    /// `finishOpen`. Validation starts from `noteCanvasReady` after first paint — not here.
+    /// Resets the window for `url`; the caller then loads the panels with `openSummary`.
+    /// Validation starts from `noteCanvasReady` after first paint — not here.
     func beginOpen(_ url: URL) -> OpenStart {
         guard DocumentOpening.isGLTFFile(url) else {
             AppLog.error(AppLog.host, "open rejected \(url.lastPathComponent)")
@@ -126,55 +111,13 @@ final class DocumentWindowModel {
     }
 
     /// Khronos validation is CPU-heavy (new JSContext + whole-file base64). Call once the
-    /// canvas has painted — WebKit `.ready`, RealityKit canvas mount — not beside convert.
+    /// page reports `.ready`, so it does not compete with the first frame.
     func noteCanvasReady() {
         guard let url = loadingURL, validation == nil else { return }
         startValidation(of: url, generation: loadGeneration)
     }
 
-    func isCurrent(_ generation: Int) -> Bool { generation == loadGeneration }
-
-    /// A scene / variant reload of the same document: invalidates in-flight loads.
-    func beginReload() -> Int {
-        loadGeneration += 1
-        return loadGeneration
-    }
-
-    /// The loaded document's chrome. Resets exposure / yaw and the view mode, as a fresh open does.
-    func adopt(
-        document: GLTFSessionDocument,
-        materialVariantNames: [String],
-        sceneModel: EngineSceneModel,
-        viewModes: [RenderViewMode],
-        dimStudioForFileLights: Bool
-    ) {
-        let modelSidebar = HostSidebarModel(document: document)
-        modelSidebar.materialVariantNames = materialVariantNames
-        sidebar = modelSidebar
-        previewSession.viewModes = viewModes.isEmpty ? [.shaded] : viewModes
-        engineViewport.applyConvertedLighting(
-            dimStudioForFileLights: dimStudioForFileLights,
-            resetExposureAndYaw: true
-        )
-        engineViewport.setViewMode(.shaded)
-        loadedSceneModel = sceneModel
-    }
-
-    /// A reload of the open document (scene / variant) keeps the sidebar and session.
-    func replaceSceneModel(
-        _ sceneModel: EngineSceneModel,
-        viewModes: [RenderViewMode],
-        dimStudioForFileLights: Bool
-    ) {
-        loadedSceneModel = sceneModel
-        previewSession.viewModes = viewModes.isEmpty ? [.shaded] : viewModes
-        engineViewport.applyConvertedLighting(
-            dimStudioForFileLights: dimStudioForFileLights,
-            resetExposureAndYaw: false
-        )
-    }
-
-    func finishOpen(_ phase: ShellDocumentState) {
+    private func finish(_ phase: ShellDocumentState) {
         if case .failed = phase {
             sidebar = nil
             loadedSceneModel = nil
@@ -182,34 +125,36 @@ final class DocumentWindowModel {
         self.phase = phase
     }
 
-    /// Panels from the file's JSON alone (`GLTFDocumentSummary`) — no renderer convert. Used by
-    /// a canvas that loads the file itself. `load` is injectable for tests.
+    /// Panels from the file's JSON alone (`GLTFDocumentSummary`); the page loads the file itself.
+    /// `load` is injectable for tests.
     func openSummary(
         _ url: URL,
         generation: Int,
-        renderer: RendererKind,
         load: (URL) async throws -> GLTFDocumentSummary = GLTFDocumentSummary.load
     ) async {
         do {
             let summary = try await load(url)
-            guard isCurrent(generation) else { return }
-            adopt(
-                document: summary.document,
-                materialVariantNames: summary.materialVariantNames,
-                sceneModel: EngineSceneModel(summary: summary, fileName: url.lastPathComponent, validation: validation),
-                viewModes: summary.viewModes,
-                dimStudioForFileLights: !summary.document.lights.isEmpty
+            guard generation == loadGeneration else { return }
+            let modelSidebar = HostSidebarModel(document: summary.document)
+            modelSidebar.materialVariantNames = summary.materialVariantNames
+            sidebar = modelSidebar
+            previewSession.viewModes = summary.viewModes.isEmpty ? [.shaded] : summary.viewModes
+            engineViewport.setViewMode(.shaded)
+            loadedSceneModel = EngineSceneModel(
+                summary: summary,
+                fileName: url.lastPathComponent,
+                validation: validation
             )
             let size = summary.bounds.map { "\($0.size.x)x\($0.size.y)x\($0.size.z)" } ?? "empty"
             AppLog.info(
                 AppLog.host,
-                "open ready \(url.lastPathComponent) renderer=\(renderer.rawValue) nodes=\(summary.document.nodes.count) cameras=\(summary.document.cameras.count) triangles=\(summary.stats.triangleCount) bounds=\(size) uptimeMs=\(AppLog.uptimeMs())"
+                "open ready \(url.lastPathComponent) nodes=\(summary.document.nodes.count) cameras=\(summary.document.cameras.count) triangles=\(summary.stats.triangleCount) bounds=\(size) uptimeMs=\(AppLog.uptimeMs())"
             )
-            finishOpen(.ready)
+            finish(.ready)
         } catch {
-            guard isCurrent(generation) else { return }
+            guard generation == loadGeneration else { return }
             AppLog.error(AppLog.host, "open failed \(url.lastPathComponent): \(error.localizedDescription)")
-            finishOpen(.failed(error.localizedDescription))
+            finish(.failed(error.localizedDescription))
         }
     }
 

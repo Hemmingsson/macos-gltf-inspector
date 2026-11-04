@@ -28,7 +28,7 @@ struct LookClusterPage: View {
                 StateRow("Default") {
                     Live(MockViewportController()) { $viewport in
                         CatalogComposites.lookCluster(
-                            availability: MockAvailability(),
+                            availability: Availability.preview,
                             viewport: $viewport.wrappedValue
                         )
                     }
@@ -36,7 +36,7 @@ struct LookClusterPage: View {
                 StateRow("View mode · wireframe") {
                     Live(MockViewportController(viewMode: .wireframe)) { $viewport in
                         CatalogComposites.lookCluster(
-                            availability: MockAvailability(),
+                            availability: Availability.preview,
                             viewport: $viewport.wrappedValue
                         )
                     }
@@ -74,38 +74,27 @@ struct LightingPopoverPage: View {
             ) {
                 StateRow("Default", alignment: .top, minHeight: 260) {
                     Live(MockViewportController()) { $viewport in
-                        lightingPair(availability: MockAvailability(), viewport: $viewport.wrappedValue)
+                        lightingPair(viewport: $viewport.wrappedValue)
                     }
                 }
-                StateRow("File lights", alignment: .top, minHeight: 260) {
+                StateRow("Adjusted", alignment: .top, minHeight: 260) {
                     Live(
                         MockViewportController(
-                            lighting: LightingSettings(
-                                exposure: 0.5,
-                                environmentRotationDegrees: 45,
-                                usesFileLights: true,
-                                usesStudioEnvironment: true
-                            )
+                            lighting: LightingSettings(exposure: 0.5, environmentRotationDegrees: 45)
                         )
                     ) { $viewport in
-                        lightingPair(
-                            availability: MockAvailability(hasLights: true),
-                            viewport: $viewport.wrappedValue
-                        )
+                        lightingPair(viewport: $viewport.wrappedValue)
                     }
                 }
             }
         }
     }
 
-    private func lightingPair(
-        availability: MockAvailability,
-        viewport: MockViewportController
-    ) -> some View {
+    private func lightingPair(viewport: MockViewportController) -> some View {
         VStack(spacing: DS.Spacing.l) {
-            CatalogComposites.lightingChip(availability: availability, viewport: viewport)
+            CatalogComposites.lightingChip(viewport: viewport)
             PopoverStandIn {
-                CatalogComposites.lightingControls(availability: availability, viewport: viewport)
+                CatalogComposites.lightingControls(viewport: viewport)
             }
         }
     }
@@ -137,25 +126,6 @@ struct FieldOfViewPopoverPage: View {
             CatalogComposites.fieldOfViewChip(viewport: viewport)
             PopoverStandIn {
                 CatalogComposites.fieldOfViewControls(viewport: viewport)
-            }
-        }
-    }
-}
-
-struct PlaybackBarPage: View {
-    var body: some View {
-        CatalogPageView(page: .playbackBar) {
-            StateGroup(title: "States") {
-                StateRow("Paused") {
-                    Live(MockPlaybackController(isPlaying: false, time: 0.8)) { $playback in
-                        CatalogComposites.playbackBar(playback: $playback.wrappedValue)
-                    }
-                }
-                StateRow("Playing") {
-                    Live(MockPlaybackController(isPlaying: true, time: 0.8)) { $playback in
-                        CatalogComposites.playbackBar(playback: $playback.wrappedValue)
-                    }
-                }
             }
         }
     }

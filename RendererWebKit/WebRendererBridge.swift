@@ -131,8 +131,8 @@ struct RendererCameraState: Equatable, Decodable, Sendable {
 
     /// Camera distance that frames the measured box when seen from `preset`.
     ///
-    /// Same projected-AABB + near-face + `RenderCamera.fitPadding` rule as RealityKit Fit
-    /// and the page's `applySharedFitDistance`.
+    /// Same projected-AABB + near-face + `RenderCamera.fitPadding` rule as the page's
+    /// `applySharedFitDistance`.
     func distance(framing preset: CameraPreset) -> Double {
         guard isMeasurable else { return pose.distance }
         let extent = SIMD3<Float>(
@@ -157,8 +157,7 @@ struct RendererCameraState: Equatable, Decodable, Sendable {
 extension CameraPreset {
     /// Page orbit angles in degrees. `UserCamera` places the eye at
     /// `R_y(azimuth) · R_x(elevation) · (0, 0, +d)`, so azimuth +90 looks from +X and a
-    /// *negative* elevation looks from above. Same views as the RealityKit presets
-    /// (yaw 0 = +Z front, +90 = +X right; pitch +90 = top).
+    /// *negative* elevation looks from above (azimuth 0 = +Z front, +90 = +X right).
     var webOrbitAngles: (azimuth: Double, elevation: Double) {
         switch self {
         case .front: (0, 0)

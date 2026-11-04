@@ -49,11 +49,11 @@ public struct DSSegmentedPicker<SelectionValue: Hashable>: View {
 // MARK: - Previews
 
 #Preview("Segmented") {
-    @Previewable @State var usesFileLights = false
+    @Previewable @State var isOrthographic = false
     @Previewable @State var environment = "Studio"
     DSContentPreviewStage {
-        DSSegmentedPicker("Lights", selection: $usesFileLights, options: [false, true]) {
-            $0 ? "File" : "Studio"
+        DSSegmentedPicker("Projection", selection: $isOrthographic, options: [false, true]) {
+            $0 ? "Orthographic" : "Perspective"
         }
         DSSegmentedPicker(
             "Environment",
@@ -61,11 +61,11 @@ public struct DSSegmentedPicker<SelectionValue: Hashable>: View {
             options: ["Studio", "Neutral", "Outdoor"]
         ) { $0 }
         DSSegmentedPicker(
-            "Lights",
-            selection: $usesFileLights,
+            "Projection",
+            selection: $isOrthographic,
             options: [false, true],
             labelVisibility: .hidden
-        ) { $0 ? "File" : "Studio" }
+        ) { $0 ? "Orthographic" : "Perspective" }
     }
 }
 

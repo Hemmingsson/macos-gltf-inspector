@@ -16,8 +16,8 @@ public enum RenderCamera {
     public static let defaultFieldOfViewDegrees: Float = 35
     /// Field of view the user can pick (degrees).
     public static let fieldOfViewRange: ClosedRange<Float> = 15...90
-    /// Extra distance after a projected-AABB fit so the model does not kiss the frame.
-    /// Shared by RealityKit `PreviewCamera` and the WebKit page.
+    /// Extra distance after a projected-AABB fit so the model does not kiss the frame. The page's
+    /// `applySharedFitDistance` uses the same value.
     public static let fitPadding: Float = 1.02
 
     public static func clampedFieldOfView(_ degrees: Float) -> Float {
@@ -27,7 +27,6 @@ public enum RenderCamera {
     /// Distance from the model center to the eye that frames `extent` along `toCamera`.
     ///
     /// Projected AABB (not bounding sphere) plus the near-face depth, then `padding`.
-    /// Same rule RealityKit Fit uses.
     public static func fitDistance(
         extent: SIMD3<Float>,
         toCamera: SIMD3<Float>,

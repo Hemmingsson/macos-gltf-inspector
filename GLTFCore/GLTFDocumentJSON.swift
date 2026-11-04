@@ -3,9 +3,8 @@ import simd
 
 /// Builds `GLTFSessionDocument` from the glTF JSON itself — no renderer in the call path.
 ///
-/// The sidebar is an inspector: it must describe **the file**, not the subset that
-/// survived a conversion. RealityKit convert bakes spec-gloss into metal-rough and expands
-/// `EXT_mesh_gpu_instancing` into extra entities; neither may be reported as file truth.
+/// The sidebar is an inspector: it describes **the file** as authored (spec-gloss stays
+/// spec-gloss, an instanced mesh stays one node).
 public enum GLTFDocumentJSON {
     /// `fileURL` is only needed for binary payloads (texture thumbs, keyframe times when an
     /// animation input accessor omits `min`/`max`). Structure parses without it.
@@ -56,9 +55,8 @@ public enum GLTFDocumentJSON {
         document.materials = materialsJSON.map(makeMaterial)
         if !skinsJSON.isEmpty {
             document.skins = AppLog.signposter.withIntervalSignpost("json.document.skins") {
-                let parents = nodeParents(nodesJSON)
-                return skinsJSON.enumerated().map { index, skin in
-                    makeSkin(skin, index: index, nodes: nodesJSON, parentByNode: parents)
+                skinsJSON.enumerated().map { index, skin in
+                    makeSkin(skin, index: index, nodes: nodesJSON)
                 }
             }
         }
@@ -196,7 +194,6 @@ public enum GLTFDocumentJSON {
             triangleCount: geometry.triangleCount,
             vertexCount: geometry.vertexCount,
             uvSetCount: geometry.uvSetCount,
-            hasNormals: geometry.hasNormals,
             hasTangents: geometry.hasTangents,
             hasVertexColors: geometry.hasVertexColors
         )
@@ -263,7 +260,6 @@ public enum GLTFDocumentJSON {
         var triangleCount = 0
         var vertexCount = 0
         var uvSetCount = 0
-        var hasNormals = false
         var hasTangents = false
         var hasVertexColors = false
     }
@@ -277,7 +273,6 @@ public enum GLTFDocumentJSON {
         for primitive in mesh["primitives"] as? [[String: Any]] ?? [] {
             let attributes = primitive["attributes"] as? [String: Any] ?? [:]
             stamp.vertexCount += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
-            if attributes["NORMAL"] != nil { stamp.hasNormals = true }
             if attributes["TANGENT"] != nil { stamp.hasTangents = true }
             if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) { stamp.hasVertexColors = true }
             for uv in 0..<8 where attributes["TEXCOORD_\(uv)"] != nil {
@@ -374,49 +369,31 @@ public enum GLTFDocumentJSON {
 
     // MARK: - Skins
 
-    private static func nodeParents(_ nodes: [[String: Any]]) -> [Int: Int] {
-        var parentByNode: [Int: Int] = [:]
-        parentByNode.reserveCapacity(nodes.count)
-        for (nodeIndex, node) in nodes.enumerated() {
-            for child in GLTFJSON.ints(node["children"]) where nodes.indices.contains(child) {
-                parentByNode[child] = nodeIndex
-            }
-        }
-        return parentByNode
-    }
-
+    /// Unnamed joints are `joint-<position in the skin>`.
     private static func makeSkin(
         _ skin: [String: Any],
         index: Int,
-        nodes: [[String: Any]],
-        parentByNode: [Int: Int]
+        nodes: [[String: Any]]
     ) -> GLTFSessionDocument.Skin {
         let joints = GLTFJSON.ints(skin["joints"]).filter { nodes.indices.contains($0) }
         let jointNames = joints.enumerated().map { offset, nodeIndex in
-            JointNames.resolved(nodes[nodeIndex]["name"] as? String, index: offset)
-        }
-        // Parent index is into *this skin's* joint list, not the node list; roots stay nil.
-        let jointParentIndices: [Int?] = joints.map { nodeIndex in
-            guard let parent = parentByNode[nodeIndex] else { return nil }
-            return joints.firstIndex(of: parent)
+            let name = nodes[nodeIndex]["name"] as? String ?? ""
+            return name.isEmpty ? "joint-\(offset)" : name
         }
         let rawName = skin["name"] as? String ?? ""
         return GLTFSessionDocument.Skin(
             name: rawName.isEmpty ? "Skin\(index)" : rawName,
-            jointNames: jointNames,
-            jointNodeIndices: joints,
-            jointParentIndices: jointParentIndices
+            jointNames: jointNames
         )
     }
 
     // MARK: - Animations
 
-    /// Shortest span that still counts as a clip. Twin of `AnimationSampling.minimumDuration`,
-    /// duplicated so the JSON path owes nothing to the converter.
+    /// Shortest span that still counts as a clip.
     private static let minimumClipDuration: Float = 1e-4
 
-    /// Same filter the playback path applies: a clip needs more than one keyframe and a
-    /// non-trivial span, so one-keyframe "Default Take" junk never reaches the sidebar.
+    /// A clip needs more than one keyframe and a non-trivial span, so one-keyframe
+    /// "Default Take" junk never reaches the sidebar.
     private static func makeAnimation(
         _ animation: [String: Any],
         accessors: [[String: Any]],

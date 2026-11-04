@@ -3,9 +3,7 @@ import Foundation
 import simd
 import Testing
 
-/// `ModelBounds.from(json:)`: accessor min/max × node transforms, from the JSON alone. Checked
-/// against RealityKit's entity bounds over the whole corpus in
-/// `RealityKit/JSONModelBoundsRealityKitTests.swift`.
+/// `ModelBounds.from(json:)`: accessor min/max × node transforms, from the JSON alone.
 struct JSONModelBoundsTests {
     @Test func quantizedPositionsAreDequantized() {
         let json: [String: Any] = [

@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-/// `CGImage` → PNG file. Shared by the thumbnail extension, still export and tests.
+/// `CGImage` → PNG file, for File ▸ Export PNG and tests.
 public enum PNGWriter {
     public static func write(_ image: CGImage, to url: URL) throws {
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
@@ -15,8 +15,7 @@ public enum PNGWriter {
         }
     }
 
-    // Domain kept from `StillRenderer`, where this lived first.
     private static func error(_ message: String, code: Int) -> NSError {
-        NSError(domain: "StillRenderer", code: code, userInfo: [NSLocalizedDescriptionKey: message])
+        NSError(domain: "PNGWriter", code: code, userInfo: [NSLocalizedDescriptionKey: message])
     }
 }

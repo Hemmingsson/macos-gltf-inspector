@@ -3,42 +3,21 @@ import Foundation
 @testable import GLTFCore
 import Testing
 
-/// App Group poster cache (Wave P first pixel): a stored PNG is the first-pixel surface when it
-/// exists; a miss is no image (load copy, not a drawn box).
+/// App Group poster cache (first pixel): a stored PNG is the first-pixel image when it exists;
+/// a miss is no image (load copy, not a drawn box).
 struct AppGroupPosterTests {
     @Test
-    func cachedPosterPathIsUsedWhenAFileExists() throws {
+    func cachedPosterIsUsedWhenAFileExists() throws {
         let container = try Scratch.make()
         defer { Scratch.remove(container) }
         let url = TestFixtures.cube
         let look = RenderLook.standard
 
         let png = try #require(solidPNG(red: 1, green: 0, blue: 0))
-        let stored = try FirstPixelPreview.store(
-            png: png,
-            for: url,
-            renderer: .webKit,
-            look: look,
-            container: container
-        )
+        let stored = try FirstPixelPreview.store(png: png, for: url, look: look, container: container)
 
-        let surface = FirstPixelPreview.surface(
-            for: url,
-            renderer: .webKit,
-            look: look,
-            container: container
-        )
-        #expect(surface == .cachedPoster(stored))
-        #expect(FileManager.default.fileExists(atPath: stored.path))
-
-        let image = try #require(
-            FirstPixelPreview.image(
-                for: url,
-                renderer: .webKit,
-                look: look,
-                container: container
-            )
-        )
+        #expect(FirstPixelPreview.storedURL(for: url, look: look, container: container) == stored)
+        let image = try #require(FirstPixelPreview.image(for: url, look: look, container: container))
         #expect(isMostlyRed(image))
     }
 
@@ -48,63 +27,35 @@ struct AppGroupPosterTests {
         defer { Scratch.remove(container) }
         let url = TestFixtures.cube
 
-        let surface = FirstPixelPreview.surface(
-            for: url,
-            renderer: .realityKit,
-            look: .standard,
-            container: container
-        )
-        guard case .noPoster(let bounds) = surface else {
-            Issue.record("expected a poster miss, got \(surface)")
-            return
-        }
-        let box = try #require(bounds)
-        #expect(box.size.x > 0 && box.size.y > 0 && box.size.z > 0)
-
-        let image = FirstPixelPreview.image(
-            for: url,
-            renderer: .realityKit,
-            look: .standard,
-            container: container
-        )
-        #expect(image == nil)
+        #expect(FirstPixelPreview.storedURL(for: url, look: .standard, container: container) == nil)
+        #expect(FirstPixelPreview.image(for: url, look: .standard, container: container) == nil)
     }
 
     @Test
-    func lookAndRendererSplitTheCache() throws {
+    func lookSplitsTheCache() throws {
         let container = try Scratch.make()
         defer { Scratch.remove(container) }
         let url = TestFixtures.cube
         var field = RenderLook.standard
         field.environment = .field
 
-        let web = try FirstPixelPreview.store(
+        let standard = try FirstPixelPreview.store(
             png: try #require(solidPNG(red: 1, green: 0, blue: 0)),
             for: url,
-            renderer: .webKit,
             look: .standard,
             container: container
         )
-        let reality = try FirstPixelPreview.store(
+        #expect(FirstPixelPreview.storedURL(for: url, look: field, container: container) == nil)
+
+        let fieldPoster = try FirstPixelPreview.store(
             png: try #require(solidPNG(red: 0, green: 0, blue: 1)),
             for: url,
-            renderer: .realityKit,
             look: field,
             container: container
         )
-        #expect(web != reality)
-        #expect(
-            FirstPixelPreview.surface(for: url, renderer: .webKit, look: .standard, container: container)
-                == .cachedPoster(web)
-        )
-        #expect(
-            FirstPixelPreview.surface(for: url, renderer: .realityKit, look: field, container: container)
-                == .cachedPoster(reality)
-        )
-        #expect(
-            FirstPixelPreview.surface(for: url, renderer: .realityKit, look: .standard, container: container)
-                != .cachedPoster(reality)
-        )
+        #expect(standard != fieldPoster)
+        #expect(FirstPixelPreview.storedURL(for: url, look: .standard, container: container) == standard)
+        #expect(FirstPixelPreview.storedURL(for: url, look: field, container: container) == fieldPoster)
     }
 }
 

@@ -14,7 +14,7 @@ public extension DS {
             .regular.tint(tint).interactive()
         }
 
-        /// Non-interactive readouts (dimensions, playback bar). `Glass.regular`.
+        /// Non-interactive readouts (dimensions). `Glass.regular`.
         public static var hud: SwiftUI.Glass { .regular }
 
         /// `GlassEffectContainer(spacing:)` for a cluster: matches `DS.Metrics.clusterSpacing`, so

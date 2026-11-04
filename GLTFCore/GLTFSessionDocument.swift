@@ -2,9 +2,8 @@ import Foundation
 import simd
 
 /// Host outliner + file-camera graph, parsed from the glTF JSON by `GLTFDocumentJSON`.
-/// Not a full glTF mirror — mesh *payloads* live on the renderer's own scene / PreviewStats.
-/// Describes the file as authored, so it lists nodes, materials and clips the renderer
-/// rewrites or cannot show.
+/// Not a full glTF mirror — no mesh payloads; the page loads the file for drawing. Describes the
+/// file as authored.
 public struct GLTFSessionDocument: Sendable, Equatable {
     public var defaultSceneIndex: Int = 0
     public var scenes: [Scene] = []
@@ -50,7 +49,6 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var triangleCount: Int = 0
         public var vertexCount: Int = 0
         public var uvSetCount: Int = 0
-        public var hasNormals: Bool = false
         public var hasTangents: Bool = false
         public var hasVertexColors: Bool = false
 
@@ -145,13 +143,10 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var textures: [TextureSlot] = []
     }
 
-    /// Skin joint list from the JSON. `jointParentIndices` indexes this
-    /// skin’s joint array (`nil` = root). Overlay looks up entities via `jointNodeIndices`.
+    /// Skin joint names from the JSON.
     public struct Skin: Sendable, Equatable {
         public var name: String
         public var jointNames: [String]
-        public var jointNodeIndices: [Int]
-        public var jointParentIndices: [Int?]
     }
 
     /// Morph targets for one mesh (`extras.targetNames`, else by index).

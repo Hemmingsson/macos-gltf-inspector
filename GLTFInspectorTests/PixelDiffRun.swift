@@ -2,9 +2,8 @@ import CoreGraphics
 import Foundation
 import Testing
 
-/// The renderer-neutral half of the pixel-diff harness: every loop the per-renderer suites run
-/// (`RealityKit/PixelDiffRealityKitTests.swift`, `WebKit/PixelDiffWebKitTests.swift`), given a
-/// render function. Generation and verification both go through ``Render``. If they did not, a
+/// The loops of the pixel-diff harness (`PixelDiffWebKitTests.swift`), given a render function.
+/// Generation and verification both go through ``Render``. If they did not, a
 /// difference between the two paths — a host reused in one and not the other, a command sent in
 /// a different order — would show up as every model failing, and the natural response would be
 /// to widen the tolerance until it stopped.
@@ -31,14 +30,13 @@ enum PixelDiffRun {
 
     // MARK: - Verification
 
-    /// Every pinned sample through `render`, compared against `renderer`'s committed PNG.
+    /// Every pinned sample through `render`, compared against its committed PNG.
     static func expectEverySampleMatches(
-        _ renderer: PixelDiffRendererKind,
         manifest: PixelDiffManifest,
         render: Render
     ) async throws {
         try #require(!manifest.entries.isEmpty, "nothing to compare — the manifest is empty")
-        let tolerance = try manifest.tolerance(for: renderer)
+        let tolerance = manifest.tolerance
         let size = manifest.look.canvasSize
         var failures: [String] = []
 
@@ -51,7 +49,7 @@ enum PixelDiffRun {
                 failures.append(entry.name)
                 continue
             }
-            let expected = try PixelDiff.raster(contentsOf: entry.referenceURL(for: renderer))
+            let expected = try PixelDiff.raster(contentsOf: entry.referenceURL)
             let image = try await render(entry)
 
             // Still mode sets canvas.width directly, so a devicePixelRatio creeping in would
@@ -63,40 +61,39 @@ enum PixelDiffRun {
 
             let actual = try PixelDiff.raster(from: image)
             let (metrics, verdict) = try PixelDiff.compare(actual, to: expected, tolerance: tolerance)
-            print("pixel diff \(renderer.rawValue) \(entry.name): \(metrics.summary())")
+            print("pixel diff \(entry.name): \(metrics.summary())")
 
             if case .differs(let reasons) = verdict {
                 failures.append(entry.name)
                 let report = try PixelDiffReport.write(
-                    name: entry.name, renderer: renderer, actual: actual, expected: expected
+                    name: entry.name, actual: actual, expected: expected
                 )
                 Issue.record(Comment(rawValue: """
-                    \(entry.name) does not match its \(renderer.rawValue) reference.
+                    \(entry.name) does not match its reference.
                     \(reasons.joined(separator: "\n"))
                     \(metrics.summary())
                     \(report)
                     If this change is intended, regenerate: \
-                    \(PixelDiffManifest.regenerationCommand) \(renderer.rawValue)
+                    \(PixelDiffManifest.regenerationCommand)
                     """))
             }
         }
 
         #expect(
             failures.isEmpty,
-            "\(renderer.rawValue): \(failures.count) of \(manifest.entries.count) samples differ: \(failures.joined(separator: ", "))"
+            "\(failures.count) of \(manifest.entries.count) samples differ: \(failures.joined(separator: ", "))"
         )
     }
 
     /// One reference per manifest entry, at the manifest size, and no stray PNGs.
-    nonisolated static func expectEveryReferenceIsPresent(_ renderer: PixelDiffRendererKind) throws {
+    nonisolated static func expectEveryReferenceIsPresent() throws {
         let manifest = try PixelDiffManifest.load()
-        _ = try manifest.tolerance(for: renderer)
         for entry in manifest.entries {
-            let url = entry.referenceURL(for: renderer)
+            let url = entry.referenceURL
             guard FileManager.default.fileExists(atPath: url.path) else {
                 Issue.record(Comment(rawValue: """
-                    \(entry.name): \(renderer.rawValue) reference missing at \(url.path). \
-                    Regenerate with: \(PixelDiffManifest.regenerationCommand) \(renderer.rawValue)
+                    \(entry.name): reference missing at \(url.path). \
+                    Regenerate with: \(PixelDiffManifest.regenerationCommand)
                     """))
                 continue
             }
@@ -104,31 +101,29 @@ enum PixelDiffRun {
             let size = manifest.look.canvasSize
             #expect(
                 raster.width == size && raster.height == size,
-                "\(entry.name): \(renderer.rawValue) reference is \(raster.width)x\(raster.height), manifest says \(size)"
+                "\(entry.name): reference is \(raster.width)x\(raster.height), manifest says \(size)"
             )
         }
 
         // A reference nobody asserts against is dead weight that looks like coverage.
         let directory = PixelDiffPaths.referencesDirectory
-            .appendingPathComponent(renderer.rawValue, isDirectory: true)
         let onDisk = Set(((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? [])
             .filter { $0.hasSuffix(".png") })
         let stray = onDisk.subtracting(manifest.entries.map { "\($0.name).png" }).sorted()
-        #expect(stray.isEmpty, "\(renderer.rawValue) references with no manifest entry: \(stray)")
+        #expect(stray.isEmpty, "references with no manifest entry: \(stray)")
     }
 
     // MARK: - Regeneration
 
-    /// Rewrites `renderer`'s reference PNGs from `render`, the same call verification uses, so a
+    /// Rewrites the reference PNGs from `render`, the same call verification uses, so a
     /// reference can never describe a path that verification does not take.
     static func regenerate(
-        _ renderer: PixelDiffRendererKind,
         manifest: PixelDiffManifest,
         render: Render
     ) async throws {
         for entry in manifest.entries {
             let raster = try PixelDiff.raster(from: try await render(entry))
-            let url = entry.referenceURL(for: renderer)
+            let url = entry.referenceURL
             try PixelDiff.write(raster, to: url)
 
             // Read it straight back. A lossy write would produce references that disagree
@@ -137,20 +132,19 @@ enum PixelDiffRun {
             #expect(reread == raster, "\(entry.name): PNG round trip changed the image")
             print("regenerated \(url.path)")
         }
-        print("regenerated \(renderer.rawValue) for \(manifest.entries.count) entries")
+        print("regenerated \(manifest.entries.count) entries")
     }
 
     /// Renders every sample ``noiseRounds`` times, each round from a fresh `makeRender()`, and
     /// compares with the first round and with the committed reference (rendered in another
-    /// process). Prints one line per sample and the renderer's maximum.
+    /// process). Prints one line per sample and the maximum.
     static let noiseRounds = 3
 
     static func measureNoise(
-        _ renderer: PixelDiffRendererKind,
         manifest: PixelDiffManifest,
         makeRender: @MainActor () async throws -> Render
     ) async throws {
-        let tolerance = try manifest.tolerance(for: renderer)
+        let tolerance = manifest.tolerance
         var renders: [[PixelDiff.Raster]] = []
         for _ in 0..<noiseRounds {
             let render = try await makeRender()
@@ -165,7 +159,7 @@ enum PixelDiffRun {
         var worstChannel = 0
         var worstBad = 0.0
         for (index, entry) in manifest.entries.enumerated() {
-            let golden = try PixelDiff.raster(contentsOf: entry.referenceURL(for: renderer))
+            let golden = try PixelDiff.raster(contentsOf: entry.referenceURL)
             var others = renders.dropFirst().map { $0[index] }
             others.append(golden)
             var mean = 0.0, channel = 0, bad = 0.0
@@ -179,14 +173,14 @@ enum PixelDiffRun {
             worstChannel = max(worstChannel, channel)
             worstBad = max(worstBad, bad)
             print(String(
-                format: "noise %@ %@: mean %.4f, max %d, bad(>%d) %.4f%%",
-                renderer.rawValue, entry.name, mean, channel,
+                format: "noise %@: mean %.4f, max %d, bad(>%d) %.4f%%",
+                entry.name, mean, channel,
                 tolerance.badPixelChannelDelta, bad * 100
             ))
         }
         print(String(
-            format: "noise floor %@ over %d rounds + golden: mean %.4f, max %d, bad(>%d) %.4f%%",
-            renderer.rawValue, noiseRounds, worstMean, worstChannel,
+            format: "noise floor over %d rounds + golden: mean %.4f, max %d, bad(>%d) %.4f%%",
+            noiseRounds, worstMean, worstChannel,
             tolerance.badPixelChannelDelta, worstBad * 100
         ))
     }
@@ -197,12 +191,10 @@ enum PixelDiffRun {
 enum PixelDiffReport {
     static func write(
         name: String,
-        renderer: PixelDiffRendererKind,
         actual: PixelDiff.Raster,
         expected: PixelDiff.Raster
     ) throws -> String {
         let directory = PixelDiffPaths.outputDirectory
-            .appendingPathComponent(renderer.rawValue, isDirectory: true)
         let actualURL = directory.appendingPathComponent("\(name)-actual.png")
         let expectedURL = directory.appendingPathComponent("\(name)-expected.png")
         let diffURL = directory.appendingPathComponent("\(name)-diff.png")

@@ -8,10 +8,9 @@ import SwiftUI
 /// Session + camera + still-path adapter for `ViewportController`.
 ///
 /// Owns per-window view state (DESIGN.md this-window job). Fit / reset / presets / PNG export
-/// forward to the `FocusedPreviewCommands` the mounted canvas registered; the PNG goes to the
-/// host's `saveScreenshot` (save panel + write). Lighting maps
-/// degrees↔radians and `usesFileLights`↔`dimStudioForFileLights`. `usesStudioEnvironment` mirrors
-/// `AppLook.useEnvironmentMap` and is never written here — Settings owns that key.
+/// forward to the `FocusedPreviewCommands` the web canvas registered; the PNG goes to the
+/// host's `saveScreenshot` (save panel + write). Lighting maps the environment yaw
+/// degrees↔radians.
 ///
 /// Settings-backed keys (backdrop / floor / auto-rotate / center / projection) pin overrides in
 /// the session's `EngineSettingsStore` on mutate; untouched keys track the app defaults live.
@@ -19,20 +18,16 @@ import SwiftUI
 @Observable
 final class EngineViewportController: ViewportController {
     var sidebar: HostSidebarModel
-    let lookStore: AppLookStore
 
     /// Host-owned canvas session.
     let previewSession: PreviewSession
 
-    /// Commands of the mounted canvas (the renderer window registers them). Nil while no canvas can
-    /// take them, and in unit tests that only exercise setters.
+    /// Commands of the web canvas (`DocumentWindow` registers them). Nil while no canvas can take
+    /// them, and in unit tests that only exercise setters.
     var commands: FocusedPreviewCommands?
 
     /// Host save panel + PNG write for `screenshot()`. Tests inject a recorder.
     var saveScreenshot: ((CGImage) async -> Void)?
-
-    /// Mounted renderer's `RendererFeature` set. The View menu hides what this lacks.
-    let features: Set<RendererFeature>
 
     private(set) var activeCameraPreset: PreviewUI.CameraPreset?
 
@@ -43,29 +38,28 @@ final class EngineViewportController: ViewportController {
 
     init(
         sidebar: HostSidebarModel,
-        lookStore: AppLookStore? = nil,
         previewSession: PreviewSession? = nil,
         commands: FocusedPreviewCommands? = nil,
-        saveScreenshot: ((CGImage) async -> Void)? = nil,
-        features: Set<RendererFeature> = Set(RendererFeature.allCases)
+        saveScreenshot: ((CGImage) async -> Void)? = nil
     ) {
         self.sidebar = sidebar
-        self.lookStore = lookStore ?? .shared
         self.previewSession = previewSession ?? PreviewSession()
         self.commands = commands
         self.saveScreenshot = saveScreenshot
-        self.features = features
     }
 
     /// Per-window lazy overlay (the session's `EngineSettingsStore`).
     var settings: EngineSettingsStore { previewSession.settings }
 
-    /// Seed environment and tone mapping from the app defaults.
+    /// A new document's lighting: environment and tone mapping from the app defaults, exposure
+    /// and environment yaw back to zero.
     func applySession() {
         // Environment and tone mapping have no session override yet: they are app defaults, and
         // the extensions read the same two keys so all three surfaces agree.
         environment = defaultEnvironment
         toneMapping = defaultToneMapping
+        previewSession.exposureEV = 0
+        previewSession.environmentYaw = 0
     }
 
     /// Settings default for the bundled IBL, or Neutral when the stored name is unknown.
@@ -96,8 +90,6 @@ final class EngineViewportController: ViewportController {
         LightingSettings(
             exposure: Double(previewSession.exposureEV),
             environmentRotationDegrees: Double(previewSession.environmentYaw) * 180 / .pi,
-            usesFileLights: previewSession.dimStudioForFileLights,
-            usesStudioEnvironment: lookStore.look.useEnvironmentMap,
             environment: environment,
             toneMapping: toneMapping
         )
@@ -145,26 +137,10 @@ final class EngineViewportController: ViewportController {
         toneMapping = lighting.toneMapping
         previewSession.exposureEV = Float(lighting.exposure)
         previewSession.environmentYaw = Float(lighting.environmentRotationDegrees * .pi / 180)
-        previewSession.dimStudioForFileLights = lighting.usesFileLights
-        // Intentionally ignore `usesStudioEnvironment` — do not fight `AppLook.useEnvironmentMap`.
-    }
-
-    /// Convert-owned file-light dimming. Open resets exposure/yaw; scene/variant keep them.
-    func applyConvertedLighting(dimStudioForFileLights: Bool, resetExposureAndYaw: Bool) {
-        setLighting(
-            LightingSettings(
-                exposure: resetExposureAndYaw ? 0 : lighting.exposure,
-                environmentRotationDegrees: resetExposureAndYaw ? 0 : lighting.environmentRotationDegrees,
-                usesFileLights: dimStudioForFileLights,
-                usesStudioEnvironment: lookStore.look.useEnvironmentMap,
-                environment: environment,
-                toneMapping: toneMapping
-            )
-        )
     }
 
     func fit() {
-        sidebar.selectedCameraIndex = nil
+        sidebar.selectedCameraNodeIndex = nil
         commands?.fit()
         activeCameraPreset = nil
     }
@@ -180,22 +156,18 @@ final class EngineViewportController: ViewportController {
             LightingSettings(
                 exposure: 0,
                 environmentRotationDegrees: 0,
-                usesFileLights: false,
-                usesStudioEnvironment: lookStore.look.useEnvironmentMap,
                 environment: defaultEnvironment,
                 toneMapping: defaultToneMapping
             )
         )
-        setDoubleSided(false)
-        setShowSkeleton(false)
         setFieldOfViewDegrees(RenderCamera.defaultFieldOfViewDegrees)
-        sidebar.selectedCameraIndex = nil
+        sidebar.selectedCameraNodeIndex = nil
         activeCameraPreset = nil
         commands?.reset()
     }
 
     func applyCameraPreset(_ preset: PreviewUI.CameraPreset) {
-        sidebar.selectedCameraIndex = nil
+        sidebar.selectedCameraNodeIndex = nil
         activeCameraPreset = preset
         commands?.applyCameraPreset(GLTFCore.CameraPreset(preset))
     }
@@ -222,33 +194,19 @@ final class EngineViewportController: ViewportController {
 
     func setMaterialVariant(_ index: Int?) {
         sidebar.selectedMaterialVariantIndex = index
-        sidebar.overlayRevision += 1
     }
 
     func setFileCamera(_ id: NodeID?) {
         if let id {
             guard id.kind == .camera else { return }
-            sidebar.selectedCameraIndex = id.index
+            sidebar.selectedCameraNodeIndex = id.index
         } else {
-            sidebar.selectedCameraIndex = nil
+            sidebar.selectedCameraNodeIndex = nil
         }
-        sidebar.overlayRevision += 1
         activeCameraPreset = nil
     }
 
-    var doubleSided: Bool { previewSession.doubleSided }
-
-    var showSkeleton: Bool { previewSession.showSkeleton }
-
     var fieldOfViewDegrees: Float { previewSession.fieldOfViewDegrees }
-
-    func setDoubleSided(_ isOn: Bool) {
-        previewSession.doubleSided = isOn
-    }
-
-    func setShowSkeleton(_ isOn: Bool) {
-        previewSession.showSkeleton = isOn
-    }
 
     func setFieldOfViewDegrees(_ degrees: Float) {
         previewSession.fieldOfViewDegrees = RenderCamera.clampedFieldOfView(degrees)

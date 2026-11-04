@@ -105,7 +105,6 @@ private struct CatalogDetail: View {
         case .cameraCluster: CameraClusterPage()
         case .lightingPopover: LightingPopoverPage()
         case .fieldOfViewPopover: FieldOfViewPopoverPage()
-        case .playbackBar: PlaybackBarPage()
         case .sidebar: SidebarPage()
         case .inspector: InspectorPage()
         }

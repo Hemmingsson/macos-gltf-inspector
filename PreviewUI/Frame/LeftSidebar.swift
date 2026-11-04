@@ -31,9 +31,8 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
                 }
                 .safeAreaBar(edge: .bottom, spacing: 0) {
                     ViewThatFits(in: .vertical) {
-                        fileFooter(showsFile: true, showsPipeline: true)
-                        fileFooter(showsFile: true, showsPipeline: false)
-                        fileFooter(showsFile: false, showsPipeline: false)
+                        fileFooter(showsFile: true)
+                        fileFooter(showsFile: false)
                     }
                     .frame(maxHeight: 280, alignment: .top)
                 }
@@ -74,20 +73,16 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
         )
     }
 
-    /// File facts + honesty — pinned under the outliner. `ViewThatFits` drops pipeline, then
-    /// file stats, rather than nesting a `ScrollView`.
+    /// File facts + validation — pinned under the outliner. `ViewThatFits` drops the file stats
+    /// rather than nesting a `ScrollView`.
     @ViewBuilder
-    private func fileFooter(showsFile: Bool, showsPipeline: Bool) -> some View {
+    private func fileFooter(showsFile: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Divider()
             if showsFile {
                 FileSection(stats: model.stats, fileName: model.fileName)
             }
             ValidationSection(validation: model.validation)
-            ConvertProblemsSection(problems: model.convertProblems)
-            if showsPipeline, !model.pipelineReport.isEmpty {
-                PipelineSection(report: model.pipelineReport)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)

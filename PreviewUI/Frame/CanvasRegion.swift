@@ -15,18 +15,15 @@ import SwiftUI
 struct CanvasRegion<
     Content: View,
     Model: SceneModel,
-    Capabilities: Availability,
-    Viewport: ViewportController,
-    Playback: ClipPlaybackController
+    Viewport: ViewportController
 >: View {
-    /// File snapshot — dimensions and animation clips for the bottom overlays.
+    /// File snapshot — dimensions for the bottom overlays.
     var model: Model
-    /// Read-only capability snapshot — the Look cluster and playback bar offer only what the file has.
-    var availability: Capabilities
+    /// The Look cluster offers only the view modes the file has.
+    var availability: Availability
     /// The window's live view state. Injected, not owned: the host owns it and the View menu
     /// drives the same instance.
     var viewport: Viewport
-    var playback: Playback
     /// Empty / loading / failed hide the model chrome; ready shows clusters + overlays.
     var documentState: ShellDocumentState = .ready
     /// When false, Stage clears traffic lights + the floating sidebar restore control.
@@ -120,14 +117,6 @@ struct CanvasRegion<
                 DimensionsReadout(dimensions: model.dimensions)
                     .padding(OverlayMetrics.inset)
             }
-            .overlay(alignment: .bottom) {
-                if availability.hasAnimations {
-                    PlaybackBar(playback: playback)
-                        .padding(.bottom, OverlayMetrics.inset)
-                        .transition(reduceMotion ? .identity : .opacity)
-                }
-            }
-            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: availability.hasAnimations)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: viewport.isCentered)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: model.dimensions.authoredOrigin)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isSidebarVisible)
@@ -150,7 +139,6 @@ struct CanvasRegion<
 private struct CanvasRegionPreviewHost: View {
     enum Mode {
         case ready
-        case animations
         case collapsedChrome
         case empty
         case loading
@@ -159,17 +147,12 @@ private struct CanvasRegionPreviewHost: View {
 
     var mode: Mode
     @State private var viewport: MockViewportController
-    @State private var playback: MockPlaybackController
 
     init(mode: Mode) {
         self.mode = mode
         switch mode {
         case .ready, .empty, .loading, .failed:
             _viewport = State(initialValue: MockViewportController())
-            _playback = State(initialValue: MockPlaybackController())
-        case .animations:
-            _viewport = State(initialValue: MockViewportController())
-            _playback = State(initialValue: MockPlaybackController(isPlaying: true, time: 0.75))
         case .collapsedChrome:
             _viewport = State(
                 initialValue: MockViewportController(
@@ -177,13 +160,12 @@ private struct CanvasRegionPreviewHost: View {
                     activeSceneID: NodeID(kind: .scene, index: 0)
                 )
             )
-            _playback = State(initialValue: MockPlaybackController())
         }
     }
 
     private var documentState: ShellDocumentState {
         switch mode {
-        case .ready, .animations, .collapsedChrome: .ready
+        case .ready, .collapsedChrome: .ready
         case .empty: .empty
         case .loading: .loading
         case .failed: .failed(ShellStatusCopy.invalidFileDetail)
@@ -206,15 +188,9 @@ private struct CanvasRegionPreviewHost: View {
         }
     }
 
-    private var availability: MockAvailability {
-        mode == .animations
-            ? MockAvailability(hasAnimations: true)
-            : MockAvailability()
-    }
-
     private var size: (width: CGFloat, height: CGFloat) {
         switch mode {
-        case .ready, .animations, .collapsedChrome: (640, 480)
+        case .ready, .collapsedChrome: (640, 480)
         case .empty, .loading, .failed: (480, 320)
         }
     }
@@ -223,9 +199,8 @@ private struct CanvasRegionPreviewHost: View {
         PreviewCanvas(width: size.width, height: size.height, background: .canvas) {
             CanvasRegion(
                 model: model,
-                availability: availability,
+                availability: Availability.preview,
                 viewport: viewport,
-                playback: playback,
                 documentState: documentState,
                 isSidebarVisible: mode != .collapsedChrome,
                 isInspectorVisible: mode != .collapsedChrome,
@@ -237,10 +212,6 @@ private struct CanvasRegionPreviewHost: View {
 
 #Preview("ready", traits: .fixedLayout(width: 640, height: 480)) {
     CanvasRegionPreviewHost(mode: .ready)
-}
-
-#Preview("animations", traits: .fixedLayout(width: 640, height: 480)) {
-    CanvasRegionPreviewHost(mode: .animations)
 }
 
 #Preview("collapsed chrome", traits: .fixedLayout(width: 640, height: 480)) {

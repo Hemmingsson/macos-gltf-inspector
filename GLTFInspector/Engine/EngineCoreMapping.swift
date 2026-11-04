@@ -113,17 +113,15 @@ extension RenderLook.Color {
 
 extension RenderLook {
     /// The seam's lighting + backdrop as one look. Yaw passes through unchanged: the seam's 0 is
-    /// meant as the Khronos default view; any per-renderer offset lives in that renderer's mapping.
+    /// the Khronos default view; the page's own offset lives in `PageLook`.
     init(_ lighting: LightingSettings, backdrop: BackdropStyle) {
         self.init(
             exposureEV: lighting.exposure,
             environmentIntensity: 1,
             environmentYawDegrees: lighting.environmentRotationDegrees,
-            usesEnvironment: lighting.usesStudioEnvironment,
             environment: KhronosEnvironments(lighting.environment),
             toneMapping: ToneMapping(lighting.toneMapping),
-            background: Color(backdrop),
-            usesFileLights: lighting.usesFileLights
+            background: Color(backdrop)
         )
     }
 }

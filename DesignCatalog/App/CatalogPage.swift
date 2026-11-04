@@ -30,7 +30,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
     case sectionHeader, statusBadge, statusView, typeIcon, valueCell, vectorRow
     // Composites
     case stageCluster, lookCluster, cameraCluster, lightingPopover, fieldOfViewPopover
-    case playbackBar, sidebar, inspector
+    case sidebar, inspector
 
     var id: Self { self }
 
@@ -47,7 +47,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
              .sectionHeader, .statusBadge, .statusView, .typeIcon, .valueCell, .vectorRow:
             .content
         case .stageCluster, .lookCluster, .cameraCluster, .lightingPopover, .fieldOfViewPopover,
-             .playbackBar, .sidebar, .inspector:
+             .sidebar, .inspector:
             .composites
         }
     }
@@ -93,7 +93,6 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
         case .cameraCluster: "Camera Cluster"
         case .lightingPopover: "Lighting Popover"
         case .fieldOfViewPopover: "Field of View Popover"
-        case .playbackBar: "Playback Bar"
         case .sidebar: "Sidebar"
         case .inspector: "Inspector"
         }
@@ -140,7 +139,6 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
         case .cameraCluster: "PreviewUI.CameraCluster"
         case .lightingPopover: "PreviewUI.LightingPopover"
         case .fieldOfViewPopover: "PreviewUI.FieldOfViewPopover"
-        case .playbackBar: "PreviewUI.PlaybackBar"
         case .sidebar: "PreviewUI.LeftSidebar"
         case .inspector: "PreviewUI.RightInspector"
         }
@@ -162,7 +160,7 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
         case .glassPopoverButton: "Glass control that owns a popover (Lighting ▾, Field of View ▾)."
         case .glassIsland: "One capsule of glass holding several related controls; the only glass layer."
         case .glassCluster: "One floating group of islands sharing a GlassEffectContainer (Stage, Look, Camera)."
-        case .hudCapsule: "Non-interactive glass readout: dimensions, playback bar."
+        case .hudCapsule: "Non-interactive glass readout: the dimensions overlay."
         case .swatchPicker: "Radio group of backdrop swatches in one glass island."
         case .checkerboard: "The \"no backdrop\" pattern: fixed light grey on white in either appearance."
         case .button: "Standard push button in three emphases, backed by system button styles."
@@ -185,9 +183,8 @@ enum CatalogPage: String, CaseIterable, Identifiable, Hashable {
         case .stageCluster: "How the scene is dressed: backdrop swatches and floor. Current PreviewUI vs DS target."
         case .lookCluster: "How the surface is shaded and lit: view mode │ lighting. Current PreviewUI vs DS target."
         case .cameraCluster: "Where you stand and how you move. Current PreviewUI vs DS target."
-        case .lightingPopover: "Exposure, environment rotation and file-vs-studio lights."
+        case .lightingPopover: "Exposure, environment rotation, environment and tone mapping."
         case .fieldOfViewPopover: "Vertical field of view; perspective only."
-        case .playbackBar: "Bottom-centre animation transport, shown only when the file has animations."
         case .sidebar: "Left column: document card, outliner, file facts and honesty sections."
         case .inspector: "Right column: the selected node's sections."
         }

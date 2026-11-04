@@ -62,8 +62,7 @@ struct InspectorPage: View {
                         CatalogComposites.inspector(
                             selection: $selection.wrappedValue,
                             documentState: .ready,
-                            openInMenu: AnyView(PreviewOpenInItems()),
-                            morphTargets: MorphFixtures.faceControls
+                            openInMenu: AnyView(PreviewOpenInItems())
                         )
                     }
                 }

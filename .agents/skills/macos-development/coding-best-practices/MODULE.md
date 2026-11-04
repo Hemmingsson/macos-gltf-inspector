@@ -12,7 +12,6 @@ Swift 6 isolation and simple persistence. Load only the file the issue needs.
 - Architecture size → `../architecture-patterns/`
 - SwiftUI APIs / Liquid Glass → `swiftui-expert-skill`
 - AppKit bridging → `../appkit-swiftui-bridge/`
-- RealityKit → `metal-realitykit-visionos`
 
 ## Checklist
 

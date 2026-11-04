@@ -3,8 +3,7 @@ name: macos-development
 description: >
   Use when doing macOS app work: code review, architecture sizing, sandboxing /
   Quick Look / thumbnail extensions, AppKit–SwiftUI bridging, UI/HIG review, or
-  new-app planning. Not for SwiftUI view APIs (swiftui-expert-skill) or Metal /
-  RealityKit (metal-realitykit-visionos).
+  new-app planning. Not for SwiftUI view APIs (swiftui-expert-skill).
 last_verified: 2026-08-20
 review_by: 2027-06-22
 os_version: macOS 26
@@ -19,7 +18,6 @@ Router for this repo’s macOS work. Read a module’s `MODULE.md`, then only th
 | Need | Owner |
 |------|--------|
 | SwiftUI views, state, lists, animation, Liquid Glass **API** | `swiftui-expert-skill` |
-| Metal / RealityKit / RealityView | `metal-realitykit-visionos` |
 | Verify UI (AX, Peekaboo, glass — no headless UI snapshots) | `macos-app-testing` |
 | Swift 6 isolation, Sendable, MainActor, actors | `coding-best-practices/` |
 | UserDefaults / AppStorage / Core Data legacy | `coding-best-practices/data-persistence.md` |

@@ -31,11 +31,11 @@ Do not assume the current architecture is correct merely because it is cleaner t
 
 ## 1. What this product is
 
-Native **macOS** host app plus Quick Look preview and Finder thumbnails for `.glb` / `.gltf`. Closest practical 1:1 glTF rendering via native RealityKit on latest macOS / Apple Silicon.
+Native **macOS** host app plus Quick Look preview and Finder thumbnails for `.glb` / `.gltf`. Closest practical 1:1 glTF rendering via the Khronos glTF Sample Renderer in a `WKWebView` on latest macOS / Apple Silicon.
 
-Build: XcodeGen (`project.yml`) then `xcodebuild`. `GLTFInspector.xcodeproj` is generated and gitignored. Ship/proof: `./scripts/build.sh`, `./scripts/verify.sh`, `./scripts/proof.sh`, `./scripts/release.sh`. Primary visual proof: still PNG via `StillRenderProofTests`. Fixtures: on-disk through `GLTFInspectorTests/TestFixtures.swift` (`#filePath`, not the bundle).
+Build: XcodeGen (`project.yml`) then `xcodebuild`. `GLTFInspector.xcodeproj` is generated and gitignored. Ship/proof: `./scripts/build.sh`, `./scripts/verify.sh`, `./scripts/release.sh`. Primary visual proof: pixel-diff tests against `TestModels/References/` (`./scripts/dev.sh test`). Fixtures: on-disk through `GLTFInspectorTests/TestFixtures.swift` (`#filePath`, not the bundle).
 
-Meaningful behavior that must keep working unless you have a concrete reason to remove it: opening a glTF file, converting and rendering it, Quick Look, Finder thumbnails, failed loads that show copy instead of a spinner.
+Meaningful behavior that must keep working unless you have a concrete reason to remove it: opening and rendering a glTF file, the JSON panels, Quick Look, Finder thumbnails, failed loads that show copy instead of a spinner.
 
 This is **not** a web app and **not** a folder-library browser unless the running product actually is one. Discover real user flows from the app. Do not invent browser/directory-navigation verification for surfaces that do not exist.
 
@@ -194,10 +194,10 @@ Agreement is useful evidence. Disagreement is also useful evidence. The objectiv
 
 These constrain how you change the system. They are not a map of what to refactor.
 
-1. Never mutate `@Observable` / `@State` in `View.init` or RealityView `make`/`update`.
+1. Never mutate `@Observable` / `@State` in `View.init`.
 2. Failed loads must show copy, not a spinner.
 3. Do not block first paint on IBL.
-4. RealityKit crash landmines still apply: do not iterate `RealityViewCameraContent.entities` during update; own a look root; floor toggle is visual only; persist scene entity refs in `@State`; clear IBL receivers before removing IBL light entities.
+4. Serve one `viewer.html` from the scheme-handler root; `WebCanvasController` outlives the shell remount.
 5. Unit tests alone will not catch (1). Verify with a real window when UI/state hosting changes.
 6. UI verification: skill `macos-app-testing`. Prefer non-intrusive proofs. Do not steal focus, switch Spaces, activate the app, drive the pointer, or open save/export sheets unless required. No headless snapshot / flatten-glass harness for Liquid Glass. Never screencapture-first. Never leave Export/Save sheets open.
 7. Do not invent Apple APIs.
@@ -219,7 +219,7 @@ At minimum, use **separate reviewers** (different families when practical) for:
 
 ### Architecture
 
-File structure, module boundaries, data flow, state ownership, dependency direction, abstractions, process/extension boundaries, convert vs render vs chrome.
+File structure, module boundaries, data flow, state ownership, dependency direction, abstractions, process/extension boundaries, JSON panels vs page render vs chrome.
 
 Ask: What is unnecessarily complicated? Which boundaries are artificial? Which concepts should be merged? Which layers should disappear? Where does information travel farther than necessary?
 
@@ -239,7 +239,7 @@ Ask: If this repository had to become simpler, what would you remove first? Do n
 
 Swift/SwiftUI/AppKit/Foundation boundaries, document/file handling, Finder / Quick Look / thumbnail extensions, sandboxing, window/state ownership, main-thread usage, concurrency, resource lifecycle, fighting the platform vs using it directly.
 
-### Convert / render / glTF
+### Render / glTF
 
 Trace the **actual** path a file takes from disk to pixels (and to Quick Look / thumbnail, if those are separate). Identify duplicate loading/parsing/metadata, unnecessary conversions, rendering leaking into file handling or the reverse, QL/host/thumbnail duplication, `.glb` vs `.gltf` paths that diverge without a reason, unclear ownership, excessive caching, resource lifecycle problems.
 
@@ -332,7 +332,7 @@ Compare candidates on:
 7. Dependency impact
 8. Maintainability
 9. Native macOS fit
-10. Convert / render / extension coherence
+10. Render / extension coherence
 11. Runtime behavior
 12. Performance where relevant
 13. Test quality
@@ -371,7 +371,7 @@ Separate reviewers for:
 - Deletion: what can still be removed?
 - Runtime: what could have regressed?
 - macOS: platform problems or unnecessary abstractions?
-- Convert/render/glTF: is the pipeline understandable and correctly separated?
+- Render/glTF: is the pipeline understandable and correctly separated?
 - Maintainability: you joined tomorrow — what would annoy or confuse you?
 
 High-confidence findings become new dex tasks. Weak findings are rejected in the synthesis record.
@@ -412,7 +412,7 @@ Discover the actual UI. Then verify the flows that exist, including at least:
 - Failed / unsupported / inaccessible files: copy, not a spinner; no stale state
 - Open and close document windows; repeat operations
 - Quick Look and Finder thumbnails when the change could have touched extensions (`./scripts/verify.sh` / pluginkit)
-- Still-render proofs when convert/render changed (`./scripts/proof.sh`)
+- Pixel-diff tests when rendering changed
 
 Do not steal focus unless the question requires live chrome. Warn first if it must.
 
@@ -460,7 +460,7 @@ A strong final architecture lets a competent developer answer quickly:
 - How does a file on disk become a rendered scene?
 - What is the canonical model representation, and where is it produced?
 - Who owns the renderer and the loaded scene? How are resources cleaned up?
-- Where do Quick Look and thumbnails sit relative to the host convert/render path?
+- Where do Quick Look and thumbnails sit relative to the host render path?
 - Where do failures originate, and where are they shown?
 - Where does macOS-specific behavior live?
 
@@ -492,7 +492,7 @@ Stop only when:
 - File boundaries are natural; function responsibilities are clear
 - Naming reflects the current architecture
 - Duplicate concepts are consolidated
-- Convert, render, host chrome, Quick Look, and thumbnails are coherent with each other
+- Render, host chrome, Quick Look, and thumbnails are coherent with each other
 - macOS platform boundaries are sensible; resource ownership is clear
 - Dependencies and tests are justified
 - No obvious dead architecture or refactor residue
@@ -525,7 +525,7 @@ Where independent models agreed or disagreed. Do not list every review.
 
 ## Major changes
 
-Architectural changes, deletions, consolidations, data-flow/state/dependency/platform/convert-render changes.
+Architectural changes, deletions, consolidations, data-flow/state/dependency/platform/render changes.
 
 ## Verification
 

@@ -49,7 +49,7 @@ struct OutlinerList<Model: SceneModel, Selection: SelectionModel>: View {
                         }
                     } else {
                         ForEach(section.items) { item in
-                            NodeRow(item: item, isSelected: selection.selected == item.id, selection: selection)
+                            NodeRow(item: item, isSelected: selection.selected == item.id)
                                 .tag(Optional(item.id))
                         }
                     }
@@ -122,11 +122,11 @@ struct OutlinerDisclosure<Selection: SelectionModel>: View {
                     OutlinerDisclosure(item: child, expanded: $expanded, selection: selection)
                 }
             } label: {
-                NodeRow(item: item, isSelected: selection.selected == item.id, selection: selection)
+                NodeRow(item: item, isSelected: selection.selected == item.id)
             }
             .tag(Optional(item.id))
         } else {
-            NodeRow(item: item, isSelected: selection.selected == item.id, selection: selection)
+            NodeRow(item: item, isSelected: selection.selected == item.id)
                 .tag(Optional(item.id))
         }
     }
@@ -151,7 +151,7 @@ struct OutlinerDisclosure<Selection: SelectionModel>: View {
     }
 }
 
-/// Shared Option-key read for disclosure (subtree) and the eye button (isolate).
+/// Option-key read for disclosure: Option-click expands or collapses the whole subtree.
 enum OutlinerOptionKey {
     static var isDown: Bool {
         let eventFlags = NSApp.currentEvent?.modifierFlags ?? []

@@ -1,27 +1,20 @@
 import Foundation
 
-/// Drives "show only what the model has" (DESIGN.md). Every adaptive section and control
-/// reads its visibility from here — never from a hard-coded `if` in a view.
-public protocol Availability: Sendable {
-    var hasAnimations: Bool { get }
-    var hasLights: Bool { get }
-    /// View modes the file can actually render, in menu order. Always starts with the
-    /// base modes; channels the file lacks are absent, not disabled.
-    var availableDebugChannels: [ViewMode] { get }
-}
-
-/// Availability computed straight from a `SceneModel`.
-public struct DerivedAvailability<Model: SceneModel>: Availability {
-    public var model: Model
+/// Drives "show only what the model has" (DESIGN.md) for the view-mode menu: modes the file has
+/// no data for are absent, not disabled.
+public struct Availability: Sendable {
     /// Channels the file has data for; the base modes are prepended.
     public var channels: [DebugChannel]
 
-    public init(model: Model, channels: [DebugChannel] = DebugChannel.allCases) {
-        self.model = model
+    public init(channels: [DebugChannel] = DebugChannel.allCases) {
         self.channels = channels
     }
 
-    public var hasAnimations: Bool { !model.animations.isEmpty }
-    public var hasLights: Bool { !model.lights.isEmpty }
+    /// View modes the file can render, in menu order.
     public var availableDebugChannels: [ViewMode] { ViewMode.base + channels.map(ViewMode.channel) }
+}
+
+extension Availability {
+    /// Dev-time snapshot for `#Preview` and the catalog: a few common channels.
+    public static let preview = Availability(channels: [.normals, .baseColor, .metallic])
 }

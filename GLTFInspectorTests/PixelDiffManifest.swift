@@ -1,13 +1,6 @@
 import Foundation
 @testable import GLTFCore
 
-/// The renderers that keep their own goldens. Never compared against each other — each has its
-/// own tone mapper and light units, so a cross-renderer pixel gate would only measure that.
-enum PixelDiffRendererKind: String, CaseIterable, Codable, Sendable {
-    case webkit
-    case realitykit
-}
-
 /// Where the committed references live and where failures get written.
 enum PixelDiffPaths {
     static let referencesDirectory = TestFixtures.url("TestModels/References")
@@ -20,31 +13,28 @@ enum PixelDiffPaths {
             ?? "/tmp/GLTFInspector-pixel-diff")
     }
 
-    /// `TestModels/References/<renderer>/<name>.png`.
-    static func reference(_ name: String, renderer: PixelDiffRendererKind) -> URL {
-        referencesDirectory
-            .appendingPathComponent(renderer.rawValue, isDirectory: true)
-            .appendingPathComponent("\(name).png")
+    /// `TestModels/References/<name>.png`.
+    static func reference(_ name: String) -> URL {
+        referencesDirectory.appendingPathComponent("\(name).png")
     }
 }
 
 /// The pinned sample set and the committed description of every reference render.
 ///
 /// This one file is the sample list (`scripts/fetch-test-models.sh` downloads exactly these
-/// entries at `samples.commit`), the look every renderer is asked for, the comparison budget per
-/// renderer, and one complete camera pose per model. Nothing that affects the output is left as
+/// entries at `samples.commit`), the look the page is asked for, the comparison budget, and one
+/// complete camera pose per model. Nothing that affects the output is left as
 /// a constant in a test file, so changing an assertion means changing a file someone reviews.
 struct PixelDiffManifest: Codable, Sendable {
     /// Bumped when the meaning of the file changes, so a stale manifest fails loudly instead of
     /// decoding into something plausible.
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     var version: Int
     var samples: SampleSource
     var look: Look
-    /// Keyed by ``PixelDiffRendererKind`` raw value. Set from the measured run-to-run noise
-    /// floor — see `TestModels/References/README.md`.
-    var tolerances: [String: PixelDiff.Tolerance]
+    /// Set from the measured run-to-run noise floor — see `TestModels/References/README.md`.
+    var tolerance: PixelDiff.Tolerance
     var entries: [Entry]
 
     struct SampleSource: Codable, Sendable, Equatable {
@@ -54,9 +44,8 @@ struct PixelDiffManifest: Codable, Sendable {
         var commit: String
     }
 
-    /// Everything about the look, pinned explicitly rather than inherited from a renderer
-    /// default. Values are in the WebKit page's terms; RealityKit's mapping of each is in
-    /// `PixelDiffRealityKit` (`RealityKit/PixelDiffRealityKitTests.swift`).
+    /// Everything about the look, pinned explicitly rather than inherited from a page default.
+    /// Values are in the page's terms.
     struct Look: Codable, Sendable, Equatable {
         /// Square canvas edge, in pixels. Fixed rather than derived — still mode sets
         /// `canvas.width` directly, so `devicePixelRatio` never enters into it.
@@ -64,8 +53,7 @@ struct PixelDiffManifest: Codable, Sendable {
         /// Bundled `.hdr` stem.
         var environment: String
         /// The page's `environmentRotation`. 90 is the Khronos Sample Viewer default view — the
-        /// value the web goldens have always been rendered at, and what a future `RenderLook`
-        /// yaw of 0 maps to.
+        /// value the goldens have always been rendered at, and what `RenderLook` yaw 0 maps to.
         var environmentRotationDegrees: Double
         /// Camera exposure in stops (0 = the page's linear 1).
         var exposureEV: Double
@@ -95,14 +83,13 @@ struct PixelDiffManifest: Codable, Sendable {
                 .appendingPathComponent(files.first ?? "\(name).glb")
         }
 
-        func referenceURL(for renderer: PixelDiffRendererKind) -> URL {
-            PixelDiffPaths.reference(name, renderer: renderer)
+        var referenceURL: URL {
+            PixelDiffPaths.reference(name)
         }
     }
 
-    /// One complete orbit camera, in the WebKit page's terms (the renderer that records it).
-    /// Field for field the page's `CameraPose`, kept here so the manifest decodes without a
-    /// renderer; each renderer maps it in its own harness file. Angles are degrees, `yfov` is
+    /// One complete orbit camera, in the page's terms. Field for field the page's `CameraPose`,
+    /// kept here so the manifest decodes without `RendererWebKit`. Angles are degrees, `yfov` is
     /// radians.
     struct Camera: Codable, Sendable, Equatable {
         var azimuth: Double
@@ -123,7 +110,6 @@ struct PixelDiffManifest: Codable, Sendable {
         case missing(URL)
         case unreadable(URL, any Error)
         case wrongVersion(found: Int, expected: Int)
-        case noTolerance(PixelDiffRendererKind)
 
         var description: String {
             switch self {
@@ -136,20 +122,11 @@ struct PixelDiffManifest: Codable, Sendable {
                 "Could not decode \(url.path): \(error)"
             case .wrongVersion(let found, let expected):
                 "Manifest is version \(found), this build expects \(expected)"
-            case .noTolerance(let renderer):
-                "Manifest has no tolerance for \(renderer.rawValue)"
             }
         }
     }
 
     static let regenerationCommand = "./scripts/regenerate-pixel-references.sh"
-
-    func tolerance(for renderer: PixelDiffRendererKind) throws -> PixelDiff.Tolerance {
-        guard let tolerance = tolerances[renderer.rawValue] else {
-            throw LoadFailure.noTolerance(renderer)
-        }
-        return tolerance
-    }
 
     static func load() throws -> Self {
         let url = PixelDiffPaths.manifestURL
@@ -181,8 +158,8 @@ struct PixelDiffManifest: Codable, Sendable {
 
 /// What a sample exercises, read from its JSON.
 ///
-/// Recorded in the manifest (`requires`) so a later per-renderer capability set can decide which
-/// entries run without opening every file; a core test keeps the record honest.
+/// Recorded in the manifest (`requires`) so what each golden exercises is reviewable without
+/// opening every file; a core test keeps the record honest.
 enum PixelDiffSampleFeatures {
     static func json(of url: URL) throws -> [String: Any] {
         url.pathExtension.lowercased() == "glb"
@@ -233,19 +210,5 @@ enum PixelDiffRegeneration {
 
     static var isNoiseMeasurementRequested: Bool {
         FileManager.default.fileExists(atPath: noiseSentinelURL.path)
-    }
-
-    /// The sentinel is present and names `renderer` (or names none).
-    static func isRequested(for renderer: PixelDiffRendererKind) -> Bool {
-        isRequested && requestedRenderers.contains(renderer)
-    }
-
-    /// Renderers named in the sentinel (whitespace-separated); an empty file means all of them.
-    static var requestedRenderers: [PixelDiffRendererKind] {
-        let text = (try? String(contentsOf: sentinelURL, encoding: .utf8)) ?? ""
-        let named = text.split(whereSeparator: \.isWhitespace).compactMap {
-            PixelDiffRendererKind(rawValue: String($0))
-        }
-        return named.isEmpty ? PixelDiffRendererKind.allCases : named
     }
 }

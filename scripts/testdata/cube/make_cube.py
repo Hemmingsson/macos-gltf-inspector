@@ -2,10 +2,10 @@
 """Generate the `cube` sidecar fixture: cube.gltf + cube.bin + cube.png.
 
 A unit cube with six axis-coloured faces. Unlike the flat `tiny.glb` triangle it
-reads as a solid from every angle, so still-render proofs stay legible from the
-side and back. Standard metallic-roughness + FLOAT attributes + a PNG texture, so
-it loads through EntityLoader's *skip-packing* sidecar path (no temp GLB) — the
-live path that unit tests otherwise never exercise on a real on-disk file.
+reads as a solid from every angle, so camera presets and stills stay legible from
+the side and back. Standard metallic-roughness + FLOAT attributes + a PNG texture
+in sidecar files, so the page and the JSON panels resolve a real `.gltf` with
+external resources.
 
 Pure stdlib (struct/zlib/json). Re-run after editing:  python3 make_cube.py
 """

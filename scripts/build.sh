@@ -4,7 +4,6 @@
 #   ./scripts/build.sh              # install + open /Applications + verify (main checkout only)
 #   ./scripts/build.sh --install-only   # install only (no open/verify)
 #   ./scripts/verify.sh             # check only (no rebuild)
-#   ./scripts/proof.sh              # still-renderer PNG (--qlmanage: + timed qlmanage)
 #
 # Prefer ./scripts/dev.sh for day-to-day work (worktree-aware, no surprise open).
 set -euo pipefail
@@ -15,7 +14,7 @@ INSTALL_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     -h|--help)
-      sed -n '2,9p' "$0"
+      sed -n '2,8p' "$0"
       exit 0
       ;;
     --install-only)

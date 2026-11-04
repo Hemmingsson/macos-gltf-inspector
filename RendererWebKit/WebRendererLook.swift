@@ -2,8 +2,8 @@ import Foundation
 import GLTFCore
 
 extension WebPreviewCanvas {
-    /// Everything the page draws with, as one value: the renderer-neutral `RenderLook` plus the
-    /// canvas's view state. Sent whole (`WebRendererHost.apply`); the page applies it in one call
+    /// Everything the page draws with, as one value: the lighting `RenderLook` plus the canvas's
+    /// view state. Sent whole (`WebRendererHost.apply`); the page applies it in one call
     /// and only redoes the expensive parts (IBL, refit) when those values changed.
     ///
     /// The defaults are the page's own opening state, so `Look()` changes nothing and a still
@@ -15,8 +15,8 @@ extension WebPreviewCanvas {
         var isOrthographic: Bool
         /// Vertical field of view in degrees.
         var fieldOfView: Double
-        /// Camera authored in the file, or nil for the user camera.
-        var fileCameraIndex: Int?
+        /// glTF node index of a camera authored in the file, or nil for the user camera.
+        var fileCameraNodeIndex: Int?
         /// `KHR_materials_variants` index, or nil for the file default.
         var materialVariantIndex: Int?
         /// Scene index; 0 keeps the file's default scene.
@@ -33,7 +33,7 @@ extension WebPreviewCanvas {
             autoRotates: Bool = false,
             isOrthographic: Bool = false,
             fieldOfView: Double = 45,
-            fileCameraIndex: Int? = nil,
+            fileCameraNodeIndex: Int? = nil,
             materialVariantIndex: Int? = nil,
             sceneIndex: Int = 0,
             showsFloor: Bool = false,
@@ -45,7 +45,7 @@ extension WebPreviewCanvas {
             self.autoRotates = autoRotates
             self.isOrthographic = isOrthographic
             self.fieldOfView = fieldOfView
-            self.fileCameraIndex = fileCameraIndex
+            self.fileCameraNodeIndex = fileCameraNodeIndex
             self.materialVariantIndex = materialVariantIndex
             self.sceneIndex = sceneIndex
             self.showsFloor = showsFloor
@@ -58,11 +58,10 @@ extension WebPreviewCanvas {
         /// same way.
         public static func stored(
             showsFloor: Bool = false,
-            defaults: UserDefaults = AppGroupSettings.defaults,
-            directory: URL = AppGroupSettings.containerURL
+            defaults: UserDefaults = AppGroupSettings.defaults
         ) -> Self {
             Self(
-                render: AppGroupSettings.rendererLook(defaults: defaults, directory: directory),
+                render: AppGroupSettings.rendererLook(defaults: defaults),
                 showsFloor: showsFloor
             )
         }
@@ -79,7 +78,8 @@ extension WebPreviewCanvas {
 /// | `toneMapping` | `toneMap` (raw value is the Khronos name) | by definition |
 /// | `background` | page background behind a transparent canvas | by definition |
 /// | `environment` | bundled `.hdr` served at `/environments/<stem>.hdr` | by definition |
-/// | `usesFileLights`, `usesEnvironment` | not mapped: the page draws file lights as authored and always uses the IBL | assumed |
+///
+/// File lights (`KHR_lights_punctual`) are drawn as authored, alongside the IBL.
 struct PageLook: Encodable, Equatable {
     /// Khronos default: `environmentRotation` 90 is the Sample Viewer's view, and yaw 0 means that.
     static let khronosDefaultRotation = 90.0
@@ -117,7 +117,7 @@ struct PageLook: Encodable, Equatable {
         autoRotate = look.autoRotates
         orthographic = look.isOrthographic
         yfov = look.fieldOfView
-        cameraNodeIndex = look.fileCameraIndex
+        cameraNodeIndex = look.fileCameraNodeIndex
         variant = look.materialVariantIndex
         sceneIndex = look.sceneIndex
         floor = look.showsFloor

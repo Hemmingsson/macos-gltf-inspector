@@ -1,7 +1,7 @@
 import Foundation
 
-/// Which view modes a file has data for, from the glTF JSON alone. Both renderers start from
-/// this list, so the view-mode menu shows what the file has and not what one converter kept.
+/// Which view modes a file has data for, from the glTF JSON alone, so the view-mode menu shows
+/// only what the file has.
 public struct ViewModeAvailability: Sendable, Equatable {
     /// Channels with data, in menu order.
     public var channels: [RenderViewMode.Channel] {

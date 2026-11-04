@@ -1,19 +1,17 @@
 import SwiftUI
 
 /// An outliner / list row: leading icon, title (middle-truncated, so "Cube.001" keeps its suffix),
-/// optional subtitle, and a trailing accessory (visibility eye, count).
+/// optional subtitle, and a trailing accessory (a count, say).
 ///
 /// Built for a native `List(selection:)`: the row draws **no** selection of its own — the list's
 /// highlight and emphasised text styles apply because every colour is hierarchical. For a custom
 /// row that cannot use native selection, pass `isSelected: true`: the row paints
 /// `DS.Color.selectionFill` (outset behind it, so layout does not shift) and switches the title to
-/// `DS.Color.selectionText`. `isMuted` renders a hidden node's title in `.tertiary` rather than
-/// dimming the row with opacity.
+/// `DS.Color.selectionText`.
 public struct DSListRow<Icon: View, Accessory: View>: View {
     private let title: String
     private let subtitle: String?
     private let isSelected: Bool
-    private let isMuted: Bool
     private let icon: Icon
     private let accessory: Accessory
 
@@ -21,14 +19,12 @@ public struct DSListRow<Icon: View, Accessory: View>: View {
         _ title: String,
         subtitle: String? = nil,
         isSelected: Bool = false,
-        isMuted: Bool = false,
         @ViewBuilder icon: () -> Icon,
         @ViewBuilder accessory: () -> Accessory
     ) {
         self.title = title
         self.subtitle = subtitle
         self.isSelected = isSelected
-        self.isMuted = isMuted
         self.icon = icon()
         self.accessory = accessory()
     }
@@ -65,9 +61,7 @@ public struct DSListRow<Icon: View, Accessory: View>: View {
     }
 
     private var titleStyle: AnyShapeStyle {
-        if isSelected { return AnyShapeStyle(DS.Color.selectionText) }
-        if isMuted { return AnyShapeStyle(DS.Color.textTertiary) }
-        return AnyShapeStyle(DS.Color.textPrimary)
+        isSelected ? AnyShapeStyle(DS.Color.selectionText) : AnyShapeStyle(DS.Color.textPrimary)
     }
 }
 
@@ -77,10 +71,9 @@ public extension DSListRow where Accessory == EmptyView {
         _ title: String,
         subtitle: String? = nil,
         isSelected: Bool = false,
-        isMuted: Bool = false,
         @ViewBuilder icon: () -> Icon
     ) {
-        self.init(title, subtitle: subtitle, isSelected: isSelected, isMuted: isMuted, icon: icon) {
+        self.init(title, subtitle: subtitle, isSelected: isSelected, icon: icon) {
             EmptyView()
         }
     }
@@ -93,14 +86,12 @@ public extension DSListRow where Icon == DSTypeIcon {
         subtitle: String? = nil,
         role: DSTypeRole,
         isSelected: Bool = false,
-        isMuted: Bool = false,
         @ViewBuilder accessory: () -> Accessory
     ) {
         self.init(
             title,
             subtitle: subtitle,
             isSelected: isSelected,
-            isMuted: isMuted,
             icon: { DSTypeIcon(role, isSelected: isSelected) },
             accessory: accessory
         )
@@ -113,10 +104,9 @@ public extension DSListRow where Icon == DSTypeIcon, Accessory == EmptyView {
         _ title: String,
         subtitle: String? = nil,
         role: DSTypeRole,
-        isSelected: Bool = false,
-        isMuted: Bool = false
+        isSelected: Bool = false
     ) {
-        self.init(title, subtitle: subtitle, role: role, isSelected: isSelected, isMuted: isMuted) {
+        self.init(title, subtitle: subtitle, role: role, isSelected: isSelected) {
             EmptyView()
         }
     }
@@ -130,10 +120,7 @@ public extension DSListRow where Icon == DSTypeIcon, Accessory == EmptyView {
         Section {
             DSListRow("Cube", role: .mesh).tag("Cube")
             DSListRow("Camera", role: .camera).tag("Camera")
-            DSListRow("Hidden light", role: .light, isMuted: true) {
-                Image(systemName: "eye.slash").foregroundStyle(DS.Color.textSecondary)
-            }
-            .tag("Light")
+            DSListRow("Key light", role: .light).tag("Light")
         } header: {
             DSSectionHeader("Scene")
         }
@@ -151,7 +138,6 @@ public extension DSListRow where Icon == DSTypeIcon, Accessory == EmptyView {
     DSContentPreviewStage(width: DS.Metrics.sidebarWidth) {
         DSListRow("Cube", role: .mesh, isSelected: true)
         DSListRow("Faces", subtitle: "PBR metallic-roughness", role: .material)
-        DSListRow("Hidden", role: .mesh, isMuted: true)
     }
 }
 

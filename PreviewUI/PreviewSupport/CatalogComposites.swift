@@ -15,7 +15,7 @@ public enum CatalogComposites {
 
     /// Centre Look cluster (view-mode menu │ lighting chip).
     public static func lookCluster(
-        availability: some Availability,
+        availability: Availability,
         viewport: some ViewportController
     ) -> some View {
         LookCluster(availability: availability, viewport: viewport)
@@ -27,19 +27,13 @@ public enum CatalogComposites {
     }
 
     /// The lighting chip; click opens the live popover. Standalone so it draws its own glass.
-    public static func lightingChip(
-        availability: some Availability,
-        viewport: some ViewportController
-    ) -> some View {
-        LightingPopover(availability: availability, viewport: viewport)
+    public static func lightingChip(viewport: some ViewportController) -> some View {
+        LightingPopover(viewport: viewport)
     }
 
     /// The lighting popover body, hosted inline.
-    public static func lightingControls(
-        availability: some Availability,
-        viewport: some ViewportController
-    ) -> some View {
-        LightingControls(availability: availability, viewport: viewport)
+    public static func lightingControls(viewport: some ViewportController) -> some View {
+        LightingControls(viewport: viewport)
     }
 
     /// The field-of-view chip; click opens the live popover. Standalone so it draws its own glass.
@@ -50,11 +44,6 @@ public enum CatalogComposites {
     /// The field-of-view popover body, hosted inline.
     public static func fieldOfViewControls(viewport: some ViewportController) -> some View {
         FieldOfViewControls(viewport: viewport)
-    }
-
-    /// Bottom-centre playback bar.
-    public static func playbackBar(playback: some ClipPlaybackController) -> some View {
-        PlaybackBar(playback: playback)
     }
 
     /// Left sidebar column at its fixed shell width.
@@ -82,14 +71,12 @@ public enum CatalogComposites {
     public static func inspector(
         selection: some SelectionModel,
         documentState: ShellDocumentState = .ready,
-        openInMenu: AnyView,
-        morphTargets: [MorphTargetControl] = []
+        openInMenu: AnyView
     ) -> some View {
         RightInspector(
             selection: selection,
             documentState: documentState,
-            openInMenu: openInMenu,
-            morphTargets: morphTargets
+            openInMenu: openInMenu
         )
         .frame(width: DS.Metrics.inspectorWidth)
     }

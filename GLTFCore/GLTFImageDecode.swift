@@ -4,7 +4,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// Pixel size + PNG thumbs for glTF images, straight from the encoded bytes.
-/// Header-only where possible: no renderer, no full-raster decode for sizing.
+/// Header-only where possible: no full-raster decode for sizing.
 enum GLTFImageDecode {
     /// Pixel size + optional inspector thumb from one ImageIO source.
     static func preview(

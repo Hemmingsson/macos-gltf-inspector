@@ -6,8 +6,6 @@ public extension DS {
     enum Motion {
         /// Default chrome duration (panes, clusters appearing).
         public static let chromeDuration: TimeInterval = 0.15
-        /// Hover affordances (row eye buttons, focus fades).
-        public static let hoverDuration: TimeInterval = 0.12
 
         /// `easeInOut` for chrome transitions, or `nil` when Reduce Motion is on.
         public static func chrome(
@@ -15,11 +13,6 @@ public extension DS {
             duration: TimeInterval = chromeDuration
         ) -> Animation? {
             reduceMotion ? nil : .easeInOut(duration: duration)
-        }
-
-        /// The quicker fade for hover-revealed controls, or `nil` when Reduce Motion is on.
-        public static func hoverFade(reduceMotion: Bool) -> Animation? {
-            chrome(reduceMotion: reduceMotion, duration: hoverDuration)
         }
     }
 }

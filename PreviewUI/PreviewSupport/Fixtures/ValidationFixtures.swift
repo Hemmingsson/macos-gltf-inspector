@@ -30,19 +30,4 @@ enum ValidationFixtures {
     formatLabel: "glTF 2.0",
     status: .ready
   )
-
-  static let convertProblems = ConvertProblemList(
-    entries: [
-      ConvertProblemList.Entry(
-        severity: .error,
-        title: "Texture did not load",
-        code: "missingTexture"
-      ),
-      ConvertProblemList.Entry(
-        severity: .warning,
-        title: "Ignored extension KHR_materials_iridescence",
-        code: "ignoredExtension"
-      )
-    ]
-  )
 }

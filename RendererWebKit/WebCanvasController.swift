@@ -124,6 +124,9 @@ public final class WebCanvasController {
         guard let host else { return }
 
         let modelChanged = loaded != url
+        // `.failed` is terminal for this model: the failure re-renders the owner, and retrying
+        // here would flip back to `.loading`, remount the canvas and fail again, forever.
+        if case .failed = phase, !modelChanged { return }
         // A look change during page start used to take the apply-only path (`modelChanged` is
         // already false once `loaded` is set) and never `load` / `revealLive`.
         let needsLoad = modelChanged || !didRevealLive

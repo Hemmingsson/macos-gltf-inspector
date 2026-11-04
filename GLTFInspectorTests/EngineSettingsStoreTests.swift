@@ -1,5 +1,4 @@
 import Foundation
-@testable import GLTFCore
 import PreviewUI
 import Testing
 @testable import GLTFInspector
@@ -12,15 +11,9 @@ struct EngineSettingsStoreTests {
         defaults.removePersistentDomain(forName: suite)
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        let lookDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("engine-settings-look-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: lookDir) }
-
         let defaultsStore = AppDefaultsStore(defaults: defaults)
-        let lookStore = AppLookStore(directory: lookDir)
-        let tracking = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
-        let overridden = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
+        let tracking = EngineSettingsStore(defaultsStore: defaultsStore)
+        let overridden = EngineSettingsStore(defaultsStore: defaultsStore)
 
         defaultsStore.set(true, for: .autoRotate)
         #expect(tracking.sessionValue(for: .autoRotate) == true)
@@ -44,14 +37,8 @@ struct EngineSettingsStoreTests {
         defaults.removePersistentDomain(forName: suite)
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        let lookDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("engine-settings-session-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: lookDir) }
-
         let defaultsStore = AppDefaultsStore(defaults: defaults)
-        let lookStore = AppLookStore(directory: lookDir)
-        let store = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
+        let store = EngineSettingsStore(defaultsStore: defaultsStore)
 
         store.setSession(false, for: .center)
         store.setSession(.orthographic, for: .projection)

@@ -152,34 +152,6 @@ struct HUDCapsulePage: View {
                             .foregroundStyle(DS.Color.textPrimary)
                     }
                 }
-                StateRow("Playback", minHeight: 72) {
-                    Live(PlaybackHUD()) { $hud in
-                        DSHUDCapsule(height: 36, horizontalPadding: DS.Spacing.s) {
-                            DSGlassIconButton(
-                                $hud.wrappedValue.isPlaying ? "Pause" : "Play",
-                                systemImage: $hud.wrappedValue.isPlaying ? "pause.fill" : "play.fill"
-                            ) {
-                                $hud.isPlaying.wrappedValue.toggle()
-                            }
-                            Slider(value: $hud.playhead)
-                                .controlSize(.small)
-                                .frame(width: 140)
-                                .accessibilityLabel("Playhead")
-                            Text("0:01.2 / 0:03.7")
-                                .font(DS.Font.value)
-                                .foregroundStyle(DS.Color.textSecondary)
-                            DSGlassIslandDivider()
-                            DSGlassMenuButton(
-                                "Animation clip",
-                                systemImage: "film",
-                                style: .titled("Idle")
-                            ) {
-                                Button("Idle") {}
-                                Button("Walk") {}
-                            }
-                        }
-                    }
-                }
                 StateRow("Long readout") {
                     DSHUDCapsule {
                         Text("124.50 × 88.25 × 1,024.00 m")
@@ -264,11 +236,6 @@ private struct CameraToggles {
     var autoRotate = true
     var centered = true
     var orthographic = false
-}
-
-private struct PlaybackHUD {
-    var isPlaying = false
-    var playhead = 0.32
 }
 
 private enum CatalogSwatches {

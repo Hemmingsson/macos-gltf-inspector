@@ -3,21 +3,16 @@ import GLTFCore
 import PreviewUI
 import SwiftUI
 
-/// Document window chrome: PreviewUI `ShellRootView` + engine adapters around one renderer's
-/// canvas. Renderer-neutral — the window roots in `RealityKit/` and `WebKit/` own loading and
-/// the canvas, and pass in playback / morph sliders. Feature availability comes from
-/// `window.features` (the mounted renderer's `RendererFeature` set).
+/// Document window chrome: PreviewUI `ShellRootView` + engine adapters around the web canvas.
+/// `DocumentWindow` owns loading and the canvas.
 ///
-/// Clusters / selection / export / playback / scene+variant write through the engine adapters into
-/// the window's `DocumentWindowModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
+/// Clusters / selection / export / scene+variant write through the engine adapters into the
+/// window's `DocumentWindowModel`. Settings-backed keys use `EngineSettingsStore` lazy overlay
 /// (untouched keys track defaults live).
-struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
+struct DocumentShell<Canvas: View>: View {
     let window: DocumentWindowModel
     /// Canvas region state; the panels follow `window.phase`.
     let canvasState: ShellDocumentState
-    let playback: Playback
-    var morphTargets: [MorphTargetControl] = []
-    var onSetMorphWeight: (String, Double) -> Void = { _, _ in }
     @ViewBuilder let canvas: () -> Canvas
 
     @Environment(\.openDocument) private var openDocument
@@ -43,26 +38,20 @@ struct DocumentShell<Playback: ClipPlaybackController, Canvas: View>: View {
     private var shellRoot: some View {
         // One snapshot per body: `sceneModel` copies the model and remaps validation.
         let model = window.sceneModel
-        let availability = RendererAvailability(
-            model: model,
-            viewModes: window.previewSession.viewModes,
-            features: window.features
-        )
         ShellRootView(
             model: model,
-            availability: availability,
+            availability: Availability(
+                channels: EngineSceneModel.mapDebugChannels(window.previewSession.viewModes)
+            ),
             documentState: window.phase,
             canvasState: canvasState,
             selection: window.selection,
             viewport: window.engineViewport,
-            playback: playback,
             panels: window.panels,
-            morphTargets: morphTargets,
-            onSetMorphWeight: onSetMorphWeight,
             openInMenu: AnyView(OpenInMenuItems(documentURL: window.loadingURL ?? window.documentURL))
         ) {
-            // A new document (or a RealityKit scene / variant reload) remounts the canvas only;
-            // the split view and viewport keep their identity.
+            // A new document remounts the canvas only; the split view and viewport keep their
+            // identity.
             canvas()
                 .id(window.loadGeneration)
         }

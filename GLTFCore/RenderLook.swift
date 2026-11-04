@@ -1,15 +1,5 @@
-/// The whole look a renderer applies to a model, in renderer-neutral units.
-///
-/// Each renderer maps this in one place and applies it whole: `RendererRealityKit/RealityLook.swift`
-/// and `RendererWebKit/WebRendererLook.swift`.
-///
-/// Per-renderer mapping constants, from the look probes (`.agents/research/2026-09-30-look-probes.md`).
-///
-/// | Field | RealityKit | WebKit (Khronos page) |
-/// | --- | --- | --- |
-/// | `environmentYawDegrees` Y | IBL yaw = π − Y (radians) | page rotation = 90 + Y |
-/// | punctual intensity | ×591 (point/spot) | as authored |
-/// | spot cone | intensity ×π, cone angle ×2 | as authored |
+/// The lighting look applied to a model: what Settings stores and the window's lighting popover
+/// edits. `RendererWebKit/WebRendererLook.swift` maps it onto the page in one place (`PageLook`).
 public struct RenderLook: Sendable, Hashable, Codable {
     /// Exposure compensation in EV (stops). Scales all light before tone mapping.
     public var exposureEV: Double
@@ -17,44 +7,34 @@ public struct RenderLook: Sendable, Hashable, Codable {
     public var environmentIntensity: Double
     /// Environment rotation about +Y in degrees. 0 is the Khronos sample viewer's default view.
     public var environmentYawDegrees: Double
-    /// Whether the bundled environment lights the model at all.
-    public var usesEnvironment: Bool
     /// Which bundled Khronos environment.
     public var environment: KhronosEnvironments
     public var toneMapping: ToneMapping
     public var background: Color
-    /// Use the file's `KHR_lights_punctual` lights (the renderer owns how the studio dims for them).
-    public var usesFileLights: Bool
 
     public static let standard = RenderLook(
         exposureEV: 0,
         environmentIntensity: 1,
         environmentYawDegrees: 0,
-        usesEnvironment: true,
         environment: .defaultLook,
         toneMapping: .pbrNeutral,
-        background: .clear,
-        usesFileLights: false
+        background: .clear
     )
 
     public init(
         exposureEV: Double,
         environmentIntensity: Double,
         environmentYawDegrees: Double,
-        usesEnvironment: Bool,
         environment: KhronosEnvironments,
         toneMapping: ToneMapping,
-        background: Color,
-        usesFileLights: Bool
+        background: Color
     ) {
         self.exposureEV = exposureEV
         self.environmentIntensity = environmentIntensity
         self.environmentYawDegrees = environmentYawDegrees
-        self.usesEnvironment = usesEnvironment
         self.environment = environment
         self.toneMapping = toneMapping
         self.background = background
-        self.usesFileLights = usesFileLights
     }
 
     /// Tone-mapping curve. Raw values are the Khronos sample renderer's names, which is also how

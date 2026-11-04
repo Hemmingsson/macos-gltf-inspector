@@ -3,13 +3,12 @@
 
 One tiny, self-contained glTF per capability the new UI shows/hides (DESIGN.md
 "show only what the model has"). Geometry is the flat unit triangle used by the
-in-memory test builders, so every file is byte-small and known to load through
-GLTFKit2 / EntityLoader. Buffers are embedded as base64 `data:` URIs — single
-file, no `.bin` sidecar, nothing to download.
+in-memory test builders, so every file is byte-small and loads in the page and the
+validator. Buffers are embedded as base64 `data:` URIs — single file, no `.bin`
+sidecar, nothing to download.
 
-These mirror the JSON that the passing Swift builders emit
-(`SceneGraphConvertTests`, `SessionDocumentTests`, `MorphSkeletonTests`), so they
-stay valid. Catalogue: `scripts/testdata/README.md`. Accessor: `GLTFInspectorTests/TestFixtures.swift`.
+These mirror the JSON that the Swift builders emit (`SessionDocumentTests`,
+`TestGLBFixtures.swift`), so they stay valid. Catalogue: `scripts/testdata/README.md`. Accessor: `GLTFInspectorTests/TestFixtures.swift`.
 
 Pure stdlib. Re-run after editing:  python3 scripts/testdata/make_fixtures.py
 """
@@ -160,32 +159,6 @@ def make_missing_channels():
     write("missing-channels/basecolor-only.gltf", doc)
 
 
-# --- missing-texture: valid JSON, image URI that does not exist -------------
-def make_missing_texture():
-    blob = floats(TRI)
-    doc = base_doc(blob, {
-        "images": [{"uri": "does-not-exist.png"}],
-        "textures": [{"source": 0}],
-        "materials": [{
-            "name": "MissingMap",
-            "pbrMetallicRoughness": {
-                "baseColorTexture": {"index": 0},
-                "metallicFactor": 0.0,
-                "roughnessFactor": 0.6,
-            },
-        }],
-        "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": len(blob)}],
-        "accessors": [tri_position_accessor()],
-        "meshes": [{"name": "Textured", "primitives": [
-            {"attributes": {"POSITION": 0}, "material": 0},
-        ]}],
-        "nodes": [{"name": "Mesh", "mesh": 0}],
-        "scenes": [{"name": "Default", "nodes": [0]}],
-        "scene": 0,
-    })
-    write("missing-texture/missing-image.gltf", doc)
-
-
 # --- rigged: two-joint skin (ports writeTempTwoJointSkinGLB) -----------------
 def make_rigged():
     positions = floats(TRI)                                   # 36 B
@@ -273,7 +246,6 @@ def main():
     make_lights()
     make_cameras()
     make_missing_channels()
-    make_missing_texture()
     make_rigged()
     make_morph()
     make_corrupt()

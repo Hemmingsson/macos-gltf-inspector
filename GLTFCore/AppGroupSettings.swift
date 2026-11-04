@@ -3,9 +3,8 @@ import Foundation
 /// The one settings store shared by the host and both extensions.
 ///
 /// Everything Settings writes lives in the App Group `groupID`: `settings.*` keys in the group's
-/// `UserDefaults` suite, and `look.json` + custom `ibl/` files in the group container. The host
-/// (not sandboxed) and both sandboxed extensions claim the group, so all three processes resolve
-/// the same suite and the same directory.
+/// `UserDefaults` suite. The host (not sandboxed) and both sandboxed extensions claim the group,
+/// so all three processes resolve the same suite.
 ///
 /// Foundation-only and extension-safe on purpose; `PreviewUI` keeps its own `SettingKey`
 /// strings because it must not import `GLTFCore` (`AppGroupSettingsTests` asserts they match).
@@ -20,10 +19,8 @@ public enum AppGroupSettings {
         public static let showFloor = "settings.preview.showFloor"
         public static let appearance = "settings.general.appearance"
         public static let toneMapping = "settings.preview.toneMapping"
-        /// Developer switch, hidden from Settings (`RendererKind`).
-        public static let renderer = "settings.preview.renderer"
-        // `useEnvironmentMap` / `environmentCatalog` / `customEnvironmentFile` are not
-        // UserDefaults keys: the host routes them into `look.json` (`AppLook`).
+        /// `KhronosEnvironments.rawValue`.
+        public static let environment = "settings.preview.environmentCatalog"
     }
 
     /// Fresh-install values. `register(defaults:)` is per process: the host registers them at
@@ -35,6 +32,7 @@ public enum AppGroupSettings {
             Key.autoRotate: true,
             Key.showFloor: true,
             Key.toneMapping: RenderLook.standard.toneMapping.rawValue,
+            Key.environment: RenderLook.standard.environment.rawValue,
         ]
     }
 
@@ -48,8 +46,8 @@ public enum AppGroupSettings {
         return .standard
     }()
 
-    /// Group container root: holds `look.json` and `ibl/`. Falls back to the process's own
-    /// Application Support folder when the group is not claimed (logged).
+    /// Group container root: holds the cached Finder posters (`FirstPixelPreview`). Falls back to
+    /// the process's own Application Support folder when the group is not claimed (logged).
     public static var containerURL: URL {
         if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID) {
             return url
@@ -64,16 +62,15 @@ public enum AppGroupSettings {
     }
 
     /// The look Settings stored, for surfaces with no window state of their own (Quick Look and
-    /// the Finder thumbnail): the environment from `look.json`, the tone mapping from the suite,
-    /// everything else `RenderLook.standard`. Registers the fresh-install defaults first so a
-    /// caller cannot forget.
-    public static func rendererLook(
-        defaults: UserDefaults = defaults,
-        directory: URL = containerURL
-    ) -> RenderLook {
+    /// the Finder thumbnail): environment and tone mapping from the suite, everything else
+    /// `RenderLook.standard`. Registers the fresh-install defaults first so a caller cannot forget.
+    public static func rendererLook(defaults: UserDefaults = defaults) -> RenderLook {
         registerDefaults(in: defaults)
         var look = RenderLook.standard
-        look.environment = AppLook.load(from: directory).catalog
+        if let stored = defaults.string(forKey: Key.environment),
+           let environment = KhronosEnvironments(rawValue: stored) {
+            look.environment = environment
+        }
         if let stored = defaults.string(forKey: Key.toneMapping),
            let toneMapping = RenderLook.ToneMapping(rawValue: stored) {
             look.toneMapping = toneMapping

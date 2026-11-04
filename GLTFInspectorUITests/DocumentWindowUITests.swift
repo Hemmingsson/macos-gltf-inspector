@@ -1,7 +1,6 @@
 import XCTest
 
-/// Real-window flows, each run on both renderers (`-GLTFRenderer` launch override). Screenshots
-/// are kept in the xcresult as evidence.
+/// Real-window flows. Screenshots are kept in the xcresult as evidence.
 final class DocumentWindowUITests: XCTestCase {
     private var app: XCUIApplication?
 
@@ -16,27 +15,20 @@ final class DocumentWindowUITests: XCTestCase {
 
     // MARK: 1. Open a GLB from argv
 
-    func testOpenRealityKit() { openGLB(.realityKit) }
-    func testOpenWebKit() { openGLB(.webKit) }
-
-    private func openGLB(_ renderer: UIRenderer) {
-        let app = launch(renderer)
-        let marker = waitForCanvas(in: app)
-        XCTAssertEqual(marker.label, renderer.rawValue)
-        attachScreenshot(app, named: "open-\(renderer.rawValue)")
+    func testOpen() {
+        let app = launch()
+        waitForCanvas(in: app)
+        attachScreenshot(app, named: "open")
     }
 
     // MARK: 2. View menu: wireframe, Fit, Reset View
 
-    func testViewModesRealityKit() { viewModes(.realityKit) }
-    func testViewModesWebKit() { viewModes(.webKit) }
-
-    private func viewModes(_ renderer: UIRenderer) {
-        let app = launch(renderer)
+    func testViewModes() {
+        let app = launch()
         waitForCanvas(in: app)
 
         clickMenu(app, "View", "View Mode", "Wireframe")
-        attachScreenshot(app, named: "wireframe-\(renderer.rawValue)")
+        attachScreenshot(app, named: "wireframe")
 
         clickMenu(app, "View", "Fit")
         XCTAssertTrue(canvasReady(in: app).exists)
@@ -45,16 +37,13 @@ final class DocumentWindowUITests: XCTestCase {
 
         clickMenu(app, "View", "View Mode", "Shaded")
         XCTAssertTrue(canvasReady(in: app).exists)
-        attachScreenshot(app, named: "shaded-after-reset-\(renderer.rawValue)")
+        attachScreenshot(app, named: "shaded-after-reset")
     }
 
     // MARK: 3. Outliner selection → inspector
 
-    func testOutlinerSelectionRealityKit() { outlinerSelection(.realityKit) }
-    func testOutlinerSelectionWebKit() { outlinerSelection(.webKit) }
-
-    private func outlinerSelection(_ renderer: UIRenderer) {
-        let app = launch(renderer)
+    func testOutlinerSelection() {
+        let app = launch()
         waitForCanvas(in: app)
 
         // `NodeRow` label: "<name>, <kind>". BoxAnimated's nodes are unnamed → "Node <index>".
@@ -73,11 +62,11 @@ final class DocumentWindowUITests: XCTestCase {
             .matching(NSPredicate(format: "value BEGINSWITH %@", "Node 1,"))
             .firstMatch
         XCTAssertTrue(header.waitForExistence(timeout: UIWait.timeout), "inspector does not show Node 1")
-        attachScreenshot(app, named: "selection-\(renderer.rawValue)")
+        attachScreenshot(app, named: "selection")
     }
 
-    private func launch(_ renderer: UIRenderer) -> XCUIApplication {
-        let app = makeApp(renderer: renderer, file: UIFixture.boxAnimated)
+    private func launch() -> XCUIApplication {
+        let app = makeApp(file: UIFixture.boxAnimated)
         app.launch()
         self.app = app
         return app

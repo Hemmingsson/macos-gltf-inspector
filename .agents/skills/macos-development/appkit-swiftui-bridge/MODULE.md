@@ -12,7 +12,7 @@ Do not default to AppKit at an arbitrary row count.
 
 ## When to bridge
 
-- `NSViewRepresentable`: no SwiftUI equivalent (rich `NSTextView`, Metal host) or a **measured** list need.
+- `NSViewRepresentable`: no SwiftUI equivalent (rich `NSTextView`, `WKWebView`) or a **measured** list need.
 - `NSHostingView` / `NSHostingController`: SwiftUI inside an AppKit app or split/sheet.
 - Pure SwiftUI: new work with adequate SwiftUI coverage.
 

@@ -79,3 +79,5 @@ public final class AppDefaultsStore {
         }
     }
 }
+
+extension AppDefaultsStore: SettingsDefaultsStore {}

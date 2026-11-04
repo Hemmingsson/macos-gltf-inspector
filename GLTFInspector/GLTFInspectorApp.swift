@@ -67,7 +67,7 @@ struct GLTFInspectorApp: App {
 
     var body: some Scene {
         DocumentGroup(viewing: GLTFInspectorFileDocument.self) { file in
-            DocumentWindowRouter(documentURL: file.fileURL)
+            DocumentWindow(documentURL: file.fileURL)
         }
         .defaultSize(width: 1280, height: 820)
         .windowResizability(.contentMinSize)
@@ -101,13 +101,7 @@ struct GLTFInspectorApp: App {
         .restorationBehavior(.disabled)
 
         Settings {
-            PreviewSettingsRoot(
-                store: EngineAppDefaultsBridge.shared,
-                importCustomEnvironment: { url in
-                    try EngineAppDefaultsBridge.shared.importCustomEnvironment(from: url)
-                },
-                renderers: RendererRouter.settingsOptions
-            )
+            PreviewSettingsRoot(store: AppDefaultsStore.appGroup)
         }
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Stub viewer document. The renderer window loads from `FileDocumentConfiguration.fileURL`.
+/// Stub viewer document. `DocumentWindow` loads from `FileDocumentConfiguration.fileURL`.
 struct GLTFInspectorFileDocument: FileDocument {
     static var readableContentTypes: [UTType] {
         [
@@ -15,7 +15,8 @@ struct GLTFInspectorFileDocument: FileDocument {
     init() {}
 
     init(configuration: ReadConfiguration) throws {
-        // Intentionally ignore FileWrapper bytes — GLTFKit2 needs a filesystem URL + parent dir.
+        // Intentionally ignore FileWrapper bytes — the page loads from the file URL, so sidecar
+        // buffers and textures resolve against its folder.
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {

@@ -51,9 +51,9 @@ struct SegmentedPickerPage: View {
         CatalogPageView(page: .segmentedPicker) {
             StateGroup(title: "States") {
                 StateRow("Default") {
-                    Live(false) { $usesFileLights in
-                        DSSegmentedPicker("Lights", selection: $usesFileLights, options: [false, true]) {
-                            $0 ? "File" : "Studio"
+                    Live(false) { $isOrthographic in
+                        DSSegmentedPicker("Projection", selection: $isOrthographic, options: [false, true]) {
+                            $0 ? "Orthographic" : "Perspective"
                         }
                     }
                 }
@@ -67,13 +67,13 @@ struct SegmentedPickerPage: View {
                     }
                 }
                 StateRow("Hidden label") {
-                    Live(false) { $usesFileLights in
+                    Live(false) { $isOrthographic in
                         DSSegmentedPicker(
-                            "Lights",
-                            selection: $usesFileLights,
+                            "Projection",
+                            selection: $isOrthographic,
                             options: [false, true],
                             labelVisibility: .hidden
-                        ) { $0 ? "File" : "Studio" }
+                        ) { $0 ? "Orthographic" : "Perspective" }
                     }
                 }
                 StateRow("Long text") {
@@ -87,9 +87,9 @@ struct SegmentedPickerPage: View {
                     }
                 }
                 StateRow("Disabled") {
-                    Live(false) { $usesFileLights in
-                        DSSegmentedPicker("Lights", selection: $usesFileLights, options: [false, true]) {
-                            $0 ? "File" : "Studio"
+                    Live(false) { $isOrthographic in
+                        DSSegmentedPicker("Projection", selection: $isOrthographic, options: [false, true]) {
+                            $0 ? "Orthographic" : "Perspective"
                         }
                         .disabled(true)
                     }
@@ -221,10 +221,10 @@ struct PopoverPanelPage: View {
                                     $0.formatted(.number.precision(.fractionLength(0))) + "°"
                                 }
                                 DSSegmentedPicker(
-                                    "Lights",
-                                    selection: $panel.usesFileLights,
+                                    "Projection",
+                                    selection: $panel.isOrthographic,
                                     options: [false, true]
-                                ) { $0 ? "File" : "Studio" }
+                                ) { $0 ? "Orthographic" : "Perspective" }
                             }
                         }
                     }
@@ -280,5 +280,5 @@ struct PopoverPanelPage: View {
 private struct LightingPanel {
     var exposure = 0.5
     var rotation = 120.0
-    var usesFileLights = false
+    var isOrthographic = false
 }

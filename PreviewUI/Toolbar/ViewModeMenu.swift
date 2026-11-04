@@ -9,13 +9,13 @@ import SwiftUI
 /// **Adaptive.** The list is `availability.availableDebugChannels` verbatim — it is not
 /// `ViewMode.base + DebugChannel.allCases` filtered here, and there is no `if` in this file that
 /// mentions a channel. A file with no clearcoat map simply has no Clearcoat row; nothing is shown
-/// disabled. That keeps the rule in one place (`Availability`) where a later engine adapter
-/// answers it from real data instead of every menu re-deriving it.
+/// disabled. That keeps the rule in one place (`Availability`), which the host fills from the
+/// file's data, instead of every menu re-deriving it.
 ///
 /// Icon + current title + DS chevron (`DSGlassMenuButton.titled`). Shortcuts come from
 /// `DS.Shortcuts` so they cannot collide with camera presets.
-struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: View {
-    var availability: Capabilities
+struct ViewModeMenu<Viewport: ViewportController>: View {
+    var availability: Availability
     var viewport: Viewport
 
     var body: some View {
@@ -69,10 +69,10 @@ public enum ViewModeMenuChrome {
 // MARK: - Previews
 
 private struct ViewModeMenuPreviewHost: View {
-    var availability: MockAvailability
+    var availability: Availability
     @State private var viewport: MockViewportController
 
-    init(availability: MockAvailability = MockAvailability(), viewport: MockViewportController) {
+    init(availability: Availability = .preview, viewport: MockViewportController) {
         self.availability = availability
         _viewport = State(initialValue: viewport)
     }

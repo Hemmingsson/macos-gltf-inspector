@@ -6,20 +6,18 @@ import SwiftUI
 /// `ShellPanelChrome`; the inspector opens only when something is selected, and closing it
 /// clears the selection.
 ///
-/// Generic over the canvas so the host injects the renderer canvas without PreviewUI importing a renderer.
+/// Generic over the canvas so the host injects the web canvas without PreviewUI importing it.
 public struct ShellRootView<
     Canvas: View,
     Model: SceneModel,
-    Capabilities: Availability,
     Selection: SelectionModel,
-    Viewport: ViewportController,
-    Playback: ClipPlaybackController
+    Viewport: ViewportController
 >: View {
     /// A snapshot of the loaded file. A value, so a redraw can never see it half-updated.
     public var model: Model
-    /// What the file can do, passed in rather than derived here: only the host knows which debug
-    /// channels its data actually supports.
-    public var availability: Capabilities
+    /// Which debug channels the file supports, passed in rather than derived here: only the host
+    /// knows what its data actually carries.
+    public var availability: Availability
     /// Empty / loading / failed — host open path.
     public var documentState: ShellDocumentState = .ready
     /// Canvas region state when the canvas loads on its own and can be ahead of the panels (a
@@ -35,28 +33,20 @@ public struct ShellRootView<
     @State private var viewport: Viewport
     /// Sidebar visibility — owned by the window host, shared with `SidebarCommands()`.
     public var panels: ShellPanelChrome
-    /// Clip transport for the playback bar. Host-owned and rebuilt per load — not `@State` here.
-    public var playback: Playback
     private let canvas: () -> Canvas
     /// Open in menu content shared with inspector/floating chrome.
     private let openInMenu: AnyView
-    /// Host maps `PreviewMorph` → inspector sliders.
-    private let morphTargets: [MorphTargetControl]
-    private let onSetMorphWeight: (String, Double) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         model: Model,
-        availability: Capabilities,
+        availability: Availability,
         documentState: ShellDocumentState = .ready,
         canvasState: ShellDocumentState? = nil,
         selection: Selection,
         viewport: @autoclosure () -> Viewport,
-        playback: Playback,
         panels: ShellPanelChrome,
-        morphTargets: [MorphTargetControl] = [],
-        onSetMorphWeight: @escaping (String, Double) -> Void = { _, _ in },
         openInMenu: AnyView = AnyView(EmptyView()),
         @ViewBuilder canvas: @escaping () -> Canvas
     ) {
@@ -66,10 +56,7 @@ public struct ShellRootView<
         self.canvasState = canvasState
         self.selection = selection
         _viewport = State(wrappedValue: viewport())
-        self.playback = playback
         self.panels = panels
-        self.morphTargets = morphTargets
-        self.onSetMorphWeight = onSetMorphWeight
         self.openInMenu = openInMenu
         self.canvas = canvas
     }
@@ -95,9 +82,7 @@ public struct ShellRootView<
                     RightInspector(
                         selection: selection,
                         documentState: documentState,
-                        openInMenu: openInMenu,
-                        morphTargets: morphTargets,
-                        onSetMorphWeight: onSetMorphWeight
+                        openInMenu: openInMenu
                     )
                     .inspectorColumnWidth(
                         min: DS.Metrics.inspectorWidthRange.lowerBound,
@@ -142,7 +127,6 @@ public struct ShellRootView<
             model: model,
             availability: availability,
             viewport: viewport,
-            playback: playback,
             documentState: canvasState ?? documentState,
             isSidebarVisible: panels.isSidebarVisible,
             isInspectorVisible: showsInspector,
@@ -170,14 +154,12 @@ private struct ShellRootViewPreviewHost: View {
     var mode: Mode
     @State private var selection: MockSelectionModel
     @State private var viewport: MockViewportController
-    @State private var playback: MockPlaybackController
     @State private var panels: ShellPanelChrome
 
     init(mode: Mode) {
         self.mode = mode
         _selection = State(initialValue: MockSelectionModel())
         _viewport = State(initialValue: MockViewportController())
-        _playback = State(initialValue: MockPlaybackController())
         _panels = State(
             initialValue: ShellPanelChrome(isSidebarVisible: mode == .fullChrome)
         )
@@ -186,10 +168,9 @@ private struct ShellRootViewPreviewHost: View {
     var body: some View {
         ShellRootView(
             model: FixtureSceneModel.cube,
-            availability: MockAvailability(),
+            availability: Availability.preview,
             selection: selection,
             viewport: viewport,
-            playback: playback,
             panels: panels,
             openInMenu: AnyView(PreviewOpenInItems())
         ) {

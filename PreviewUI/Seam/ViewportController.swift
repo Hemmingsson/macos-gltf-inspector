@@ -39,7 +39,7 @@ public protocol ViewportController: AnyObject, Observable {
     func screenshot()
     func setScene(_ id: NodeID)
     func setMaterialVariant(_ index: Int?)
-    /// Activate a file camera (`NodeID.kind == .camera`, index into `SceneModel.cameras`).
+    /// Activate a file camera (`NodeID.kind == .camera`, index of the outliner node that carries it).
     /// Pass `nil` to return to Fit / system orbit.
     func setFileCamera(_ id: NodeID?)
 }

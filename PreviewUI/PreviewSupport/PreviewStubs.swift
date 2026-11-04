@@ -11,7 +11,7 @@ public struct PreviewOpenInItems: View {
     }
 }
 
-/// Stand-in for the host-injected renderer canvas — flat gray viewport only.
+/// Stand-in for the host-injected web canvas — flat gray viewport only.
 struct PreviewCanvasPlaceholder: View {
     var body: some View {
         DS.Color.Canvas.gradient

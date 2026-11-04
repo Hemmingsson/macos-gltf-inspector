@@ -3,16 +3,14 @@
 #
 #   ./scripts/verify.sh
 #   ./scripts/build.sh             # rebuild + install, then this check
-#   ./scripts/proof.sh             # still-renderer PNG (--qlmanage: + timed qlmanage)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="/Applications/glTF Inspector.app"
 
 for arg in "$@"; do
   case "$arg" in
     -h|--help)
-      sed -n '2,6p' "$0"
+      sed -n '2,5p' "$0"
       exit 0
       ;;
     *)
@@ -44,5 +42,4 @@ done
 
 echo "ok $APP"
 echo "ok PreviewExtension + ThumbnailExtension registered"
-echo "proof:    $ROOT/scripts/proof.sh"
 echo "logs:     log stream --style compact --info --predicate 'subsystem == \"lol.mattias.gltf-inspector\"'"

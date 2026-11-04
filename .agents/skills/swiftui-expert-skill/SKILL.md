@@ -11,7 +11,7 @@ review_by: 2027-06-22
 
 # SwiftUI Expert
 
-SwiftUI implementation. Sandbox, HIG, AppKit bridge, architecture: `macos-development`. RealityKit: `metal-realitykit-visionos`.
+SwiftUI implementation. Sandbox, HIG, AppKit bridge, architecture: `macos-development`.
 
 ## Operating rules
 

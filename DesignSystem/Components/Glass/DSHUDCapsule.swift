@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// A non-interactive glass readout on the canvas: the dimensions readout, the playback bar.
+/// A non-interactive glass readout on the canvas, such as the dimensions readout.
 ///
 /// One capsule of `DS.Glass.hud` (`Glass.regular`, not interactive — the capsule itself is not a
 /// control). Buttons inside are borderless and the DS glass controls draw no glass of their own
-/// (`DSGlassPlacement.inIsland`), which is what keeps the playback bar's play button from being
-/// glass on glass. Separate groups with `DSGlassIslandDivider()`.
+/// (`DSGlassPlacement.inIsland`), so nothing inside is glass on glass. Separate groups with
+/// `DSGlassIslandDivider()`.
 public struct DSHUDCapsule<Content: View>: View {
     private let height: CGFloat
     private let horizontalPadding: CGFloat
@@ -43,47 +43,15 @@ public struct DSHUDCapsule<Content: View>: View {
 
 // MARK: - Previews
 
-private struct DSHUDCapsulePreview: View {
-    @State private var isPlaying = false
-    @State private var playhead = 0.32
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.l) {
-            DSHUDCapsule(height: 30) {
-                Image(systemName: "cube")
-                    .foregroundStyle(DS.Color.textSecondary)
-                Text("1.00 × 1.00 × 1.00 m")
-                    .font(DS.Font.value)
-                    .foregroundStyle(DS.Color.textPrimary)
-            }
-
-            DSHUDCapsule(height: 36, horizontalPadding: DS.Spacing.s) {
-                DSGlassIconButton(
-                    isPlaying ? "Pause" : "Play",
-                    systemImage: isPlaying ? "pause.fill" : "play.fill"
-                ) {
-                    isPlaying.toggle()
-                }
-                Slider(value: $playhead)
-                    .controlSize(.small)
-                    .frame(width: 180)
-                    .accessibilityLabel("Playhead")
-                Text("0:01.2 / 0:03.7")
-                    .font(DS.Font.value)
-                    .foregroundStyle(DS.Color.textSecondary)
-                DSGlassIslandDivider()
-                DSGlassMenuButton("Animation clip", systemImage: "film", style: .titled("Idle")) {
-                    Button("Idle") {}
-                    Button("Walk") {}
-                }
-            }
-        }
-    }
-}
-
 #Preview("hud", traits: .sizeThatFitsLayout) {
     DSGlassPreviewBackdrops {
-        DSHUDCapsulePreview()
+        DSHUDCapsule(height: 30) {
+            Image(systemName: "cube")
+                .foregroundStyle(DS.Color.textSecondary)
+            Text("1.00 × 1.00 × 1.00 m")
+                .font(DS.Font.value)
+                .foregroundStyle(DS.Color.textPrimary)
+        }
     }
     .frame(width: 520)
 }

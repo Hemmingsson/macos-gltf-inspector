@@ -33,7 +33,7 @@ public struct DSPopoverPanel<Content: View>: View {
 private struct DSPopoverPanelPreview: View {
     @State private var exposure = 0.5
     @State private var rotation = 120.0
-    @State private var usesFileLights = false
+    @State private var isOrthographic = false
     @State private var isPresented = true
 
     var body: some View {
@@ -49,8 +49,8 @@ private struct DSPopoverPanelPreview: View {
                     DSSlider("Environment", value: $rotation, in: 0...360, step: 1) {
                         $0.formatted(.number.precision(.fractionLength(0))) + "°"
                     }
-                    DSSegmentedPicker("Lights", selection: $usesFileLights, options: [false, true]) {
-                        $0 ? "File" : "Studio"
+                    DSSegmentedPicker("Projection", selection: $isOrthographic, options: [false, true]) {
+                        $0 ? "Orthographic" : "Perspective"
                     }
                 }
             }

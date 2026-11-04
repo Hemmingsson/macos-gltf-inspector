@@ -88,7 +88,7 @@ struct DisclosureCardPage: View {
                 StateRow("Long title · expanded", alignment: .top, minHeight: 200) {
                     Live(true) { $open in
                         DSDisclosureCard(
-                            "3 textures dropped · 2 extensions ignored by the RealityKit pipeline",
+                            "3 errors · 2 warnings reported by the glTF validator for this file",
                             isExpanded: $open,
                             messages: CatalogIssues.preview
                         )
@@ -189,9 +189,10 @@ struct ListRowPage: View {
                     DSListRow("Cube", role: .mesh, isSelected: true)
                         .frame(maxWidth: DS.Metrics.sidebarWidth)
                 }
-                StateRow("Muted · accessory") {
-                    DSListRow("Hidden light", role: .light, isMuted: true) {
-                        Image(systemName: "eye.slash")
+                StateRow("Accessory") {
+                    DSListRow("Joints", role: .skin) {
+                        Text("24")
+                            .font(DS.Font.caption)
                             .foregroundStyle(DS.Color.textSecondary)
                     }
                     .frame(maxWidth: DS.Metrics.sidebarWidth)
@@ -225,11 +226,7 @@ struct ListRowPage: View {
                             Section {
                                 DSListRow("Cube", role: .mesh).tag("Cube")
                                 DSListRow("Camera", role: .camera).tag("Camera")
-                                DSListRow("Hidden light", role: .light, isMuted: true) {
-                                    Image(systemName: "eye.slash")
-                                        .foregroundStyle(DS.Color.textSecondary)
-                                }
-                                .tag("Light")
+                                DSListRow("Key light", role: .light).tag("Light")
                             } header: {
                                 DSSectionHeader("Scene")
                             }
@@ -263,7 +260,7 @@ struct SectionHeaderPage: View {
                         .frame(maxWidth: DS.Metrics.sidebarWidth)
                 }
                 StateRow("Long text") {
-                    DSSectionHeader("This model, our pipeline — extensions we ignored and textures we dropped")
+                    DSSectionHeader("Validation — what the Khronos glTF validator reported for this file")
                         .frame(maxWidth: DS.Metrics.sidebarWidth)
                 }
             }

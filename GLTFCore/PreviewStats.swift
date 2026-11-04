@@ -1,39 +1,23 @@
 import Foundation
 
-/// Mesh / material / node / texture counts from the glTF JSON header (image headers for
-/// `maxTextureEdge`). The caller supplies the animation count: playable clips on RealityKit,
-/// JSON clips with a duration on WebKit.
+/// Triangle / material / texture counts from the glTF JSON header (image headers for
+/// `maxTextureEdge`). The caller supplies the animation count (JSON clips with a duration).
 public struct PreviewStats: Equatable {
-    public struct Row: Equatable {
-        public let label: String
-        public let value: String
-    }
-
     public let triangleCount: Int
-    public let vertexCount: Int
     public let materialCount: Int
-    public let pbrLabel: String
     public let animationCount: Int
     public let textureCount: Int
     /// Longest edge among decoded images (`max(width, height)`). Nil when unknown.
     public let maxTextureEdge: Int?
-    public let hasVertexColors: Bool
-    public let isRigged: Bool
-    public let morphGeometryCount: Int
     public let fileSizeBytes: Int64?
 
     /// Placeholder before a model loads.
     public static let empty = PreviewStats(
         triangleCount: 0,
-        vertexCount: 0,
         materialCount: 0,
-        pbrLabel: "—",
         animationCount: 0,
         textureCount: 0,
         maxTextureEdge: nil,
-        hasVertexColors: false,
-        isRigged: false,
-        morphGeometryCount: 0,
         fileSizeBytes: nil
     )
 
@@ -51,53 +35,6 @@ public struct PreviewStats: Equatable {
         )
     }
 
-    /// One left-aligned fact per line for Quick Look. `noun` is the dimmed unit.
-    public var overlayFacts: [Row] {
-        var lines: [Row] = []
-        if triangleCount > 0 {
-            lines.append(Row(label: "triangles", value: Self.compactCount(triangleCount)))
-        }
-        if vertexCount > 0 {
-            lines.append(Row(label: "vertices", value: Self.compactCount(vertexCount)))
-        }
-        if textureCount > 0 {
-            let value = maxTextureEdge.map { "\(textureCount) · max \($0)²" } ?? "\(textureCount)"
-            lines.append(Row(label: "textures", value: value))
-        }
-        if materialCount > 0 {
-            lines.append(Row(label: "materials", value: "\(materialCount)"))
-        }
-        if animationCount > 0 {
-            lines.append(Row(label: "animations", value: "\(animationCount)"))
-        }
-        if pbrLabel != "Metalness" {
-            lines.append(Row(label: pbrLabel, value: ""))
-        }
-        if hasVertexColors {
-            lines.append(Row(label: "vertex colors", value: ""))
-        }
-        if isRigged {
-            lines.append(Row(label: "rigged", value: ""))
-        }
-        if morphGeometryCount > 0 {
-            lines.append(Row(label: "morphs", value: "\(morphGeometryCount)"))
-        }
-        if let fileSizeBytes, fileSizeBytes > 0 {
-            let size = Self.byteCountFormatter.string(fromByteCount: fileSizeBytes)
-            if let split = size.lastIndex(of: " ") {
-                lines.append(
-                    Row(
-                        label: String(size[size.index(after: split)...]),
-                        value: String(size[..<split])
-                    )
-                )
-            } else {
-                lines.append(Row(label: "", value: size))
-            }
-        }
-        return lines
-    }
-
     /// `binary` resolves image bytes for `maxTextureEdge`; share one with the document parse.
     static func from(
         json: [String: Any],
@@ -105,22 +42,17 @@ public struct PreviewStats: Equatable {
         fileSizeBytes: Int64?,
         binary: GLTFBinaryStore
     ) -> PreviewStats {
-        let materials = json["materials"] as? [[String: Any]] ?? []
         let meshes = json["meshes"] as? [[String: Any]] ?? []
         let accessors = json["accessors"] as? [[String: Any]] ?? []
-        let skins = json["skins"] as? [[String: Any]] ?? []
-        let geometry = meshGeometry(meshes, accessors: accessors)
+        let triangles = meshes
+            .flatMap { $0["primitives"] as? [[String: Any]] ?? [] }
+            .reduce(0) { $0 + GLTFJSON.triangleCount($1, accessors: accessors) }
         return PreviewStats(
-            triangleCount: geometry.triangles,
-            vertexCount: geometry.vertices,
-            materialCount: materials.count,
-            pbrLabel: pbrLabel(materials),
+            triangleCount: triangles,
+            materialCount: (json["materials"] as? [Any])?.count ?? 0,
             animationCount: animationCount,
             textureCount: (json["textures"] as? [Any])?.count ?? 0,
             maxTextureEdge: maxTextureEdge(json: json, binary: binary),
-            hasVertexColors: geometry.hasColors,
-            isRigged: !skins.isEmpty || geometry.hasJoints,
-            morphGeometryCount: geometry.morphMeshes,
             fileSizeBytes: fileSizeBytes
         )
     }
@@ -132,67 +64,6 @@ public struct PreviewStats: Equatable {
             binary.imageBytes(image).flatMap(GLTFImageDecode.pixelSize).map { max($0.width, $0.height) }
         }
         return edges.max()
-    }
-
-    private static func pbrLabel(_ materials: [[String: Any]]) -> String {
-        var labels: [String] = []
-        func add(_ label: String) {
-            if !labels.contains(label) { labels.append(label) }
-        }
-        if materials.isEmpty {
-            return "Metalness"
-        }
-        for material in materials {
-            let extensions = material["extensions"] as? [String: Any]
-            if extensions?["KHR_materials_unlit"] != nil {
-                add("Unlit")
-            } else if extensions?["KHR_materials_pbrSpecularGlossiness"] != nil {
-                add("Specular")
-            } else {
-                add("Metalness")
-            }
-        }
-        return labels.joined(separator: " + ")
-    }
-
-    private struct MeshGeometry {
-        var triangles = 0
-        var vertices = 0
-        var hasColors = false
-        var hasJoints = false
-        var morphMeshes = 0
-    }
-
-    private static func meshGeometry(
-        _ meshes: [[String: Any]],
-        accessors: [[String: Any]]
-    ) -> MeshGeometry {
-        var out = MeshGeometry()
-        for mesh in meshes {
-            let primitives = mesh["primitives"] as? [[String: Any]] ?? []
-            var meshHasMorph = false
-            if let weights = mesh["weights"] as? [Any], !weights.isEmpty {
-                meshHasMorph = true
-            }
-            for primitive in primitives {
-                let attributes = primitive["attributes"] as? [String: Any] ?? [:]
-                if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) {
-                    out.hasColors = true
-                }
-                if attributes["JOINTS_0"] != nil {
-                    out.hasJoints = true
-                }
-                if let targets = primitive["targets"] as? [Any], !targets.isEmpty {
-                    meshHasMorph = true
-                }
-                out.vertices += GLTFJSON.accessorCount(attributes["POSITION"], accessors: accessors)
-                out.triangles += GLTFJSON.triangleCount(primitive, accessors: accessors)
-            }
-            if meshHasMorph {
-                out.morphMeshes += 1
-            }
-        }
-        return out
     }
 
     /// `1234` → `1.2k`, `2_000_000` → `2M`; below 1000 the plain count.
@@ -213,13 +84,4 @@ public struct PreviewStats: Equatable {
         }
         return String(format: "%.1f%@", value, suffix)
     }
-
-    private static let byteCountFormatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB]
-        formatter.countStyle = .file
-        formatter.includesUnit = true
-        formatter.isAdaptive = true
-        return formatter
-    }()
 }

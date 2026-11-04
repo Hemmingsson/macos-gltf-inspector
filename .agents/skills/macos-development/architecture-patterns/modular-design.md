@@ -8,7 +8,7 @@ Contents:
 
 # One target first
 
-Keep the app in one target. Group by feature folder when files pile up (`Host/`, `Settings/`, `Convert/`). Shared convert/render code can live in a folder the app target compiles — that is not a package.
+Keep the app in one target. Group by feature folder when files pile up (`Host/`, `Settings/`, `Render/`). Shared render code can live in a folder the app target compiles — that is not a package.
 
 Do not split Views / ViewModels / Models across top-level folders. Do not add SPM because a blog said “modular.”
 

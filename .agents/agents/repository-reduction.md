@@ -35,14 +35,14 @@ This is a native **macOS** product, not a web app, library-only package, or infr
 
 Verified starting facts — treat as evidence, then confirm against code and runtime:
 
-- **Purpose:** closest practical 1:1 glTF rendering on Mac via native RealityKit. Host app plus Quick Look preview and Finder thumbnails for `.glb` / `.gltf`.
+- **Purpose:** closest practical 1:1 glTF rendering on Mac via the Khronos glTF Sample Renderer in a `WKWebView`. Host app plus Quick Look preview and Finder thumbnails for `.glb` / `.gltf`.
 - **Audience:** latest macOS on Apple Silicon.
-- **Languages / frameworks:** Swift, SwiftUI, RealityKit, AppKit where the host requires it.
+- **Languages / frameworks:** Swift, SwiftUI, WebKit (vendored JS page), AppKit where the host requires it.
 - **Build:** XcodeGen from `project.yml`, then `xcodebuild`. `GLTFInspector.xcodeproj` is generated and gitignored.
-- **Ship path:** `./scripts/build.sh` (xcodegen + Debug build + install to `/Applications`). Related: `./scripts/verify.sh`, `./scripts/proof.sh`, `./scripts/release.sh`.
+- **Ship path:** `./scripts/build.sh` (xcodegen + Debug build + install to `/Applications`). Related: `./scripts/verify.sh`, `./scripts/release.sh`.
 - **Signing:** `DEVELOPMENT_TEAM` in `project.yml`.
-- **Primary visual proof:** still PNG via `StillRenderProofTests`. Test fixtures are on-disk through `GLTFInspectorTests/TestFixtures.swift` (read via `#filePath`, not the bundle).
-- **Product surface that must keep working unless you have a concrete reason to remove it:** opening a glTF file, converting and rendering it, Quick Look, Finder thumbnails, failed loads that show copy instead of a spinner.
+- **Primary visual proof:** pixel-diff tests against `TestModels/References/`. Test fixtures are on-disk through `GLTFInspectorTests/TestFixtures.swift` (read via `#filePath`, not the bundle).
+- **Product surface that must keep working unless you have a concrete reason to remove it:** opening and rendering a glTF file, the JSON panels, Quick Look, Finder thumbnails, failed loads that show copy instead of a spinner.
 
 Documentation, comments, naming, configuration, commit history, and conventions are evidence, not authority. `AGENTS.md` and similar files describe a current operating picture; they are not a mandate to keep that picture.
 
@@ -253,7 +253,7 @@ Likely relevant:
 
 - Build success (`xcodegen` + `xcodebuild`)
 - Test status and test count
-- `./scripts/proof.sh` / still-render proofs
+- pixel-diff tests
 - Source file count and source line count (Swift, not generated project files)
 - Direct dependency / package count
 - Installed app size under `/Applications/glTF Inspector.app` if you measure it
@@ -325,10 +325,10 @@ After an investigation, **create dex tasks only for high-confidence, high-value 
 
 These are known failure modes. They constrain how you change the system. They are not a map of what to refactor.
 
-1. Never mutate `@Observable` / `@State` in `View.init` or RealityView `make`/`update`. Symptom: eternal dual spinners / 0 windows; `Modifying state during view update`. `View.init` only assigns stored props / `_State(initialValue:)`. RealityView state writes: `Task { @MainActor in … }`.
+1. Never mutate `@Observable` / `@State` in `View.init`. Symptom: eternal dual spinners / 0 windows; `Modifying state during view update`. `View.init` only assigns stored props / `_State(initialValue:)`.
 2. Failed loads must show copy, not a spinner. Always set a failed state when a URL is rejected.
 3. Do not block first paint on IBL. Open path is model only; HDR may follow.
-4. RealityKit crash landmines still apply: do not iterate `RealityViewCameraContent.entities` during update; own a look root; floor toggle is visual only; persist scene entity refs in `@State`, not a plain `let` on the view struct; clear IBL receivers before removing IBL light entities.
+4. Serve one `viewer.html` from the scheme-handler root; `WebCanvasController` outlives the shell remount.
 5. Unit tests alone will not catch (1). Verify with a real window when UI/state hosting changes.
 6. UI verification: skill `macos-app-testing`. Prefer non-intrusive proofs. Do not steal focus, switch Spaces, activate the app, drive the pointer, or open save/export sheets unless the question requires live chrome. Do not use a headless snapshot / flatten-glass harness for Liquid Glass. Never screencapture-first. Never leave Export/Save sheets open.
 7. Do not invent Apple APIs. Look them up.
@@ -464,7 +464,7 @@ After every meaningful change:
 2. Type-check / compile if applicable
 3. Run relevant tests
 4. Build if applicable (`xcodegen` + `xcodebuild` or `./scripts/build.sh` when install/runtime proof is needed)
-5. Run still-render proofs when rendering/convert paths changed
+5. Run pixel-diff tests when rendering changed
 6. Exercise affected behavior
 7. Inspect errors and warnings
 8. Compare against the baseline
@@ -482,7 +482,7 @@ Do not assume passing unit tests means the system works, a successful build mean
 Prefer evidence in this order:
 
 1. Real behavior in the actual runtime
-2. End-to-end or integration validation (including still-render proofs and, when relevant, Quick Look / thumbnails)
+2. End-to-end or integration validation (including pixel-diff tests and, when relevant, Quick Look / thumbnails)
 3. Focused automated tests
 4. Build and type checking
 5. Static analysis

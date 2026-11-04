@@ -16,7 +16,7 @@ Find remaining unnecessary complexity in this repo. Do not start from a refactor
 
 ## Product
 
-Native macOS host + Quick Look + Finder thumbnails for `.glb` / `.gltf`. RealityKit. Preserve open → convert → render, extensions, and failed loads that show copy not a spinner.
+Native macOS host + Quick Look + Finder thumbnails for `.glb` / `.gltf`, rendered by the Khronos glTF Sample Renderer in a `WKWebView`. Preserve open → render, extensions, and failed loads that show copy not a spinner.
 
 ## Dex
 
@@ -37,13 +37,13 @@ If a campaign epic already exists, add children. If not, create one with goal + 
 2. Ask: does this need to exist? Is this the simplest place for it? One consumer? Dead? Duplicate? Speculative? Fighting the platform?
 3. If justified, create a dex task (why, evidence, done-when, verification).
 4. Implement the smallest defensible change.
-5. Prove it (`xcodegen` + tests; `./scripts/proof.sh` / real window when convert, render, or UI state changed).
+5. Prove it (`xcodegen` + tests, including pixel-diff; real window when render or UI state changed).
 6. Reinspect. Repeat.
 
 Stop only when another full look finds no high-confidence cleanup with real net benefit.
 
 ## Do not
 
-Preserve something because it survived the last pass. Add architecture. Invent folder-browser flows. Mutate `@Observable`/`@State` in `View.init` or RealityView `make`/`update`. Block first paint on IBL. Invent Apple APIs. Push unless asked.
+Preserve something because it survived the last pass. Add architecture. Invent folder-browser flows. Mutate `@Observable`/`@State` in `View.init`. Block first paint on IBL. Invent Apple APIs. Push unless asked.
 
 When done: what you removed or simplified, how you verified, what remains and why.

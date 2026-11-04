@@ -16,8 +16,7 @@ struct AppGroupSettingsTests {
         #expect(SettingKey<BackdropStyle>.backdrop.name == AppGroupSettings.Key.background)
         #expect(SettingKey<String>.appearance.name == AppGroupSettings.Key.appearance)
         #expect(SettingKey<String>.toneMapping.name == AppGroupSettings.Key.toneMapping)
-        #expect(SettingKey<String>.renderer.name == AppGroupSettings.Key.renderer)
-        #expect(SettingKey<String>.renderer.fallback == RendererKind.default.rawValue)
+        #expect(SettingKey<String>.environmentCatalog.name == AppGroupSettings.Key.environment)
     }
 
     /// Registered fallbacks agree with what `PreviewUI` shows on a fresh install.
@@ -33,6 +32,7 @@ struct AppGroupSettingsTests {
         #expect(defaults.bool(forKey: AppGroupSettings.Key.showFloor) == SettingKey<Bool>.showFloor.fallback)
         #expect(defaults.string(forKey: AppGroupSettings.Key.background) == SettingKey<BackdropStyle>.backdrop.fallback.rawValue)
         #expect(defaults.string(forKey: AppGroupSettings.Key.toneMapping) == SettingKey<String>.toneMapping.fallback)
+        #expect(defaults.string(forKey: AppGroupSettings.Key.environment) == SettingKey<String>.environmentCatalog.fallback)
         #expect(RenderLook.standard.environment.rawValue == SettingKey<String>.environmentCatalog.fallback)
     }
 
@@ -42,10 +42,9 @@ struct AppGroupSettingsTests {
     func readerFallsBackToTheReviewOrientedDefaults() throws {
         let suite = "gltf.app-group.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        let look = AppGroupSettings.rendererLook(defaults: defaults, directory: dir)
+        let look = AppGroupSettings.rendererLook(defaults: defaults)
         #expect(look.environment.rawValue == "neutral")
         #expect(look.toneMapping.rawValue == "Khronos PBR Neutral")
     }
@@ -60,28 +59,40 @@ struct AppGroupSettingsTests {
         }
     }
 
-    /// Host writes through the same adapters Settings uses; a reader over the same suite and
-    /// directory (what each appex does) sees them.
+    /// Host writes through the same store Settings uses; a reader over the same suite (what each
+    /// appex does) sees them.
     @Test
     func hostWritesRoundTripThroughTheReader() throws {
         let suite = "gltf.app-group.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
-        defer {
-            defaults.removePersistentDomain(forName: suite)
-            try? FileManager.default.removeItem(at: dir)
-        }
-        let bridge = EngineAppDefaultsBridge(
-            defaultsStore: AppDefaultsStore(defaults: defaults),
-            lookStore: AppLookStore(directory: dir)
-        )
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = AppDefaultsStore(defaults: defaults)
 
-        bridge.set("field", for: .environmentCatalog)
-        bridge.set("ACES Filmic Tone Mapping (Hill)", for: .toneMapping)
+        store.set("field", for: .environmentCatalog)
+        store.set("ACES Filmic Tone Mapping (Hill)", for: .toneMapping)
 
-        let look = AppGroupSettings.rendererLook(defaults: defaults, directory: dir)
+        let look = AppGroupSettings.rendererLook(defaults: defaults)
         #expect(look.environment == .field)
         #expect(look.toneMapping == .acesHill)
+    }
+
+    /// An environment name this build does not bundle falls back to the default.
+    @Test
+    func unknownStoredEnvironmentFallsBackToTheDefault() throws {
+        let suite = "gltf.app-group.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("pisa", forKey: AppGroupSettings.Key.environment)
+        #expect(AppGroupSettings.rendererLook(defaults: defaults).environment == .defaultLook)
+    }
+
+    /// The page serves these by name; a missing `.hdr` would leave the model unlit.
+    @Test
+    func everyEnvironmentIsBundled() {
+        for environment in KhronosEnvironments.allCases {
+            #expect(environment.bundledURL != nil, "\(environment.rawValue).hdr missing")
+        }
     }
 
     /// The test host is the app, which claims the group: the container must resolve to the
@@ -104,9 +115,8 @@ struct AppGroupSettingsTests {
         let previous = group.object(forKey: key)
         defer { group.set(previous, forKey: key) }
 
-        let bridge = EngineAppDefaultsBridge(lookStore: AppLookStore(directory: FileManager.default.temporaryDirectory))
         let probe = "probe-\(UUID().uuidString)"
-        bridge.set(probe, for: .appearance)
+        AppDefaultsStore.appGroup.set(probe, for: .appearance)
 
         #expect(group.string(forKey: key) == probe)
         #expect(UserDefaults.standard.string(forKey: key) != probe)

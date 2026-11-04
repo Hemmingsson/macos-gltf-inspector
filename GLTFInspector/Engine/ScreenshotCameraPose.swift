@@ -2,9 +2,8 @@ import AppKit
 import GLTFCore
 import UniformTypeIdentifiers
 
-/// PNG export for the focused window. The mounted canvas's `FocusedPreviewCommands.screenshot`
-/// supplies the pixels; this type owns the save panel and the file write. The RealityKit
-/// re-render lives in `RealityKit/ScreenshotCameraPose+RealityKit.swift`.
+/// PNG export for the focused window. The canvas's `FocusedPreviewCommands.screenshot` supplies
+/// the pixels; this type owns the save panel and the file write.
 enum ScreenshotCameraPose {
     /// Presents the save panel, then writes `image` as PNG. Cancel writes nothing.
     @MainActor

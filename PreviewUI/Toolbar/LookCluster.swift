@@ -4,9 +4,9 @@ import SwiftUI
 /// Centre cluster — **Look**: how the surface is shaded and lit.
 ///
 /// View mode + lighting stay one island: both answer “what light does to the material”.
-struct LookCluster<Capabilities: Availability, Viewport: ViewportController>: View {
-    /// Read-only capability snapshot: the view-mode menu offers only channels the file has.
-    var availability: Capabilities
+struct LookCluster<Viewport: ViewportController>: View {
+    /// The view-mode menu offers only channels the file has.
+    var availability: Availability
     var viewport: Viewport
 
     var body: some View {
@@ -14,7 +14,7 @@ struct LookCluster<Capabilities: Availability, Viewport: ViewportController>: Vi
             DSGlassIsland {
                 ViewModeMenu(availability: availability, viewport: viewport)
                 DSGlassIslandDivider()
-                LightingPopover(availability: availability, viewport: viewport)
+                LightingPopover(viewport: viewport)
             }
         }
     }
@@ -23,10 +23,10 @@ struct LookCluster<Capabilities: Availability, Viewport: ViewportController>: Vi
 // MARK: - Previews
 
 private struct LookClusterPreviewHost: View {
-    var availability: MockAvailability
+    var availability: Availability
     @State private var viewport: MockViewportController
 
-    init(availability: MockAvailability = MockAvailability(), viewport: MockViewportController) {
+    init(availability: Availability = .preview, viewport: MockViewportController) {
         self.availability = availability
         _viewport = State(initialValue: viewport)
     }

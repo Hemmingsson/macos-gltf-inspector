@@ -3,9 +3,8 @@ import GLTFCore
 import PreviewUI
 import simd
 
-/// Thin `SceneModel` snapshot of the open document. Built from the JSON summary (WebKit window) or
-/// from the RealityKit load (`RealityKit/EngineSceneModel+RealityKit.swift`). Rebuild when async
-/// validation resolves.
+/// Thin `SceneModel` snapshot of the open document, built from the file's JSON summary. Rebuild
+/// when async validation resolves.
 struct EngineSceneModel: SceneModel {
     var fileName: String
     var scenes: [SceneInfo]
@@ -21,11 +20,8 @@ struct EngineSceneModel: SceneModel {
     var stats: Stats
     var dimensions: Dimensions
     var validation: ValidationResult
-    var pipelineReport: PipelineReport
-    var convertProblems: ConvertProblemList
 
-    /// Build from the file's JSON alone. Pass `validation: nil` while the Khronos run is pending.
-    /// No convert ran, so there is no pipeline or convert-problem report.
+    /// Pass `validation: nil` while the Khronos run is pending.
     init(summary: GLTFDocumentSummary, fileName: String, validation: GLTFValidationState? = nil) {
         self.init(
             fileName: fileName,
@@ -43,15 +39,11 @@ struct EngineSceneModel: SceneModel {
         stats: PreviewStats,
         dimensions: Dimensions,
         validation: GLTFValidationState? = nil,
-        pipelineReport: PipelineReport = PipelineReport(),
-        convertProblems: ConvertProblemList = ConvertProblemList(),
         materialVariantNames: [String] = []
     ) {
         let displayName = fileName.isEmpty ? "Model" : fileName
         self.fileName = displayName
         self.materialVariantNames = materialVariantNames
-        self.pipelineReport = pipelineReport
-        self.convertProblems = convertProblems
         self.validation = Self.mapValidation(validation)
 
         let scenes = Self.mapScenes(document)
@@ -296,7 +288,7 @@ extension EngineSceneModel {
         }
     }
 
-    /// Unnamed clips are numbered from 1, as the transport shows them.
+    /// Unnamed clips are numbered from 1.
     static func animationInfo(_ animation: GLTFSessionDocument.Animation, index: Int) -> AnimationInfo {
         AnimationInfo(
             index: index,

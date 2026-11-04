@@ -2,10 +2,9 @@ import Foundation
 @testable import GLTFCore
 import Testing
 
-/// The sidebar document read from the file (`GLTFDocumentJSON`, as `EntityLoader` and the web
-/// window build it). Convert-side stamping and clips: `RealityKit/SessionDocumentConvertTests.swift`.
+/// The sidebar document read from the file (`GLTFDocumentJSON`, as the document window builds it).
 struct SessionDocumentTests {
-    /// The document the loaders build: original JSON plus the file for binary payloads.
+    /// The document the window builds: original JSON plus the file for binary payloads.
     private func fileDocument(_ url: URL) throws -> GLTFSessionDocument {
         GLTFDocumentJSON.makeDocument(json: try GLBBox.peekDocumentJSON(from: url), fileURL: url)
     }
@@ -143,118 +142,8 @@ struct SessionDocumentTests {
     }
 }
 
-// MARK: - Fixtures (also used by the convert tests)
+// MARK: - Fixtures
 
-
-func writeTempTwoSceneGLB() throws -> URL {
-    let bin = floatTriangleBin()
-    let json: [String: Any] = [
-        "asset": ["version": "2.0"],
-        "buffers": [["byteLength": bin.count]],
-        "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
-        "accessors": [[
-            "bufferView": 0,
-            "componentType": 5126,
-            "count": 3,
-            "type": "VEC3",
-        ]],
-        "meshes": [
-            ["name": "MeshA", "primitives": [["attributes": ["POSITION": 0]]]],
-            ["name": "MeshB", "primitives": [["attributes": ["POSITION": 0]]]],
-        ],
-        "nodes": [
-            ["name": "RootA", "mesh": 0],
-            ["name": "RootB", "mesh": 1],
-        ],
-        "scenes": [
-            ["name": "SceneA", "nodes": [0]],
-            ["name": "SceneB", "nodes": [1]],
-        ],
-        "scene": 0,
-    ]
-    return try writeTempGLB(json: json, bin: bin)
-}
-
-func writeTempTwoClipGLB() throws -> URL {
-    var bin = floatTriangleBin()
-    let positionLength = bin.count
-    appendFloats([0, 1], to: &bin)
-    let timeALength = 8
-    appendFloats([0, 0, 0, 1, 0, 0], to: &bin)
-    let transALength = 24
-    appendFloats([0, 2], to: &bin)
-    let timeBLength = 8
-    appendFloats([0, 0, 0, 0, 1, 0], to: &bin)
-    let transBLength = 24
-    let timeAOffset = positionLength
-    let transAOffset = timeAOffset + timeALength
-    let timeBOffset = transAOffset + transALength
-    let transBOffset = timeBOffset + timeBLength
-    let json: [String: Any] = [
-        "asset": ["version": "2.0"],
-        "buffers": [["byteLength": bin.count]],
-        "bufferViews": [
-            ["buffer": 0, "byteOffset": 0, "byteLength": positionLength],
-            ["buffer": 0, "byteOffset": timeAOffset, "byteLength": timeALength],
-            ["buffer": 0, "byteOffset": transAOffset, "byteLength": transALength],
-            ["buffer": 0, "byteOffset": timeBOffset, "byteLength": timeBLength],
-            ["buffer": 0, "byteOffset": transBOffset, "byteLength": transBLength],
-        ],
-        "accessors": [
-            [
-                "bufferView": 0,
-                "componentType": 5126,
-                "count": 3,
-                "type": "VEC3",
-            ],
-            [
-                "bufferView": 1,
-                "componentType": 5126,
-                "count": 2,
-                "type": "SCALAR",
-                "min": [0.0],
-                "max": [1.0],
-            ],
-            [
-                "bufferView": 2,
-                "componentType": 5126,
-                "count": 2,
-                "type": "VEC3",
-            ],
-            [
-                "bufferView": 3,
-                "componentType": 5126,
-                "count": 2,
-                "type": "SCALAR",
-                "min": [0.0],
-                "max": [2.0],
-            ],
-            [
-                "bufferView": 4,
-                "componentType": 5126,
-                "count": 2,
-                "type": "VEC3",
-            ],
-        ],
-        "meshes": [["name": "Mesh", "primitives": [["attributes": ["POSITION": 0]]]]],
-        "nodes": [["name": "Root", "mesh": 0]],
-        "animations": [
-            [
-                "name": "ClipA",
-                "samplers": [["input": 1, "output": 2, "interpolation": "LINEAR"]],
-                "channels": [["sampler": 0, "target": ["node": 0, "path": "translation"]]],
-            ],
-            [
-                "name": "ClipB",
-                "samplers": [["input": 3, "output": 4, "interpolation": "LINEAR"]],
-                "channels": [["sampler": 0, "target": ["node": 0, "path": "translation"]]],
-            ],
-        ],
-        "scenes": [["name": "Default", "nodes": [0]]],
-        "scene": 0,
-    ]
-    return try writeTempGLB(json: json, bin: bin)
-}
 
 func writeTempMixedNodeKindsGLB() throws -> URL {
     let bin = floatTriangleBin()

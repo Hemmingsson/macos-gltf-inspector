@@ -112,19 +112,6 @@ public struct MorphInfo: Sendable, Hashable, Identifiable {
     }
 }
 
-/// Live morph-target weight for inspector sliders (host maps from `PreviewMorph`).
-public struct MorphTargetControl: Sendable, Hashable, Identifiable {
-    public var id: String
-    public var name: String
-    public var weight: Double
-
-    public init(id: String, name: String, weight: Double) {
-        self.id = id
-        self.name = name
-        self.weight = weight
-    }
-}
-
 /// Per-node geometry facts (the inspector's Geometry section).
 public struct GeometryInfo: Sendable, Hashable {
     public var triangleCount: Int

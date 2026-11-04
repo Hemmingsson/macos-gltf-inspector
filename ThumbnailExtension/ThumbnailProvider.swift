@@ -2,10 +2,10 @@ import CoreGraphics
 import Foundation
 import GLTFCore
 import QuickLookThumbnailing
+import RendererWebKit
 
-/// Finder thumbnail principal class and the extension's one renderer router: reads the renderer
-/// switch per request and renders through `ThumbnailRealityKit.swift` or `ThumbnailWebKit.swift`.
-/// Each case is guarded by `canImport`, so removing a renderer needs no edit here.
+/// Finder thumbnail principal class. Renders through the same page the document window and Quick
+/// Look use, so a file's Finder icon matches how it opens.
 class ThumbnailProvider: QLThumbnailProvider {
 
     override func provideThumbnail(for request: QLFileThumbnailRequest, _ handler: @escaping (QLThumbnailReply?, Error?) -> Void) {
@@ -17,10 +17,9 @@ class ThumbnailProvider: QLThumbnailProvider {
         // extension gets no completion callback — so clear PNGs left by earlier requests.
         Self.sweepStaleThumbnails()
 
-        let kind = RendererKind.stored()
         Task.detached {
             do {
-                let fileURL = try await Self.render(url: url, pixel: pixel, kind: kind)
+                let fileURL = try await Self.render(url: url, pixel: pixel)
                 // Finder's generator reliably consumes `imageFileURL`. The CGContext drawing
                 // reply works under `qlmanage -x` but fails there with QLThumbnailError 102 —
                 // do not "simplify" this to the drawing reply.
@@ -28,23 +27,85 @@ class ThumbnailProvider: QLThumbnailProvider {
             } catch {
                 AppLog.error(
                     AppLog.thumbnail,
-                    "thumbnail failed \(kind.rawValue) \(url.lastPathComponent) \(error.localizedDescription)"
+                    "thumbnail failed \(url.lastPathComponent) \(error.localizedDescription)"
                 )
                 handler(nil, error)
             }
         }
     }
 
+    /// One warm host per extension process, serialized. Folder-scale cold start is ~850 ms/file;
+    /// reuse is ~70 ms/file on the same path.
+    @MainActor
+    private static var shared: SharedHost?
+    @MainActor
+    private static var renderChain: Task<URL, Error>?
+
+    private struct SharedHost {
+        let host: WebRendererHost
+        let look: WebPreviewCanvas.Look
+    }
+
     /// PNG file for Quick Look to copy.
-    private static func render(url: URL, pixel: Int, kind: RendererKind) async throws -> URL {
-        #if canImport(RendererWebKit)
-        if kind == .webKit { return try await WebThumbnail.render(url: url, pixel: pixel) }
-        #endif
-        #if canImport(RendererRealityKit)
-        return try await RealityKitThumbnail.render(url: url, pixel: pixel)
-        #else
-        return try await WebThumbnail.render(url: url, pixel: pixel)
-        #endif
+    @MainActor
+    private static func render(url: URL, pixel: Int) async throws -> URL {
+        let previous = renderChain
+        let work = Task<URL, Error> { @MainActor in
+            _ = try? await previous?.value
+            return try await renderNow(url: url, pixel: pixel)
+        }
+        renderChain = work
+        return try await work.value
+    }
+
+    @MainActor
+    private static func renderNow(url: URL, pixel: Int) async throws -> URL {
+        let started = CFAbsoluteTimeGetCurrent()
+        let host = try await reusedHost(look: .stored(), pixel: pixel)
+        let info: WebRendererHost.LoadInfo
+        let png: Data
+        do {
+            info = try await host.load(model: url)
+            png = try await host.renderStillPNG(size: pixel)
+        } catch {
+            // A crashed page, or one still busy on a call that timed out, is dropped so the next
+            // file in this process starts a fresh page. A file the page merely rejected keeps the
+            // warm host. Either way the error goes back to Quick Look (generic icon).
+            if host.isBroken || error as? WebRendererError == .timedOut { shared = nil }
+            throw error
+        }
+
+        let fileURL = outputURL()
+        // The page's PNG as is (sRGB-tagged by WebKit): no decode and re-encode.
+        try png.write(to: fileURL)
+        do {
+            try FirstPixelPreview.store(png: png, for: url)
+        } catch {
+            AppLog.error(AppLog.webRenderer, "poster cache failed \(url.lastPathComponent): \(error.localizedDescription)")
+        }
+
+        AppLog.info(
+            AppLog.webRenderer,
+            String(
+                format: "thumbnail ready %@ %.0fms %dpx %dB tris=%d",
+                url.lastPathComponent, (CFAbsoluteTimeGetCurrent() - started) * 1000,
+                pixel, png.count, info.triangles
+            )
+        )
+        return fileURL
+    }
+
+    @MainActor
+    private static func reusedHost(look: WebPreviewCanvas.Look, pixel: Int) async throws -> WebRendererHost {
+        if let shared, !shared.host.isBroken, shared.look == look {
+            return shared.host
+        }
+        let host = try WebRendererHost(mode: .still, size: pixel)
+        try await host.start()
+        // Cheap before the first model: the page loads the HDR after `load`, `renderStill` waits.
+        try await host.apply(look)
+        shared = SharedHost(host: host, look: look)
+        return host
     }
 
     private static let outputPrefix = "glb-thumb-"

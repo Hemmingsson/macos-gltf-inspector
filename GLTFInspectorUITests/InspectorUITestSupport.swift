@@ -1,25 +1,6 @@
 import XCTest
 
-/// Shared launch / query helpers. Accessibility only: no app or renderer module is imported, so
-/// removing a renderer needs no edit here.
-enum UIRenderer: String, CaseIterable {
-    case realityKit = "realitykit"
-    case webKit = "webkit"
-
-    /// Settings ▸ Preview ▸ Renderer menu title (`RendererRouter.settingsOptions`).
-    var settingsTitle: String {
-        switch self {
-        case .realityKit: "RealityKit"
-        case .webKit: "WebKit (Khronos)"
-        }
-    }
-
-    init?(settingsTitle: String) {
-        guard let kind = Self.allCases.first(where: { $0.settingsTitle == settingsTitle }) else { return nil }
-        self = kind
-    }
-}
-
+/// Shared launch / query helpers. Accessibility only: no app module is imported.
 enum UIFixture {
     private static let repoRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -34,14 +15,10 @@ enum UIWait {
 }
 
 extension XCTestCase {
-    /// A fresh app process. `renderer` is the Debug-only `-GLTFRenderer` override (nil = the stored
-    /// Settings switch); `file` is opened from argv like `open -a`.
-    func makeApp(renderer: UIRenderer?, file: URL?) -> XCUIApplication {
+    /// A fresh app process; `file` is opened from argv like `open -a`.
+    func makeApp(file: URL?) -> XCUIApplication {
         let app = XCUIApplication()
         var arguments = ["-ApplePersistenceIgnoreState", "YES"]
-        if let renderer {
-            arguments += ["-GLTFRenderer", renderer.rawValue]
-        }
         if let file {
             arguments.append(file.path)
         }
@@ -49,7 +26,7 @@ extension XCTestCase {
         return app
     }
 
-    /// Host `CanvasReadyMarker`: exists only while the canvas shows the model; label = renderer.
+    /// Host `CanvasReadyMarker`: exists only while the canvas shows the model.
     func canvasReady(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: "canvas-ready").firstMatch
     }

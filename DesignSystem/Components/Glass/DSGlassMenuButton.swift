@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// A glass control that opens a menu: the camera presets circle, the view-mode "Shaded ▾" chip,
-/// the playback clip picker.
+/// A glass control that opens a menu: the camera presets circle, the view-mode "Shaded ▾" chip.
 ///
 /// Three label styles:
 /// - `.icon` — icon-only `DS.Metrics.glassControl` circle, no chevron (a menu whose glyph already

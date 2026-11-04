@@ -3,10 +3,7 @@ import Foundation
 import simd
 import Testing
 
-/// The sidebar document is parsed from the glTF JSON, so it describes the *file* rather
-/// than the subset that survived a renderer's convert. Parsed here without a renderer; the
-/// file-vs-RealityKit-convert difference is pinned in
-/// `RealityKit/SceneModelFromJSONConvertTests.swift`.
+/// The sidebar document is parsed from the glTF JSON, so it describes the *file* as authored.
 struct SceneModelFromJSONTests {
     @Test func documentParsesHierarchyAndTypedNodesFromJSONAlone() throws {
         let document = GLTFDocumentJSON.makeDocument(json: mixedKindsJSON())
@@ -24,7 +21,6 @@ struct SceneModelFromJSONTests {
         #expect(mesh.triangleCount == 1)
         #expect(mesh.vertexCount == 3)
         #expect(mesh.uvSetCount == 1)
-        #expect(mesh.hasNormals)
         #expect(!mesh.hasTangents)
 
         #expect(document.nodes[2].kind == .camera)
@@ -38,8 +34,6 @@ struct SceneModelFromJSONTests {
         let skin = try #require(document.skins.first)
         #expect(skin.name == "Leg")
         #expect(skin.jointNames == ["Hip", "Knee"])
-        #expect(skin.jointNodeIndices == [4, 5])
-        #expect(skin.jointParentIndices == [nil, 0])
 
         #expect(document.morphs.map(\.targetNames) == [["Blink"]])
         #expect(document.materials[0].workflow == .metallicRoughness)

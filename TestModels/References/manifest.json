@@ -516,17 +516,10 @@
     "commit" : "e3cc9d8fee3ab25e21aafdcedda6558f224afbee",
     "repository" : "KhronosGroup/glTF-Sample-Assets"
   },
-  "tolerances" : {
-    "realitykit" : {
-      "badPixelChannelDelta" : 16,
-      "badPixelFraction" : 0.001,
-      "meanAbsoluteError" : 1
-    },
-    "webkit" : {
-      "badPixelChannelDelta" : 16,
-      "badPixelFraction" : 0.001,
-      "meanAbsoluteError" : 1
-    }
+  "tolerance" : {
+    "badPixelChannelDelta" : 16,
+    "badPixelFraction" : 0.001,
+    "meanAbsoluteError" : 1
   },
-  "version" : 2
+  "version" : 3
 }

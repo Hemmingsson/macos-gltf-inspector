@@ -185,37 +185,22 @@ public struct LightingSettings: Sendable, Hashable {
     public var exposure: Double
     /// Environment yaw in degrees.
     public var environmentRotationDegrees: Double
-    /// Use the file's punctual lights (only meaningful when `Availability.hasLights`).
-    public var usesFileLights: Bool
-    /// Use the bundled studio IBL.
-    public var usesStudioEnvironment: Bool
     /// Which bundled IBL lights the model.
     public var environment: StudioEnvironment
     /// Tone mapping curve.
     public var toneMapping: ToneMapping
 
-    public static let standard = LightingSettings(
-        exposure: 0,
-        environmentRotationDegrees: 0,
-        usesFileLights: false,
-        usesStudioEnvironment: true,
-        environment: .neutral,
-        toneMapping: .neutral
-    )
+    public static let standard = LightingSettings(exposure: 0, environmentRotationDegrees: 0)
 
     public init(
         exposure: Double,
         environmentRotationDegrees: Double,
-        usesFileLights: Bool,
-        usesStudioEnvironment: Bool,
         environment: StudioEnvironment = .neutral,
         toneMapping: ToneMapping = .neutral
     ) {
         self.exposure = exposure
         self.environmentRotationDegrees = environmentRotationDegrees
-        self.usesFileLights = usesFileLights
         self.environment = environment
         self.toneMapping = toneMapping
-        self.usesStudioEnvironment = usesStudioEnvironment
     }
 }

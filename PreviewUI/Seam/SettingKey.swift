@@ -21,7 +21,6 @@ public extension SettingKey where Value == Bool {
     static var showFloor: SettingKey<Bool> { .init(name: "settings.preview.showFloor", fallback: true) }
     /// Session-only. Never registered as a persisted app default.
     static var center: SettingKey<Bool> { .init(name: "settings.preview.center", fallback: true) }
-    static var useEnvironmentMap: SettingKey<Bool> { .init(name: "settings.preview.useEnvironmentMap", fallback: true) }
 }
 
 public extension SettingKey where Value == BackdropStyle {
@@ -37,13 +36,10 @@ public extension SettingKey where Value == Projection {
 
 public extension SettingKey where Value == String {
     static var appearance: SettingKey<String> { .init(name: "settings.general.appearance", fallback: "system") }
-    /// `KhronosEnvironments.rawValue` (`neutral` / `field` / `Colorful_Studio`).
+    /// `StudioEnvironment.rawValue` (`neutral` / `field` / `Colorful_Studio`), which is also the
+    /// bundled HDR's name — see `AppGroupSettings.rendererLook()` in GLTFCore.
     static var environmentCatalog: SettingKey<String> { .init(name: "settings.preview.environmentCatalog", fallback: "neutral") }
     /// Stored as the Khronos tone-map name so the extensions can read it without linking this
     /// framework — see `AppGroupSettings.rendererLook()` in GLTFCore.
     static var toneMapping: SettingKey<String> { .init(name: "settings.preview.toneMapping", fallback: "Khronos PBR Neutral") }
-    static var customEnvironmentFile: SettingKey<String> { .init(name: "settings.preview.customEnvironmentFile", fallback: "") }
-    /// `RendererKind.rawValue` (`realitykit` / `webkit`). Read by the window, Quick Look and the
-    /// thumbnail when they open a file.
-    static var renderer: SettingKey<String> { .init(name: "settings.preview.renderer", fallback: "realitykit") }
 }

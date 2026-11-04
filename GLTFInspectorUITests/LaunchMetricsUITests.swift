@@ -1,8 +1,7 @@
 import XCTest
 
 /// Launch and open-to-first-content timings (3 iterations each). Open-to-content = launch with a
-/// file until the host's `canvas-ready` marker appears (RealityKit: convert landed and the canvas
-/// mounted; WebKit: the page reports the model on screen).
+/// file until the host's `canvas-ready` marker appears (the page reports the model on screen).
 final class LaunchMetricsUITests: XCTestCase {
     private var options: XCTMeasureOptions {
         let options = XCTMeasureOptions()
@@ -12,19 +11,16 @@ final class LaunchMetricsUITests: XCTestCase {
 
     func testLaunch() {
         measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
-            makeApp(renderer: nil, file: nil).launch()
+            makeApp(file: nil).launch()
         }
         XCUIApplication().terminate()
     }
 
-    func testOpenToContentRealityKit() { openToContent(.realityKit) }
-    func testOpenToContentWebKit() { openToContent(.webKit) }
-
-    private func openToContent(_ renderer: UIRenderer) {
+    func testOpenToContent() {
         let options = options
         options.invocationOptions = [.manuallyStop]
         measure(metrics: [XCTClockMetric()], options: options) {
-            let app = makeApp(renderer: renderer, file: UIFixture.boxAnimated)
+            let app = makeApp(file: UIFixture.boxAnimated)
             app.launch()
             // Polls `exists` directly: `waitForExistence` re-checks only about once a second,
             // which would round the measurement up to whole seconds.

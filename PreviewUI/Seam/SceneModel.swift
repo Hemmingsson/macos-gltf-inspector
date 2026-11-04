@@ -3,7 +3,7 @@ import Foundation
 /// Read-only introspection of one loaded file. Value-type backed: an implementation is a
 /// snapshot, never a live object the UI can write to.
 ///
-/// Host adapters conform over the converted document. The UI never learns which concrete type it has.
+/// The host conforms over the file's JSON. The UI never learns which concrete type it has.
 public protocol SceneModel: Sendable {
     /// Display name for the sidebar header ("Duck.glb").
     var fileName: String { get }
@@ -31,14 +31,9 @@ public protocol SceneModel: Sendable {
     var dimensions: Dimensions { get }
     /// glTF-validator findings, surfaced as-is.
     var validation: ValidationResult { get }
-    /// Everything our import changed, so nothing is silently altered.
-    var pipelineReport: PipelineReport { get }
-    /// Convert losses — missing textures, dropped primitives, ignored extensions.
-    var convertProblems: ConvertProblemList { get }
 }
 
 public extension SceneModel {
     var defaultSceneID: NodeID? { scenes.first?.id }
     var materialVariantNames: [String] { [] }
-    var convertProblems: ConvertProblemList { ConvertProblemList() }
 }

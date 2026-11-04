@@ -181,7 +181,7 @@ private let previewMessages = [
     @Previewable @State var emptyOpen = true
     DSContentPreviewStage(width: DS.Metrics.sidebarWidth) {
         DSDisclosureCard(
-            "3 textures dropped · 2 extensions ignored by the RealityKit pipeline",
+            "3 errors · 2 warnings reported by the glTF validator for this file",
             isExpanded: $open,
             messages: previewMessages
         )

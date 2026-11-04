@@ -27,24 +27,15 @@ struct EngineViewportControllerTests {
         #expect(viewport.activeCameraPreset == .front)
     }
 
-    @Test func lightingMapsDegreesRadiansAndFileLights() {
+    @Test func lightingMapsDegreesToRadians() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let viewport = EngineViewportController(sidebar: sidebar)
 
-        viewport.setLighting(
-            LightingSettings(
-                exposure: 1.5,
-                environmentRotationDegrees: 90,
-                usesFileLights: true,
-                usesStudioEnvironment: false
-            )
-        )
+        viewport.setLighting(LightingSettings(exposure: 1.5, environmentRotationDegrees: 90))
 
         #expect(viewport.lighting.exposure == 1.5)
-        #expect(viewport.lighting.usesFileLights == true)
         #expect(abs(viewport.lighting.environmentRotationDegrees - 90) < 0.0001)
-        // Studio flag mirrors AppLook; setter must not fight it.
-        #expect(viewport.lighting.usesStudioEnvironment == AppLookStore.shared.look.useEnvironmentMap)
+        #expect(abs(viewport.previewSession.environmentYaw - Float.pi / 2) < 0.0001)
     }
 
     @Test func sceneAndMaterialVariantDriveSidebar() {
@@ -83,14 +74,14 @@ struct EngineViewportControllerTests {
         let viewport = EngineViewportController(sidebar: sidebar)
 
         viewport.setFileCamera(NodeID(kind: .camera, index: 0))
-        #expect(sidebar.selectedCameraIndex == 0)
+        #expect(sidebar.selectedCameraNodeIndex == 0)
 
         viewport.setFileCamera(nil)
-        #expect(sidebar.selectedCameraIndex == nil)
+        #expect(sidebar.selectedCameraNodeIndex == nil)
 
         viewport.setFileCamera(NodeID(kind: .camera, index: 0))
         viewport.fit()
-        #expect(sidebar.selectedCameraIndex == nil)
+        #expect(sidebar.selectedCameraNodeIndex == nil)
     }
 
     /// Fit / reset / presets / export land on whatever canvas registered its commands.
@@ -137,7 +128,7 @@ struct EngineViewportControllerTests {
         #expect(viewport.activeCameraPreset == nil)
     }
 
-    /// Any renderer's capture failure (e.g. RealityKit's `noLiveCameraPose`).
+    /// A capture failure (the page not ready, say).
     private struct NoCameraPose: Error {}
 
     @Test func failedScreenshotSavesNothing() async {
@@ -158,14 +149,8 @@ struct EngineViewportControllerTests {
         defaults.removePersistentDomain(forName: suite)
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        let lookDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("engine-viewport-look-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: lookDir) }
-
         let defaultsStore = AppDefaultsStore(defaults: defaults)
-        let lookStore = AppLookStore(directory: lookDir)
-        let settings = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
+        let settings = EngineSettingsStore(defaultsStore: defaultsStore)
         let session = PreviewSession(settings: settings)
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let viewport = EngineViewportController(sidebar: sidebar, previewSession: session)
@@ -200,12 +185,7 @@ struct EngineViewportControllerTests {
         viewport.setProjection(.orthographic)
         viewport.setViewMode(.wireframe)
         viewport.setLighting(
-            LightingSettings(
-                exposure: 0.5,
-                environmentRotationDegrees: 45,
-                usesFileLights: true,
-                usesStudioEnvironment: true
-            )
+            LightingSettings(exposure: 0.5, environmentRotationDegrees: 45)
         )
 
         #expect(session.backdrop == .dark)
@@ -215,26 +195,17 @@ struct EngineViewportControllerTests {
         #expect(session.orthographic == true)
         #expect(session.viewMode == .wireframe)
         #expect(session.exposureEV == 0.5)
-        #expect(session.dimStudioForFileLights == true)
         #expect(abs(session.environmentYaw - Float.pi / 4) < 0.0001)
         #expect(viewport.showsFloor == false)
         #expect(viewport.viewMode == .wireframe)
 
-        viewport.setDoubleSided(true)
-        viewport.setShowSkeleton(true)
         viewport.setFieldOfViewDegrees(90)
-        #expect(session.doubleSided == true)
-        #expect(session.showSkeleton == true)
         #expect(session.fieldOfViewDegrees == 90)
-        #expect(viewport.doubleSided == true)
-        #expect(viewport.showSkeleton == true)
         #expect(viewport.fieldOfViewDegrees == 90)
 
         viewport.setFieldOfViewDegrees(5)
         #expect(session.fieldOfViewDegrees == RenderCamera.clampedFieldOfView(5))
         viewport.reset()
-        #expect(session.doubleSided == false)
-        #expect(session.showSkeleton == false)
         #expect(session.fieldOfViewDegrees == RenderCamera.defaultFieldOfViewDegrees)
         #expect(session.exposureEV == 0)
     }
@@ -246,21 +217,11 @@ struct EngineViewportControllerTests {
         defaults.removePersistentDomain(forName: suite)
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        let lookDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("engine-viewport-reset-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: lookDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: lookDir) }
-
         let defaultsStore = AppDefaultsStore(defaults: defaults)
-        let lookStore = AppLookStore(directory: lookDir)
-        let settings = EngineSettingsStore(defaultsStore: defaultsStore, lookStore: lookStore)
+        let settings = EngineSettingsStore(defaultsStore: defaultsStore)
         let session = PreviewSession(settings: settings)
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
-        let viewport = EngineViewportController(
-            sidebar: sidebar,
-            lookStore: lookStore,
-            previewSession: session
-        )
+        let viewport = EngineViewportController(sidebar: sidebar, previewSession: session)
 
         settings.appDefaults.set(StudioEnvironment.field.rawValue, for: .environmentCatalog)
         settings.appDefaults.set(ToneMapping.acesHill.khronosName, for: .toneMapping)
@@ -269,8 +230,6 @@ struct EngineViewportControllerTests {
             LightingSettings(
                 exposure: 1,
                 environmentRotationDegrees: 45,
-                usesFileLights: true,
-                usesStudioEnvironment: true,
                 environment: .colorfulStudio,
                 toneMapping: .linear
             )
@@ -286,23 +245,16 @@ struct EngineViewportControllerTests {
         #expect(abs(viewport.lighting.environmentRotationDegrees) < 0.0001)
     }
 
-    @Test func applySessionRemountDoesNotClobberFileLightDim() {
+    /// A new document starts from the app defaults with exposure and yaw at zero.
+    @Test func applySessionResetsExposureAndYaw() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let session = PreviewSession()
         let viewport = EngineViewportController(sidebar: sidebar, previewSession: session)
 
-        // Convert-owned dim, as the RealityKit window does on punctual-light open.
-        viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: true)
-        #expect(session.dimStudioForFileLights == true)
-        #expect(viewport.lighting.usesFileLights == true)
-
-        // A re-seed from the app defaults.
+        viewport.setLighting(LightingSettings(exposure: 1, environmentRotationDegrees: 45))
         viewport.applySession()
-        #expect(session.dimStudioForFileLights == true)
-        #expect(viewport.lighting.usesFileLights == true)
-        #expect(session.exposureEV == 0)
 
-        viewport.applyConvertedLighting(dimStudioForFileLights: true, resetExposureAndYaw: false)
-        #expect(session.dimStudioForFileLights == true)
+        #expect(session.exposureEV == 0)
+        #expect(session.environmentYaw == 0)
     }
 }

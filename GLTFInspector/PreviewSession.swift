@@ -2,10 +2,7 @@ import GLTFCore
 import Observation
 import PreviewUI
 
-/// Host-owned per-window canvas state — the single source of truth the mounted canvas reads.
-///
-/// Renderer-neutral: the RealityKit window maps it onto `PreviewSessionBindings`
-/// (`RealityKit/PreviewSession+RealityKit.swift`), the WebKit window onto the page `Look`.
+/// Host-owned per-window canvas state — the single source of truth the web canvas `Look` reads.
 /// Quick Look does not use this type.
 ///
 /// The settings-backed keys (backdrop / floor / auto-rotate / center / projection) are not stored
@@ -16,10 +13,7 @@ import PreviewUI
 final class PreviewSession {
     let settings: EngineSettingsStore
     var exposureEV: Float = 0
-    var dimStudioForFileLights = false
     var environmentYaw: Float = 0
-    var doubleSided = false
-    var showSkeleton = false
     var fieldOfViewDegrees = RenderCamera.defaultFieldOfViewDegrees
     var viewMode: RenderViewMode = .shaded
     /// Modes the open file offers (always starts with `.shaded`); `viewMode` is one of them.

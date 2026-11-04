@@ -1,6 +1,6 @@
 import Foundation
 
-/// A GLB split into its JSON and BIN chunks. Read-only: no renderer rewrites the file.
+/// A GLB split into its JSON and BIN chunks. Read-only: nothing rewrites the file.
 public struct GLBBox {
     private static let magic = Data("glTF".utf8)
 

@@ -4,7 +4,7 @@ import Foundation
 import PreviewUI
 import Testing
 
-/// Host mapping of file materials — JSON document → `MaterialInfo`, no renderer convert.
+/// Host mapping of file materials — JSON document → `MaterialInfo`.
 struct EngineSceneModelMaterialTests {
     @Test func emissiveStrengthExtensionSurfacesInMaterialInfo() throws {
         let document = GLTFDocumentJSON.makeDocument(json: materialJSON(
