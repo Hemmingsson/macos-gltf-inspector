@@ -12,23 +12,11 @@ import SwiftUI
 /// (`DSGlassToggleButton`, `DSGlassMenuButton`, `DSGlassPopoverButton`),
 /// each drawing its own single glass layer.
 struct DSGlassCluster<Content: View>: View {
-    private let spacing: CGFloat
-    private let content: Content
-
-    /// - Parameters:
-    ///   - spacing: Gap between islands. Defaults to `DS.Metrics.clusterSpacing`.
-    ///   - content: The islands, leading to trailing.
-    init(
-        spacing: CGFloat = DS.Metrics.clusterSpacing,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.spacing = spacing
-        self.content = content()
-    }
+    @ViewBuilder var content: Content
 
     var body: some View {
         GlassEffectContainer(spacing: DS.Metrics.clusterSpacing) {
-            HStack(spacing: spacing) {
+            HStack(spacing: DS.Metrics.clusterSpacing) {
                 content
             }
         }

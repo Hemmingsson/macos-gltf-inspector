@@ -11,25 +11,9 @@ import SwiftUI
 ///
 /// Place islands in a `DSGlassCluster` so they share one `GlassEffectContainer`.
 struct DSGlassIsland<Content: View>: View {
-    private let horizontalPadding: CGFloat
-    private let spacing: CGFloat
-    private let content: Content
-
-    /// - Parameters:
-    ///   - horizontalPadding: Inset of the first / last control from the capsule's ends.
-    ///     Defaults to `DS.Spacing.s`.
-    ///   - spacing: Gap between controls. Defaults to `0`, since glass controls already carry
-    ///     their own hit-target padding.
-    ///   - content: The controls.
-    init(
-        horizontalPadding: CGFloat = DS.Spacing.s,
-        spacing: CGFloat = 0,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.horizontalPadding = horizontalPadding
-        self.spacing = spacing
-        self.content = content()
-    }
+    /// Gap between controls; glass controls carry their own hit padding, so 0 by default.
+    var spacing: CGFloat = 0
+    @ViewBuilder var content: Content
 
     var body: some View {
         HStack(spacing: spacing) {
@@ -37,7 +21,7 @@ struct DSGlassIsland<Content: View>: View {
         }
         .buttonStyle(.borderless)
         .dsGlassPlacement(.inIsland)
-        .padding(.horizontal, horizontalPadding)
+        .padding(.horizontal, DS.Spacing.s)
         .frame(height: DS.Metrics.glassControl)
         .glassEffect(DS.Glass.control, in: .capsule)
     }
@@ -47,8 +31,6 @@ struct DSGlassIsland<Content: View>: View {
 /// `DS.Metrics.hairline` × `DS.Metrics.islandDividerHeight` in `DS.Color.separator` (which
 /// Increase Contrast strengthens). Decorative, so hidden from accessibility.
 struct DSGlassIslandDivider: View {
-    init() {}
-
     var body: some View {
         DS.Color.separator
             .frame(width: DS.Metrics.hairline, height: DS.Metrics.islandDividerHeight)
