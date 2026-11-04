@@ -74,7 +74,7 @@ struct DocumentWindowValidationTests {
         #expect(log.all == [second])
     }
 
-    private static let report = GLTFValidationReport(
+    private nonisolated static let report = GLTFValidationReport(
         validatorVersion: "test",
         errorCount: 0,
         warningCount: 0,

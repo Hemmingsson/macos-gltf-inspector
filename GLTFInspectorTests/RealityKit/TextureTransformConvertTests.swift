@@ -11,9 +11,9 @@ import Testing
 /// The quad samples a 4-colour 2×2 texture (NEAREST, REPEAT), unlit, filling the frame.
 @MainActor
 struct TextureTransformConvertTests {
-    static let offset = SIMD2<Float>(0.2, 0.1)
-    static let rotation: Float = 0.3
-    static let scale = SIMD2<Float>(1.5, 0.8)
+    nonisolated static let offset = SIMD2<Float>(0.2, 0.1)
+    nonisolated static let rotation: Float = 0.3
+    nonisolated static let scale = SIMD2<Float>(1.5, 0.8)
 
     @Test func transformMatchesPretransformedUVs() async throws {
         let transformed = try await loadModel(try transformQuadGLB(bake: false, texCoord: 0))
@@ -51,7 +51,7 @@ struct TextureTransformConvertTests {
     }
 
     /// glTF `uv' = T · R · S · uv`, as the spec writes it.
-    static func gltfTransform(_ uv: SIMD2<Float>) -> SIMD2<Float> {
+    nonisolated static func gltfTransform(_ uv: SIMD2<Float>) -> SIMD2<Float> {
         let s = uv * scale
         let c = cos(rotation), n = sin(rotation)
         return SIMD2(c * s.x + n * s.y, -n * s.x + c * s.y) + offset

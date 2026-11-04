@@ -51,7 +51,7 @@ public final class MockPlaybackController: ClipPlaybackController {
         time = (time + delta).truncatingRemainder(dividingBy: duration)
     }
 
-    public static let sampleClips: [AnimationInfo] = [
+    public nonisolated static let sampleClips: [AnimationInfo] = [
         AnimationInfo(index: 0, name: "Idle", duration: 2),
         AnimationInfo(index: 1, name: "Walk", duration: 1.5),
     ]

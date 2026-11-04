@@ -10,7 +10,7 @@ struct PreviewLightingDecodeTests {
     func hdrDecodeRunsOffTheMainActor() async throws {
         let url = try #require(KhronosEnvironments.defaultLook.bundledURL)
         let image = await Task.detached {
-            #expect(!Thread.isMainThread)
+            #expect(pthread_main_np() == 0)
             return EquirectangularImage.load(from: url)
         }.value
         #expect(image != nil)
