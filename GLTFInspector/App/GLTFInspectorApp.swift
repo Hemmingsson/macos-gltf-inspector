@@ -12,7 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppLog.configureFileSink()
         #endif
         AppSettings.shared.appearance.apply()
-        UserDefaults.standard.set("preferred", forKey: "AppleWindowTabbingMode")
+        // Every document gets its own window: no tabs, and no tab items in the View menu.
+        UserDefaults.standard.removeObject(forKey: "AppleWindowTabbingMode")
+        NSWindow.allowsAutomaticWindowTabbing = false
         UserDefaults.standard.removeObject(forKey: staleWelcomeFrameAutosaveKey)
         if wasLaunchedToOpenDocuments() {
             // Welcome uses defaultLaunchBehavior(.presented); dismiss once the run loop settles.

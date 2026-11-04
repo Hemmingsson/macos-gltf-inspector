@@ -99,6 +99,7 @@ dev_run() {
   cat >"$(dirname "$LOCAL_APP")/dev-env" <<EOF
 GLTF_REPO_ROOT=$ROOT
 GLTF_LOG_FILE=$LOG_FILE
+GLTF_FULLSCREEN=${GLTF_FULLSCREEN:-}
 EOF
 
   echo "run $fixture → $model"

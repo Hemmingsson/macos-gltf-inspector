@@ -33,6 +33,18 @@ enum DevLaunch {
         applyDevEnvFile()
         AppLog.configureFileSink()
         openFixtureIfNeeded()
+        enterFullScreenIfNeeded()
+    }
+
+    /// `GLTF_FULLSCREEN=1 dev.sh run …`: the document window goes full screen once it is up, so
+    /// full-screen chrome can be checked without sending keystrokes to whichever app has focus.
+    private static func enterFullScreenIfNeeded() {
+        guard ProcessInfo.processInfo.environment["GLTF_FULLSCREEN"] == "1" else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            NSApp.windows
+                .first { $0.isVisible && $0.canBecomeMain && !$0.styleMask.contains(.fullScreen) }?
+                .toggleFullScreen(nil)
+        }
     }
 
     /// Written by `dev.sh run` beside `.build/glTF Inspector.app` — `open` cannot pass env vars.
