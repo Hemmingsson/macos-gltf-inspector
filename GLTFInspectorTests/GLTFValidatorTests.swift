@@ -1,7 +1,6 @@
 import Foundation
 @testable import GLTFCore
 import Testing
-@testable import GLTFInspector
 
 struct GLTFValidatorTests {
     @Test func invalidUnresolvedMeshReportsErrors() async throws {

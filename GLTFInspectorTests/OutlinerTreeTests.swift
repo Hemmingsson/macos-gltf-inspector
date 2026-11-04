@@ -1,6 +1,5 @@
 import PreviewUI
 import Testing
-@testable import GLTFInspector
 
 struct OutlinerTreeTests {
     private let root = OutlinerItem(

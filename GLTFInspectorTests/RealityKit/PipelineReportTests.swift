@@ -1,5 +1,4 @@
 import Foundation
-@testable import GLTFCore
 @testable import RendererRealityKit
 import Testing
 

@@ -1,7 +1,6 @@
 import Foundation
 @testable import RendererRealityKit
 import simd
-@testable import GLTFCore
 import Testing
 
 struct EmissiveBoostTests {

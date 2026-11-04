@@ -1,5 +1,4 @@
 import Foundation
-import GLTFCore
 
 /// `RenderLook` → RealityKit, in one place. Constants come from the look probes
 /// (`docs/look-probes.md`); each row says whether it is measured.

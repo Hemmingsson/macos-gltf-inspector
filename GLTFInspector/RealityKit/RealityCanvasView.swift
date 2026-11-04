@@ -1,4 +1,3 @@
-import GLTFCore
 import RendererRealityKit
 import SwiftUI
 

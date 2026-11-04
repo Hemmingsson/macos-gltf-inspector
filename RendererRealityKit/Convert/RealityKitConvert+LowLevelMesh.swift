@@ -1,4 +1,3 @@
-import GLTFCore
 import RealityKit
 import GLTFKit2
 import Metal

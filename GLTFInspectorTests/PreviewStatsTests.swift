@@ -1,6 +1,5 @@
 import Foundation
 @testable import GLTFCore
-@testable import GLTFInspector
 import Testing
 
 struct PreviewStatsTests {
