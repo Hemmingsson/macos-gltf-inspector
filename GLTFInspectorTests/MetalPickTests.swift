@@ -49,6 +49,83 @@ struct MetalPickTests {
         #expect(try renderer.pick(onlyFront, pose: frontPose(), width: size, height: size, point: center) == nil)
     }
 
+    @Test func transparentPickingUsesNearestSurfaceRatherThanCentroidOrder() async throws {
+        let positions: [Float] = [
+            -1, -1, 2, 1, -1, 2, 1, 1, 2, -1, -1, 2, 1, 1, 2, -1, 1, 2,
+            20, -1, -100, 22, -1, -100, 22, 1, -100, 20, -1, -100, 22, 1, -100, 20, 1, -100,
+            -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1,
+        ]
+        var bin = Data()
+        appendFloats(positions, to: &bin)
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": 144],
+                            ["buffer": 0, "byteOffset": 144, "byteLength": 72]],
+            "accessors": [["bufferView": 0, "componentType": 5126, "count": 12, "type": "VEC3",
+                           "min": [-1, -1, -100], "max": [22, 1, 2]],
+                          ["bufferView": 1, "componentType": 5126, "count": 6, "type": "VEC3",
+                           "min": [-1, -1, 1], "max": [1, 1, 1]]],
+            "materials": [["alphaMode": "BLEND", "doubleSided": true,
+                           "pbrMetallicRoughness": ["baseColorFactor": [1, 0, 0, 1]]]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]],
+                       ["primitives": [["attributes": ["POSITION": 1], "material": 0]]]],
+            "nodes": [["mesh": 0], ["mesh": 1]], "scenes": [["nodes": [0, 1]]], "scene": 0,
+        ]
+        let url = try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "review-blend-pick")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        #expect(try renderer.pick(ViewOptions(), pose: frontPose(), width: 64, height: 64,
+                                  point: SIMD2(32, 32)) == 0,
+                "node 0's surface is at z=2; node 1 is behind at z=1")
+    }
+
+    @Test func fullyTransparentBlendQuadInFrontPicksOpaqueMeshBehind() async throws {
+        let url = try writeTempBlendFrontGLB(frontAlpha: 0)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        #expect(try renderer.pick(ViewOptions(), pose: frontPose(), width: 64, height: 64,
+                                  point: center(of: 64)) == 0)
+    }
+
+    @Test func opaqueEnoughBlendQuadInFrontPicksItself() async throws {
+        let url = try writeTempBlendFrontGLB(frontAlpha: 0.5)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        #expect(try renderer.pick(ViewOptions(), pose: frontPose(), width: 64, height: 64,
+                                  point: center(of: 64)) == 1)
+    }
+
+    /// Opaque quad at z = -1 (node 0) behind a full-size BLEND quad at z = 1 (node 1) whose base alpha is `frontAlpha`.
+    private func writeTempBlendFrontGLB(frontAlpha: Float) throws -> URL {
+        let back: [Float] = [-1, -1, -1, 1, -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1]
+        let front: [Float] = [-1, -1, 1, 1, -1, 1, 1, 1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1]
+        var bin = Data()
+        appendFloats(back, to: &bin)
+        appendFloats(front, to: &bin)
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": 72],
+                            ["buffer": 0, "byteOffset": 72, "byteLength": 72]],
+            "accessors": [["bufferView": 0, "componentType": 5126, "count": 6, "type": "VEC3",
+                           "min": [-1, -1, -1], "max": [1, 1, -1]],
+                          ["bufferView": 1, "componentType": 5126, "count": 6, "type": "VEC3",
+                           "min": [-1, -1, 1], "max": [1, 1, 1]]],
+            "materials": [["name": "Opaque", "doubleSided": true,
+                           "pbrMetallicRoughness": ["baseColorFactor": [1, 1, 1, 1]]],
+                          ["name": "Glass", "alphaMode": "BLEND", "doubleSided": true,
+                           "pbrMetallicRoughness": ["baseColorFactor": [1, 0, 0, frontAlpha]]]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]],
+                       ["primitives": [["attributes": ["POSITION": 1], "material": 1]]]],
+            "nodes": [["mesh": 0], ["mesh": 1]], "scenes": [["nodes": [0, 1]]], "scene": 0,
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "blend-front")
+    }
+
     @Test func fileCameraUsesAuthoredView() async throws {
         let url = try writeTempCameraPickGLB()
         defer { try? FileManager.default.removeItem(at: url) }

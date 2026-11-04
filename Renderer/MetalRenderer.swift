@@ -527,7 +527,8 @@ public final class MetalRenderer: @unchecked Sendable {
             let mask = Self.activeMorphMask(draw, weights: weights)
             let variant = Self.vertexVariant(mask: mask, draw: draw)
             encoder.setRenderPipelineState(try pickPipeline(variant))
-            encoder.setDepthStencilState(blend ? depthRead : depthWrite)
+            // Every draw writes depth so the nearest surface wins regardless of draw order.
+            encoder.setDepthStencilState(depthWrite)
             let transform = frameTransform(transforms, drawIndex, draw)
             encoder.setCullMode(draw.material.doubleSided ? .none : .back)
             encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
@@ -602,7 +603,8 @@ public final class MetalRenderer: @unchecked Sendable {
             let mask = Self.activeMorphMask(draw, weights: weights)
             let variant = Self.vertexVariant(mask: mask, draw: draw)
             encoder.setRenderPipelineState(try pickPipeline(variant))
-            encoder.setDepthStencilState(blend ? depthRead : depthWrite)
+            // Every draw writes depth so the nearest surface wins regardless of draw order.
+            encoder.setDepthStencilState(depthWrite)
             let transform = frameTransform(transforms, drawIndex, draw)
             encoder.setCullMode(draw.material.doubleSided ? .none : .back)
             encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
