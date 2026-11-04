@@ -7,33 +7,16 @@ import Testing
 /// window's renderer cannot drive them. WebKit's feature set lacks both.
 @MainActor
 struct HostViewMenuCommandsTests {
-    @Test func viewMenuTogglesFollowRendererFeatures() {
-        #expect(
-            HostViewMenuAvailability.toggles(for: Set(RendererFeature.allCases))
-                == [.doubleSided, .showSkeleton]
-        )
-        #expect(
-            HostViewMenuAvailability.toggles(for: [
-                .debugChannels, .wireframe, .materialVariants, .nodeSelection,
-            ]) == []
-        )
-        #expect(HostViewMenuAvailability.toggles(for: [.doubleSided]) == [.doubleSided])
-        #expect(HostViewMenuAvailability.toggles(for: [.skeletonOverlay]) == [.showSkeleton])
-    }
-
     @Test func focusedWindowViewportCarriesRendererFeatures() {
         let sidebar = HostSidebarModel(document: GLTFSessionDocument())
         let web = EngineViewportController(
             sidebar: sidebar,
             features: [.debugChannels, .wireframe, .orthographicProjection]
         )
-        #expect(HostViewMenuAvailability.toggles(for: web.features).isEmpty)
+        #expect(!web.features.contains(.doubleSided) && !web.features.contains(.skeletonOverlay))
 
         let reality = EngineViewportController(sidebar: sidebar)
-        #expect(
-            HostViewMenuAvailability.toggles(for: reality.features)
-                == [.doubleSided, .showSkeleton]
-        )
+        #expect(reality.features.contains(.doubleSided) && reality.features.contains(.skeletonOverlay))
     }
 
     @Test func documentWindowViewportUsesMountedRendererFeatures() {
@@ -41,12 +24,9 @@ struct HostViewMenuCommandsTests {
             documentURL: TestFixtures.cube,
             features: [.debugChannels, .wireframe, .materialVariants, .nodeSelection]
         )
-        #expect(HostViewMenuAvailability.toggles(for: web.engineViewport.features).isEmpty)
+        #expect(!web.engineViewport.features.contains(.doubleSided) && !web.engineViewport.features.contains(.skeletonOverlay))
 
         let reality = DocumentWindowModel(documentURL: TestFixtures.cube)
-        #expect(
-            HostViewMenuAvailability.toggles(for: reality.engineViewport.features)
-                == [.doubleSided, .showSkeleton]
-        )
+        #expect(reality.engineViewport.features.contains(.doubleSided) && reality.engineViewport.features.contains(.skeletonOverlay))
     }
 }
