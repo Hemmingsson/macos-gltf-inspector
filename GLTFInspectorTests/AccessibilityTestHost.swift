@@ -98,6 +98,12 @@ final class AccessibilityTestHost<Content: View> {
                 _ = element.perform(increment)
                 return true
             }
+            if label == "Timeline", performCustomAction(named: "Step timeline forward") {
+                return true
+            }
+        }
+        if label == "Timeline" {
+            return performCustomAction(named: "Step timeline forward")
         }
         return false
     }

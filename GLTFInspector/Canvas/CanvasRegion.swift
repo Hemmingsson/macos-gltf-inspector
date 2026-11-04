@@ -124,7 +124,10 @@ struct CanvasRegion<Content: View>: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 DimensionsReadout(size: readout.size, name: readout.name)
-                    .padding(OverlayMetrics.inset)
+                    .padding(.trailing, OverlayMetrics.inset)
+                    .padding(.bottom, view.canvas.showsAnimationTimeline
+                        ? OverlayMetrics.inset + OverlayMetrics.timelineHeight + DS.Spacing.m
+                        : OverlayMetrics.inset)
             }
             .overlay(alignment: .bottom) {
                 if view.canvas.showsAnimationTimeline {

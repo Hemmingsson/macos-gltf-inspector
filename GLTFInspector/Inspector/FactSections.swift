@@ -1,5 +1,6 @@
 import GLTFCore
 import simd
+import Renderer
 import SwiftUI
 
 // Read-only fact blocks for the inspector, one per glTF entry type.
@@ -141,22 +142,51 @@ struct JointOfSection: View {
 struct MorphSection: View {
     var morph: GLTFDocument.Morph
     var meshName: String
-    /// Weights sampled from the active animation pose, when playback has left the rest pose.
-    var liveWeights: [Float]? = nil
+    var document: GLTFDocument
+    @Bindable var canvas: ModelCanvasController
 
     var body: some View {
         FactBlock("Morph") {
             DSFactRow("Mesh", value: meshName)
             DSFactRow("Targets", value: "\(morph.targetNames.count)")
-            if let liveWeights, !liveWeights.isEmpty {
-                ForEach(Array(liveWeights.enumerated()), id: \.offset) { index, weight in
-                    let name = morph.targetNames.indices.contains(index) ? morph.targetNames[index] : "Target \(index + 1)"
-                    DSFactRow(name, value: String(format: "%.3f", weight))
-                }
-            } else {
-                NameList(names: morph.targetNames)
+            MorphLiveWeightRows(morph: morph, document: document, canvas: canvas)
+        }
+    }
+}
+
+/// Live morph weights read from the canvas pose without re-rendering the whole inspector.
+struct MorphLiveWeightRows: View {
+    var morph: GLTFDocument.Morph
+    var document: GLTFDocument
+    @Bindable var canvas: ModelCanvasController
+
+    var body: some View {
+        let liveWeights = MorphLiveWeightRows.weights(for: morph, document: document, canvas: canvas)
+        if let liveWeights, !liveWeights.isEmpty {
+            ForEach(Array(liveWeights.enumerated()), id: \.offset) { index, weight in
+                let name = morph.targetNames.indices.contains(index) ? morph.targetNames[index] : "Target \(index + 1)"
+                DSFactRow(name, value: String(format: "%.3f", weight))
+            }
+        } else {
+            NameList(names: morph.targetNames)
+        }
+    }
+
+    static func weights(for morph: GLTFDocument.Morph, document: GLTFDocument,
+                        canvas: ModelCanvasController) -> [Float]? {
+        guard let pose = canvas.currentAnimationPose() else { return nil }
+        for nodeIndex in document.nodes.indices where document.nodes[nodeIndex].meshIndex == morph.meshIndex {
+            if let weights = pose.nodeWeights[nodeIndex], !weights.isEmpty {
+                return weights
             }
         }
+        if document.morphs.count == 1, let weights = pose.nodeWeights.values.first(where: { !$0.isEmpty }) {
+            return weights
+        }
+        if let meshWeights = pose.meshWeights[morph.meshIndex], !meshWeights.isEmpty {
+            return meshWeights
+        }
+        return nil
     }
 }
 
