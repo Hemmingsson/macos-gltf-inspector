@@ -58,7 +58,8 @@ fragment MetalFragmentOutput khronos_fragment(MetalVaryings in [[stage_in]],bool
     float4 base=m.baseColor*in.color;
     if(m.flags.x&1u) base*=materialTextures.maps[0].sample(materialTextures.samplers[0],materialUV(in,m,0));
     if(m.flags.y==0) base.a=1;
-    if(m.flags.y==1) { if(base.a<m.surface.w) discard_fragment(); base.a=1; }
+    // Khronos alpha-tests a lit material only under DEBUG_NONE; unlit always.
+    if(m.flags.y==1 && (frame.options.y==0 || (m.flags.z&1u))) { if(base.a<m.surface.w) discard_fragment(); base.a=1; }
     // MATERIAL_UNLIT: TRANSMISSION_PASS writes toneMapInverse(baseColor) with flag 2, else baseColor with flag 1.
     if(m.flags.z&1u) {
         if(frame.options.z&2u) return {float4(toneMapInverse(base.rgb,frame.environment.z,frame.options.x),base.a),2u};
@@ -107,15 +108,18 @@ fragment MetalFragmentOutput khronos_fragment(MetalVaryings in [[stage_in]],bool
     // A zero normal denotes a primitive without authored/generated normals.
     if(dot(in.normal,in.normal)<1e-10f || !all(isfinite(ng))) ng=normalize(cross(dfdx(in.worldPosition),dfdy(in.worldPosition)));
     float3 t=normalize(in.tangent.xyz);
-    if(dot(in.tangent.xyz,in.tangent.xyz)<1e-10f || !all(isfinite(t))) {
-        float2 uv=materialUV(in,m,2);
-        float3 dx=dfdx(in.worldPosition),dy=dfdy(in.worldPosition);
-        float2 tx=dfdx(uv),ty=dfdy(uv);
-        float determinant=tx.x*ty.y-tx.y*ty.x;
-        if(abs(determinant)>1e-8f) t=normalize((ty.y*dx-tx.y*dy)/determinant);
-        else t=normalize(cross(abs(ng.z)<0.999f ? float3(0,0,1) : float3(0,1,0),ng));
-    }
     float3 b=normalize(in.bitangent);
+    if(dot(in.tangent.xyz,in.tangent.xyz)<1e-10f || !all(isfinite(t))) {
+        // Khronos getNormalInfo without HAS_TANGENT_VEC4: screen-space UV derivatives (GL dFdy
+        // is y-up, Metal's y-down), near-zero ones replaced by the unit axes.
+        float2 uv=materialUV(in,m,2);
+        float2 uvDx=dfdx(uv),uvDy=-dfdy(uv);
+        if(length(uvDx)<=1e-2f) uvDx=float2(1,0);
+        if(length(uvDy)<=1e-2f) uvDy=float2(0,1);
+        float3 tangent=(uvDy.y*dfdx(in.worldPosition)-uvDx.y*-dfdy(in.worldPosition))/(uvDx.x*uvDy.y-uvDy.x*uvDx.y);
+        t=normalize(tangent-ng*dot(ng,tangent));
+        b=cross(ng,t);
+    }
     if(!all(isfinite(b))) b=normalize(cross(ng,t))*in.tangent.w;
     if(!front) { ng=-ng; t=-t; b=-b; }
     float3 n=ng;
@@ -242,27 +246,33 @@ fragment MetalFragmentOutput khronos_fragment(MetalVaryings in [[stage_in]],bool
     float3 emissive=m.emissiveNormalScale.rgb;
     if(m.flags.x&16u) emissive*=materialTextures.maps[4].sample(materialTextures.samplers[4],materialUV(in,m,4)).rgb;
     color+=emissive*(1.0f-clearcoat*coatFresnel);
-    // Stable host-facing channel IDs, mapped to the corresponding Khronos DEBUG outputs.
-    uint flag=2;
+    // Stable host-facing channel IDs, mapped to the corresponding Khronos DEBUG outputs. Like
+    // Khronos, every channel starts from its grey checkerboard (gl_FragCoord, bottom-left origin)
+    // and only overwrites it when the primitive or material has the data; the alpha is 1.
     if(frame.options.y>0) {
-        flag=0;
+        float2 fragCoord=float2(in.position.x,frame.viewport.y-in.position.y);
+        float2 v1=step(0.5f,fract(0.02f*fragCoord)),v2=step(0.5f,float2(1.0f)-fract(0.02f*fragCoord));
+        color=float3(0.9f+v1.x*v1.y+v2.x*v2.y);
+        // flags.w: bit0 TEXCOORD_0, bit1 KHR_materials_clearcoat, bit2 KHR_materials_specular.
+        bool hasUV0=m.flags.w&1u,hasClearcoat=m.flags.w&2u,hasSpecular=m.flags.w&4u;
         switch(frame.options.y) {
             case 1: color=linearTosRGB(base.rgb); break;
-            case 2: color=normalTex*0.5f+0.5f; break;
+            case 2: if(m.flags.x&4u) color=(normalTex+1.0f)/2.0f; break;
             case 3: color=float3(metallic); break;
             case 4: color=float3(roughness); break;
-            case 5: color=t*0.5f+0.5f; break;
-            case 6: color=float3(in.uv0,0); break;
-            case 7: color=float3((m.flags.x&8u) ? materialTextures.maps[3].sample(materialTextures.samplers[3],materialUV(in,m,3)).r : 1.0f); break;
+            case 5: color=(t+1.0f)/2.0f; break;
+            case 6: if(hasUV0) color=float3(in.uv0,0); break;
+            case 7: if(m.flags.x&8u) color=float3(materialTextures.maps[3].sample(materialTextures.samplers[3],materialUV(in,m,3)).r); break;
             case 8: color=linearTosRGB(emissive); break;
             case 9: color=float3(base.a); break;
-            case 10: color=float3(specularWeight); break;
-            case 11: color=float3(clearcoat); break;
-            case 12: color=float3(coatRoughness); break;
-            case 13: color=ng*0.5f+0.5f; break;
+            case 10: if(hasSpecular) color=float3(specularWeight); break;
+            case 11: if(hasClearcoat) color=float3(clearcoat); break;
+            case 12: if(hasClearcoat) color=float3(coatRoughness); break;
+            case 13: if(hasClearcoat) color=(coatNormal+float3(1))/2.0f; break;
         }
+        return {float4(color,1),0u};
     }
-    return {float4(color,base.a),flag};
+    return {float4(color,base.a),2u};
 }
 struct FullscreenVaryings { float4 position [[position]]; float2 uv; };
 vertex FullscreenVaryings khronos_tonemap_vertex(uint id [[vertex_id]]) {
@@ -287,9 +297,15 @@ fragment float4 khronos_present_fragment(FullscreenVaryings in [[stage_in]],text
 
 struct LineVertex { float4 position; float4 color; };
 struct LineVaryings { float4 position [[position]]; float4 color; };
-vertex LineVaryings khronos_line_vertex(uint id [[vertex_id]],device const LineVertex *vertices [[buffer(0)]],constant MetalFrameUniforms &frame [[buffer(1)]]) {
-    float4 clip=frame.viewProjection*vertices[id].position;
+vertex LineVaryings khronos_line_vertex(uint id [[vertex_id]],device const LineVertex *vertices [[buffer(0)]],constant float4x4 &viewProjection [[buffer(1)]]) {
+    float4 clip=viewProjection*vertices[id].position;
     clip.z=(clip.z+clip.w)*0.5f;
     return {clip,vertices[id].color};
 }
 fragment float4 khronos_line_fragment(LineVaryings in [[stage_in]]) { return in.color; }
+
+// Seeds every sample of the overlay MSAA target with the tonemapped frame, as the page's
+// tonemap quad fills its antialiased canvas before the overlay lines are drawn.
+fragment float4 khronos_overlay_copy_fragment(FullscreenVaryings in [[stage_in]],texture2d<float> image [[texture(0)]]) {
+    return image.read(uint2(in.position.xy));
+}

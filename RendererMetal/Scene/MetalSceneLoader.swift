@@ -264,7 +264,8 @@ private final class Builder {
         }
         guard let vb = device.makeBuffer(bytes: vertices, length: vertices.count*MemoryLayout<MetalVertex>.stride, options: .storageModeShared), let ib = device.makeBuffer(bytes:indices,length:indices.count*4,options:.storageModeShared) else { throw MetalSceneError.invalid("Metal buffer allocation failed") }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
-        let m = try convert(material)
+        var m = try convert(material)
+        m.hasTexCoord0 = uv0 != nil
         draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0,centroid:centroid,opaqueGroup:opaqueGroup))
     }
 
@@ -332,6 +333,8 @@ private extension Builder {
         if let p = source.transmission { m.hasTransmission = true; m.transmission = p.transmissionFactor }
         if let p = source.volume { m.thickness = p.thicknessFactor; m.attenuationDistance = p.attenuationDistance; m.attenuationColor = p.attenuationColor }
         if let p = source.diffuseTransmission { m.diffuseTransmission = p.diffuseTransmissionFactor; m.diffuseTransmissionColor = p.diffuseTransmissionColorFactor }
+        m.hasSpecular = source.specular != nil
+        m.hasClearcoat = source.clearcoat != nil
         for (slot, params) in textureSlots(source) { m.textures[slot] = try binding(params, slot: slot) }
         materialCache[key] = m
         return m

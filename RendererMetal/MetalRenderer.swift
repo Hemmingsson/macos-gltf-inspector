@@ -26,7 +26,8 @@ public final class MetalRenderer: @unchecked Sendable {
     public private(set) var scene: MetalScene?
     public private(set) var gpuMilliseconds = 0.0
     public private(set) var pipelineMilliseconds = 0.0
-    private var overlayPipeline: (any MTLRenderPipelineState)?
+    var overlayPipeline: (any MTLRenderPipelineState)?
+    var overlayCopyPipeline: (any MTLRenderPipelineState)?
     private var presentationPipeline: (any MTLRenderPipelineState)?
     private var pipelines: [String: any MTLRenderPipelineState] = [:]
     private let tonePipeline: any MTLRenderPipelineState
@@ -121,13 +122,19 @@ public final class MetalRenderer: @unchecked Sendable {
                              environment: SIMD4(Float((90 + look.environmentYawDegrees) * .pi / 180),
                                                 Float(look.environmentIntensity) * (environment?.intensityScale ?? 1),
                                                 Float(pow(2, look.exposureEV)), 4),
-                             options: SIMD4(toneMap(look.toneMapping), UInt32(debugOutput), environment == nil ? 0 : 1, UInt32(scene.lights.count)))
+                             options: SIMD4(toneMap(look.toneMapping), UInt32(debugOutput), environment == nil ? 0 : 1, UInt32(scene.lights.count)),
+                             viewport: SIMD4(Float(width), Float(height), 0, 0))
         var view = camera.viewMatrix
+        // Khronos letterboxes to the camera's own aspect: the user camera's square ortho, or a
+        // file camera's aspectRatio / xmag÷ymag.
+        var viewportAspect: Float? = orthographic ? 1 : nil
         if let index = fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
             frame.viewProjection = fileCamera.viewProjection
             frame.cameraPosition = SIMD4(fileCamera.eye, 1)
             view = fileCamera.view
+            viewportAspect = fileCamera.viewportAspect
         }
+        let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
         let hdr = try texture(.rgba16Float, width, height, [.renderTarget, .shaderRead])
         let flags = try texture(.r8Uint, width, height, [.renderTarget, .shaderRead])
         let depth = try texture(.depth32Float, width, height, [.renderTarget])
@@ -154,15 +161,19 @@ public final class MetalRenderer: @unchecked Sendable {
         let order = drawLists.frame(draws: scene.draws, view: view)
         var background: any MTLTexture = black
         if let prepass = order.transmissionPrepass {
-            background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass, fallback: black)
+            background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass,
+                                                    fallback: black, wireframe: wireframe)
         }
         try encodeScene(command: command, pass: pass, frame: frame, scene: scene,
-                        draws: order.main, background: background, wireframe: wireframe)
+                        draws: order.main, background: background, wireframe: wireframe, viewport: viewport)
         let tone = MTLRenderPassDescriptor()
         tone.colorAttachments[0].texture = output
-        tone.colorAttachments[0].loadAction = .dontCare
+        // Outside a letterboxed viewport the canvas keeps its transparent clear.
+        tone.colorAttachments[0].loadAction = viewportAspect == nil ? .dontCare : .clear
+        tone.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
         tone.colorAttachments[0].storeAction = .store
         guard let finish = command.makeRenderCommandEncoder(descriptor: tone) else { throw MetalRendererError.resource("tonemap encoder") }
+        finish.setViewport(viewport)
         finish.setRenderPipelineState(tonePipeline)
         finish.setFragmentTexture(hdr, index: 0)
         finish.setFragmentTexture(flags, index: 1)
@@ -171,25 +182,8 @@ public final class MetalRenderer: @unchecked Sendable {
         finish.endEncoding()
         let lines = overlayVertices(scene: scene, options: overlays)
         if !lines.isEmpty {
-            if overlayPipeline == nil {
-                let d = MTLRenderPipelineDescriptor()
-                d.vertexFunction = library.makeFunction(name: "khronos_line_vertex")
-                d.fragmentFunction = library.makeFunction(name: "khronos_line_fragment")
-                d.colorAttachments[0].pixelFormat = .rgba8Unorm
-                let a = d.colorAttachments[0]!
-                a.isBlendingEnabled = true
-                a.sourceRGBBlendFactor = .sourceAlpha; a.destinationRGBBlendFactor = .oneMinusSourceAlpha
-                a.sourceAlphaBlendFactor = .one; a.destinationAlphaBlendFactor = .oneMinusSourceAlpha
-                overlayPipeline = try device.makeRenderPipelineState(descriptor: d)
-            }
-            tone.colorAttachments[0].loadAction = .load
-            guard let encoder = command.makeRenderCommandEncoder(descriptor: tone) else { throw MetalRendererError.resource("overlays") }
-            encoder.setRenderPipelineState(overlayPipeline!)
-            let buffer = lines.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count, options: .storageModeShared) }
-            encoder.setVertexBuffer(buffer, offset: 0, index: 0)
-            encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
-            encoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: lines.count)
-            encoder.endEncoding()
+            try encodeOverlays(lines, command: command, output: output,
+                               viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix, viewport: viewport)
         }
         command.commit()
         command.waitUntilCompleted()
@@ -226,7 +220,7 @@ public final class MetalRenderer: @unchecked Sendable {
 
     private func transmissionBackground(command: any MTLCommandBuffer, frame: GPUFrame,
                                         scene: MetalScene, draws: [Int],
-                                        fallback: any MTLTexture) throws -> any MTLTexture {
+                                        fallback: any MTLTexture, wireframe: Bool = false) throws -> any MTLTexture {
         let resolution = 1024
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
             width: resolution, height: resolution, mipmapped: true)
@@ -264,7 +258,7 @@ public final class MetalRenderer: @unchecked Sendable {
         var preFrame = frame
         preFrame.options.z |= 2
         try encodeScene(command: command, pass: pass, frame: preFrame, scene: scene,
-            draws: draws, background: fallback, samples: 4, format: .rgba8Unorm)
+            draws: draws, background: fallback, samples: 4, format: .rgba8Unorm, wireframe: wireframe)
         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("transmission mips") }
         blit.generateMipmaps(for: resolved)
         blit.endEncoding()
@@ -275,9 +269,10 @@ public final class MetalRenderer: @unchecked Sendable {
                              frame inputFrame: GPUFrame, scene: MetalScene,
                              draws: [Int], background: any MTLTexture,
                              samples: Int = 1, format: MTLPixelFormat = .rgba16Float,
-                             wireframe: Bool = false) throws {
+                             wireframe: Bool = false, viewport: MTLViewport? = nil) throws {
         var frame = inputFrame
         guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw MetalRendererError.resource("render encoder") }
+        if let viewport { encoder.setViewport(viewport) }
         encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
         encoder.setFragmentBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
         if wireframe { encoder.setTriangleFillMode(.lines) }
@@ -447,7 +442,9 @@ private struct GPUFrame {
     var cameraPosition: SIMD4<Float>
     var environment: SIMD4<Float>
     var options: SIMD4<UInt32>
+    var viewport: SIMD4<Float>
 }
+
 private struct GPUDraw { var model: simd_float4x4; var normalMatrix: simd_float4x4 }
 private func toneMap(_ mapping: RenderLook.ToneMapping) -> UInt32 {
     switch mapping { case .pbrNeutral: 0; case .none: 1; case .acesNarkowicz: 2; case .acesHill: 3 }

@@ -64,7 +64,8 @@ struct GPUMaterial {
         extra = SIMD4(m.iridescenceThicknessMin, m.dispersion, m.glossiness, m.textures[.clearcoatNormal]?.scale ?? 1)
         let slots = MetalTextureSlot.allCases
         let mask = slots.enumerated().reduce(UInt32(0)) { $0 | (m.textures[$1.element] == nil ? 0 : UInt32(1 << $1.offset)) }
-        flags = SIMD4(mask, UInt32(m.alphaMode), (m.unlit ? 1 : 0) | (m.doubleSided ? 2 : 0) | (m.isSpecularGlossiness ? 4 : 0), 0)
+        flags = SIMD4(mask, UInt32(m.alphaMode), (m.unlit ? 1 : 0) | (m.doubleSided ? 2 : 0) | (m.isSpecularGlossiness ? 4 : 0),
+                      (m.hasTexCoord0 ? 1 : 0) | (m.hasClearcoat ? 2 : 0) | (m.hasSpecular ? 4 : 0))
         uv0 = GPUUVTransform(m.textures[slots[0]]?.transform ?? matrix_identity_float3x3)
         uv1 = GPUUVTransform(m.textures[slots[1]]?.transform ?? matrix_identity_float3x3)
         uv2 = GPUUVTransform(m.textures[slots[2]]?.transform ?? matrix_identity_float3x3)
