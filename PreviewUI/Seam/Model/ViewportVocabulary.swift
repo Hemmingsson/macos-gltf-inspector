@@ -95,7 +95,7 @@ public enum Projection: String, Sendable, Hashable, Codable, CaseIterable, Ident
     }
 }
 
-/// Canned camera angles. File cameras are separate (`SceneModel.cameras`).
+/// Canned camera angles. File cameras are separate.
 public enum CameraPreset: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
     case front
     case back

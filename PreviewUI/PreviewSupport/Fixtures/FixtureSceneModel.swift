@@ -6,7 +6,6 @@ public struct FixtureSceneModel: SceneModel {
   public var scenes: [SceneInfo]
   public var defaultSceneID: NodeID?
   public var nodeTree: [SceneNode]
-  public var cameras: [CameraInfo]
   public var lights: [LightInfo]
   public var materials: [MaterialInfo]
   public var animations: [AnimationInfo]
@@ -24,7 +23,6 @@ public struct FixtureSceneModel: SceneModel {
     scenes: [SceneInfo],
     defaultSceneID: NodeID? = nil,
     nodeTree: [SceneNode],
-    cameras: [CameraInfo] = [],
     lights: [LightInfo] = [],
     materials: [MaterialInfo] = [],
     animations: [AnimationInfo] = [],
@@ -43,7 +41,6 @@ public struct FixtureSceneModel: SceneModel {
     self.scenes = scenes
     self.defaultSceneID = defaultSceneID ?? scenes.first?.id
     self.nodeTree = nodeTree
-    self.cameras = cameras
     self.lights = lights
     self.materials = materials
     self.animations = animations

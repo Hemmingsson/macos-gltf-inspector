@@ -16,7 +16,6 @@ struct EngineSceneModelTests {
 
         #expect(!availability.hasAnimations)
         #expect(!availability.hasLights)
-        #expect(model.cameras.isEmpty)
         #expect(model.skins.isEmpty)
         #expect(model.morphs.isEmpty)
         #expect(model.scenes.count == 1)
@@ -39,7 +38,6 @@ struct EngineSceneModelTests {
 
         #expect(!availability.hasAnimations)
         #expect(!availability.hasLights)
-        #expect(model.cameras.isEmpty)
         #expect(model.skins.isEmpty)
         #expect(model.morphs.isEmpty)
         #expect(model.scenes.count == 1)
@@ -82,14 +80,16 @@ struct EngineSceneModelTests {
     @Test func camerasFixtureReportsCamerasWithDegrees() async throws {
         try requireFixture(TestFixtures.cameras)
         let loaded = try await EntityLoader.load(from: TestFixtures.cameras, includeAnimations: false)
-        let model = EngineSceneModel(loaded: loaded, fileName: "persp-and-ortho.gltf")
+        let cameras = loaded.document.cameras.indices.compactMap {
+            EngineSceneModel.cameraInfo(index: $0, document: loaded.document)
+        }
 
-        #expect(model.cameras.count >= 2)
-        let perspective = try #require(model.cameras.first { $0.projection == .perspective })
+        #expect(cameras.count >= 2)
+        let perspective = try #require(cameras.first { $0.projection == .perspective })
         let fov = try #require(perspective.fieldOfViewDegrees)
         // yfov is authored in radians; seam exposes degrees (typical ~40–90°).
         #expect(fov > 5 && fov < 180)
-        #expect(model.cameras.contains { $0.projection == .orthographic })
+        #expect(cameras.contains { $0.projection == .orthographic })
     }
 
     @Test func multiSceneIsMultiScene() async throws {

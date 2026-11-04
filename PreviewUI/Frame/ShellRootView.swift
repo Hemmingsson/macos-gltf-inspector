@@ -167,14 +167,12 @@ private struct ShellRootViewPreviewHost: View {
         case sidebarCollapsed
     }
 
-    var mode: Mode
     @State private var selection: MockSelectionModel
     @State private var viewport: MockViewportController
     @State private var playback: MockPlaybackController
     @State private var panels: ShellPanelChrome
 
     init(mode: Mode) {
-        self.mode = mode
         _selection = State(initialValue: MockSelectionModel())
         _viewport = State(initialValue: MockViewportController())
         _playback = State(initialValue: MockPlaybackController())

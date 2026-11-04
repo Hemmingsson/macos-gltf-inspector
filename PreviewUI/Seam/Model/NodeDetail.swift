@@ -43,7 +43,6 @@ public struct LightInfo: Sendable, Hashable, Identifiable {
     public var id: NodeID
     public var name: String
     public var kind: Kind
-    public var color: RGBColor
     /// glTF punctual intensity (lux for directional, candela otherwise).
     public var intensity: Double
     public var range: Double?
@@ -55,7 +54,6 @@ public struct LightInfo: Sendable, Hashable, Identifiable {
         index: Int,
         name: String,
         kind: Kind,
-        color: RGBColor = .white,
         intensity: Double = 1,
         range: Double? = nil,
         innerConeDegrees: Double? = nil,
@@ -64,7 +62,6 @@ public struct LightInfo: Sendable, Hashable, Identifiable {
         self.id = NodeID(kind: .light, index: index)
         self.name = name
         self.kind = kind
-        self.color = color
         self.intensity = intensity
         self.range = range
         self.innerConeDegrees = innerConeDegrees

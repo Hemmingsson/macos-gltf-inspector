@@ -11,7 +11,6 @@ struct EngineSceneModel: SceneModel {
     var scenes: [SceneInfo]
     var defaultSceneID: NodeID?
     var nodeTree: [SceneNode]
-    var cameras: [CameraInfo]
     var lights: [LightInfo]
     var materials: [MaterialInfo]
     var animations: [AnimationInfo]
@@ -63,7 +62,6 @@ struct EngineSceneModel: SceneModel {
         }
 
         self.nodeTree = Self.buildNodeTree(document: document)
-        self.cameras = Self.mapCameras(document.cameras)
         self.lights = Self.mapLights(document.lights)
         self.materials = Self.mapMaterials(document: document)
         self.animations = Self.mapAnimations(document.animations)
@@ -193,10 +191,6 @@ extension EngineSceneModel {
         return roots
     }
 
-    private static func mapCameras(_ cameras: [GLTFSessionDocument.Camera]) -> [CameraInfo] {
-        cameras.enumerated().map { index, camera in cameraInfo(camera, index: index) }
-    }
-
     private static func cameraInfo(_ camera: GLTFSessionDocument.Camera, index: Int) -> CameraInfo {
         let projection: Projection =
             camera.type.lowercased() == "orthographic" ? .orthographic : .perspective
@@ -227,11 +221,6 @@ extension EngineSceneModel {
             index: index,
             name: displayName(light.name, fallback: "Light \(index)"),
             kind: mapLightKind(light.type),
-            color: RGBColor(
-                red: Double(light.color.x),
-                green: Double(light.color.y),
-                blue: Double(light.color.z)
-            ),
             intensity: Double(light.intensity),
             range: light.range.map(Double.init),
             innerConeDegrees: light.innerCone.map { Double(radiansToDegrees($0)) },

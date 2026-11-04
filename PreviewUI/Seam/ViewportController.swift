@@ -32,14 +32,10 @@ public protocol ViewportController: AnyObject, Observable {
     func setFieldOfViewDegrees(_ degrees: Float)
     /// Frame the model in the current view.
     func fit()
-    /// Back to the opening pose and view state.
-    func reset()
     func applyCameraPreset(_ preset: CameraPreset)
-    /// Export a PNG still. Fire-and-forget: the implementation owns where it lands.
-    func screenshot()
     func setScene(_ id: NodeID)
     func setMaterialVariant(_ index: Int?)
-    /// Activate a file camera (`NodeID.kind == .camera`, index into `SceneModel.cameras`).
+    /// Activate a file camera (`NodeID.kind == .camera`, index into the file's cameras).
     /// Pass `nil` to return to Fit / system orbit.
     func setFileCamera(_ id: NodeID?)
 }

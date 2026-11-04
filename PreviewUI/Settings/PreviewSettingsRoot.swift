@@ -64,7 +64,6 @@ struct SettingsFooter<Content: View>: View {
 
 private enum SettingsPreviewMetrics {
     static let width: CGFloat = 520
-    static let rootHeight: CGFloat = 380
     static let generalHeight: CGFloat = 220
     static let previewDefaultsHeight: CGFloat = 420
     static let aboutHeight: CGFloat = 200

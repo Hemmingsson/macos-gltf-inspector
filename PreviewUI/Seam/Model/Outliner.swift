@@ -6,8 +6,6 @@ public struct SceneNode: Sendable, Hashable, Identifiable {
     public var name: String
     public var children: [SceneNode]
 
-    public var kind: NodeKind { id.kind }
-
     public init(id: NodeID, name: String, children: [SceneNode] = []) {
         self.id = id
         self.name = name
