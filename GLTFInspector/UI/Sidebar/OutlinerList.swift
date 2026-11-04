@@ -1,4 +1,5 @@
 import AppKit
+import GLTFCore
 import SwiftUI
 
 /// Native sidebar outliner: `List(selection:)` + `.listStyle(.sidebar)`, one `Section` per
@@ -7,7 +8,8 @@ import SwiftUI
 ///
 /// S1f: native list selection — `NodeRow` draws no selection of its own.
 struct OutlinerList: View {
-    var model: EngineSceneModel
+    var document: GLTFDocument
+    var validation: ValidationResult
     @Binding var selection: NodeID?
     /// Scene / camera side effects. Selection itself is written by the list binding.
     var onActivate: (OutlinerItem) -> Void
@@ -16,7 +18,7 @@ struct OutlinerList: View {
     @State private var expanded = Set<NodeID>()
 
     var body: some View {
-        let sections = OutlinerSection.sections(of: model)
+        let sections = OutlinerSection.sections(of: document)
         let foldingRoots = sections.filter(\.folds).flatMap(\.items)
         List(selection: listSelection(in: sections)) {
             ForEach(sections) { section in
@@ -80,7 +82,7 @@ struct OutlinerList: View {
 
     /// A fault badge for rows the validator reported on. Infos and hints stay off the outliner.
     private func badge(for id: NodeID) -> DSStatus? {
-        switch model.validation.worstSeverity(for: id) {
+        switch validation.worstSeverity(for: id) {
         case .error: .error
         case .warning: .warning
         case .info, .hint, nil: nil

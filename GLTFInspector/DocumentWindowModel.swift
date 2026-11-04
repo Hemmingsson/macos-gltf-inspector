@@ -20,9 +20,9 @@ final class DocumentWindowModel {
     var documentURL: URL?
     /// The panels' state. The canvas region has its own (`DocumentWindow.canvasState`).
     private(set) var phase: ShellDocumentState
-    /// The file's contents for the outliner and inspector. Nil until the JSON is read.
-    private(set) var contents: EngineSceneModel?
-    private(set) var validation: GLTFValidationState?
+    /// What the file contains, for the outliner and inspector. Empty until the JSON is read.
+    private(set) var document = GLTFDocument()
+    private(set) var validationState: GLTFValidationState?
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
     let view: ViewState
@@ -41,15 +41,10 @@ final class DocumentWindowModel {
         view = ViewState(settings: settings ?? .shared)
     }
 
-    /// The panels' snapshot, with validation folded in; an empty one while the file opens.
-    var sceneModel: EngineSceneModel {
-        let base = contents ?? EngineSceneModel(
-            fileName: (loadingURL ?? documentURL)?.lastPathComponent ?? "Model",
-            document: GLTFSessionDocument(),
-            dimensions: Dimensions(width: 0, height: 0, depth: 0)
-        )
-        return base.replacingValidation(validation)
-    }
+    /// The validator's findings, resolved to outliner rows.
+    var validation: ValidationResult { ValidationResult(validationState, document: document) }
+
+    var fileName: String { (loadingURL ?? documentURL)?.lastPathComponent ?? "Model" }
 
     var exportName: String {
         (loadingURL ?? documentURL)?.deletingPathExtension().lastPathComponent ?? "export"
@@ -61,15 +56,15 @@ final class DocumentWindowModel {
         guard DocumentOpening.isGLTFFile(url) else {
             AppLog.error(AppLog.app, "open rejected \(url.lastPathComponent)")
             phase = .failed("Not a .glb / .gltf file")
-            contents = nil
+            document = GLTFDocument()
             loadingURL = url
             return .rejected
         }
         if loadingURL == url, phase == .loading || phase == .ready, loadGeneration > 0 { return .unchanged }
 
         phase = .loading
-        contents = nil
-        validation = nil
+        document = GLTFDocument()
+        validationState = nil
         loadingURL = url
         loadGeneration += 1
         view.reset()
@@ -79,28 +74,28 @@ final class DocumentWindowModel {
         return .started(generation: loadGeneration)
     }
 
-    /// Panels from the file's JSON alone (`GLTFDocumentSummary`). `load` is injectable for tests.
+    /// The panels, from the file's JSON alone. `load` is injectable for tests.
     func openSummary(
         _ url: URL,
         generation: Int,
-        load: (URL) async throws -> GLTFDocumentSummary = GLTFDocumentSummary.load
+        load: (URL) async throws -> GLTFDocument = GLTFDocument.load
     ) async {
         do {
-            let summary = try await load(url)
+            let document = try await load(url)
             guard generation == loadGeneration else { return }
-            contents = EngineSceneModel(summary: summary, fileName: url.lastPathComponent)
-            view.sceneIndex = summary.document.defaultSceneIndex
-            view.viewModes = summary.viewModes.isEmpty ? [.shaded] : summary.viewModes
+            self.document = document
+            view.sceneIndex = document.defaultSceneIndex
+            view.viewModes = document.viewModes
             phase = .ready
-            let size = summary.bounds.map { "\($0.size.x)x\($0.size.y)x\($0.size.z)" } ?? "empty"
+            let size = document.bounds.map { "\($0.size.x)x\($0.size.y)x\($0.size.z)" } ?? "empty"
             AppLog.info(
                 AppLog.app,
-                "open ready \(url.lastPathComponent) nodes=\(summary.document.nodes.count) cameras=\(summary.document.cameras.count) triangles=\(summary.stats.triangleCount) bounds=\(size) uptimeMs=\(AppLog.uptimeMs())"
+                "open ready \(url.lastPathComponent) nodes=\(document.nodes.count) materials=\(document.materials.count) triangles=\(document.nodes.reduce(0) { $0 + $1.triangleCount }) bounds=\(size) uptimeMs=\(AppLog.uptimeMs())"
             )
         } catch {
             guard generation == loadGeneration else { return }
             AppLog.error(AppLog.app, "open failed \(url.lastPathComponent): \(error.localizedDescription)")
-            contents = nil
+            document = GLTFDocument()
             phase = .failed(error.localizedDescription)
         }
     }
@@ -108,7 +103,7 @@ final class DocumentWindowModel {
     /// Khronos validation is CPU-heavy (a JSContext and the whole file as base64), so it starts
     /// once the canvas shows the model and does not compete with the first frame.
     func noteCanvasReady() {
-        guard let url = loadingURL, validation == nil, validationTask == nil else { return }
+        guard let url = loadingURL, validationState == nil, validationTask == nil else { return }
         let generation = loadGeneration
         validationTask = Task {
             let state: GLTFValidationState
@@ -126,7 +121,7 @@ final class DocumentWindowModel {
                 AppLog.error(AppLog.app, "validation failed \(url.lastPathComponent): \(error.localizedDescription)")
             }
             guard !Task.isCancelled, generation == loadGeneration else { return }
-            validation = state
+            validationState = state
         }
     }
 }

@@ -1,11 +1,16 @@
 import Foundation
 import simd
 
-/// Host outliner + file-camera graph, parsed from the glTF JSON by `GLTFDocumentJSON`.
-/// Not a full glTF mirror — no mesh payloads; the page loads the file for drawing. Describes the
-/// file as authored.
-public struct GLTFSessionDocument: Sendable, Equatable {
+/// What a glTF file contains, as authored, read from its JSON (`GLTFDocumentJSON`): the outliner
+/// and inspector show this. No mesh payloads: the renderer loads the file on its own.
+public struct GLTFDocument: Sendable, Equatable {
     public var defaultSceneIndex: Int = 0
+    /// Bounds of the default scene; nil when no mesh node has usable `POSITION` bounds.
+    public var bounds: ModelBounds?
+    /// `KHR_materials_variants` names in file order; empty when the extension is absent.
+    public var materialVariantNames: [String] = []
+    /// View modes the file has data for (`ViewModeAvailability`).
+    public var viewModes: [RenderViewMode] = [.shaded]
     public var scenes: [Scene] = []
     public var nodes: [Node] = []
     public var cameras: [Camera] = []
@@ -95,16 +100,17 @@ public struct GLTFSessionDocument: Sendable, Equatable {
 
     /// Authored texture slot on a material. Pixel size / thumb stamped from the file bytes.
     public struct TextureSlot: Sendable, Equatable {
-        public enum Kind: String, Sendable, Equatable {
+        /// In inspector order.
+        public enum Kind: String, Sendable, Hashable, CaseIterable {
             case baseColor
             case normal
             case metallicRoughness
             case occlusion
             case emissive
-            case specular
             case clearcoat
             case clearcoatRoughness
             case clearcoatNormal
+            case specular
         }
 
         public var kind: Kind
@@ -118,8 +124,6 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var thumbnailPNG: Data?
     }
 
-    /// File material + texture-map presence. `maps` is canonical for sidebar chips;
-    /// `PreviewDebugMode` aggregates the same flags (JSON twin) with mesh/factor signals.
     public struct Material: Sendable, Equatable {
         public enum Workflow: String, Sendable, Equatable {
             case metallicRoughness
@@ -134,7 +138,6 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         }
 
         public var name: String
-        public var maps: MaterialMapPresence
         public var workflow: Workflow = .metallicRoughness
         public var alphaMode: AlphaMode = .opaque
         public var isDoubleSided: Bool = false
@@ -147,7 +150,7 @@ public struct GLTFSessionDocument: Sendable, Equatable {
         public var emissiveStrength: Float?
         public var normalScale: Float?
         public var occlusionStrength: Float?
-        /// Present map bindings; thumbs stamped from the file bytes.
+        /// Bound maps in inspector order; thumbs stamped from the file bytes.
         public var textures: [TextureSlot] = []
     }
 
@@ -167,5 +170,17 @@ public struct GLTFSessionDocument: Sendable, Equatable {
     public struct Animation: Sendable, Equatable {
         public var name: String
         public var duration: Double
+    }
+}
+
+extension GLTFDocument {
+    /// Reads a `.gltf` or a GLB's JSON chunk (plus texture headers for the inspector) off the main
+    /// thread. Throws for a file that is not glTF.
+    public static func load(from url: URL) async throws -> GLTFDocument {
+        try await Task.detached(priority: .userInitiated) {
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+            return GLTFDocumentJSON.makeDocument(json: try GLBBox.peekDocumentJSON(from: url), fileURL: url)
+        }.value
     }
 }

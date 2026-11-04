@@ -1,3 +1,4 @@
+import GLTFCore
 import SwiftUI
 
 /// Centre column — the viewport's box and the chrome that floats over it.
@@ -12,8 +13,9 @@ import SwiftUI
 /// canvas instead of on it. Overlays keep each cluster free to size itself and to sit exactly
 /// at its own edge.
 struct CanvasRegion<Content: View>: View {
-    /// File snapshot: dimensions for the bottom overlays.
-    var model: EngineSceneModel
+    /// The model's bounds, for the dimensions readout and the origin gizmo. Nil before the
+    /// file's JSON is read, or when it has no measurable mesh.
+    var bounds: ModelBounds?
     var view: ViewState
     /// Empty / loading / failed hide the model chrome; ready shows clusters + overlays.
     var documentState: ShellDocumentState = .ready
@@ -90,8 +92,8 @@ struct CanvasRegion<Content: View>: View {
             // World-origin cue: shown when Center is off, or when the file is uncentered
             // (`authoredOrigin != .zero`), so the Center toggle has one clear effect.
             .overlay {
-                if !view.isCentered || model.dimensions.authoredOrigin != .zero {
-                    OriginGizmo(authoredOrigin: model.dimensions.authoredOrigin)
+                if !view.isCentered || authoredOrigin != .zero {
+                    OriginGizmo(authoredOrigin: authoredOrigin)
                         .transition(reduceMotion ? .identity : .opacity)
                 }
             }
@@ -101,14 +103,16 @@ struct CanvasRegion<Content: View>: View {
                     .padding(OverlayMetrics.inset)
             }
             .overlay(alignment: .bottomTrailing) {
-                DimensionsReadout(dimensions: model.dimensions)
+                DimensionsReadout(size: bounds?.size ?? .zero)
                     .padding(OverlayMetrics.inset)
             }
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: view.isCentered)
-            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: model.dimensions.authoredOrigin)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: authoredOrigin)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isSidebarVisible)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isInspectorVisible)
     }
+
+    private var authoredOrigin: SIMD3<Float> { bounds?.authoredOrigin ?? .zero }
 
     private var stageLeadingInset: CGFloat {
         // Collapsed: the system sidebar toggle stays in the band after the traffic lights.

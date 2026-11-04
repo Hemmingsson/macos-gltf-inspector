@@ -20,7 +20,7 @@ public enum GLTFIssueSubject: Sendable, Hashable {
 public enum GLTFIssueResolver {
     public static func subjects(
         forPointer pointer: String?,
-        in document: GLTFSessionDocument
+        in document: GLTFDocument
     ) -> [GLTFIssueSubject] {
         guard let pointer else { return [] }
         let parts = pointer.split(separator: "/").map(String.init)
@@ -67,7 +67,7 @@ public enum GLTFIssueResolver {
     private static func primitiveMaterial(
         _ parts: [String],
         mesh: Int,
-        document: GLTFSessionDocument
+        document: GLTFDocument
     ) -> Int? {
         guard parts.count >= 4, parts[2] == "primitives", let primitive = Int(parts[3]),
               document.meshPrimitiveMaterials.indices.contains(mesh),
@@ -77,8 +77,8 @@ public enum GLTFIssueResolver {
     }
 
     private static func materialIndices(
-        using document: GLTFSessionDocument,
-        matching: (GLTFSessionDocument.TextureSlot) -> Bool
+        using document: GLTFDocument,
+        matching: (GLTFDocument.TextureSlot) -> Bool
     ) -> [Int] {
         document.materials.indices.filter { document.materials[$0].textures.contains(where: matching) }
     }

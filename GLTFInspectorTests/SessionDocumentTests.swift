@@ -5,7 +5,7 @@ import Testing
 /// The sidebar document read from the file (`GLTFDocumentJSON`, as the document window builds it).
 struct SessionDocumentTests {
     /// The document the window builds: original JSON plus the file for binary payloads.
-    private func fileDocument(_ url: URL) throws -> GLTFSessionDocument {
+    private func fileDocument(_ url: URL) throws -> GLTFDocument {
         GLTFDocumentJSON.makeDocument(json: try GLBBox.peekDocumentJSON(from: url), fileURL: url)
     }
 
@@ -22,7 +22,7 @@ struct SessionDocumentTests {
         }
         let material = try #require(document.materials.first)
         #expect(material.workflow == .metallicRoughness || material.workflow == .unlit)
-        #expect([GLTFSessionDocument.Material.AlphaMode.opaque, .mask, .blend].contains(material.alphaMode))
+        #expect([GLTFDocument.Material.AlphaMode.opaque, .mask, .blend].contains(material.alphaMode))
         #expect(!material.textures.isEmpty)
         let slot = try #require(material.textures.first)
         #expect(slot.width != nil && slot.height != nil)
@@ -81,18 +81,10 @@ struct SessionDocumentTests {
         #expect(document.materials.count == 2)
 
         let textured = try #require(document.materials.first { $0.name == "Textured" })
-        #expect(textured.maps.baseColor)
-        #expect(textured.maps.normal)
-        #expect(textured.maps.metallicRoughness)
-        #expect(textured.maps.occlusion)
-        #expect(!textured.maps.emissive)
+        #expect(textured.textures.map(\.kind) == [.baseColor, .normal, .metallicRoughness, .occlusion])
 
         let plain = try #require(document.materials.first { $0.name == "Plain" })
-        #expect(!plain.maps.baseColor)
-        #expect(!plain.maps.normal)
-        #expect(!plain.maps.metallicRoughness)
-        #expect(!plain.maps.occlusion)
-        #expect(!plain.maps.emissive)
+        #expect(plain.textures.isEmpty)
     }
 
     @Test func documentEnumeratesPunctualLights() throws {

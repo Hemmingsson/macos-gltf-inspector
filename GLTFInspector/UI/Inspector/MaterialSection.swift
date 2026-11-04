@@ -1,26 +1,29 @@
 import AppKit
+import GLTFCore
+import simd
 import SwiftUI
 
-/// Bound material readout.
-///
-/// Wireframe-simple: **say each fact once**. The inspector header already owns the material’s
-/// name/kind when a material is selected, so this section never repeats that. Present maps appear
-/// as chips *or* (full density) as a sized list — never both, and never also as a colour strip.
+/// A material as the file authors it. Each fact is said once: the inspector header already
+/// names a selected material, and present maps appear as chips (compact) or as sized rows
+/// (full), never both.
 struct MaterialSection: View {
     enum Density {
-        /// Mesh selection — name + present-map chips (Main@2x).
+        /// A mesh is selected: its material's name and map chips.
         case compact
-        /// Material selected — facts + sized maps; header already shows the name.
+        /// The material itself is selected: its facts and sized maps.
         case full
     }
 
-    var material: MaterialInfo
-    var density: Density = .full
+    var document: GLTFDocument
+    var index: Int
+    var density: Density
+
+    private var material: GLTFDocument.Material { document.materials[index] }
+    private var name: String { document.displayName(of: NodeID(kind: .material, index: index)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader("Material")
-
             Group {
                 switch density {
                 case .compact: compactBody
@@ -35,94 +38,81 @@ struct MaterialSection: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    // MARK: Compact (mesh)
-
     private var compactBody: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.m) {
             HStack(spacing: DS.Spacing.m) {
                 DSTypeIcon(.material)
-                Text(material.name)
+                Text(name)
                     .font(DS.Font.body)
                     .foregroundStyle(DS.Color.textPrimary)
                     .lineLimit(1)
             }
-
-            if !material.orderedMaps.isEmpty {
-                FlexibleChipRow(items: material.orderedMaps.map(\.shortTitle))
+            if !material.textures.isEmpty {
+                FlexibleChipRow(items: material.textures.map(\.kind.shortTitle))
             }
         }
     }
 
-    // MARK: Full (material selected)
-
     private var fullBody: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.l) {
             VStack(spacing: 0) {
-                DSFactRow("Workflow", value: MaterialInspectorSupport.workflowTitle(material.workflow))
-                DSFactRow("Alpha", value: MaterialInspectorSupport.alphaTitle(material))
-                DSFactRow(
-                    "Faces",
-                    value: material.isDoubleSided ? "Double-sided" : "Single-sided"
-                )
+                DSFactRow("Workflow", value: material.workflowTitle)
+                DSFactRow("Alpha", value: material.alphaTitle)
+                DSFactRow("Faces", value: material.isDoubleSided ? "Double-sided" : "Single-sided")
             }
 
             VStack(spacing: DS.Spacing.xs) {
-                if MaterialInspectorSupport.showsBaseColorFactor(material),
-                   let factor = material.baseColorFactor {
-                    factorColorRow("Base color", factor)
+                if let factor = material.visibleBaseColorFactor {
+                    colorRow("Base color", SIMD3(factor.x, factor.y, factor.z))
                 }
-                if MaterialInspectorSupport.showsMetallic(material),
-                   let value = material.metallicFactor {
-                    DSFactorRow("Metallic", value: value)
+                if let value = material.visibleMetallicFactor {
+                    DSFactorRow("Metallic", value: Double(value))
                 }
-                if MaterialInspectorSupport.showsRoughness(material),
-                   let value = material.roughnessFactor {
-                    DSFactorRow("Roughness", value: value)
+                if let value = material.visibleRoughnessFactor {
+                    DSFactorRow("Roughness", value: Double(value))
                 }
-                if MaterialInspectorSupport.showsEmissive(material) {
-                    factorColorRow("Emissive", material.emissiveFactor ?? .black)
+                if let factor = material.visibleEmissiveFactor {
+                    colorRow("Emissive", factor)
                 }
-                if MaterialInspectorSupport.showsEmissiveStrength(material),
-                   let value = material.emissiveStrength {
-                    DSFactRow("Emissive strength", value: MaterialInspectorSupport.scalarLabel(value))
+                if let value = material.visibleEmissiveStrength {
+                    DSFactRow("Emissive strength", value: String(format: "%.2g", value))
                 }
-                if MaterialInspectorSupport.showsNormalScale(material),
-                   let value = material.normalScale {
-                    DSFactRow("Normal scale", value: MaterialInspectorSupport.scalarLabel(value))
+                if let value = material.visibleNormalScale {
+                    DSFactRow("Normal scale", value: String(format: "%.2g", value))
                 }
-                if MaterialInspectorSupport.showsOcclusionStrength(material),
-                   let value = material.occlusionStrength {
-                    DSFactorRow("Occlusion", value: value)
+                if let value = material.visibleOcclusionStrength {
+                    DSFactorRow("Occlusion", value: Double(value))
                 }
             }
 
-            // One map representation: sized rows with optional thumb. No chips above them.
-            if !material.orderedTextures.isEmpty {
+            if !material.textures.isEmpty {
                 VStack(spacing: 0) {
-                    ForEach(material.orderedTextures) { texture in
-                        mapRow(texture)
-                    }
+                    ForEach(material.textures, id: \.kind) { mapRow($0) }
                 }
-            } else if !material.orderedMaps.isEmpty {
-                FlexibleChipRow(items: material.orderedMaps.map(\.shortTitle))
             }
 
-            if let usage = MaterialInspectorSupport.usageTitle(material) {
+            if let usage {
                 DSFactRow("Used by", value: usage)
             }
         }
     }
 
-    private func mapRow(_ texture: MaterialTextureInfo) -> some View {
+    private var usage: String? {
+        let names = document.meshNames(usingMaterial: index)
+        guard !names.isEmpty else { return nil }
+        return names.count <= 3 ? names.joined(separator: ", ") : "\(names.count) meshes"
+    }
+
+    private func mapRow(_ texture: GLTFDocument.TextureSlot) -> some View {
         HStack(spacing: DS.Spacing.m) {
             mapThumb(texture)
-            Text(texture.map.title)
+            Text(texture.kind.title)
                 .font(DS.Font.callout)
                 .foregroundStyle(DS.Color.textSecondary)
                 .lineLimit(1)
             Spacer(minLength: DS.Spacing.m)
-            if let size = texture.sizeLabel {
-                Text(size)
+            if let width = texture.width, let height = texture.height {
+                Text("\(width)×\(height)")
                     .font(DS.Font.value)
                     .foregroundStyle(DS.Color.textPrimary)
             }
@@ -136,51 +126,42 @@ struct MaterialSection: View {
     }
 
     @ViewBuilder
-    private func mapThumb(_ texture: MaterialTextureInfo) -> some View {
-        let side: CGFloat = 28
+    private func mapThumb(_ texture: GLTFDocument.TextureSlot) -> some View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
-        if let data = texture.thumbnailPNG, let nsImage = NSImage(data: data) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .interpolation(.medium)
-                .frame(width: side, height: side)
-                .clipShape(shape)
-                .overlay {
-                    shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline)
-                }
-                .accessibilityHidden(true)
-        } else {
-            shape
-                .fill(DS.Color.cardFill)
-                .frame(width: side, height: side)
-                .overlay {
-                    shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline)
-                }
-                .accessibilityHidden(true)
+        Group {
+            if let data = texture.thumbnailPNG, let image = NSImage(data: data) {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.medium)
+                    .clipShape(shape)
+            } else {
+                shape.fill(DS.Color.cardFill)
+            }
         }
+        .frame(width: 28, height: 28)
+        .overlay { shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline) }
+        .accessibilityHidden(true)
     }
 
-    private func factorColorRow(_ label: String, _ color: RGBColor) -> some View {
-        DSFactRow(label) {
+    private func colorRow(_ label: String, _ color: SIMD3<Float>) -> some View {
+        let clamped = simd_clamp(color, .zero, .one)
+        return DSFactRow(label) {
             HStack(spacing: DS.Spacing.s) {
-                MaterialSwatch(color: Color(rgb: color), size: 12)
-                Text(MaterialInspectorSupport.hexLabel(color))
+                MaterialSwatch(color: Color(.sRGB, red: Double(clamped.x), green: Double(clamped.y), blue: Double(clamped.z)), size: 12)
+                Text(String(format: "#%02X%02X%02X", Int((clamped.x * 255).rounded()),
+                            Int((clamped.y * 255).rounded()), Int((clamped.z * 255).rounded())))
             }
         }
     }
 
     private var accessibilityLabel: String {
-        var parts = ["Material \(material.name)"]
-        let maps = material.orderedMaps.map(\.title)
-        if !maps.isEmpty {
-            parts.append("maps: \(maps.joined(separator: ", "))")
+        var parts = ["Material \(name)"]
+        if !material.textures.isEmpty {
+            parts.append("maps: \(material.textures.map(\.kind.title).joined(separator: ", "))")
         }
         if density == .full {
-            parts.append(MaterialInspectorSupport.workflowTitle(material.workflow))
-            parts.append(MaterialInspectorSupport.alphaTitle(material))
-            if let usage = MaterialInspectorSupport.usageTitle(material) {
-                parts.append("used by \(usage)")
-            }
+            parts += [material.workflowTitle, material.alphaTitle]
+            if let usage { parts.append("used by \(usage)") }
         }
         return parts.joined(separator: ", ")
     }

@@ -4,7 +4,7 @@ import SwiftUI
 /// authored origin. Drawn as a triad at the computed origin, with the authored origin on its tag.
 struct OriginGizmo: View {
     /// Authored origin relative to the model, in metres — shown on the tag.
-    var authoredOrigin: Vector3
+    var authoredOrigin: SIMD3<Float>
 
     var body: some View {
         GeometryReader { geo in

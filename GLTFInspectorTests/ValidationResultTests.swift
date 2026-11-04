@@ -5,7 +5,7 @@ import Testing
 
 /// Validator findings land on the outliner rows they are about, and the inspector reads them back
 /// per selection.
-struct EngineValidationSubjectsTests {
+struct ValidationResultTests {
     private let document = GLTFDocumentJSON.makeDocument(json: [
         "scenes": [["nodes": [0]]],
         "nodes": [["mesh": 0]],
@@ -43,7 +43,7 @@ struct EngineValidationSubjectsTests {
             severity: 2,
             pointer: "/accessors/0"
         )
-        let result = EngineSceneModel.mapValidation(report([tangent, npot, accessor]), document: document)
+        let result = ValidationResult(report([tangent, npot, accessor]), document: document)
 
         let mesh = NodeID(kind: .mesh, index: 0)
         let material = NodeID(kind: .material, index: 0)

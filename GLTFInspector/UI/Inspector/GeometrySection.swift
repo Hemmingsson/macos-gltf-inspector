@@ -1,13 +1,13 @@
+import GLTFCore
 import SwiftUI
 
-/// Per-node geometry chips — only facts that exist (DESIGN.md: hide what the node lacks).
+/// The selected mesh node's geometry facts; attributes appear only when present.
 struct GeometrySection: View {
-    var geometry: GeometryInfo
+    var node: GLTFDocument.Node
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader("Geometry")
-
             FlexibleChipRow(items: chips)
                 .padding(.horizontal, DS.Spacing.l)
                 .padding(.top, DS.Spacing.xxs)
@@ -18,17 +18,12 @@ struct GeometrySection: View {
     }
 
     private var chips: [String] {
-        // Tris / verts / UV always; extra authored attributes appear only when present, so a
-        // missing-tangents warning in Validation still has a geometry counterpart.
-        var items = [
-            "\(geometry.triangleCount.formatted()) tris",
-            "\(geometry.vertexCount.formatted()) verts"
-        ]
-        if geometry.uvSetCount > 0 {
-            items.append(geometry.uvSetCount == 1 ? "1 UV set" : "\(geometry.uvSetCount) UV sets")
+        var items = ["\(node.triangleCount.formatted()) tris", "\(node.vertexCount.formatted()) verts"]
+        if node.uvSetCount > 0 {
+            items.append(node.uvSetCount == 1 ? "1 UV set" : "\(node.uvSetCount) UV sets")
         }
-        if geometry.hasTangents { items.append("Tangents") }
-        if geometry.hasVertexColors { items.append("Vertex colors") }
+        if node.hasTangents { items.append("Tangents") }
+        if node.hasVertexColors { items.append("Vertex colors") }
         return items
     }
 }

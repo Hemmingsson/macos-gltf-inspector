@@ -6,7 +6,7 @@ import Testing
 struct GLTFIssueResolverTests {
     /// Two nodes share mesh 0. Its primitive 0 uses material 1, primitive 1 has no material.
     /// Material 1 binds texture 0, which is image 2.
-    private let document: GLTFSessionDocument = GLTFDocumentJSON.makeDocument(json: [
+    private let document: GLTFDocument = GLTFDocumentJSON.makeDocument(json: [
         "scenes": [["nodes": [0, 1, 2]]],
         "nodes": [["mesh": 0], ["mesh": 0], ["camera": 0]],
         "cameras": [["type": "perspective", "perspective": ["yfov": 1, "znear": 0.1]]],

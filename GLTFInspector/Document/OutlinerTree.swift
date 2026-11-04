@@ -3,13 +3,6 @@ import Foundation
 /// Pure expand/collapse helpers for the Scene section — kept free of SwiftUI so fold behaviour
 /// can be proved without driving a window.
 enum OutlinerTree {
-    /// Full scene-graph tree preserving hierarchy for all authored node kinds.
-    static func fullRoots(_ nodes: [SceneNode]) -> [OutlinerItem] {
-        nodes.map { node in
-            OutlinerItem(id: node.id, name: node.name, children: fullRoots(node.children))
-        }
-    }
-
     /// Default: expand every node whose depth is strictly less than `maxDepth` (host uses 3).
     static func defaultExpandedIDs(roots: [OutlinerItem], maxDepth: Int = 3) -> Set<NodeID> {
         var ids = Set<NodeID>()

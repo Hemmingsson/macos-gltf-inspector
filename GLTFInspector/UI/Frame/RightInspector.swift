@@ -1,24 +1,24 @@
+import GLTFCore
 import SwiftUI
 
-/// Right column — the selected outliner row. Closed when nothing is selected.
-///
-/// Sections omit fields the selected row's type does not have.
+/// Right column: what the file says about the selected outliner row. Sections are omitted when
+/// the row's type has no such data (DESIGN.md: hide, don't disable).
 struct RightInspector: View {
-    var detail: NodeDetail?
+    var document: GLTFDocument
+    var selection: NodeID?
     var documentState: ShellDocumentState
-    /// File-wide validator report. The inspector shows the issues about the selection.
+    /// File-wide validator report; the inspector shows the issues about the selection.
     var validation: ValidationResult
     var documentURL: URL?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if documentState.isReady, let detail {
-                header(detail)
-
+            if documentState.isReady, let selection {
+                IdentityRow(name: document.displayName(of: selection), kind: selection.kind)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        IssuesSection(issues: validation.issues(for: detail.id))
-                        nodeSections(detail)
+                        IssuesSection(issues: validation.issues(for: selection))
+                        sections(for: selection)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, DS.Spacing.xl)
@@ -42,39 +42,57 @@ struct RightInspector: View {
         .accessibilityLabel("Inspector")
     }
 
-    private func header(_ detail: NodeDetail) -> some View {
-        NodeHeader(name: detail.name, kind: detail.kind)
-    }
-
     @ViewBuilder
-    private func nodeSections(_ detail: NodeDetail) -> some View {
-        if let transform = detail.transform {
-            TransformSection(transform: transform)
-        }
-        if let geometry = detail.geometry {
-            GeometrySection(geometry: geometry)
-        }
-        if let material = detail.material {
-            MaterialSection(
-                material: material,
-                density: detail.kind == .material ? .full : .compact
-            )
-        }
-        if detail.kind == .scene, let roots = detail.sceneRootCount {
+    private func sections(for id: NodeID) -> some View {
+        let index = id.index
+        switch id.kind {
+        case .mesh, .empty, .camera, .light:
+            if document.nodes.indices.contains(index) {
+                let node = document.nodes[index]
+                TransformSection(node: node)
+                if node.kind == .mesh {
+                    GeometrySection(node: node)
+                    if let material = node.materialIndices.first, document.materials.indices.contains(material) {
+                        MaterialSection(document: document, index: material, density: .compact)
+                    }
+                }
+                if node.kind == .camera, let camera = node.cameraIndex, document.cameras.indices.contains(camera) {
+                    CameraSection(camera: document.cameras[camera])
+                }
+                if node.kind == .light, let light = node.lightIndex, document.lights.indices.contains(light) {
+                    LightSection(light: document.lights[light])
+                }
+                sectionEnd
+            }
+        case .material where document.materials.indices.contains(index):
+            MaterialSection(document: document, index: index, density: .full)
+            sectionEnd
+        case .skin where document.skins.indices.contains(index):
+            SkinSection(skin: document.skins[index])
+            sectionEnd
+        case .animation where document.animations.indices.contains(index):
+            AnimationSection(animation: document.animations[index])
+            sectionEnd
+        case .morph where document.morphs.indices.contains(index):
+            MorphSection(morph: document.morphs[index], meshName: document.displayName(of: id))
+            sectionEnd
+        case .scene where document.scenes.indices.contains(index):
             VStack(alignment: .leading, spacing: 0) {
                 InspectorSectionHeader("Scene")
-                DSFactRow("Roots", value: "\(roots)")
+                DSFactRow("Roots", value: "\(document.scenes[index].rootNodeIndices.count)")
                     .padding(.horizontal, DS.Spacing.l)
                     .padding(.bottom, DS.Spacing.m)
             }
+            sectionEnd
+        default:
+            EmptyView()
         }
-        NodeExtrasSection(detail: detail)
+    }
 
-        if detail.hasBody {
-            DS.Color.separator
-                .frame(height: DS.Metrics.hairline)
-                .padding(.horizontal, DS.Spacing.l)
-                .padding(.vertical, DS.Spacing.m)
-        }
+    private var sectionEnd: some View {
+        DS.Color.separator
+            .frame(height: DS.Metrics.hairline)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.vertical, DS.Spacing.m)
     }
 }

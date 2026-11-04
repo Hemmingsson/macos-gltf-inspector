@@ -23,7 +23,7 @@ struct DocumentWindowValidationTests {
         }
         try await Task.sleep(for: .milliseconds(40))
         #expect(log.all.isEmpty)
-        #expect(window.validation == nil)
+        #expect(window.validationState == nil)
     }
 
     @Test
@@ -43,14 +43,14 @@ struct DocumentWindowValidationTests {
         window.noteCanvasReady()
         window.noteCanvasReady()
 
-        #expect(try await waitUntil { window.validation != nil })
+        #expect(try await waitUntil { window.validationState != nil })
         #expect(log.all == [url])
-        guard case .success(let report) = window.validation else {
-            Issue.record("expected success, got \(String(describing: window.validation))")
+        guard case .success(let report) = window.validationState else {
+            Issue.record("expected success, got \(String(describing: window.validationState))")
             return
         }
         #expect(report.errorCount == 0)
-        #expect(window.sceneModel.validation.status == .ready)
+        #expect(window.validation.status == .ready)
     }
 
     @Test
@@ -70,7 +70,7 @@ struct DocumentWindowValidationTests {
         #expect(log.all.isEmpty)
 
         window.noteCanvasReady()
-        #expect(try await waitUntil { window.validation != nil })
+        #expect(try await waitUntil { window.validationState != nil })
         #expect(log.all == [second])
     }
 

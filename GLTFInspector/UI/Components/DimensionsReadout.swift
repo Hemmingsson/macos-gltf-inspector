@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Bottom-trailing W×H×D pill.
 struct DimensionsReadout: View {
-    var dimensions: Dimensions
+    var size: SIMD3<Float>
 
     var body: some View {
         DSHUDCapsule(height: OverlayMetrics.dimensionsHeight) {
@@ -25,11 +25,10 @@ struct DimensionsReadout: View {
     private var label: String {
         String(
             format: "%.2f × %.2f × %.2f m",
-            dimensions.width,
-            dimensions.height,
-            dimensions.depth
+            size.x,
+            size.y,
+            size.z
         )
     }
 }
 
-private let sampleDimensions = Dimensions(width: 1.23, height: 0.45, depth: 2.10)

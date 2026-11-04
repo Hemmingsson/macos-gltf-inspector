@@ -1,8 +1,11 @@
+import GLTFCore
 import SwiftUI
 
 /// Left column — structure. The document says which file this is; the outliner says what is in it.
 struct LeftSidebar: View {
-    var model: EngineSceneModel
+    var document: GLTFDocument
+    var fileName: String
+    var validation: ValidationResult
     @Bindable var view: ViewState
     var documentState: ShellDocumentState
     /// Measured height of the validation footer's content; the footer shows up to 280 pt of it.
@@ -11,7 +14,7 @@ struct LeftSidebar: View {
     var body: some View {
         Group {
             if documentState.isReady {
-                OutlinerList(model: model, selection: $view.selection, onActivate: activate)
+                OutlinerList(document: document, validation: validation, selection: $view.selection, onActivate: activate)
                 .safeAreaInset(edge: .top, spacing: 0) {
                     documentCard
                 }
@@ -42,8 +45,8 @@ struct LeftSidebar: View {
 
     private var documentCard: some View {
         DocumentHeader(
-            fileName: documentState.isReady ? model.fileName : documentState.panelDocumentTitle,
-            variantNames: documentState.isReady ? model.materialVariantNames : [],
+            fileName: documentState.isReady ? fileName : documentState.panelDocumentTitle,
+            variantNames: documentState.isReady ? document.materialVariantNames : [],
             selectedVariantIndex: $view.materialVariantIndex
         )
     }
@@ -54,7 +57,7 @@ struct LeftSidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             Divider()
             ScrollView {
-                ValidationSection(validation: model.validation)
+                ValidationSection(validation: validation)
                     .padding(.bottom, DS.Spacing.s)
                     .onGeometryChange(for: CGFloat.self, of: \.size.height) { validationHeight = $0 }
             }

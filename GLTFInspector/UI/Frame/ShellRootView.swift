@@ -13,10 +13,10 @@ struct ShellRootView<Canvas: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        // One snapshot per body: `sceneModel` folds in validation.
-        let model = window.sceneModel
+        let validation = window.validation
         NavigationSplitView(columnVisibility: Bindable(window.panels).columnVisibility) {
-            LeftSidebar(model: model, view: window.view, documentState: window.phase)
+            LeftSidebar(document: window.document, fileName: window.fileName, validation: validation,
+                        view: window.view, documentState: window.phase)
                 .navigationSplitViewColumnWidth(
                     min: DS.Metrics.sidebarWidthRange.lowerBound,
                     ideal: DS.Metrics.sidebarWidth,
@@ -24,7 +24,7 @@ struct ShellRootView<Canvas: View>: View {
                 )
         } detail: {
             CanvasRegion(
-                model: model,
+                bounds: window.document.bounds,
                 view: window.view,
                 documentState: canvasState,
                 isSidebarVisible: window.panels.isSidebarVisible,
@@ -39,9 +39,10 @@ struct ShellRootView<Canvas: View>: View {
             }
             .inspector(isPresented: inspectorPresented) {
                 RightInspector(
-                    detail: window.view.selection.flatMap(model.detail(for:)),
+                    document: window.document,
+                    selection: window.view.selection,
                     documentState: window.phase,
-                    validation: model.validation,
+                    validation: validation,
                     documentURL: documentURL
                 )
                 .inspectorColumnWidth(

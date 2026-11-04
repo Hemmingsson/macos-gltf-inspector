@@ -39,8 +39,7 @@ struct SceneModelFromJSONTests {
         #expect(document.materials[0].workflow == .metallicRoughness)
         #expect(document.materials[0].alphaMode == .mask)
         #expect(document.materials[0].alphaCutoff == 0.5)
-        #expect(document.materials[0].maps.baseColor)
-        #expect(!document.materials[0].maps.normal)
+        #expect(document.materials[0].textures.map(\.kind) == [.baseColor])
     }
 
     @Test func clipDurationFallsBackToTheBinaryWhenMinMaxIsMissing() {

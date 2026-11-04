@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 
 /// glTF-validator output, surfaced verbatim — "is the file wrong, or are we?".
 struct ValidationResult: Sendable, Hashable {
@@ -14,8 +15,8 @@ struct ValidationResult: Sendable, Hashable {
         var message: String
         /// glTF JSON pointer the validator blamed, when it gave one.
         var pointer: String?
-        /// Outliner rows this issue is about, resolved from `pointer` by the engine adapter. An
-        /// issue with none (an accessor, a buffer view) shows only in the file-wide list.
+        /// Outliner rows this issue is about, resolved from `pointer`. An issue with none (an
+        /// accessor, a buffer view) shows only in the file-wide list.
         var subjects: [NodeID]
 
         var id: String { "\(severity.rawValue)|\(pointer ?? "")|\(message)" }
@@ -77,6 +78,48 @@ extension ValidationResult.Issue.Severity {
         case .warning: 1
         case .info: 2
         case .hint: 3
+        }
+    }
+}
+
+extension ValidationResult {
+    /// The validator's outcome for `document`, each issue resolved to the outliner rows it is
+    /// about. Nil `state` means the run has not finished.
+    init(_ state: GLTFValidationState?, document: GLTFDocument) {
+        switch state {
+        case nil:
+            self.init(status: .pending)
+        case .success(let report):
+            self.init(issues: report.messages.map { message in
+                Issue(
+                    severity: Issue.Severity(validatorSeverity: message.severity),
+                    message: message.message,
+                    pointer: message.pointer,
+                    subjects: GLTFIssueResolver.subjects(forPointer: message.pointer, in: document).compactMap { subject in
+                        switch subject {
+                        case .node(let index): document.id(ofNode: index)
+                        case .material(let index): NodeID(kind: .material, index: index)
+                        case .scene(let index): NodeID(kind: .scene, index: index)
+                        case .skin(let index): NodeID(kind: .skin, index: index)
+                        case .animation(let index): NodeID(kind: .animation, index: index)
+                        }
+                    }
+                )
+            })
+        case .failed(let message), .skipped(let message):
+            self.init(issues: [Issue(severity: .warning, message: message)], status: .unavailable)
+        }
+    }
+}
+
+extension ValidationResult.Issue.Severity {
+    /// glTF-Validator severities: 0 error, 1 warning, 2 info, 3 hint.
+    init(validatorSeverity: Int) {
+        self = switch validatorSeverity {
+        case 0: .error
+        case 1: .warning
+        case 2: .info
+        default: .hint
         }
     }
 }
