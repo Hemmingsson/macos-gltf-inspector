@@ -127,11 +127,7 @@ struct EngineSceneModelTests {
         let model = EngineSceneModel(loaded: loaded, fileName: "basecolor-only.gltf")
         let availability = availability(for: model, debugModes: loaded.debugModes)
 
-        let full = DerivedAvailability(
-            model: model,
-            channels: DebugChannel.allCases
-        )
-        #expect(availability.availableDebugChannels.count < full.availableDebugChannels.count)
+        #expect(availability.availableDebugChannels.count < ViewMode.base.count + DebugChannel.allCases.count)
         #expect(availability.availableDebugChannels.contains(.shaded))
         #expect(availability.availableDebugChannels.contains(.wireframe))
 
@@ -195,8 +191,12 @@ struct EngineSceneModelTests {
 private func availability(
     for model: EngineSceneModel,
     debugModes: [PreviewDebugMode]
-) -> DerivedAvailability<EngineSceneModel> {
-    DerivedAvailability(model: model, channels: EngineSceneModel.mapDebugChannels(debugModes.map(\.renderViewMode)))
+) -> RendererAvailability {
+    RendererAvailability(
+        model: model,
+        viewModes: debugModes.map(\.renderViewMode),
+        features: Set(RendererFeature.allCases)
+    )
 }
 
 private func requireFixture(_ url: URL) throws {

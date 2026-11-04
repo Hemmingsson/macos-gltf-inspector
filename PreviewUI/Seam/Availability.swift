@@ -9,19 +9,3 @@ public protocol Availability: Sendable {
     /// base modes; channels the file lacks are absent, not disabled.
     var availableDebugChannels: [ViewMode] { get }
 }
-
-/// Availability computed straight from a `SceneModel`.
-public struct DerivedAvailability<Model: SceneModel>: Availability {
-    public var model: Model
-    /// Channels the file has data for; the base modes are prepended.
-    public var channels: [DebugChannel]
-
-    public init(model: Model, channels: [DebugChannel] = DebugChannel.allCases) {
-        self.model = model
-        self.channels = channels
-    }
-
-    public var hasAnimations: Bool { !model.animations.isEmpty }
-    public var hasLights: Bool { !model.lights.isEmpty }
-    public var availableDebugChannels: [ViewMode] { ViewMode.base + channels.map(ViewMode.channel) }
-}
