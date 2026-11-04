@@ -47,27 +47,15 @@ public struct MetalOrthographic: Sendable, Equatable {
     }
 }
 
-/// Hand port of pinned Khronos UserCamera's R_y · R_x transform and gl-matrix projection.
-/// Only clip depth changes: WebGL's [-w,w] becomes Metal's [0,w]. No Y flip is needed when
-/// drawing a scene into a Metal render target; readback keeps its top-left row order.
-public struct MetalCamera: Sendable {
-    public enum Projection: Sendable { case perspective, orthographic }
+/// Hand port of the pinned Khronos UserCamera's R_y · R_x transform and gl-matrix projection.
+/// No Y flip is needed when drawing into a Metal render target; readback keeps its top-left row
+/// order.
+struct MetalCamera: Sendable {
+    var pose: MetalCameraPose
+    var isOrthographic = false
+    var aspect: Float = 1
 
-    public var pose: MetalCameraPose
-    public var projection: Projection
-    public var aspect: Float
-
-    public init(pose: MetalCameraPose, projection: Projection = .perspective, aspect: Float = 1) {
-        self.pose = pose
-        self.projection = projection
-        self.aspect = aspect
-    }
-
-    public init(pose: MetalCameraPose, isOrthographic: Bool, aspect: Float) {
-        self.init(pose: pose, projection: isOrthographic ? .orthographic : .perspective, aspect: aspect)
-    }
-
-    public var transformMatrix: simd_float4x4 {
+    var transformMatrix: simd_float4x4 {
         let yaw = pose.azimuth * .pi / 180
         let pitch = pose.elevation * .pi / 180
         let cy = Float(cos(yaw)), sy = Float(sin(yaw))
@@ -87,43 +75,17 @@ public struct MetalCamera: Sendable {
         return result
     }
 
-    public var eye: SIMD3<Float> {
+    var eye: SIMD3<Float> {
         let translation = transformMatrix.columns.3
         return SIMD3(translation.x, translation.y, translation.z)
     }
 
-    public var viewMatrix: simd_float4x4 { simd_inverse(transformMatrix) }
+    var viewMatrix: simd_float4x4 { simd_inverse(transformMatrix) }
 
-    public var projectionMatrix: simd_float4x4 {
-        var near = pose.znear, far = pose.zfar
-        if projection == .orthographic { (near, far) = (pose.orthographicProjection.znear, pose.orthographicProjection.zfar) }
-        switch projection {
-        case .perspective:
-            let f = 1 / tan(pose.yfov / 2)
-            // Algebraically identical to depthRemap * gl-matrix.perspective().
-            let z = far.isInfinite ? -1 : far / (near - far)
-            let translation = far.isInfinite ? -near : far * near / (near - far)
-            return simd_float4x4(columns: (
-                SIMD4(Float(f) / aspect, 0, 0, 0),
-                SIMD4(0, Float(f), 0, 0),
-                SIMD4(0, 0, Float(z), -1),
-                SIMD4(0, 0, Float(translation), 0)
-            ))
-        case .orthographic:
-            // viewer.html deliberately assigns the same xmag and ymag, even on a wide canvas.
-            let magnitude = pose.orthographicProjection.magnitude
-            return simd_float4x4(columns: (
-                SIMD4(Float(1 / magnitude), 0, 0, 0),
-                SIMD4(0, Float(1 / magnitude), 0, 0),
-                SIMD4(0, 0, Float(1 / (near - far)), 0),
-                SIMD4(0, 0, Float(near / (near - far)), 1)
-            ))
-        }
-    }
-
-    /// Preserve WebGL clip coordinates until the vertex shader remaps depth, as ANGLE does.
-    public var openGLProjectionMatrix: simd_float4x4 {
-        if projection == .perspective {
+    /// WebGL clip coordinates (depth -1...1), as the Khronos renderer computes them; the vertex
+    /// shader remaps depth to Metal's 0...1, as ANGLE does.
+    var openGLProjectionMatrix: simd_float4x4 {
+        if !isOrthographic {
             let near = pose.znear, far = pose.zfar
             let f = 1 / tan(pose.yfov / 2)
             return simd_float4x4(columns: (
@@ -140,8 +102,6 @@ public struct MetalCamera: Sendable {
             SIMD4(0, 0, Float((near + far) / (near - far)), 1)
         ))
     }
-
-    public var viewProjectionMatrix: simd_float4x4 { projectionMatrix * viewMatrix }
 }
 
 /// `drawScene`'s letterbox: `gl.viewport(aspectOffsetX, aspectOffsetY, aspectWidth, aspectHeight)`

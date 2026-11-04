@@ -3,10 +3,10 @@ import SwiftUI
 
 /// Right column: what the file says about the selected outliner row. Sections are omitted when
 /// the row's type has no such data (DESIGN.md: hide, don't disable).
-struct RightInspector: View {
+struct Inspector: View {
     var document: GLTFDocument
     var selection: NodeID?
-    var documentState: ShellDocumentState
+    var documentState: DocumentState
     /// File-wide validator report; the inspector shows the issues about the selection.
     var validation: ValidationResult
     var documentURL: URL?
@@ -25,7 +25,7 @@ struct RightInspector: View {
                 }
                 .focusSection()
             } else {
-                ShellStatusView(state: documentState, placement: .inspector)
+                DocumentStatusView(state: documentState, placement: .inspector)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

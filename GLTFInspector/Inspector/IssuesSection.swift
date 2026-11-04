@@ -22,3 +22,23 @@ struct IssuesSection: View {
         }
     }
 }
+
+extension ValidationResult.Issue.Severity {
+    /// How the UI draws this severity: faults in colour, infos and hints as neutral notes.
+    var dsStatus: DSStatus {
+        switch self {
+        case .error: .error
+        case .warning: .warning
+        case .info, .hint: .note
+        }
+    }
+}
+
+/// "1 error · 2 warnings · 3 notes" — only the counts that are non-zero.
+func issueSummary(errors: Int, warnings: Int, notes: Int = 0) -> String {
+    var parts: [String] = []
+    if errors > 0 { parts.append(errors == 1 ? "1 error" : "\(errors) errors") }
+    if warnings > 0 { parts.append(warnings == 1 ? "1 warning" : "\(warnings) warnings") }
+    if notes > 0 { parts.append(notes == 1 ? "1 note" : "\(notes) notes") }
+    return parts.isEmpty ? "No issues" : parts.joined(separator: " · ")
+}

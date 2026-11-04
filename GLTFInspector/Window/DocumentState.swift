@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Host drives this from the open path (web page + JSON panels).
 /// Never leave a failed URL as a spinner (AGENTS.md pitfall 2).
-enum ShellDocumentState: Equatable, Sendable, Hashable {
+enum DocumentState: Equatable, Sendable, Hashable {
     /// No document yet — drop / Open invite.
     case empty
     /// Bytes are in flight. Canvas may spin; panels stay quiet.

@@ -2,12 +2,12 @@ import GLTFCore
 import SwiftUI
 
 /// Left column — structure. The document says which file this is; the outliner says what is in it.
-struct LeftSidebar: View {
+struct Sidebar: View {
     var document: GLTFDocument
     var fileName: String
     var validation: ValidationResult
     @Bindable var view: ViewState
-    var documentState: ShellDocumentState
+    var documentState: DocumentState
     /// Measured height of the validation footer's content; the footer shows up to 280 pt of it.
     @State private var validationHeight: CGFloat = 0
 
@@ -26,7 +26,7 @@ struct LeftSidebar: View {
                     sidebarChrome
                     documentCard
                     if documentState != .empty {
-                        ShellStatusView(state: documentState, placement: .sidebar)
+                        DocumentStatusView(state: documentState, placement: .sidebar)
                     }
                 }
             }

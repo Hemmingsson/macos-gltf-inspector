@@ -185,7 +185,7 @@ Page `warning` events are logged (`WebRendererHost`) and are not shown in the in
 ## Window
 
 `DocumentWindow` draws `WebPreviewCanvas` as soon as the file is opening; the canvas
-region's state (`ShellRootView(canvasState:)`) follows the page, not the JSON panels. The
+region's state (`WindowLayout(canvasState:)`) follows the page, not the JSON panels. The
 window holds one `WebCanvasController` across the shell's `.id(window.loadGeneration)` remount; the next
 mount adopts the running `WKWebView` (log: `viewport adopt`).
 

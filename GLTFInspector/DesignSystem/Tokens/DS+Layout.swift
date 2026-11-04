@@ -21,8 +21,6 @@ extension DS {
 
         /// Inset of content from a pane edge (sidebar, inspector).
         static let paneInset: CGFloat = 8
-        /// Inset of floating controls from the canvas edge.
-        static let canvasInset: CGFloat = 12
     }
 
     /// Corner radii. Glass controls use `.capsule` / `.circle` shapes rather than a radius, and
@@ -60,9 +58,6 @@ extension DS {
         static let inspectorWidth: CGFloat = 288
         /// Allowed inspector column widths.
         static let inspectorWidthRange: ClosedRange<CGFloat> = 260...560
-
-        /// Minimum canvas width before panes must give way.
-        static let canvasMinWidth: CGFloat = 560
 
         /// Inset of Stage / Camera clusters from the canvas edge.
         static let canvasClusterInset: CGFloat = 14

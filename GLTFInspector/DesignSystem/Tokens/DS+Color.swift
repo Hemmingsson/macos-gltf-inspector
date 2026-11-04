@@ -26,7 +26,6 @@ extension DS {
 
         /// Quaternary labels: watermark-level text and disabled glyph hints. SwiftUI `.quaternary`
         /// (HIG › Color › "quaternaryLabel").
-        static let textQuaternary = HierarchicalShapeStyle.quaternary
 
         // MARK: Accent
 

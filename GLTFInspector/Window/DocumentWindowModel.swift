@@ -19,14 +19,13 @@ final class DocumentWindowModel {
 
     var documentURL: URL?
     /// The panels' state. The canvas region has its own (`DocumentWindow.canvasState`).
-    private(set) var phase: ShellDocumentState
+    private(set) var phase: DocumentState
     /// What the file contains, for the outliner and inspector. Empty until the JSON is read.
     private(set) var document = GLTFDocument()
     private(set) var validationState: GLTFValidationState?
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
     let view: ViewState
-    let panels = ShellPanelChrome()
     @ObservationIgnored private var validationTask: Task<Void, Never>?
 
     /// Tests replace this so scheduling can be asserted without running JavaScriptCore.

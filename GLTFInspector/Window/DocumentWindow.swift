@@ -20,7 +20,7 @@ struct DocumentWindow: View {
     }
 
     var body: some View {
-        ShellRootView(window: window, canvasState: canvasState) {
+        WindowLayout(window: window, canvasState: canvasState) {
             canvas
                 // A new document remounts the canvas only; the split view keeps its identity.
                 .id(window.loadGeneration)
@@ -44,7 +44,7 @@ struct DocumentWindow: View {
         return url
     }
 
-    private var canvasState: ShellDocumentState {
+    private var canvasState: DocumentState {
         Self.canvasState(canvasURL: canvasURL, canvasPhase: window.view.canvas.phase, panels: window.phase)
     }
 
@@ -53,15 +53,15 @@ struct DocumentWindow: View {
     static func canvasState(
         canvasURL: URL?,
         canvasPhase: ModelCanvasController.Phase,
-        panels: ShellDocumentState
-    ) -> ShellDocumentState {
+        panels: DocumentState
+    ) -> DocumentState {
         guard canvasURL != nil else { return panels }
         if case .failed(let message) = canvasPhase { return .failed(message) }
         return .ready
     }
 
     /// Mounted by `CanvasRegion` only while `canvasState` is `.ready`; loading and failure are
-    /// drawn by `ShellStatusView`.
+    /// drawn by `DocumentStatusView`.
     @ViewBuilder
     private var canvas: some View {
         if let canvasURL {
@@ -84,4 +84,21 @@ extension FocusedValues {
     @Entry var documentWindow: DocumentWindowModel?
     /// The focused document window's file, for Share. Nil in an empty window.
     @Entry var documentFileURL: URL?
+}
+
+/// Accessibility-only signal that a document window's canvas shows the model, for UI tests
+/// (`GLTFInspectorUITests`): an element `canvas-ready` exists only while the canvas has content.
+/// Nothing is drawn.
+extension View {
+    func canvasReadyMarker(isReady: Bool) -> some View {
+        overlay(alignment: .topLeading) {
+            if isReady {
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                    .accessibilityElement()
+                    .accessibilityIdentifier("canvas-ready")
+            }
+        }
+    }
 }

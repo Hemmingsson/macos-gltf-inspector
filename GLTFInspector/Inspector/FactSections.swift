@@ -114,3 +114,53 @@ private struct NameList: View {
         }
     }
 }
+
+/// Left-to-right wrap of chips. How many fit depends on the pane width.
+struct FlexibleChipRow: View {
+    var items: [String]
+
+    var body: some View {
+        DSFlowLayout {
+            ForEach(items, id: \.self) { title in
+                DSChip(title)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Small colour tile for material factor readouts and map thumbnails.
+struct MaterialSwatch: View {
+    var color: Color
+    var size: CGFloat
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
+        shape
+            .fill(color)
+            .frame(width: size, height: size)
+            .overlay {
+                shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline)
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+/// `DSSectionHeader` with the inspector's section rhythm: `l` sides, `xs` below, `xl` above
+/// (`m` for the sidebar-footer sections). Section bodies keep their own padding.
+struct InspectorSectionHeader: View {
+    var title: String
+    var top: CGFloat = DS.Spacing.xl
+
+    init(_ title: String, top: CGFloat = DS.Spacing.xl) {
+        self.title = title
+        self.top = top
+    }
+
+    var body: some View {
+        DSSectionHeader(title)
+            .padding(.top, top)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.bottom, DS.Spacing.xs)
+    }
+}

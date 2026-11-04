@@ -9,7 +9,7 @@ import SwiftUI
 /// keyboard focus movement between regions.
 ///
 /// Content is a row of islands: `DSGlassIsland`, `DSSwatchPicker`, or standalone glass controls
-/// (`DSGlassToggleButton`, `DSGlassIconButton`, `DSGlassMenuButton`, `DSGlassPopoverButton`),
+/// (`DSGlassToggleButton`, `DSGlassMenuButton`, `DSGlassPopoverButton`),
 /// each drawing its own single glass layer.
 struct DSGlassCluster<Content: View>: View {
     private let spacing: CGFloat

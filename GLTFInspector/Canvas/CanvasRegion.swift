@@ -18,7 +18,7 @@ struct CanvasRegion<Content: View>: View {
     var bounds: ModelBounds?
     var view: ViewState
     /// Empty / loading / failed hide the model chrome; ready shows clusters + overlays.
-    var documentState: ShellDocumentState = .ready
+    var documentState: DocumentState = .ready
     /// When false, Stage clears the traffic lights and the system sidebar toggle beside them.
     var isSidebarVisible: Bool = true
     /// When false, Camera clears the floating inspector Open in action.
@@ -41,7 +41,7 @@ struct CanvasRegion<Content: View>: View {
                         .ignoresSafeArea()
                 case .empty, .loading, .failed:
                     // Stay inside the safe area so the empty group centers in the visible pane.
-                    ShellStatusView(state: documentState, placement: .canvas)
+                    DocumentStatusView(state: documentState, placement: .canvas)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }

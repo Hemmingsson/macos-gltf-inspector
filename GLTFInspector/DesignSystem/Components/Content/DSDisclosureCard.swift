@@ -163,8 +163,3 @@ private struct DSDisclosureCardBody: View {
         .background(status.fill, in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
     }
 }
-
-private let previewMessages = [
-    DSDisclosureMessage(id: "accessor", text: "Accessor min length must be a multiple of component size"),
-    DSDisclosureMessage(id: "extension", text: "Unused extension KHR_materials_unlit", status: .note),
-]

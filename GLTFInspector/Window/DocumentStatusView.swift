@@ -1,15 +1,16 @@
 import AppKit
 import SwiftUI
+import Foundation
 
 /// Quiet filler for a non-ready document. Copy and chrome stay per placement.
-struct ShellStatusView: View {
+struct DocumentStatusView: View {
     enum Placement {
         case sidebar
         case inspector
         case canvas
     }
 
-    var state: ShellDocumentState
+    var state: DocumentState
     var placement: Placement
 
 
@@ -103,4 +104,17 @@ struct ShellStatusView: View {
             "Canvas"
         }
     }
+}
+
+/// Canvas / panel copy for non-ready document states.
+///
+/// Quiet chrome, DS tokens, no fake progress on `.failed` (AGENTS.md).
+enum ShellStatusCopy {
+    static let emptyTitle = "Open a glTF file"
+    static let emptySidebarDetail = "No file open"
+    /// Content-unavailable title. Sentence-style description is `emptyOpenHint`.
+    static let emptyCanvasTitle = "No File"
+    static let emptyOpenHint = "Drop a .glb or .gltf file here."
+    static let loadingTitle = "Loading model…"
+    static let failedTitle = "Couldn’t load model"
 }

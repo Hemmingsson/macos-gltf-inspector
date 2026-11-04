@@ -3,19 +3,21 @@ import SwiftUI
 /// The window's layout: `NavigationSplitView` (sidebar + canvas detail) with a selection-driven
 /// `.inspector`. The canvas is full-bleed under both glass panes. The inspector opens only when
 /// something is selected, and closing it clears the selection.
-struct ShellRootView<Canvas: View>: View {
+struct WindowLayout<Canvas: View>: View {
     let window: DocumentWindowModel
     /// The canvas region's state, which can be ahead of the panels: the renderer may draw while
     /// the panels' JSON is still being read.
-    let canvasState: ShellDocumentState
+    let canvasState: DocumentState
     @ViewBuilder let canvas: () -> Canvas
 
+    /// Sidebar shown or collapsed; `SidebarCommands()` (⌃⌘S) toggles it through the split view.
+    @State private var columnVisibility = NavigationSplitViewVisibility.all
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let validation = window.validation
-        NavigationSplitView(columnVisibility: Bindable(window.panels).columnVisibility) {
-            LeftSidebar(document: window.document, fileName: window.fileName, validation: validation,
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            Sidebar(document: window.document, fileName: window.fileName, validation: validation,
                         view: window.view, documentState: window.phase)
                 .navigationSplitViewColumnWidth(
                     min: DS.Metrics.sidebarWidthRange.lowerBound,
@@ -27,7 +29,7 @@ struct ShellRootView<Canvas: View>: View {
                 bounds: window.document.bounds,
                 view: window.view,
                 documentState: canvasState,
-                isSidebarVisible: window.panels.isSidebarVisible,
+                isSidebarVisible: columnVisibility != .detailOnly,
                 isInspectorVisible: showsInspector,
                 content: canvas
             )
@@ -38,7 +40,7 @@ struct ShellRootView<Canvas: View>: View {
                 }
             }
             .inspector(isPresented: inspectorPresented) {
-                RightInspector(
+                Inspector(
                     document: window.document,
                     selection: window.view.selection,
                     documentState: window.phase,

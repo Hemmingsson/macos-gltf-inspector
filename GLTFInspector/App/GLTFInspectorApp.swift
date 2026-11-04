@@ -74,9 +74,8 @@ struct GLTFInspectorApp: App {
         .defaultLaunchBehavior(.presented)
         .restorationBehavior(.disabled)
         .commands {
-            // Native `NavigationSplitView`: `SidebarCommands()` owns ⌃⌘S and stays in sync with
-            // `ShellPanelChrome.columnVisibility`. Host View menu is the cluster twin — never
-            // `CommandMenu("View")`.
+            // `SidebarCommands()` owns ⌃⌘S and drives the split view directly. The View menu
+            // items go after it, never in a `CommandMenu("View")`.
             SidebarCommands()
             CommandGroup(after: .sidebar) {
                 ViewMenuCommands()
