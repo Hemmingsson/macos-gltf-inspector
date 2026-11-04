@@ -118,10 +118,6 @@ public final class ModelView: NSView {
         } else if previous.isOrthographic != next.isOrthographic {
             camera.applyProjection()
         }
-        if !sceneChanged, next.orbitsAroundSelection, next.fileCameraNodeIndex == nil,
-           let node = next.selectedNodeIndex, node != previous.selectedNodeIndex {
-            retarget(toNode: node)
-        }
         redraw()
     }
 
@@ -559,42 +555,18 @@ public final class ModelView: NSView {
 
     // MARK: - Orbit pivot on the selection
 
-    private var retargetTask: Task<Void, Never>?
-    /// Seconds the pivot takes to glide onto a newly selected node. Zero jumps (tests).
-    public var retargetDuration = 0.25
-
-    /// Eases the orbit target onto the node's box centre while the eye stays put.
-    private func retarget(toNode node: Int) {
-        guard let box = renderer.scene?.bounds(ofNode: node) else { return }
-        let goal = SIMD3<Double>((box.min + box.max) / 2)
-        let from = camera.target
-        guard simd_distance(from, goal) > 1e-9 else { return }
-        cancelRetarget()
-        guard retargetDuration > 0, window != nil else {
-            camera.retargetKeepingEye(to: goal)
-            camera.applyProjection()
-            return
-        }
-        let duration = retargetDuration
-        retargetTask = Task { @MainActor [weak self] in
-            let started = ContinuousClock.now
-            while let self, !Task.isCancelled {
-                let elapsed = started.duration(to: .now)
-                let t = min(Double(elapsed.components.attoseconds) / 1e18 + Double(elapsed.components.seconds), duration) / duration
-                let eased = t * t * (3 - 2 * t)
-                self.camera.retargetKeepingEye(to: from + (goal - from) * eased)
-                self.camera.applyProjection()
-                self.redraw()
-                if t >= 1 { self.retargetTask = nil; break }
-                try? await Task.sleep(for: .milliseconds(16))
-            }
-        }
+    /// Selecting never moves the camera (a second click at the same pixel must still hit the same
+    /// part). The first orbit step of a drag re-aims at the selection's box centre instead, so the
+    /// orbit turns about the selected part. Perspective keeps the eye; orthographic slides the target.
+    private func reaimAtSelectionForOrbit() {
+        guard options.orbitsAroundSelection, options.fileCameraNodeIndex == nil,
+              let node = options.selectedNodeIndex, let box = renderer.scene?.bounds(ofNode: node) else { return }
+        camera.retargetKeepingEye(to: SIMD3<Double>((box.min + box.max) / 2))
+        camera.applyProjection()
     }
 
-    private func cancelRetarget() {
-        retargetTask?.cancel()
-        retargetTask = nil
-    }
+    /// Nothing glides any more; kept as the hook `frame(nodeIndices:)` and `beginDrag` call.
+    private func cancelRetarget() {}
 
     /// `UserCamera.orbit(dx, dy)` or `pan(-dx, dy)`, in view points with y down.
     private func drag(_ event: NSEvent) {
@@ -610,6 +582,7 @@ public final class ModelView: NSView {
             if !didReportOrbit, dx != 0 || dy != 0 {
                 didReportOrbit = true
                 onOrbitStart?()
+                reaimAtSelectionForOrbit()
             }
             camera.orbit(dx, dy)
         }
@@ -665,7 +638,7 @@ public final class ModelView: NSView {
         super.mouseMoved(with: event)
         guard onHover != nil, renderer.scene != nil, !isInTitleBarBand(event) else { return clearHover() }
         hoverPoint = event.locationInWindow
-        let isBusy = dragAnchor != nil || options.autoRotates || isPlaybackRunning || retargetTask != nil
+        let isBusy = dragAnchor != nil || options.autoRotates || isPlaybackRunning
         guard !hoverPending, let delay = hoverThrottle.delay(at: CACurrentMediaTime(), isBusy: isBusy) else {
             if isBusy { clearHover() }
             return

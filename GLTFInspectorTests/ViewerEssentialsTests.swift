@@ -339,21 +339,57 @@ struct ViewerEssentialsTests {
         #expect(MetalUserCamera.pointerDollyTarget(target: .zero, pointer: pointer, factor: 1) == .zero)
     }
 
-    @Test func selectingANodeMovesTheOrbitPivotOntoIt() async throws {
+    @Test func selectingANodeLeavesTheViewAlone() async throws {
         let url = try writeTempStackedQuadsGLB(prefix: "orbit-pivot")
         defer { try? FileManager.default.removeItem(at: url) }
         let view = ModelView(renderer: try MetalRenderer())
-        view.retargetDuration = 0
         try await view.load(url)
-        let eye = view.camera.position
-        var options = ViewOptions(selectedNodeIndex: 0, orbitsAroundSelection: true)
-        try await view.apply(options)
+        let eye = view.camera.position, target = view.camera.target
+        let rotation = (view.camera.rotAroundX, view.camera.rotAroundY)
+        try await view.apply(ViewOptions(selectedNodeIndex: 0, orbitsAroundSelection: true))
+        #expect(simd_distance(view.camera.position, eye) < 1e-9)
+        #expect(simd_distance(view.camera.target, target) < 1e-9)
+        #expect(view.camera.rotAroundX == rotation.0 && view.camera.rotAroundY == rotation.1)
+    }
+
+    @Test func orbitDragAimsTheOrbitAtTheSelectionBox() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "orbit-drag-pivot")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(url, options: ViewOptions(selectedNodeIndex: 0, orbitsAroundSelection: true))
+        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        defer { window.contentView = nil; window.close() }
+        view.mouseDown(with: try testMouseEvent(.leftMouseDown, NSPoint(x: 200, y: 200), in: window))
+        view.mouseDragged(with: try testMouseEvent(.leftMouseDragged, NSPoint(x: 210, y: 200), in: window))
+        view.mouseUp(with: try testMouseEvent(.leftMouseUp, NSPoint(x: 210, y: 200), in: window))
         #expect(simd_distance(view.camera.target, SIMD3(0, 0, -1)) < 1e-5)
-        #expect(simd_distance(view.camera.position, eye) < 1e-5)
-        options.orbitsAroundSelection = false
-        options.selectedNodeIndex = 1
-        try await view.apply(options)
-        #expect(simd_distance(view.camera.target, SIMD3(0, 0, -1)) < 1e-5)
+    }
+
+    @Test func orthographicSelectionKeepsTheAxisViewAndScale() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "orbit-ortho-selection")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(url, options: ViewOptions(isOrthographic: true, orbitsAroundSelection: true))
+        view.show(.front)
+        let look = view.camera.lookDirection, magnitude = view.camera.orthographic.magnitude
+        try await view.apply(ViewOptions(isOrthographic: true, selectedNodeIndex: 0, orbitsAroundSelection: true))
+        #expect(simd_distance(view.camera.lookDirection, look) < 1e-9)
+        #expect(abs(view.camera.orthographic.magnitude - magnitude) < 1e-9)
+    }
+
+    @Test func orthographicRetargetSlidesTheTargetWithoutTurningTheView() {
+        var camera = MetalUserCamera()
+        camera.isOrthographic = true
+        camera.orbitTo(azimuth: 0, elevation: 0, distance: 4, target: .zero)
+        camera.applyProjection()
+        let look = camera.lookDirection, magnitude = camera.orthographic.magnitude
+        camera.retargetKeepingEye(to: SIMD3(1, 0.5, -2))
+        #expect(simd_distance(camera.lookDirection, look) < 1e-9)
+        #expect(abs(camera.orthographic.magnitude - magnitude) < 1e-9)
+        #expect(abs(camera.target.x - 1) < 1e-9 && abs(camera.target.y - 0.5) < 1e-9)
+        #expect(abs(camera.target.z) < 1e-9, "the depth offset is not in the view plane, so the target keeps its depth")
     }
 
     // MARK: - yel6vru3 hover

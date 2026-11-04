@@ -96,7 +96,14 @@ public struct MetalUserCamera: Sendable, Equatable {
 
     /// Turns the camera in place so it looks at `newTarget`: the eye stays where it is, the
     /// orbit target (pivot) and distance change. Elevation keeps the orbit's pole limit.
+    /// Orthographic: the view is the look direction and scale, so the eye and target slide
+    /// together by the in-plane offset instead, and nothing about the view turns.
     public mutating func retargetKeepingEye(to newTarget: SIMD3<Double>) {
+        if isOrthographic {
+            let offset = newTarget - target
+            position += offset - lookDirection * simd_dot(offset, lookDirection)
+            return
+        }
         let eye = position
         let toTarget = newTarget - eye
         let length = simd_length(toTarget)
