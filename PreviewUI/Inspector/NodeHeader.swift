@@ -7,7 +7,6 @@ import SwiftUI
 /// wraps them in `DSGlassMenuButton`.
 struct NodeHeader: View {
     var name: String
-    var kindTitle: String
     var kind: NodeKind
     let openInMenu: AnyView
 
@@ -15,7 +14,7 @@ struct NodeHeader: View {
         VStack(alignment: .leading, spacing: 0) {
             ActionRow(openInMenu: openInMenu, alignsToChromeBand: false)
 
-            IdentityRow(name: name, kindTitle: kindTitle, kind: kind)
+            IdentityRow(name: name, kind: kind)
         }
         .accessibilityElement(children: .contain)
     }
@@ -28,7 +27,6 @@ struct NodeHeader: View {
         let detail = NodeDetailFixtures.mesh
         NodeHeader(
             name: detail.name,
-            kindTitle: detail.kind.displayTitle,
             kind: detail.kind,
             openInMenu: AnyView(PreviewOpenInItems())
         )
@@ -40,7 +38,6 @@ struct NodeHeader: View {
         let detail = NodeDetailFixtures.material
         NodeHeader(
             name: detail.name,
-            kindTitle: detail.kind.displayTitle,
             kind: detail.kind,
             openInMenu: AnyView(PreviewOpenInItems())
         )

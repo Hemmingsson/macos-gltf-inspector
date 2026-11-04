@@ -4,7 +4,6 @@ import SwiftUI
 /// Selection identity under the Open-in row.
 struct IdentityRow: View {
     var name: String
-    var kindTitle: String
     var kind: NodeKind
 
     var body: some View {
@@ -16,7 +15,7 @@ struct IdentityRow: View {
                     .font(DS.Font.bodyEmphasized)
                     .foregroundStyle(DS.Color.textPrimary)
                     .lineLimit(1)
-                Text(kindTitle)
+                Text(kind.displayTitle)
                     .font(DS.Font.subheadline)
                     .foregroundStyle(DS.Color.textSecondary)
                     .lineLimit(1)
@@ -39,7 +38,6 @@ struct IdentityRow: View {
         let detail = NodeDetailFixtures.mesh
         IdentityRow(
             name: detail.name,
-            kindTitle: detail.kind.displayTitle,
             kind: detail.kind
         )
     }
@@ -50,7 +48,6 @@ struct IdentityRow: View {
         let detail = NodeDetailFixtures.material
         IdentityRow(
             name: detail.name,
-            kindTitle: detail.kind.displayTitle,
             kind: detail.kind
         )
     }

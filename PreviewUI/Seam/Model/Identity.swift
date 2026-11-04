@@ -101,13 +101,11 @@ public struct Dimensions: Sendable, Hashable {
     public var depth: Double
     /// Authored origin relative to the model, in metres. Shown by the origin gizmo when Center is off.
     public var authoredOrigin: Vector3
-    public var unit: String
 
-    public init(width: Double, height: Double, depth: Double, authoredOrigin: Vector3 = .zero, unit: String = "m") {
+    public init(width: Double, height: Double, depth: Double, authoredOrigin: Vector3 = .zero) {
         self.width = width
         self.height = height
         self.depth = depth
         self.authoredOrigin = authoredOrigin
-        self.unit = unit
     }
 }

@@ -35,9 +35,3 @@ public protocol SceneModel: Sendable {
     /// Convert losses — missing textures, dropped primitives, ignored extensions.
     var convertProblems: ConvertProblemList { get }
 }
-
-public extension SceneModel {
-    var defaultSceneID: NodeID? { scenes.first?.id }
-    var materialVariantNames: [String] { [] }
-    var convertProblems: ConvertProblemList { ConvertProblemList() }
-}

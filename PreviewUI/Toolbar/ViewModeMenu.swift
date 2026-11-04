@@ -22,7 +22,7 @@ struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: V
         DSGlassMenuButton(
             "View mode",
             systemImage: Self.symbol(for: viewport.viewMode),
-            style: .titled(ViewModeMenuChrome.settledTitle(for: viewport.viewMode)),
+            style: .titled(viewport.viewMode.title),
             isEngaged: viewport.viewMode != .shaded
         ) {
             DSInlineMenuPicker("View mode", selection: mode) {
@@ -52,17 +52,6 @@ struct ViewModeMenu<Capabilities: Availability, Viewport: ViewportController>: V
         case .wireframe: "grid"
         case .channel: "cube"
         }
-    }
-}
-
-/// Settled view-mode chip copy. The glass `isEngaged` animation must not interpolate this
-/// string — HIG interpolate/numericText on "Shaded"→"Wireframe" paints both names at once.
-public enum ViewModeMenuChrome {
-    /// Mode names are not numbers. The chip snaps; it does not interpolate glyphs.
-    public static let interpolatesTitle = false
-
-    public static func settledTitle(for mode: ViewMode) -> String {
-        mode.title
     }
 }
 

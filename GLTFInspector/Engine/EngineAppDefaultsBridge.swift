@@ -37,6 +37,7 @@ final class EngineAppDefaultsBridge {
     }
 
     /// Copy + decode-check a custom HDR/EXR into the App Group `ibl/`; returns stored file name.
+    /// The caller records the name through `set` (`customEnvironmentFile`, `useEnvironmentMap`).
     func importCustomEnvironment(from source: URL) throws -> String {
         let support = lookStore.directory
         let ibl = AppLook.iblDirectory(in: support)
@@ -51,20 +52,12 @@ final class EngineAppDefaultsBridge {
             fileName = "\(stem)-\(UUID().uuidString.prefix(8)).\(ext)"
             dest = ibl.appendingPathComponent(fileName)
         }
-        if FileManager.default.fileExists(atPath: dest.path) {
-            try FileManager.default.removeItem(at: dest)
-        }
         try FileManager.default.copyItem(at: source, to: dest)
 
         guard EquirectangularImage.canDecode(at: dest) else {
             try? FileManager.default.removeItem(at: dest)
             throw EngineIBLImportError.undecodable(source.lastPathComponent)
         }
-
-        var look = lookStore.look
-        look.customFileName = fileName
-        look.useEnvironmentMap = true
-        lookStore.apply(look)
         return fileName
     }
 

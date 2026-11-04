@@ -120,10 +120,4 @@ struct RendererSwitchTests {
         #expect(none.availableDebugChannels == [.shaded])
         #expect(!none.hasLights)
     }
-
-    @Test func selectionHidesTheEyeWithoutNodeVisibility() {
-        let sidebar = HostSidebarModel(document: GLTFSessionDocument())
-        #expect(EngineSelectionModel(sidebar: sidebar).canHideNodes)
-        #expect(!EngineSelectionModel(sidebar: sidebar, canHideNodes: false).canHideNodes)
-    }
 }

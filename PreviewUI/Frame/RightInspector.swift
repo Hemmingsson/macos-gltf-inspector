@@ -42,7 +42,6 @@ struct RightInspector<Selection: SelectionModel>: View {
     private func header(_ detail: NodeDetail) -> some View {
         NodeHeader(
             name: detail.name,
-            kindTitle: detail.kind.displayTitle,
             kind: detail.kind,
             openInMenu: openInMenu
         )
@@ -51,7 +50,7 @@ struct RightInspector<Selection: SelectionModel>: View {
     @ViewBuilder
     private func nodeSections(_ detail: NodeDetail) -> some View {
         if let transform = detail.transform {
-            TransformSection(transform: transform, isAuthored: detail.isTransformAuthored)
+            TransformSection(transform: transform)
         }
         if let geometry = detail.geometry {
             GeometrySection(geometry: geometry)

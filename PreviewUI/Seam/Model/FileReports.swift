@@ -55,8 +55,6 @@ public struct ValidationResult: Sendable, Hashable {
     }
 
     public var issues: [Issue]
-    /// "glTF 2.0" — shown next to the clean badge.
-    public var formatLabel: String
     /// Pending means the Khronos run has not finished; unavailable is a hard skip/fail.
     public var status: Status
 
@@ -68,11 +66,9 @@ public struct ValidationResult: Sendable, Hashable {
 
     public init(
         issues: [Issue] = [],
-        formatLabel: String = "glTF 2.0",
         status: Status = .ready
     ) {
         self.issues = issues
-        self.formatLabel = formatLabel
         self.status = status
     }
 
