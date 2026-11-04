@@ -26,9 +26,9 @@ enum RealityLook {
         .pi - lookYawRadians
     }
 
-    /// IBL `intensityExponent`: exposure plus environment intensity, plus any policy dim.
-    static func iblExponent(exposureEV: Float, environmentIntensity: Float = 1, dimEV: Float = 0) -> Float {
-        exposureEV + log2(max(environmentIntensity, .leastNormalMagnitude)) + dimEV
+    /// IBL `intensityExponent`: exposure plus any policy dim.
+    static func iblExponent(exposureEV: Float, dimEV: Float = 0) -> Float {
+        exposureEV + dimEV
     }
 
     static func directionalIntensity(lux: Float) -> Float {
