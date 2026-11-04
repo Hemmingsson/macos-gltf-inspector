@@ -73,6 +73,15 @@ struct GLTFInspectorApp: App {
         .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unified(showsTitle: false))
         .restorationBehavior(.disabled)
+
+        WindowGroup(id: WelcomeWindow.id) {
+            DocumentWindow(documentURL: nil, closesWelcome: false)
+        }
+        .defaultSize(width: 1280, height: 820)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified(showsTitle: false))
+        .defaultLaunchBehavior(.presented)
+        .restorationBehavior(.disabled)
         .commands {
             // Native `NavigationSplitView`: `SidebarCommands()` owns ⌃⌘S and stays in sync with
             // `ShellPanelChrome.columnVisibility`. Host View menu is the cluster twin — never
@@ -86,19 +95,18 @@ struct GLTFInspectorApp: App {
                     CheckForUpdatesView(updater: updaterController.updater)
                 }
             }
+            CommandGroup(replacing: .newItem) {
+                NewWindowCommand()
+            }
+            // A viewer never writes: drop Save, Save As and Duplicate, keep the file-management
+            // commands. The system Share item stays in `.importExport`.
             CommandGroup(replacing: .saveItem) {
+                DocumentFileCommands()
+            }
+            CommandGroup(after: .importExport) {
                 HostFileMenuCommands()
             }
         }
-
-        WindowGroup(id: WelcomeWindow.id) {
-            DocumentWindow(documentURL: nil, closesWelcome: false)
-        }
-        .defaultSize(width: 1280, height: 820)
-        .windowResizability(.contentMinSize)
-        .windowToolbarStyle(.unified(showsTitle: false))
-        .defaultLaunchBehavior(.presented)
-        .restorationBehavior(.disabled)
 
         Settings {
             PreviewSettingsRoot(store: AppDefaultsStore.appGroup)

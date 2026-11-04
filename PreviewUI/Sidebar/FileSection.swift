@@ -1,35 +1,24 @@
 import DesignSystem
 import SwiftUI
 
-/// File-level stats rows. Shown in the left sidebar footer for a loaded model.
+/// File facts under the sidebar's document card. The card names the file, so there is no header;
+/// counts the outliner already lists (materials, animations) are left out.
 struct FileSection: View {
     var stats: Stats
     var fileName: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.s) {
-            DSSectionHeader("File")
-
-            VStack(spacing: DS.Spacing.xs) {
-                DSFactRow("Triangles", value: stats.triangleCount.formatted())
-                DSFactRow(
-                    "Meshes · Materials",
-                    value: "\(stats.meshCount) · \(stats.materialCount)"
-                )
-                DSFactRow("Textures", value: texturesValue)
-                if stats.animationCount > 0 {
-                    DSFactRow("Animations", value: "\(stats.animationCount)")
-                }
-                if let size = fileSizeValue {
-                    DSFactRow("File size", value: size)
-                }
+        VStack(spacing: DS.Spacing.xs) {
+            DSFactRow("Triangles", value: stats.triangleCount.formatted())
+            DSFactRow("Textures", value: texturesValue)
+            if let size = fileSizeValue {
+                DSFactRow("File size", value: size)
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("File \(fileName)")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("File \(fileName)")
         .padding(.horizontal, DS.Spacing.l)
-        .padding(.top, DS.Spacing.m)
-        .padding(.bottom, DS.Spacing.s)
+        .padding(.bottom, DS.Spacing.m)
     }
 
     private var texturesValue: String {

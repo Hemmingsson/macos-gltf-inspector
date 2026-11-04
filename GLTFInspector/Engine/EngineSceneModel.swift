@@ -59,7 +59,7 @@ struct EngineSceneModel: SceneModel {
         self.animations = Self.mapAnimations(document.animations)
         self.skins = Self.mapSkins(document.skins)
         self.morphs = Self.mapMorphs(document.morphs)
-        self.stats = Self.mapStats(stats, document: document)
+        self.stats = Self.mapStats(stats)
         self.dimensions = dimensions
     }
 
@@ -311,15 +311,11 @@ extension EngineSceneModel {
         )
     }
 
-    private static func mapStats(_ stats: PreviewStats, document: GLTFSessionDocument) -> Stats {
-        let meshCount = Set(document.nodes.compactMap(\.meshIndex)).count
-        return Stats(
+    private static func mapStats(_ stats: PreviewStats) -> Stats {
+        Stats(
             triangleCount: stats.triangleCount,
-            meshCount: meshCount,
-            materialCount: stats.materialCount,
             textureCount: stats.textureCount,
             maxTextureDimension: stats.maxTextureEdge,
-            animationCount: stats.animationCount,
             fileSizeBytes: stats.fileSizeBytes
         )
     }

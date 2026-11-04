@@ -1,7 +1,8 @@
 import DesignSystem
 import SwiftUI
 
-/// Left column — structure. The document says which file this is; the outliner says what is in it.
+/// Left column — structure. The document card and its facts say which file this is; the outliner
+/// says what is in it.
 ///
 /// Generic over both seam types rather than taking existentials: `SceneModel` has `Self`
 /// requirements through its default implementations.
@@ -28,14 +29,10 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
                     onActivate: activate
                 )
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    documentCard
-                }
-                .safeAreaBar(edge: .bottom, spacing: 0) {
-                    ViewThatFits(in: .vertical) {
-                        fileFooter(showsFile: true)
-                        fileFooter(showsFile: false)
+                    VStack(alignment: .leading, spacing: 0) {
+                        documentCard
+                        FileSection(stats: model.stats, fileName: model.fileName)
                     }
-                    .frame(maxHeight: 280, alignment: .top)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 0) {
@@ -69,20 +66,6 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
             isSelected: documentState.isReady && isDocumentSelected,
             onSelect: documentState.isReady ? onSelectDocument : nil
         )
-    }
-
-    /// File facts — pinned under the outliner. `ViewThatFits` drops them rather than nesting a
-    /// `ScrollView`. Validation lives in the document inspector (click the document card).
-    @ViewBuilder
-    private func fileFooter(showsFile: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Divider()
-            if showsFile {
-                FileSection(stats: model.stats, fileName: model.fileName)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func activate(_ item: OutlinerItem) {

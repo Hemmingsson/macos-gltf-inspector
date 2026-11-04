@@ -1,31 +1,23 @@
 import Foundation
 
-/// The inspector's File section.
+/// File facts under the sidebar's document card. Materials and animations are not counted here:
+/// the outliner lists them.
 public struct Stats: Sendable, Hashable {
     public var triangleCount: Int
-    public var meshCount: Int
-    public var materialCount: Int
     public var textureCount: Int
     /// Largest texture edge in pixels ("max 2048²"). Nil when there are no textures.
     public var maxTextureDimension: Int?
-    public var animationCount: Int
     public var fileSizeBytes: Int64?
 
     public init(
         triangleCount: Int = 0,
-        meshCount: Int = 0,
-        materialCount: Int = 0,
         textureCount: Int = 0,
         maxTextureDimension: Int? = nil,
-        animationCount: Int = 0,
         fileSizeBytes: Int64? = nil
     ) {
         self.triangleCount = triangleCount
-        self.meshCount = meshCount
-        self.materialCount = materialCount
         self.textureCount = textureCount
         self.maxTextureDimension = maxTextureDimension
-        self.animationCount = animationCount
         self.fileSizeBytes = fileSizeBytes
     }
 }

@@ -29,6 +29,7 @@ struct DocumentWindow: View {
         DocumentShell(window: window, canvasState: canvasState, closesWelcome: closesWelcome) {
             canvas
         }
+        .focusedSceneValue(\.documentFileURL, documentURL)
         .onAppear {
             if let documentURL {
                 loadDocument(documentURL)

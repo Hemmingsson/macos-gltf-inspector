@@ -69,8 +69,6 @@ public struct FixtureSceneModel: SceneModel {
     materials: [MaterialFixtures.cube],
     stats: Stats(
       triangleCount: 12,
-      meshCount: 1,
-      materialCount: 1,
       textureCount: 2,
       maxTextureDimension: 256,
       fileSizeBytes: 4_096
@@ -95,8 +93,6 @@ public struct FixtureSceneModel: SceneModel {
     materials: [MaterialFixtures.cube, MaterialFixtures.fullPBR],
     stats: Stats(
       triangleCount: 8_420,
-      meshCount: 2,
-      materialCount: 2,
       textureCount: 6,
       maxTextureDimension: 2048,
       fileSizeBytes: 1_048_576
@@ -131,8 +127,6 @@ public struct FixtureSceneModel: SceneModel {
     materials: [MaterialFixtures.cube],
     stats: Stats(
       triangleCount: 2_400,
-      meshCount: 1,
-      materialCount: 1,
       textureCount: 2,
       maxTextureDimension: 512
     ),
