@@ -1,0 +1,64 @@
+// Copyright 2026 glTF Inspector contributors. Khronos equations: Apache-2.0.
+#ifndef GLTF_METAL_SHADER_TYPES_H
+#define GLTF_METAL_SHADER_TYPES_H
+#include <metal_stdlib>
+using namespace metal;
+struct MetalVertex {
+    float4 position;
+    float4 normal;
+    float4 tangent;
+    float4 color;
+    float2 uv0;
+    float2 uv1;
+};
+struct MetalFrameUniforms {
+    float4x4 viewProjection;
+    float4 cameraPosition;
+    // Rotation radians, IBL intensity, exposure multiplier, maximum prefilter LOD.
+    float4 environment;
+    // tone map (0 neutral, 1 none, 2 ACES Narkowicz, 3 ACES Hill, 4 Hill boosted),
+    // debug channel, IBL enabled, light count.
+    uint4 options;
+};
+struct MetalDrawUniforms { float4x4 model; float4x4 normalMatrix; };
+struct MetalMaterialUniforms {
+    float4 baseColor;
+    // emissive RGB (already multiplied by emissive strength), normal scale.
+    float4 emissiveNormalScale;
+    // metallic, perceptual roughness, occlusion strength, alpha cutoff.
+    float4 surface;
+    // specular RGB factor, specular scalar weight.
+    float4 specular;
+    // clearcoat factor, roughness, IOR, transmission factor.
+    float4 coatTransmission;
+    // sheen RGB, sheen roughness.
+    float4 sheen;
+    // attenuation RGB, attenuation distance (0 means infinite).
+    float4 attenuation;
+    // thickness, iridescence factor, film IOR, film thickness nm.
+    float4 volumeIridescence;
+    // anisotropy strength, rotation radians, diffuse transmission, reserved.
+    float4 anisotropy;
+    // texture mask (bits 0...4 core maps), alpha mode (0 opaque/1 mask/2 blend),
+    // flags (bit0 unlit, bit1 doubleSided), reserved.
+    uint4 flags;
+    float4 diffuseTransmissionColor;
+    // iridescence minimum thickness, dispersion, glossiness, clearcoat normal scale.
+    float4 extra;
+    // One transform per core texture; three float4 rows encode UV homogeneous transform.
+    float4 uvTransforms[60];
+    // UV set index for base, MR, normal, occlusion; emissive in uvSets2.x.
+    uint4 uvSets[5];
+};
+struct MaterialTextureArguments {
+    array<texture2d<float>,20> maps [[id(0)]];
+    array<sampler,20> samplers [[id(20)]];
+};
+struct MetalLight {
+    float4 directionRange;
+    float4 colorIntensity;
+    float4 positionInnerCone;
+    // x outer-cone cosine, y light type (0 directional, 1 point, 2 spot).
+    float4 outerType;
+};
+#endif

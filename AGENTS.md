@@ -91,6 +91,10 @@ renderer setting, a second backend, or chrome the page cannot drive: playback, m
 hide/solo, double-sided, skeleton, a file-light picker, or a custom HDR. Fit / reset / Export PNG
 → `FocusedPreviewCommands`. The page draws the bind pose; the inspector may still list
 animations, morphs and skins.
+*Exception (approved 2026-11-04):* the in-progress native Metal port (`RendererMetal/`, plan
+`.agents/plans/2026-11-04-native-metal-khronos-renderer.md`) may live in-tree behind a dev-only
+switch, used by tests and `dev.sh bench`. Shipped surfaces stay on the page until cutover moves all
+three at once; never expose the switch to users.
 
 **8. Real-window verify** (unit tests miss **1**): `./scripts/build.sh` on main, then open
 the `/Applications` app on a glb; in a worktree, the `.build` app. One "open start", one

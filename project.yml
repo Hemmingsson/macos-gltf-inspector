@@ -54,6 +54,12 @@ settings:
     ARCHS: arm64
 
 packages:
+  GLTFKit2:
+    url: https://github.com/warrenm/GLTFKit2
+    exactVersion: "0.5.15"
+  DracoSwift:
+    url: https://github.com/warrenm/DracoSwift
+    exactVersion: "1.5.7"
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: "2.9.6"
@@ -130,6 +136,37 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.GLTFCore
         GENERATE_INFOPLIST_FILE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
+
+  RendererMetal:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Vendor/mikktspace
+        includes: [mikktspace.c, mikktspace.h]
+        headerVisibility: private
+      - path: Vendor/meshoptimizer
+        includes: [meshoptimizer.h, vertexcodec.cpp, indexcodec.cpp, vertexfilter.cpp]
+        headerVisibility: private
+      - path: RendererMetal
+        excludes:
+          - Shaders/UPSTREAM.md
+          - Shaders/LICENSE
+        headerVisibility: public
+    settings:
+      base:
+        MTL_FAST_MATH: NO
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.RendererMetal
+        GENERATE_INFOPLIST_FILE: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CLANG_CXX_LANGUAGE_STANDARD: c++20
+        HEADER_SEARCH_PATHS: $(SRCROOT)/Vendor/libktx/include
+    dependencies:
+      - target: GLTFCore
+        embed: false
+      - package: GLTFKit2
+        product: GLTFKit2
+      - package: DracoSwift
+        product: DracoSwift
 
   # Objective-C++ over Google's Filament (Metal backend, gltfio ubershaders). Static Filament
   # libraries from the prebuilt SDK in .build/filament (scripts/fetch-filament.sh). Public
@@ -217,6 +254,8 @@ targets:
         APPLICATION_EXTENSION_API_ONLY: YES
     dependencies:
       - target: GLTFCore
+        embed: false
+      - target: RendererMetal
         embed: false
       - target: FilamentBridge
         embed: false
@@ -312,11 +351,14 @@ targets:
         Release:
           CODE_SIGN_IDENTITY: "Developer ID Application"
     dependencies:
+      - package: GLTFKit2
       - target: DesignSystem
         embed: true
       - target: GLTFCore
         embed: true
       - target: RendererWebKit
+        embed: true
+      - target: RendererMetal
         embed: true
       - target: FilamentBridge
         embed: true
@@ -437,6 +479,8 @@ targets:
     dependencies:
       - target: GLTFInspector
       - target: GLTFCore
+        embed: false
+      - target: RendererMetal
         embed: false
       - target: RendererWebKit
         embed: false

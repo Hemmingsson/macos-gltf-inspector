@@ -1,0 +1,106 @@
+Native Metal verification snapshot, 2026-11-04. Earlier logs have different manifest sizes.
+
+/tmp/metal-gpu7.log
+pixel diff AlphaBlendModeTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff AnimatedMorphCube: mean 0.000, max 0, bad 0/262144 (0.0000%)
+pixel diff BoomBox: mean 0.001, max 20, bad 1/262144 (0.0004%)
+pixel diff BoxVertexColors: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff ClearCoatTest: mean 0.017, max 71, bad 16/262144 (0.0061%)
+pixel diff Corset: mean 0.000, max 4, bad 0/262144 (0.0000%)
+pixel diff EmissiveStrengthTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff EnvironmentTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff InterpolationTest: mean 0.000, max 0, bad 0/262144 (0.0000%)
+pixel diff LightsPunctualLamp: mean 0.023, max 15, bad 0/262144 (0.0000%)
+pixel diff MetalRoughSpheresNoTextures: mean 0.000, max 3, bad 0/262144 (0.0000%)
+pixel diff NegativeScaleTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff NodeVisibilityTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff NormalTangentMirrorTest: mean 0.000, max 5, bad 0/262144 (0.0000%)
+pixel diff OrientationTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff PointLightIntensityTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff SpecGlossVsMetalRough: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff TextureEncodingTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff TextureSettingsTest: mean 0.000, max 20, bad 1/262144 (0.0004%)
+pixel diff TextureTransformTest: mean 0.000, max 2, bad 0/262144 (0.0000%)
+pixel diff VertexColorTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+􁁛 Test run with 1 test in 1 suite passed after 16.189 seconds.
+** TEST SUCCEEDED **
+
+/tmp/metal-extended-gpu.log
+􀢄 Test everyPinnedSampleRendersWithoutGPUFailure() recorded an issue at MetalRendererTests.swift:53:6: Caught error: Error Domain=com.metalbyexample.gltfkit2 Code=1012 "Asset contains unsupported required extensions: (
+    "KHR_meshopt_compression"
+    "KHR_meshopt_compression"
+􁁛 Suite MetalSceneLoaderTests passed after 0.042 seconds.
+pixel diff AlphaBlendModeTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff AnimatedMorphCube: mean 0.000, max 0, bad 0/262144 (0.0000%)
+pixel diff BoomBox: mean 0.001, max 20, bad 1/262144 (0.0004%)
+pixel diff BoxVertexColors: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff ClearCoatTest: mean 0.017, max 71, bad 16/262144 (0.0061%)
+pixel diff Corset: mean 0.000, max 4, bad 0/262144 (0.0000%)
+pixel diff EmissiveStrengthTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff EnvironmentTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff InterpolationTest: mean 0.000, max 0, bad 0/262144 (0.0000%)
+pixel diff LightsPunctualLamp: mean 0.023, max 15, bad 0/262144 (0.0000%)
+pixel diff MetalRoughSpheresNoTextures: mean 0.000, max 3, bad 0/262144 (0.0000%)
+pixel diff NegativeScaleTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff NodeVisibilityTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff NormalTangentMirrorTest: mean 0.000, max 5, bad 0/262144 (0.0000%)
+pixel diff OrientationTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff PointLightIntensityTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff SpecGlossVsMetalRough: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff TextureEncodingTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff TextureSettingsTest: mean 0.000, max 20, bad 1/262144 (0.0004%)
+pixel diff TextureTransformTest: mean 0.000, max 2, bad 0/262144 (0.0000%)
+pixel diff VertexColorTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff CompareSheen: mean 0.279, max 67, bad 2040/262144 (0.7782%)
+pixel diff CompareIridescence: mean 0.031, max 28, bad 4/262144 (0.0015%)
+pixel diff CompareAnisotropy: mean 0.181, max 181, bad 704/262144 (0.2686%)
+pixel diff CompareSpecular: mean 0.049, max 14, bad 0/262144 (0.0000%)
+pixel diff CompareIor: mean 1.028, max 198, bad 2803/262144 (1.0693%)
+pixel diff CompareVolume: mean 0.521, max 202, bad 1326/262144 (0.5058%)
+pixel diff CompareDispersion: mean 0.189, max 126, bad 694/262144 (0.2647%)
+pixel diff DiffuseTransmissionTest: mean 0.107, max 7, bad 0/262144 (0.0000%)
+pixel diff BoxDraco: mean 0.000, max 0, bad 0/262144 (0.0000%)
+􀢄 Test everySampleMatchesItsKhronosReference() recorded an issue at PixelDiffMetalTests.swift:43:6: Caught error: Error Domain=com.metalbyexample.gltfkit2 Code=1012 "Asset contains unsupported required extensions: (
+    "KHR_meshopt_compression"
+    "KHR_meshopt_compression"
+􀢄 Test run with 11 tests in 3 suites failed after 35.491 seconds with 7 issues.
+** TEST FAILED **
+
+/tmp/metal-handoff-verification.log
+􁁛 Suite MetalCameraTests passed after 0.002 seconds.
+􁁛 Suite MetalSceneLoaderTests passed after 0.082 seconds.
+pixel diff AlphaBlendModeTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff AnimatedMorphCube: mean 0.000, max 0, bad 0/262144 (0.0000%)
+pixel diff BoomBox: mean 0.001, max 20, bad 1/262144 (0.0004%)
+pixel diff BoxVertexColors: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff ClearCoatTest: mean 0.017, max 71, bad 16/262144 (0.0061%)
+pixel diff Corset: mean 0.000, max 4, bad 0/262144 (0.0000%)
+pixel diff EmissiveStrengthTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff EnvironmentTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff InterpolationTest: mean 0.000, max 0, bad 0/262144 (0.0000%)
+pixel diff LightsPunctualLamp: mean 0.023, max 15, bad 0/262144 (0.0000%)
+pixel diff MetalRoughSpheresNoTextures: mean 0.000, max 3, bad 0/262144 (0.0000%)
+pixel diff NegativeScaleTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff NodeVisibilityTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff NormalTangentMirrorTest: mean 0.000, max 5, bad 0/262144 (0.0000%)
+pixel diff OrientationTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff PointLightIntensityTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff SpecGlossVsMetalRough: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff TextureEncodingTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff TextureSettingsTest: mean 0.000, max 20, bad 1/262144 (0.0004%)
+pixel diff TextureTransformTest: mean 0.000, max 2, bad 0/262144 (0.0000%)
+pixel diff VertexColorTest: mean 0.000, max 1, bad 0/262144 (0.0000%)
+pixel diff CompareSheen: mean 0.279, max 67, bad 2040/262144 (0.7782%)
+pixel diff CompareIridescence: mean 0.031, max 28, bad 4/262144 (0.0015%)
+pixel diff CompareAnisotropy: mean 0.181, max 181, bad 704/262144 (0.2686%)
+pixel diff CompareSpecular: mean 0.049, max 14, bad 0/262144 (0.0000%)
+pixel diff CompareIor: mean 0.389, max 152, bad 1530/262144 (0.5836%)
+pixel diff CompareVolume: mean 0.041, max 93, bad 247/262144 (0.0942%)
+pixel diff CompareDispersion: mean 0.189, max 126, bad 694/262144 (0.2647%)
+pixel diff DiffuseTransmissionTest: mean 0.107, max 7, bad 0/262144 (0.0000%)
+pixel diff BoxDraco: mean 0.000, max 0, bad 0/262144 (0.0000%)
+􀢄 Test everySampleMatchesItsKhronosReference() recorded an issue at PixelDiffMetalTests.swift:43:6: Caught error: Error Domain=com.metalbyexample.gltfkit2 Code=1012 "Asset contains unsupported required extensions: (
+    "KHR_meshopt_compression"
+    "KHR_meshopt_compression"
+􀢄 Test run with 12 tests in 3 suites failed after 17.082 seconds with 5 issues.
+** TEST FAILED **

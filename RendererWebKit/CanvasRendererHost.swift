@@ -39,6 +39,9 @@ extension WebRendererHost: CanvasRendererHost {
 public enum CanvasRenderer {
     /// Filament, unless the process runs with `GLTF_RENDERER=webkit`.
     public static func makeHost(mode: WebRendererMode, size: Int = 512) throws -> any CanvasRendererHost {
+        if ProcessInfo.processInfo.environment["GLTF_RENDERER"] == "metal" {
+            return KhronosMetalRendererHost(mode: mode, size: size)
+        }
         if ProcessInfo.processInfo.environment["GLTF_RENDERER"] == "webkit" {
             return try WebRendererHost(mode: mode, size: size)
         }

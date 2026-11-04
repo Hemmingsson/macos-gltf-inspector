@@ -802,6 +802,72 @@ window.__viewer = {
         return { png: canvas.toDataURL("image/png") };
     },
 
+    /** Test-only bake: read one pinned IBL subresource without any filtering or colour conversion.
+     * The native renderer consumes baked bytes, never this bridge at runtime.
+     */
+    async exportEnvironment({ name, mip = 0, face = 0, metadata = false } = {}) {
+        await loadEnvironment();
+        const env = state.environment;
+        const definitions = {
+            diffuse: ["diffuseEnvMap", 256, true, 1],
+            specular: ["specularEnvMap", 256, true, env.mipCount + 1],
+            sheen: ["sheenEnvMap", 256, true, env.mipCount + 1],
+            ggxLUT: ["lut", 1024, false, 1],
+            charlieLUT: ["sheenLUT", 1024, false, 1],
+            sheenELUT: ["sheenELUT", 0, false, 1],
+        };
+        if (metadata) return { intensityScale: env.iblIntensityScale, mipCount: env.mipCount,
+            textures: Object.entries(definitions).map(([name, [key, size, cube, mipLevels]]) => {
+                const image = env.images[env.textures[env[key].index].source].image;
+                return { name, size: size || image.width, cube, mipLevels };
+            }) };
+        const definition = definitions[name];
+        if (!definition) throw new Error(`Unknown bake texture ${name}`);
+        const [key, size, cube, mipLevels] = definition;
+        if (mip < 0 || mip >= mipLevels || face < 0 || face >= (cube ? 6 : 1)) {
+            throw new Error("Invalid IBL subresource");
+        }
+        const info = env[key];
+        // This performs the normal upstream upload for the PNG sheen-energy LUT too.
+        view.renderer.webGl.setTexture(undefined, env, info, 0);
+        const texture = env.textures[info.index].glTexture;
+        const image = env.images[env.textures[info.index].source].image;
+        const width = Math.max(1, (size || image.width) >> mip);
+        const height = Math.max(1, (size || image.height) >> mip);
+        const oldRead = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING);
+        const oldDraw = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
+        const framebuffer = gl.createFramebuffer();
+        try {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                cube ? gl.TEXTURE_CUBE_MAP_POSITIVE_X + face : gl.TEXTURE_2D, texture, mip);
+            if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+                throw new Error(`IBL framebuffer incomplete: ${name}/${mip}/${face}`);
+            }
+            while (gl.getError() !== gl.NO_ERROR) { /* discard upstream's prior error state */ }
+            const floats = new Float32Array(width * height * 4);
+            if (name === "sheenELUT") {
+                const bytes = new Uint8Array(floats.length);
+                gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
+                for (let i = 0; i < bytes.length; ++i) floats[i] = bytes[i] / 255;
+            } else {
+                gl.readPixels(0, 0, width, height, gl.RGBA, gl.FLOAT, floats);
+            }
+            const error = gl.getError();
+            if (error !== gl.NO_ERROR) throw new Error(`IBL readPixels error ${error}: ${name}`);
+            const bytes = new Uint8Array(floats.buffer);
+            let binary = "";
+            for (let offset = 0; offset < bytes.length; offset += 32768) {
+                binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+            }
+            return { width, height, data: btoa(binary) };
+        } finally {
+            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, oldRead);
+            gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, oldDraw);
+            gl.deleteFramebuffer(framebuffer);
+        }
+    },
+
     /** Also drains the frame-time buffer: `frames` covers the frames drawn since the last call. */
     stats() {
         const stats = state.gltf ? view.gatherStatistics(state) ?? {} : {};
