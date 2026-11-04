@@ -4,9 +4,9 @@ import simd
 /// Inspector chrome drawn after the Khronos frame, as the former viewer page's `drawOverlays` did:
 /// the polar floor, the authored-origin gizmo and the selected subtree's box. Same geometry,
 /// colours and pass:
-/// opaque 1-pixel lines, no depth occlusion (the canvas depth is cleared and the tonemap quad
-/// writes none), the user camera even while a file camera draws the model, and the viewer's
-/// antialiased canvas — 4× MSAA, seeded with the tonemapped frame.
+/// opaque 1-pixel lines, soft-tested against the stored scene depth so they sit behind the model,
+/// the user camera even while a file camera draws the model, and the viewer's antialiased
+/// canvas — 4× MSAA, seeded with the tonemapped frame.
 struct MetalOverlayOptions: Sendable {
     var floor: Bool
     var origin: Bool
@@ -79,8 +79,11 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
 extension MetalRenderer {
     /// Draws `lines` over the tonemapped `output` the way the viewer draws them over its canvas.
     /// `viewProjection` is the user camera's WebGL clip transform; `viewport` the Khronos one.
+    /// `sceneDepth` is the stored main-pass depth; with `occlude`, lines behind the model are
+    /// discarded. Skip that when a file camera drew the model: the depths would not match.
     func encodeOverlays(_ lines: [MetalLineVertex], command: any MTLCommandBuffer, output: any MTLTexture,
-                        viewProjection: simd_float4x4, viewport: MTLViewport) throws {
+                        viewProjection: simd_float4x4, viewport: MTLViewport,
+                        sceneDepth: any MTLTexture, occlude: Bool) throws {
         let samples = 4
         if overlayPipeline == nil || overlayCopyPipeline == nil {
             let line = MTLRenderPipelineDescriptor()
@@ -144,6 +147,9 @@ extension MetalRenderer {
         encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         var matrix = viewProjection
         encoder.setVertexBytes(&matrix, length: MemoryLayout<simd_float4x4>.stride, index: 1)
+        var occludeFlag: UInt32 = occlude ? 1 : 0
+        encoder.setFragmentBytes(&occludeFlag, length: MemoryLayout<UInt32>.stride, index: 0)
+        encoder.setFragmentTexture(sceneDepth, index: 0)
         encoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: lines.count)
         encoder.endEncoding()
     }

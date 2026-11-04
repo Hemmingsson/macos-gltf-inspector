@@ -189,8 +189,10 @@ public final class MetalRenderer: @unchecked Sendable {
         finish.endEncoding()
         let lines = overlayVertices(scene: scene, options: overlays)
         if !lines.isEmpty {
+            // Overlays always use the user camera; only occlude when that camera also drew the model.
             try encodeOverlays(lines, command: command, output: output,
-                               viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix, viewport: viewport)
+                               viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix, viewport: viewport,
+                               sceneDepth: depth, occlude: options.fileCameraNodeIndex == nil)
         }
         command.commit()
         command.waitUntilCompleted()
