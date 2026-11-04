@@ -531,7 +531,7 @@ public final class ModelView: NSView {
 
     /// World point under a view point (y down) on the plane through the orbit target that faces
     /// the camera. Nil for a file camera or when the ray misses the plane.
-    private func pointerWorldPoint(atViewPoint viewPoint: NSPoint) -> SIMD3<Double>? {
+    func pointerWorldPoint(atViewPoint viewPoint: NSPoint) -> SIMD3<Double>? {
         guard options.fileCameraNodeIndex == nil, renderer.scene != nil, bounds.width > 0, bounds.height > 0 else { return nil }
         let (width, height, _) = pickPixelSize
         guard let frame = try? renderer.gizmoPickFrame(options: options, pose: pose(width: width, height: height),
@@ -628,17 +628,19 @@ public final class ModelView: NSView {
         wheel(deltaY: -Double(event.magnification) * 500, at: event.locationInWindow)
     }
 
-    /// With `zoomsTowardPointer` (perspective only: the Khronos wheel keeps the orthographic
-    /// scale) the dolly heads for the spot under the pointer instead of the orbit target.
-    private func wheel(deltaY: Double, at windowPoint: NSPoint) {
+    /// With `zoomsTowardPointer` the dolly heads for the spot under the pointer instead of the
+    /// orbit target. The orthographic scale follows the distance (`applyProjection`), so an axis
+    /// view zooms on screen as well as in the readout.
+    func wheel(deltaY: Double, at windowPoint: NSPoint) {
         guard renderer.scene != nil else { return }
         cancelRetarget()
-        if options.zoomsTowardPointer, !options.isOrthographic,
+        if options.zoomsTowardPointer,
            let pointer = pointerWorldPoint(atViewPoint: convert(windowPoint, from: nil)) {
             camera.zoomBy(deltaY * 0.01, toward: pointer)
         } else {
             camera.zoomBy(deltaY * 0.01)
         }
+        camera.applyProjection()
         redraw()
     }
 

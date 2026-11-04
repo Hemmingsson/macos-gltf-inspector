@@ -259,6 +259,34 @@ struct ViewerEssentialsTests {
         #expect(starts == 1)
     }
 
+    @Test func orthographicWheelZoomRescalesTheOrthographicMagnitude() async throws {
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(TestFixtures.cube, options: ViewOptions(isOrthographic: true))
+        view.show(.front)
+        let before = view.camera.orthographic.magnitude
+        view.wheel(deltaY: -40, at: .zero)
+        #expect(view.camera.orthographic.magnitude < before)
+        let expected = view.camera.distance * tan(view.camera.yfov / 2)
+        #expect(abs(view.camera.orthographic.magnitude - expected) < 1e-9)
+    }
+
+    @Test func orthographicPointerZoomKeepsTheWorldPointUnderTheCursorFixed() async throws {
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(TestFixtures.cube, options: ViewOptions(isOrthographic: true, zoomsTowardPointer: true))
+        view.show(.front)
+        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        defer { window.contentView = nil; window.close() }
+        let point = NSPoint(x: 360, y: 150)
+        let before = try #require(view.pointerWorldPoint(atViewPoint: point))
+        let magnitudeBefore = view.camera.orthographic.magnitude
+        view.wheel(deltaY: -40, at: point)
+        #expect(view.camera.orthographic.magnitude < magnitudeBefore)
+        let after = try #require(view.pointerWorldPoint(atViewPoint: point))
+        #expect(simd_distance(before, after) < 1e-6)
+    }
+
     // MARK: - vn4trm11 canvas modifiers
 
     @Test(arguments: [NSEvent.ModifierFlags.command, .shift])

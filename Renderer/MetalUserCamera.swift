@@ -5,7 +5,7 @@ import simd
 /// (`fitCamera`, `includeOriginInFraming`, `applySharedFitDistance`, `applyProjection`, `orbitTo`,
 /// pointer orbit/pan and wheel zoom). Fit keeps the current orbit angles while measuring; clip
 /// planes follow the Khronos distance rather than the padded one; wheel zoom refits the planes
-/// but not the orthographic scale.
+/// and, through `applyProjection`, restates the orthographic scale from the new distance.
 ///
 /// The Khronos transform is always `R_y(rotAroundY) · R_x(rotAroundX)` with a translation, so it
 /// is stored as angles plus camera position, which `pose` turns into the renderer's orbit pose.
