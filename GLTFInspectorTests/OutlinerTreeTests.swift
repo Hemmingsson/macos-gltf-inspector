@@ -130,15 +130,17 @@ struct OutlinerSectionTests {
         #expect(animations?.items.map(\.name) == ["Walk"])
     }
 
-    @Test func sceneGraphListsEveryScenesRootsOnceWithChildren() {
+    @Test func sceneGraphListsOnlyTheActiveScenesRoots() {
         let document = GLTFDocumentJSON.makeDocument(json: [
             "scenes": [["nodes": [0]], ["nodes": [0, 2]]],
             "nodes": [["name": "Root", "children": [1]], ["mesh": 0], ["name": "Lamp"]],
             "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
         ])
-        let graph = OutlinerSection.sections(of: document).first { $0.title == "Scene" }
-        #expect(graph?.items.map(\.name) == ["Root", "Lamp"])
-        #expect(graph?.items.first?.children.map(\.id) == [NodeID(kind: .mesh, index: 1)])
-        #expect(graph?.items.first?.children.first?.name == "Node 1")
+        let scene0 = OutlinerSection.sections(of: document, activeSceneIndex: 0).first { $0.title == "Scene" }
+        #expect(scene0?.items.map(\.name) == ["Root"])
+        #expect(scene0?.items.first?.children.map(\.id) == [NodeID(kind: .mesh, index: 1)])
+
+        let scene1 = OutlinerSection.sections(of: document, activeSceneIndex: 1).first { $0.title == "Scene" }
+        #expect(scene1?.items.map(\.name) == ["Root", "Lamp"])
     }
 }

@@ -16,6 +16,7 @@ struct Sidebar: View {
             if documentState.isReady {
                 OutlinerList(
                     document: document,
+                    activeSceneIndex: view.sceneIndex,
                     validation: validation,
                     selection: $view.selection,
                     selectedIDs: $view.selectedIDs,

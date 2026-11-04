@@ -219,6 +219,20 @@ extension GLTFDocument {
         return indices
     }
 
+    /// Every node reachable from one scene's roots; cycle-safe for malformed files.
+    public func nodeIndices(inScene sceneIndex: Int) -> [Int] {
+        guard scenes.indices.contains(sceneIndex) else { return [] }
+        var visited = Set<Int>()
+        var stack = scenes[sceneIndex].rootNodeIndices.reversed().filter { nodes.indices.contains($0) }
+        var indices: [Int] = []
+        while let index = stack.popLast() {
+            guard visited.insert(index).inserted else { continue }
+            indices.append(index)
+            stack.append(contentsOf: nodes[index].children.reversed().filter { nodes.indices.contains($0) })
+        }
+        return indices
+    }
+
     /// Reads a `.gltf` or a GLB's JSON chunk (plus texture headers for the inspector) off the main
     /// thread. Throws for a file that is not glTF.
     public static func load(from url: URL) async throws -> GLTFDocument {
