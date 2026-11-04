@@ -101,6 +101,10 @@ dev_run() {
 GLTF_REPO_ROOT=$ROOT
 GLTF_LOG_FILE=$LOG_FILE
 EOF
+  # Dev-only backend override (metal default, filament, webkit): docs/renderer-backends.md.
+  if [[ -n "${GLTF_RENDERER:-}" ]]; then
+    echo "GLTF_RENDERER=$GLTF_RENDERER" >>"$(dirname "$LOCAL_APP")/dev-env"
+  fi
 
   echo "run $fixture → $model"
   echo "log $LOG_FILE"

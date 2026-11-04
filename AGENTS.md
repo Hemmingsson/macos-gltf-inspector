@@ -2,9 +2,10 @@
 
 macOS 26+ Quick Look + Finder thumbnails for `.glb` / `.gltf`. Host **`GLTFInspector`** embeds
 `PreviewExtension` and `ThumbnailExtension`. Every surface — window, Quick Look, Finder icon —
-draws through one `WKWebView` page running the vendored Khronos glTF Sample Renderer
-(`RendererWebKit/web-renderer/`). The page loads the file itself; panels come from the file's
-JSON (`GLTFDocumentSummary`).
+draws through one renderer: the native Metal port of the Khronos glTF Sample Renderer
+(`RendererMetal/`, `KhronosMetalRendererHost`). The renderer loads the file itself; panels come
+from the file's JSON (`GLTFDocumentSummary`). Backends and overrides:
+[`docs/renderer-backends.md`](docs/renderer-backends.md).
 
 **New features, UX, or chrome:** [`DESIGN.md`](DESIGN.md) — principles, not layout (code wins).
 
@@ -16,7 +17,8 @@ JSON (`GLTFDocumentSummary`).
 | `DesignSystem/` | Extension-safe tokens + Liquid Glass / controls. No GLTFCore / renderer imports. |
 | `DesignCatalog/` | Showcase app (`./scripts/dev.sh catalog`). |
 | `GLTFCore/` | File model, validator, stats, App Group settings, Khronos HDRs, JSON panels. No WebKit / AppKit / PreviewUI. |
-| `RendererWebKit/` | `WebRendererHost` (page host, scheme handler, bridge), `WebPreviewCanvas`, `WebCanvasController`. Page in `RendererWebKit/web-renderer/`. Only WebKit import. |
+| `RendererWebKit/` | Renderer seam: `CanvasRenderer` (backend switch), `WebPreviewCanvas`, `WebCanvasController`, `ThumbnailRenderer`, the Metal / Filament / WebKit hosts. Page in `RendererWebKit/web-renderer/`. Only WebKit import. |
+| `RendererMetal/` | Native Metal Khronos port (default renderer). Extension-safe; no WebKit. |
 | `GLTFInspector/` | Host: `DocumentWindow` (window root), `DocumentShell`, `DocumentWindowModel`, `HostSidebarModel`, `FocusedPreviewCommands` (`PreviewFocus.swift`). |
 | `GLTFInspector/Engine/` | `Engine*` adapters — seam mapping only. |
 | `PreviewExtension/` / `ThumbnailExtension/` | Quick Look preview (`.live` page) / Finder thumbnail (`.still` page). |
@@ -80,21 +82,20 @@ wrapper as classic scripts before the module.
 
 **5. Extension sandbox** — settings only via App Group (`AppGroupSettings`). Never
 `UserDefaults.standard` for settings; only the host can write the group (`defaults write` hits
-another domain). Appexes need `com.apple.security.network.client` for WebKit XPC. Reply with
-`QLThumbnailReply(imageFileURL:)`.
+another domain). Appexes keep `com.apple.security.network.client` for the WebKit override's
+XPC. Reply with `QLThumbnailReply(imageFileURL:)`.
 
 **6. Pixel-diff** — missing sample **fails**. Regen: `REGENERATE` sentinel in
 `TestModels/References/` (`./scripts/regenerate-pixel-references.sh`). Look at PNGs.
 
-**7. One renderer.** Window, Quick Look and Finder thumbnail are the same page. Do not add a
-renderer setting, a second backend, or chrome the page cannot drive: playback, morph weights,
-hide/solo, double-sided, skeleton, a file-light picker, or a custom HDR. Fit / reset / Export PNG
-→ `FocusedPreviewCommands`. The page draws the bind pose; the inspector may still list
+**7. One renderer.** Window, Quick Look and Finder thumbnail use the same renderer, built by
+`CanvasRenderer.makeHost` — the native Metal port by default. Do not add a renderer setting, a
+per-surface backend, or chrome the renderer cannot drive: playback, morph weights, hide/solo,
+double-sided, skeleton, a file-light picker, or a custom HDR. Fit / reset / Export PNG →
+`FocusedPreviewCommands`. The renderer draws the bind pose; the inspector may still list
 animations, morphs and skins.
-*Exception (approved 2026-11-04):* the in-progress native Metal port (`RendererMetal/`, plan
-`.agents/plans/2026-11-04-native-metal-khronos-renderer.md`) may live in-tree behind a dev-only
-switch, used by tests and `dev.sh bench`. Shipped surfaces stay on the page until cutover moves all
-three at once; never expose the switch to users.
+*Dev-only overrides:* `GLTF_RENDERER=filament` / `webkit` (the WebKit page stays the pixel-diff
+oracle). They switch all three surfaces at once; never expose them to users.
 
 **8. Real-window verify** (unit tests miss **1**): `./scripts/build.sh` on main, then open
 the `/Applications` app on a glb; in a worktree, the `.build` app. One "open start", one

@@ -62,11 +62,17 @@ missing samples fail the pixel-diff coverage test rather than skip. See
 
 ## How it works
 
-The host window is **`PreviewUI`** chrome over one canvas. The file is served into a
-`WKWebView` over `gltf-inspector://`; the page (`RendererWebKit/web-renderer/viewer.html`)
-runs the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
-and loads the file itself. The window, Quick Look and the Preview Pane run it live; thumbnails
-run it off-screen and take `canvas.toDataURL()`.
+The host window is **`PreviewUI`** chrome over one canvas. The canvas is drawn by a native
+Metal port of the [Khronos glTF Sample Renderer](https://github.com/KhronosGroup/glTF-Sample-Renderer)
+(`RendererMetal/`), which loads the file itself. The window, Quick Look and the Preview Pane run
+it live; thumbnails render one frame off-screen. The original Khronos page in a `WKWebView`
+(described below and in the pipeline doc) remains as a dev override and as the reference the
+Metal port is pixel-tested against; see
+[`docs/renderer-backends.md`](docs/renderer-backends.md).
+
+The WebKit page path: the file is served into a `WKWebView` over `gltf-inspector://`; the page
+(`RendererWebKit/web-renderer/viewer.html`) runs the Khronos renderer and loads the file
+itself. Thumbnails take `canvas.toDataURL()`.
 
 ```mermaid
 flowchart LR
@@ -82,8 +88,8 @@ JSON), not what a renderer kept.
 
 Look defaults (environment + tone map) are shared through the App Group suite
 (`AppGroupSettings`) — a sandboxed extension cannot read the host's preferences domain.
-Thumbnail and preview extensions need `com.apple.security.network.client` so WebKit's
-Networking XPC can start; the page itself fetches nothing from the network.
+Thumbnail and preview extensions keep `com.apple.security.network.client` so WebKit's
+Networking XPC can start under the WebKit override; nothing fetches from the network.
 
 Details: [`docs/pipeline-web-renderer.md`](docs/pipeline-web-renderer.md).
 

@@ -1,5 +1,9 @@
 # glTF → pixels (Khronos Sample Renderer in WebKit)
 
+> The shipped surfaces now draw with the native Metal port (`RendererMetal/`). This page is the
+> `GLTF_RENDERER=webkit` override and the pixel-diff oracle the port is tested against. See
+> [`renderer-backends.md`](renderer-backends.md).
+
 How a file becomes pixels. Every surface uses the same page
 (`RendererWebKit/web-renderer/viewer.html`) inside a `WKWebView` owned by `WebRendererHost`.
 All of it lives in the extension-safe `RendererWebKit` framework; the page ships once, inside

@@ -2,9 +2,10 @@ import AppKit
 import CoreGraphics
 import Foundation
 
-/// What a canvas, Quick Look and the thumbnail need from a renderer. Two implementations:
-/// `FilamentRendererHost` (Metal, the default on this branch) and `WebRendererHost` (the Khronos
-/// page in WebKit, kept for `GLTF_RENDERER=webkit` and the pixel-diff tests).
+/// What a canvas, Quick Look and the thumbnail need from a renderer. Three implementations:
+/// `KhronosMetalRendererHost` (the native Metal port of the Khronos Sample Renderer, the default
+/// for every surface), `FilamentRendererHost` (`GLTF_RENDERER=filament`) and `WebRendererHost`
+/// (the Khronos page in WebKit: `GLTF_RENDERER=webkit`, and the pixel-diff oracle).
 @MainActor
 public protocol CanvasRendererHost: AnyObject {
     var isBroken: Bool { get }
@@ -15,7 +16,7 @@ public protocol CanvasRendererHost: AnyObject {
     /// The live surface. Untouched in `.still`.
     var view: NSView { get }
     var logID: String { get }
-    /// Short name shown on the live canvas, e.g. "Filament 1.80 · Metal".
+    /// Short name shown on the live canvas, e.g. "Metal · Khronos 863b981".
     var rendererName: String { get }
 
     func start() async throws
@@ -35,16 +36,36 @@ extension WebRendererHost: CanvasRendererHost {
     public var rendererName: String { "WebKit · Khronos Sample Renderer" }
 }
 
+/// The one renderer switch. Window, Quick Look and the Finder thumbnail all build their host
+/// here, so the three surfaces always draw with the same backend. Dev-only: `GLTF_RENDERER` in
+/// the process environment, never a user setting (AGENTS.md pitfall 7).
 @MainActor
 public enum CanvasRenderer {
-    /// Filament, unless the process runs with `GLTF_RENDERER=webkit`.
-    public static func makeHost(mode: WebRendererMode, size: Int = 512) throws -> any CanvasRendererHost {
-        if ProcessInfo.processInfo.environment["GLTF_RENDERER"] == "metal" {
-            return KhronosMetalRendererHost(mode: mode, size: size)
+    public enum Backend: String, CaseIterable, Sendable {
+        /// Native Metal port of the Khronos Sample Renderer (`RendererMetal`). The default.
+        case metal
+        /// Google's Filament: `GLTF_RENDERER=filament`.
+        case filament
+        /// The Khronos page in a `WKWebView`: `GLTF_RENDERER=webkit`.
+        case webkit
+    }
+
+    /// The backend `GLTF_RENDERER` names, else `.metal` (also for an unknown value).
+    public nonisolated static func backend(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Backend {
+        environment["GLTF_RENDERER"].flatMap { Backend(rawValue: $0.lowercased()) } ?? .metal
+    }
+
+    public static func makeHost(
+        mode: WebRendererMode,
+        size: Int = 512,
+        backend: Backend = CanvasRenderer.backend()
+    ) throws -> any CanvasRendererHost {
+        switch backend {
+        case .metal: KhronosMetalRendererHost(mode: mode, size: size)
+        case .filament: FilamentRendererHost(mode: mode, size: size)
+        case .webkit: try WebRendererHost(mode: mode, size: size)
         }
-        if ProcessInfo.processInfo.environment["GLTF_RENDERER"] == "webkit" {
-            return try WebRendererHost(mode: mode, size: size)
-        }
-        return FilamentRendererHost(mode: mode, size: size)
     }
 }
