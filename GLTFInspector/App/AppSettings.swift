@@ -23,13 +23,13 @@ final class AppSettings {
         }
     }
     /// Lighting for new windows, Quick Look and thumbnails.
-    var environment: KhronosEnvironments { didSet { defaults.set(environment.rawValue, forKey: Key.environment) } }
+    var environment: LightingEnvironment { didSet { defaults.set(environment.rawValue, forKey: Key.environment) } }
     var toneMapping: RenderLook.ToneMapping { didSet { defaults.set(toneMapping.rawValue, forKey: Key.toneMapping) } }
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
         AppGroupSettings.registerDefaults(in: defaults)
-        let look = AppGroupSettings.rendererLook(defaults: defaults)
+        let look = AppGroupSettings.look(defaults: defaults)
         backdrop = defaults.string(forKey: Key.background).flatMap(BackdropStyle.init) ?? .window
         showsFloor = defaults.bool(forKey: Key.showFloor)
         autoRotates = defaults.bool(forKey: Key.autoRotate)

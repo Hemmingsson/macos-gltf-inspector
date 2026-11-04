@@ -21,31 +21,30 @@ final class ViewState {
     /// The renderer behind the canvas. Outlives SwiftUI remounts of the canvas view.
     let canvas = ModelCanvasController()
 
-    private var backdropOverride: BackdropStyle?
-    private var floorOverride: Bool?
-    private var autoRotateOverride: Bool?
+    private var overrides = StageOverrides()
 
     var backdrop: BackdropStyle {
-        get { backdropOverride ?? settings.backdrop }
-        set { backdropOverride = newValue }
+        get { overrides.backdrop ?? settings.backdrop }
+        set { overrides.backdrop = newValue }
     }
     var showsFloor: Bool {
-        get { floorOverride ?? settings.showsFloor }
-        set { floorOverride = newValue }
+        get { overrides.showsFloor ?? settings.showsFloor }
+        set { overrides.showsFloor = newValue }
     }
     var autoRotates: Bool {
-        get { autoRotateOverride ?? settings.autoRotates }
-        set { autoRotateOverride = newValue }
+        get { overrides.autoRotates ?? settings.autoRotates }
+        set { overrides.autoRotates = newValue }
     }
     /// False frames the authored origin too and shows the origin gizmo.
     var isCentered = true
     var isOrthographic = false
     /// Vertical field of view in degrees, kept within `fieldOfViewRange`.
+    /// Stored separately so `@Observable` + `didSet` cannot re-enter on assign.
     var fieldOfView: Double {
-        get { clampedFieldOfView }
-        set { clampedFieldOfView = min(max(newValue, Self.fieldOfViewRange.lowerBound), Self.fieldOfViewRange.upperBound) }
+        get { storedFieldOfView }
+        set { storedFieldOfView = newValue.clamped(to: Self.fieldOfViewRange) }
     }
-    private var clampedFieldOfView = defaultFieldOfView
+    private var storedFieldOfView = defaultFieldOfView
     var viewMode: RenderViewMode = .shaded
     /// The modes the open file has data for; `viewMode` is always one of them.
     var viewModes: [RenderViewMode] = [.shaded] {
@@ -55,7 +54,7 @@ final class ViewState {
     var exposure = 0.0
     /// Environment rotation in degrees; 0 is the Khronos Sample Viewer's view.
     var environmentYaw = 0.0
-    var environment: KhronosEnvironments
+    var environment: LightingEnvironment
     var toneMapping: RenderLook.ToneMapping
 
     /// The scene drawn and listed. Changing it drops a node selection and the file camera, which
@@ -105,18 +104,8 @@ final class ViewState {
     /// A new document in this window: Settings' lighting and every other choice back to how a
     /// new window starts. The document's scene and view modes follow once its JSON is read.
     func reset() {
-        backdropOverride = nil
-        floorOverride = nil
-        autoRotateOverride = nil
-        isCentered = true
-        isOrthographic = false
-        fieldOfView = Self.defaultFieldOfView
+        restoreStageAndLook()
         viewModes = [.shaded]
-        viewMode = .shaded
-        exposure = 0
-        environmentYaw = 0
-        environment = settings.environment
-        toneMapping = settings.toneMapping
         sceneIndex = 0
         materialVariantIndex = nil
         fileCameraNodeIndex = nil
@@ -145,17 +134,7 @@ final class ViewState {
 
     /// Reset View: this window's stage, look and camera back to how it opened, then Fit.
     func resetView() {
-        backdropOverride = nil
-        floorOverride = nil
-        autoRotateOverride = nil
-        isCentered = true
-        isOrthographic = false
-        fieldOfView = Self.defaultFieldOfView
-        viewMode = .shaded
-        exposure = 0
-        environmentYaw = 0
-        environment = settings.environment
-        toneMapping = settings.toneMapping
+        restoreStageAndLook()
         fit()
     }
 
@@ -168,14 +147,29 @@ final class ViewState {
             AppLog.error(AppLog.app, "PNG export failed: \(error.localizedDescription)")
         }
     }
+
+    private func restoreStageAndLook() {
+        overrides = StageOverrides()
+        isCentered = true
+        isOrthographic = false
+        fieldOfView = Self.defaultFieldOfView
+        viewMode = .shaded
+        exposure = 0
+        environmentYaw = 0
+        environment = settings.environment
+        toneMapping = settings.toneMapping
+    }
 }
 
-extension NodeKind {
-    /// Rows of the scene graph (glTF nodes), as opposed to materials, skins and the like.
-    var isSceneNode: Bool {
-        switch self {
-        case .mesh, .camera, .light, .empty: true
-        case .scene, .material, .animation, .skin, .morph: false
-        }
+/// Window overrides of Settings-seeded stage knobs. `nil` means “follow Settings”.
+private struct StageOverrides {
+    var backdrop: BackdropStyle?
+    var showsFloor: Bool?
+    var autoRotates: Bool?
+}
+
+extension Comparable {
+    fileprivate func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
     }
 }

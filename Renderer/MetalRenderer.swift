@@ -35,7 +35,7 @@ public final class MetalRenderer: @unchecked Sendable {
     private let depthRead: any MTLDepthStencilState
     private var environment: MetalEnvironment?
     private var materialResources: [ObjectIdentifier: MetalMaterialResources] = [:]
-    private var environmentID: KhronosEnvironments?
+    private var environmentID: LightingEnvironment?
     /// Khronos keeps its drawable lists across frames and re-sorts them in place, so depth ties
     /// keep the previous frame's order. Rebuilt on every load, like `prepareScene` on new nodes.
     private var drawLists = MetalDrawLists(draws: [])

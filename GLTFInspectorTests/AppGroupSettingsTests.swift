@@ -24,7 +24,7 @@ struct AppGroupSettingsTests {
         #expect(settings.backdrop == .window)
         #expect(settings.showsFloor)
         #expect(!settings.autoRotates)
-        #expect(AppGroupSettings.rendererLook(defaults: defaults) == .standard)
+        #expect(AppGroupSettings.look(defaults: defaults) == .standard)
     }
 
     /// What Settings writes is what an extension reads from the same suite.
@@ -37,7 +37,7 @@ struct AppGroupSettingsTests {
         settings.toneMapping = .acesHill
         settings.backdrop = .dark
 
-        let look = AppGroupSettings.rendererLook(defaults: defaults)
+        let look = AppGroupSettings.look(defaults: defaults)
         #expect(look.environment == .field)
         #expect(look.toneMapping == .acesHill)
         let reread = AppSettings(defaults: defaults)
@@ -50,13 +50,13 @@ struct AppGroupSettingsTests {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         defaults.set("pisa", forKey: AppGroupSettings.Key.environment)
-        #expect(AppGroupSettings.rendererLook(defaults: defaults).environment == .defaultLook)
+        #expect(AppGroupSettings.look(defaults: defaults).environment == .defaultLook)
     }
 
     /// The renderer finds each stored environment's lighting bake by name; a missing one would
     /// leave the model unlit.
     @Test func everyEnvironmentIsBundled() {
-        for name in KhronosEnvironments.allCases.map(\.rawValue) + ["shared"] {
+        for name in LightingEnvironment.allCases.map(\.rawValue) + ["shared"] {
             #expect(Bundle(for: MetalRenderer.self).url(forResource: name, withExtension: "metalibl") != nil,
                     "\(name).metalibl missing")
         }

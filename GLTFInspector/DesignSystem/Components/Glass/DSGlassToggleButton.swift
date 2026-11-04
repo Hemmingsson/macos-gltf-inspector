@@ -23,7 +23,7 @@ struct DSGlassToggleButton: View {
     ///   - title: Fixed feature name ("Floor"): tooltip and accessibility label.
     ///   - systemImage: SF Symbol name.
     ///   - isOn: The state.
-    ///   - shortcut: Optional keyboard shortcut — pass the `DS.Shortcuts` entry so the menu bar
+    ///   - shortcut: Optional keyboard shortcut — pass the `Shortcuts` entry so the menu bar
     ///     and the control share one binding.
     init(
         _ title: String,

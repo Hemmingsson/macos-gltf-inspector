@@ -1,12 +1,11 @@
 import Foundation
 import simd
 
-/// Hand port of the pinned Khronos `UserCamera` plus the framing rules this app's former WebKit
-/// viewer page layered on top (`fitCamera`, `includeOriginInFraming`, `applySharedFitDistance`,
-/// `applyProjection`, `orbitTo`, pointer orbit/pan and wheel zoom). Every operation mirrors one
-/// there, including the quirks (fit keeps the current orbit angles
-/// while measuring, clip planes follow the Khronos distance rather than the padded one, wheel
-/// zoom refits the planes but not the orthographic scale).
+/// Orbit camera: a hand port of the Khronos Sample Viewer `UserCamera`
+/// (`fitCamera`, `includeOriginInFraming`, `applySharedFitDistance`, `applyProjection`, `orbitTo`,
+/// pointer orbit/pan and wheel zoom). Fit keeps the current orbit angles while measuring; clip
+/// planes follow the Khronos distance rather than the padded one; wheel zoom refits the planes
+/// but not the orthographic scale.
 ///
 /// The Khronos transform is always `R_y(rotAroundY) · R_x(rotAroundX)` with a translation, so it
 /// is stored as angles plus camera position, which `pose` turns into the renderer's orbit pose.

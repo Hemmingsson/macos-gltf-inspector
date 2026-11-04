@@ -40,7 +40,7 @@ enum PixelDiffMetal {
             exposureEV: look.exposureEV,
             environmentIntensity: 1,
             environmentYawDegrees: look.environmentRotationDegrees - 90,
-            environment: try #require(KhronosEnvironments(rawValue: look.environment)),
+            environment: try #require(LightingEnvironment(rawValue: look.environment)),
             toneMapping: try #require(RenderLook.ToneMapping(rawValue: look.toneMapping)),
             background: RenderLook.Color(red: background[0], green: background[1], blue: background[2], alpha: background[3])
         )

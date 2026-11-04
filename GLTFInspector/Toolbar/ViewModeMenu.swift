@@ -17,7 +17,7 @@ struct ViewModeMenu: View {
                 ForEach(view.viewModes, id: \.self) { mode in
                     Text(mode.title)
                         .tag(mode)
-                        .keyboardShortcutIfAvailable(DS.Shortcuts.viewMode(mode))
+                        .keyboardShortcutIfAvailable(Shortcuts.viewMode(mode))
                 }
             }
         }

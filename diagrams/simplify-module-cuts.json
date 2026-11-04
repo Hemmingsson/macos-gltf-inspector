@@ -1,0 +1,36 @@
+{
+  "type": "architecture-delta",
+  "title": "What the simplification cut",
+  "subtitle": "One Metal renderer, one app chrome, file model unchanged",
+  "eyebrow": "refactor/simplify",
+  "caption": "Deleted backends and UI frameworks; DesignSystem tokens moved into the app target.",
+  "motion": "trace",
+  "dir": "LR",
+  "size": "wide",
+  "nodes": [
+    {"id": "core", "label": "GLTFCore", "sub": "file · look · settings", "kind": "store", "row": 1, "col": 0},
+    {"id": "webkit", "label": "RendererWebKit", "sub": "~2.4k Swift", "change": "removed", "kind": "muted", "row": 0, "col": 1},
+    {"id": "filament", "label": "FilamentBridge", "sub": "ObjC++", "change": "removed", "kind": "muted", "row": 1, "col": 1},
+    {"id": "metal", "label": "Renderer", "sub": "was RendererMetal", "change": "changed", "focal": true, "row": 2, "col": 1},
+    {"id": "previewui", "label": "PreviewUI", "sub": "~5.5k Swift", "change": "removed", "kind": "muted", "row": 0, "col": 2},
+    {"id": "dscat", "label": "DesignCatalog", "sub": "showcase app", "change": "removed", "kind": "muted", "row": 1, "col": 2},
+    {"id": "app", "label": "GLTFInspector", "sub": "+ DesignSystem inlined", "change": "changed", "focal": true, "row": 2, "col": 2},
+    {"id": "ql", "label": "Quick Look", "sub": "PreviewExtension", "row": 1, "col": 3},
+    {"id": "thumb", "label": "Finder", "sub": "ThumbnailExtension", "row": 2, "col": 3}
+  ],
+  "edges": [
+    {"from": "core", "to": "webkit", "change": "removed"},
+    {"from": "core", "to": "filament", "change": "removed"},
+    ["core", "metal", "", "primary"],
+    {"from": "webkit", "to": "previewui", "change": "removed"},
+    {"from": "previewui", "to": "app", "label": "folded in", "change": "removed"},
+    ["metal", "app", "ModelCanvas", "primary"],
+    ["metal", "ql", "same canvas", "primary"],
+    ["metal", "thumb", "ThumbnailRenderer", "primary"],
+    {"from": "dscat", "to": "app", "change": "removed"}
+  ],
+  "evidence": [
+    {"id": "metal", "file": "Renderer/ModelCanvas.swift", "note": "sole live canvas"},
+    {"id": "app", "file": "GLTFInspector/Window/DocumentWindow.swift", "note": "window owns ViewState"}
+  ]
+}

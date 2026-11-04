@@ -18,7 +18,7 @@ struct LightingPopover: View {
                 DSSlider("Environment", value: $view.environmentYaw, in: 0...360, step: 1,
                          accessibilityLabel: "Environment rotation", reading: degrees)
                 DSSegmentedPicker("Environment", selection: $view.environment,
-                                  options: KhronosEnvironments.allCases) { $0.title }
+                                  options: LightingEnvironment.allCases) { $0.title }
                 // A glTF file carries no tone mapping, so this is the app's call and it belongs
                 // on screen.
                 DSMenuPicker("Tone mapping", selection: $view.toneMapping,

@@ -35,9 +35,9 @@ final class MetalEnvironment {
     /// a new Quick Look or thumbnail host does not decompress and upload the bake again.
     /// One entry, so at most one environment outlives the renderers that use it.
     private static let cacheLock = NSLock()
-    nonisolated(unsafe) private static var cache: (device: UInt64, environment: KhronosEnvironments, value: MetalEnvironment)?
+    nonisolated(unsafe) private static var cache: (device: UInt64, environment: LightingEnvironment, value: MetalEnvironment)?
 
-    static func shared(device: any MTLDevice, environment: KhronosEnvironments) throws -> MetalEnvironment {
+    static func shared(device: any MTLDevice, environment: LightingEnvironment) throws -> MetalEnvironment {
         cacheLock.lock(); defer { cacheLock.unlock() }
         if let cache, cache.device == device.registryID, cache.environment == environment { return cache.value }
         let value = try MetalEnvironment(device: device, environment: environment)
@@ -45,7 +45,7 @@ final class MetalEnvironment {
         return value
     }
 
-    init(device: any MTLDevice, environment: KhronosEnvironments) throws {
+    init(device: any MTLDevice, environment: LightingEnvironment) throws {
         let bundle = Bundle(for: MetalEnvironment.self)
         guard let url = bundle.url(forResource: environment.rawValue, withExtension: "metalibl"),
               let sharedURL = bundle.url(forResource: "shared", withExtension: "metalibl")

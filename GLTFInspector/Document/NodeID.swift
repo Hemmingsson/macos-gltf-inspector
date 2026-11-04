@@ -27,6 +27,14 @@ enum NodeKind: String, Sendable, Hashable, Codable, CaseIterable {
         case .empty: "Group"
         }
     }
+
+    /// Rows of the scene graph (glTF nodes), as opposed to materials, skins and the like.
+    var isSceneNode: Bool {
+        switch self {
+        case .mesh, .camera, .light, .empty: true
+        case .scene, .material, .animation, .skin, .morph: false
+        }
+    }
 }
 
 /// Addresses one row across every kind, so mesh 0 and material 0 never collide.

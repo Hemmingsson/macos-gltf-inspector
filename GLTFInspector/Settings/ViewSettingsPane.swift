@@ -2,7 +2,7 @@ import GLTFCore
 import SwiftUI
 
 /// How new windows start, and how Quick Look and Finder thumbnails light a file.
-struct PreviewSettingsPane: View {
+struct ViewSettingsPane: View {
     @Bindable var settings: AppSettings
 
     var body: some View {
@@ -19,7 +19,7 @@ struct PreviewSettingsPane: View {
             // Quick Look and thumbnails read these too, so a file's Finder icon matches how it opens.
             Section {
                 DSMenuPicker("Environment", selection: $settings.environment,
-                             options: KhronosEnvironments.allCases) { $0.fullTitle }
+                             options: LightingEnvironment.allCases) { $0.fullTitle }
                 DSMenuPicker("Tone mapping", selection: $settings.toneMapping,
                              options: RenderLook.ToneMapping.allCases) { $0.title }
             }

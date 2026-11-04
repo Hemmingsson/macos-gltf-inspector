@@ -13,7 +13,6 @@ struct DocumentStatusView: View {
     var state: DocumentState
     var placement: Placement
 
-
     var body: some View {
         switch placement {
         case .sidebar, .inspector:
@@ -46,9 +45,9 @@ struct DocumentStatusView: View {
     private var status: some View {
         switch state {
         case .loading:
-            DSStatusView.loading(ShellStatusCopy.loadingTitle)
+            DSStatusView.loading(Copy.loadingTitle)
         case .failed(let message):
-            DSStatusView.failed(ShellStatusCopy.failedTitle, message: message)
+            DSStatusView.failed(Copy.failedTitle, message: message)
         case .empty:
             emptyStatus
         case .ready:
@@ -61,17 +60,14 @@ struct DocumentStatusView: View {
     }
 
     private var emptyStatus: DSStatusView {
-        switch placement {
-        case .sidebar:
-            .empty(ShellStatusCopy.emptyTitle, systemImage: "cube", message: ShellStatusCopy.emptySidebarDetail)
-        case .inspector:
+        if placement == .inspector {
             .empty(
                 "Nothing to inspect",
                 systemImage: "sidebar.right",
                 message: state == .empty ? "Open a file to see node and file details." : nil
             )
-        case .canvas:
-            .empty(ShellStatusCopy.emptyCanvasTitle, systemImage: "cube", message: nil)
+        } else {
+            .empty(Copy.emptyTitle, systemImage: "cube", message: Copy.emptySidebarDetail)
         }
     }
 
@@ -79,9 +75,9 @@ struct DocumentStatusView: View {
     /// The default button is trailing, matching macOS button order.
     private var canvasEmpty: some View {
         ContentUnavailableView {
-            Label(ShellStatusCopy.emptyCanvasTitle, systemImage: "cube")
+            Label(Copy.emptyCanvasTitle, systemImage: "cube")
         } description: {
-            Text(ShellStatusCopy.emptyOpenHint)
+            Text(Copy.emptyOpenHint)
         } actions: {
             HStack(spacing: DS.Spacing.m) {
                 Button("Open Recent") { RecentGLTFFiles.popUpMenu() }
@@ -95,26 +91,22 @@ struct DocumentStatusView: View {
     private var canvasAccessibilityLabel: String {
         switch state {
         case .empty:
-            ShellStatusCopy.emptyOpenHint
+            Copy.emptyOpenHint
         case .loading:
-            ShellStatusCopy.loadingTitle
+            Copy.loadingTitle
         case .failed(let message):
-            "\(ShellStatusCopy.failedTitle). \(message)"
+            "\(Copy.failedTitle). \(message)"
         case .ready:
             "Canvas"
         }
     }
-}
 
-/// Canvas / panel copy for non-ready document states.
-///
-/// Quiet chrome, DS tokens, no fake progress on `.failed` (AGENTS.md).
-enum ShellStatusCopy {
-    static let emptyTitle = "Open a glTF file"
-    static let emptySidebarDetail = "No file open"
-    /// Content-unavailable title. Sentence-style description is `emptyOpenHint`.
-    static let emptyCanvasTitle = "No File"
-    static let emptyOpenHint = "Drop a .glb or .gltf file here."
-    static let loadingTitle = "Loading model…"
-    static let failedTitle = "Couldn’t load model"
+    private enum Copy {
+        static let emptyTitle = "Open a glTF file"
+        static let emptySidebarDetail = "No file open"
+        static let emptyCanvasTitle = "No File"
+        static let emptyOpenHint = "Drop a .glb or .gltf file here."
+        static let loadingTitle = "Loading model…"
+        static let failedTitle = "Couldn’t load model"
+    }
 }

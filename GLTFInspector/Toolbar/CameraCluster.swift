@@ -11,11 +11,22 @@ struct CameraCluster: View {
             DSGlassToggleButton(
                 "Auto-rotate",
                 systemImage: "arrow.trianglehead.counterclockwise.rotate.90",
-                isOn: autoRotate
+                isOn: autoRotate,
+                shortcut: Shortcuts.action(.autoRotate)
             )
             .disabled(reduceMotion)
-            DSGlassToggleButton("Center Model", systemImage: "dot.scope", isOn: $view.isCentered)
-            DSGlassToggleButton("Orthographic", systemImage: "perspective", isOn: $view.isOrthographic)
+            DSGlassToggleButton(
+                "Center Model",
+                systemImage: "dot.scope",
+                isOn: $view.isCentered,
+                shortcut: Shortcuts.action(.center)
+            )
+            DSGlassToggleButton(
+                "Orthographic",
+                systemImage: "perspective",
+                isOn: $view.isOrthographic,
+                shortcut: Shortcuts.action(.orthographic)
+            )
             FieldOfViewPopover(view: view)
             ViewMenu(view: view)
         }

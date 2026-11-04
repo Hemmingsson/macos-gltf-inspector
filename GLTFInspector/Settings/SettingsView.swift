@@ -9,8 +9,8 @@ struct SettingsView: View {
             Tab("General", systemImage: "gearshape") {
                 GeneralSettingsPane(settings: settings)
             }
-            Tab("Preview", systemImage: "cube.transparent") {
-                PreviewSettingsPane(settings: settings)
+            Tab("View", systemImage: "cube.transparent") {
+                ViewSettingsPane(settings: settings)
             }
             Tab("About", systemImage: "info.circle") {
                 AboutSettingsPane()

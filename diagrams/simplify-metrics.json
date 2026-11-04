@@ -1,0 +1,18 @@
+{
+  "type": "bar",
+  "variant": "dumbbell",
+  "title": "Less code, fewer moving parts",
+  "subtitle": "main → refactor/simplify (Swift only, Vendor excluded)",
+  "eyebrow": "refactor/simplify",
+  "caption": "Also −23.8k / +4.9k lines across 408 paths; product targets 12 → 7.",
+  "motion": "reveal",
+  "orientation": "horizontal",
+  "from": "main",
+  "to": "simplify",
+  "focal": ["Swift lines", "Swift files"],
+  "data": [
+    ["Swift lines", 27935, 14843],
+    ["Swift files", 257, 154],
+    ["Xcode targets", 12, 7]
+  ]
+}

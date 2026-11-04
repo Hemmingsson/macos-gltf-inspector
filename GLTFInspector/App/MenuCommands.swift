@@ -89,7 +89,7 @@ private struct ViewMenuItems: View {
             ForEach(view.viewModes.filter { $0 == .shaded || $0 == .wireframe }, id: \.self) { mode in
                 Text(mode.title)
                     .tag(mode)
-                    .keyboardShortcutIfAvailable(DS.Shortcuts.viewMode(mode))
+                    .keyboardShortcutIfAvailable(Shortcuts.viewMode(mode))
             }
         }
 
@@ -102,35 +102,27 @@ private struct ViewMenuItems: View {
         Toggle("Show Floor", systemImage: "circle.grid.cross", isOn: $view.showsFloor)
 
         Toggle("Auto-Rotate", systemImage: "arrow.trianglehead.counterclockwise.rotate.90", isOn: $view.autoRotates)
-            .keyboardShortcut(DS.Shortcuts.action(.autoRotate))
+            .keyboardShortcut(Shortcuts.action(.autoRotate))
 
         Toggle("Center Model", systemImage: "dot.scope", isOn: $view.isCentered)
-            .keyboardShortcut(DS.Shortcuts.action(.center))
+            .keyboardShortcut(Shortcuts.action(.center))
 
         Toggle("Orthographic", systemImage: "perspective", isOn: $view.isOrthographic)
-            .keyboardShortcut(DS.Shortcuts.action(.orthographic))
+            .keyboardShortcut(Shortcuts.action(.orthographic))
 
         Divider()
 
         Group {
-            Button("Zoom In", systemImage: "plus.magnifyingglass") { view.zoom(by: ViewState.zoomStep) }
-                .keyboardShortcut(DS.Shortcuts.action(.zoomIn))
-            Button("Zoom Out", systemImage: "minus.magnifyingglass") { view.zoom(by: 1 / ViewState.zoomStep) }
-                .keyboardShortcut(DS.Shortcuts.action(.zoomOut))
-            Button("Fit", systemImage: "viewfinder") { view.fit() }
-                .keyboardShortcut(DS.Shortcuts.action(.fit))
+            ViewportZoomCommands(view: view)
         }
         .disabled(view.canvas.phase != .ready)
 
         Button("Reset View", systemImage: "arrow.counterclockwise") { view.resetView() }
-            .keyboardShortcut(DS.Shortcuts.action(.reset))
+            .keyboardShortcut(Shortcuts.action(.reset))
 
         Divider()
 
-        ForEach(CameraPreset.allCases) { preset in
-            Button(preset.title, systemImage: preset.systemImage) { view.show(preset) }
-                .keyboardShortcutIfAvailable(DS.Shortcuts.cameraPreset(preset))
-        }
-        .disabled(view.canvas.phase != .ready)
+        ViewportCameraPresetCommands(view: view)
+            .disabled(view.canvas.phase != .ready)
     }
 }

@@ -98,6 +98,7 @@ public final class ModelCanvasController {
     /// Runs on every SwiftUI update. Records what is wanted; one `sync` at a time does the work,
     /// so renderer calls never overlap and the latest request always wins.
     func update(url: URL, options: ViewOptions) {
+        if wanted?.url == url, wanted?.options == options { return }
         wanted = (url, options)
         guard !isSyncing else { return }
         isSyncing = true

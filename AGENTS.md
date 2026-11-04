@@ -11,9 +11,9 @@ together: [`docs/architecture.md`](docs/architecture.md).
 
 | Path | Role |
 | --- | --- |
-| `GLTFCore/` | Framework. What a file contains (`GLTFDocument`, `GLTFDocumentJSON`), the validator, the look vocabulary (`RenderLook`, `RenderViewMode`, `KhronosEnvironments`), App Group settings, logging. No AppKit / SwiftUI. |
+| `GLTFCore/` | Framework. What a file contains (`GLTFDocument`, `GLTFDocumentJSON`), the validator, the look vocabulary (`RenderLook`, `RenderViewMode`, `LightingEnvironment`), App Group settings, logging. No AppKit / SwiftUI. |
 | `Renderer/` | Framework. `MetalRenderer` (scene loading, shaders, lighting bakes in `Environments/`), `ModelView`, `ModelCanvas` + `ModelCanvasController`, `ThumbnailRenderer`. Extension-safe. |
-| `GLTFInspector/` | The app. `App/` (entry, `AppSettings`, menus), `Window/` (`DocumentWindowModel`, `ViewState`, layout), `Canvas/`, `Sidebar/`, `Inspector/`, `Toolbar/`, `Settings/`, `Document/` (display of `GLTFDocument`, `ValidationResult`), `DesignSystem/` (tokens and glass controls). |
+| `GLTFInspector/` | The app. `App/` (entry, `AppSettings`, menus, `Shortcuts`), `Window/` (`DocumentWindowModel`, `ViewState`, layout), `Canvas/`, `Sidebar/`, `Inspector/`, `Toolbar/`, `Settings/`, `Document/` (display of `GLTFDocument`, `ValidationResult`), `DesignSystem/` (tokens + glass; no Renderer / GLTFCore). |
 | `PreviewExtension/` / `ThumbnailExtension/` | Quick Look preview / Finder thumbnail. |
 | `GLTFInspectorTests/` | Unit and reference-image tests. References: `TestModels/References/`. |
 | `GLTFInspectorUITests/` | Opt-in real-window XCUITest flows. |

@@ -52,13 +52,15 @@ public struct ViewOptions: Equatable, Sendable {
     /// The look Settings stored in the App Group. Quick Look and the Finder thumbnail have no
     /// window state of their own, so both start here and light a file the same way.
     public static func stored(showsFloor: Bool = false, defaults: UserDefaults = AppGroupSettings.defaults) -> Self {
-        Self(look: AppGroupSettings.rendererLook(defaults: defaults), showsFloor: showsFloor)
+        Self(look: AppGroupSettings.look(defaults: defaults), showsFloor: showsFloor)
     }
 }
 
 /// Canned orbit angles. File cameras are separate.
-public enum CameraPreset: String, Sendable, Hashable, CaseIterable {
+public enum CameraPreset: String, Sendable, Hashable, CaseIterable, Identifiable {
     case front, back, left, right, top, bottom, isometric
+
+    public var id: Self { self }
 
     /// Khronos `UserCamera` angles in degrees: the eye sits at `R_y(azimuth) · R_x(elevation) ·
     /// (0, 0, +d)`, so azimuth +90 looks from +X and a negative elevation looks from above.
@@ -71,6 +73,20 @@ public enum CameraPreset: String, Sendable, Hashable, CaseIterable {
         case .top: (0, -90)
         case .bottom: (0, 90)
         case .isometric: (35, -18)
+        }
+    }
+
+    public var title: String { rawValue.capitalized }
+
+    public var systemImage: String {
+        switch self {
+        case .front: "arrow.up.to.line"
+        case .back: "arrow.down.to.line"
+        case .left: "arrow.left.to.line"
+        case .right: "arrow.right.to.line"
+        case .top: "arrow.up.to.line.compact"
+        case .bottom: "arrow.down.to.line.compact"
+        case .isometric: "cube"
         }
     }
 }
