@@ -116,6 +116,44 @@ struct MetalPoseTests {
         #expect(lists.frame(draws: blend.draws, models: posedModels, view: cameraAtZ5).main == [0, 1])
     }
 
+    @Test func posedBoundsOverlaysAndLightsFollowAnimation() async throws {
+        let scene = try await MetalSceneLoader.load(url: TestFixtures.boxAnimated, device: device())
+        let animation = try pose(at: 0.5, url: TestFixtures.boxAnimated)
+        let worlds = scene.framePose(pose: animation).nodeWorlds
+        let inner = 2
+        let restBox = try #require(scene.bounds(ofNode: inner))
+        let posedBox = try #require(scene.bounds(ofNode: inner, worlds: worlds))
+        let restCenterY = (restBox.min.y + restBox.max.y) * 0.5
+        let posedCenterY = (posedBox.min.y + posedBox.max.y) * 0.5
+        #expect(abs(posedCenterY - restCenterY - boxAnimatedHeight) < 0.02)
+
+        let restWorlds = scene.framePose(pose: nil).nodeWorlds
+        let restViaWorlds = try #require(scene.bounds(ofNode: inner, worlds: restWorlds))
+        #expect(restViaWorlds.min == restBox.min)
+        #expect(restViaWorlds.max == restBox.max)
+
+        var restOverlayOptions = MetalOverlayOptions()
+        restOverlayOptions.hoveredNode = inner
+        var posedOverlayOptions = MetalOverlayOptions(nodeWorlds: worlds)
+        posedOverlayOptions.hoveredNode = inner
+        let restOverlay = overlayVertices(scene: scene, options: restOverlayOptions)
+        let posedOverlay = overlayVertices(scene: scene, options: posedOverlayOptions)
+        #expect(restOverlay.count == posedOverlay.count)
+        func averageY(_ vertices: [MetalLineVertex]) -> Float {
+            vertices.map(\.position.y).reduce(0, +) / Float(max(vertices.count, 1))
+        }
+        #expect(abs(averageY(posedOverlay) - averageY(restOverlay) - boxAnimatedHeight) < 0.05)
+
+        let lightURL = try animatedLightGLB()
+        defer { try? FileManager.default.removeItem(at: lightURL) }
+        let lightScene = try await MetalSceneLoader.load(url: lightURL, device: device())
+        let lightPose = try pose(at: 1, url: lightURL)
+        let lightWorlds = lightScene.framePose(pose: lightPose).nodeWorlds
+        let restLights = lightScene.posedLights(lightScene.lights, worlds: lightScene.framePose(pose: nil).nodeWorlds)
+        let posedLights = lightScene.posedLights(lightScene.lights, worlds: lightWorlds)
+        #expect(posedLights[0].position.x != restLights[0].position.x)
+    }
+
     @Test func negativeScaleFlipsFrontFaceAndPosesChildren() async throws {
         let url = try negativeScaleGLB()
         defer { try? FileManager.default.removeItem(at: url) }
@@ -195,6 +233,45 @@ struct MetalPoseTests {
     }
 
     /// Parent scale animates to (−1, 1, 1). Child is translated +2 on X, so its world X becomes −2.
+    /// Parent translates on +X; child node holds a punctual point light.
+    private func animatedLightGLB() throws -> URL {
+        var bin = Data()
+        let timeOffset = bin.count
+        appendFloats([0, 1], to: &bin)
+        let valueOffset = bin.count
+        appendFloats([0, 0, 0, 3, 0, 0], to: &bin)
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "extensionsUsed": ["KHR_lights_punctual"],
+            "extensions": [
+                "KHR_lights_punctual": [
+                    "lights": [["type": "point", "intensity": 1, "color": [1, 1, 1]]],
+                ],
+            ],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [
+                ["buffer": 0, "byteOffset": 0, "byteLength": timeOffset],
+                ["buffer": 0, "byteOffset": timeOffset, "byteLength": valueOffset - timeOffset],
+                ["buffer": 0, "byteOffset": valueOffset, "byteLength": bin.count - valueOffset],
+            ],
+            "accessors": [
+                ["bufferView": 1, "componentType": 5126, "count": 2, "type": "SCALAR", "min": [0], "max": [1]],
+                ["bufferView": 2, "componentType": 5126, "count": 2, "type": "VEC3"],
+            ],
+            "nodes": [
+                ["children": [1]],
+                ["extensions": ["KHR_lights_punctual": ["light": 0]]],
+            ],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+            "animations": [[
+                "samplers": [["input": 0, "output": 1, "interpolation": "LINEAR"]],
+                "channels": [["sampler": 0, "target": ["node": 0, "path": "translation"]]],
+            ]],
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "metal-pose-light")
+    }
+
     private func negativeScaleGLB() throws -> URL {
         try animatedTriangleGLB(
             nodes: [

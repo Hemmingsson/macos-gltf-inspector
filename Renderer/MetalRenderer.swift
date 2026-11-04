@@ -212,9 +212,10 @@ public final class MetalRenderer: @unchecked Sendable {
             throw MetalRendererError.resource("invalid image size")
         }
         let wireframe = options.viewMode == .wireframe
-        let overlays = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
         let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
                                         centerOffset: centerOffset, scene: scene, animationPose: animationPose)
+        var overlays = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
+        overlays.nodeWorlds = setup.nodeWorlds
         var frame = setup.frame
         let viewportAspect = setup.viewportAspect
         let viewport = setup.viewport
@@ -350,7 +351,8 @@ public final class MetalRenderer: @unchecked Sendable {
             camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
         }
         let filter = MetalDrawFilter(options)
-        let lights = filter.visibleLights(in: scene)
+        let nodeWorlds = scene.framePose(pose: animationPose).nodeWorlds
+        let lights = scene.posedLights(filter.visibleLights(in: scene), worlds: nodeWorlds)
         var frame = GPUFrame(viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix,
                              cameraPosition: SIMD4(camera.eye, 1),
                              environment: SIMD4(Float((90 + look.environmentYawDegrees) * .pi / 180),
@@ -360,7 +362,7 @@ public final class MetalRenderer: @unchecked Sendable {
                              viewport: SIMD4(Float(width), Float(height), 0, 0))
         var view = camera.viewMatrix
         var viewportAspect: Float? = orthographic ? 1 : nil
-        if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
+        if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height), worlds: nodeWorlds) {
             frame.viewProjection = fileCamera.viewProjection
             frame.cameraPosition = SIMD4(fileCamera.eye, 1)
             view = fileCamera.view

@@ -164,7 +164,8 @@ public final class ModelView: NSView {
     /// Frames the union of several nodes' subtrees at the current orbit angles.
     public func frame(nodeIndices: [Int]) {
         guard let scene = renderer.scene else { return }
-        let boxes = nodeIndices.compactMap { scene.bounds(ofNode: $0) }
+        let worlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
+        let boxes = nodeIndices.compactMap { scene.bounds(ofNode: $0, worlds: worlds) }
         guard let first = boxes.first else { return }
         let box = boxes.dropFirst().reduce(first) { (simd_min($0.min, $1.min), simd_max($0.max, $1.max)) }
         camera.isOrthographic = options.isOrthographic
@@ -549,7 +550,8 @@ public final class ModelView: NSView {
         if options.showsSceneGizmos, let scene = renderer.scene {
             let frame = try renderer.gizmoPickFrame(options: options, pose: cameraPose,
                                                     width: width, height: height, centerOffset: center)
-            let overlayOptions = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
+            var overlayOptions = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
+            overlayOptions.nodeWorlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
             let segments = overlayGizmoSegments(scene: scene, options: overlayOptions)
             let hitViewport = GizmoHitViewport(viewWidthPoints: Float(bounds.width),
                                                viewHeightPoints: Float(bounds.height),
@@ -607,7 +609,10 @@ public final class ModelView: NSView {
     /// orbit turns about the selected part. Perspective keeps the eye; orthographic slides the target.
     private func reaimAtSelectionForOrbit() {
         guard options.orbitsAroundSelection, options.fileCameraNodeIndex == nil,
-              let node = options.selectedNodeIndex, let box = renderer.scene?.bounds(ofNode: node) else { return }
+              let scene = renderer.scene,
+              let node = options.selectedNodeIndex else { return }
+        let worlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
+        guard let box = scene.bounds(ofNode: node, worlds: worlds) else { return }
         camera.retargetKeepingEye(to: SIMD3<Double>((box.min + box.max) / 2))
         camera.applyProjection()
     }

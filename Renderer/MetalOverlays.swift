@@ -35,12 +35,14 @@ struct MetalOverlayOptions: Sendable {
     /// `camera.sceneExtents`: what the viewer sizes the floor and gizmo by. When centring is off it
     /// includes the origin. Nil uses the scene's drawn bounds.
     var extents: (min: SIMD3<Float>, max: SIMD3<Float>)?
+    /// Per-frame node worlds from `framePose`; nil uses the glTF rest hierarchy.
+    var nodeWorlds: [simd_float4x4]?
     var useSilhouetteSelectionOutline: Bool
     init(floor: Bool = false, origin: Bool = false, sceneGizmos: Bool = false, selectedNode: Int? = nil,
          highlightedNodeIndices: Set<Int> = [], materialHighlightMaterialIndex: Int? = nil,
          selectedSkinIndex: Int? = nil, skipCameraNodeIndex: Int? = nil,
          canvasAspect: Float = 1, hiddenNodeIndices: Set<Int> = [], soloNodeIndices: Set<Int> = [],
-         extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
+         extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil, nodeWorlds: [simd_float4x4]? = nil,
          useSilhouetteSelectionOutline: Bool = true) {
         self.floor = floor
         self.origin = origin
@@ -54,6 +56,7 @@ struct MetalOverlayOptions: Sendable {
         self.hiddenNodeIndices = hiddenNodeIndices
         self.soloNodeIndices = soloNodeIndices
         self.extents = extents
+        self.nodeWorlds = nodeWorlds
         self.useSilhouetteSelectionOutline = useSilhouetteSelectionOutline
     }
 }
@@ -151,39 +154,43 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
             if !showsSceneGizmo(nodeIndex: index, scene: scene, options: options) { continue }
             let selected = index == options.selectedNode
             collectSceneNodeGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
-                                  selected: selected, line: line)
+                                  selected: selected, worlds: options.nodeWorlds, line: line)
             drawnSceneGizmos.insert(index)
         }
     }
     if let index = options.selectedNode, !drawnSceneGizmos.contains(index) {
         collectSelectionGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
-                              useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline, line: line)
+                              useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline,
+                              worlds: options.nodeWorlds, line: line)
     }
     collectSkeletonOverlay(scene: scene, selectedSkinIndex: options.selectedSkinIndex,
                            selectedNode: options.selectedNode, span: span,
-                           hidden: options.hiddenNodeIndices, line: line)
+                           hidden: options.hiddenNodeIndices, worlds: options.nodeWorlds, line: line)
     let selectionBoxNode = options.selectedNode
     let boxed = options.selectedNodes.union(selectionBoxNode.map { [$0] } ?? [])
     for index in options.selectedNodes.sorted() where index != selectionBoxNode {
         collectSelectionGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
-                              useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline, line: line)
+                              useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline,
+                              worlds: options.nodeWorlds, line: line)
     }
     for index in options.highlightedNodeIndices.sorted() {
         if boxed.contains(index) { continue }
         guard scene.isEffectivelyVisible(node: index, hidden: options.hiddenNodeIndices,
                                          solo: options.soloNodeIndices) else { continue }
         if let material = options.materialHighlightMaterialIndex,
-           let box = scene.bounds(ofNode: index, usingMaterial: material) {
+           let box = scene.bounds(ofNode: index, usingMaterial: material, worlds: options.nodeWorlds) {
             collectAABB(box, color: OverlayGizmoColors.materialUsageHighlight, line: line)
         } else {
-            collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.materialUsageHighlight, line: line)
+            collectNodeAABB(scene: scene, nodeIndex: index, worlds: options.nodeWorlds,
+                            color: OverlayGizmoColors.materialUsageHighlight, line: line)
         }
     }
     if let index = options.hoveredNode, !boxed.contains(index),
        scene.asset.nodes.indices.contains(index), scene.asset.nodes[index].mesh != nil,
        scene.isEffectivelyVisible(node: index, hidden: options.hiddenNodeIndices,
                                   solo: options.soloNodeIndices) {
-        collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.hover, line: line)
+        collectNodeAABB(scene: scene, nodeIndex: index, worlds: options.nodeWorlds,
+                        color: OverlayGizmoColors.hover, line: line)
     }
     return vertices
 }
@@ -231,6 +238,7 @@ private func collectSkeletonOverlay(
     selectedNode: Int?,
     span: Float,
     hidden: Set<Int>,
+    worlds: [simd_float4x4]?,
     line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
 ) {
     let resolved: (skin: GLTFSkin, highlightedJoint: Int?)?
@@ -252,7 +260,7 @@ private func collectSkeletonOverlay(
 
     for jointIndex in joints {
         if lightIsHidden(nodeIndex: jointIndex, scene: scene, hidden: hidden) { continue }
-        guard let world = scene.worldMatrix(ofNode: jointIndex) else { continue }
+        guard let world = scene.worldMatrix(ofNode: jointIndex, worlds: worlds) else { continue }
         let p = SIMD3(world.columns.3.x, world.columns.3.y, world.columns.3.z)
         let jointColor = jointIndex == highlightedJoint
             ? OverlayGizmoColors.selectionHighlight
@@ -264,7 +272,7 @@ private func collectSkeletonOverlay(
         guard let parentJoint = nearestJointAncestor(of: jointIndex, jointSet: jointSet,
                                                      nodeParents: scene.nodeParents),
               !lightIsHidden(nodeIndex: parentJoint, scene: scene, hidden: hidden),
-              let parentWorld = scene.worldMatrix(ofNode: parentJoint) else { continue }
+              let parentWorld = scene.worldMatrix(ofNode: parentJoint, worlds: worlds) else { continue }
         let parentPos = SIMD3(parentWorld.columns.3.x, parentWorld.columns.3.y, parentWorld.columns.3.z)
         let boneColor = jointIndex == highlightedJoint
             ? OverlayGizmoColors.selectionHighlight
@@ -295,7 +303,7 @@ func overlayGizmoSegments(scene: MetalScene, options: MetalOverlayOptions) -> [M
         if !showsSceneGizmo(nodeIndex: index, scene: scene, options: options) { continue }
         let selected = index == options.selectedNode
         appendSceneNodeGizmoSegments(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
-                                     selected: selected, into: &segments)
+                                     selected: selected, worlds: options.nodeWorlds, into: &segments)
     }
     return segments
 }
@@ -306,10 +314,11 @@ private func appendSceneNodeGizmoSegments(
     span: Float,
     canvasAspect: Float,
     selected: Bool,
+    worlds: [simd_float4x4]?,
     into segments: inout [MetalGizmoSegment]
 ) {
     guard scene.asset.nodes.indices.contains(nodeIndex),
-          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
+          let world = scene.worldMatrix(ofNode: nodeIndex, worlds: worlds) else { return }
     let node = scene.asset.nodes[nodeIndex]
     func emit(_ a: SIMD3<Float>, _ b: SIMD3<Float>) {
         segments.append(MetalGizmoSegment(a: a, b: b, nodeIndex: nodeIndex))
@@ -330,10 +339,11 @@ private func collectSceneNodeGizmo(
     span: Float,
     canvasAspect: Float,
     selected: Bool,
+    worlds: [simd_float4x4]?,
     line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
 ) {
     guard scene.asset.nodes.indices.contains(nodeIndex),
-          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
+          let world = scene.worldMatrix(ofNode: nodeIndex, worlds: worlds) else { return }
     let node = scene.asset.nodes[nodeIndex]
     if let camera = node.camera {
         collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
@@ -352,10 +362,11 @@ private func collectSelectionGizmo(
     span: Float,
     canvasAspect: Float,
     useSilhouetteSelectionOutline: Bool,
+    worlds: [simd_float4x4]?,
     line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
 ) {
     guard scene.asset.nodes.indices.contains(nodeIndex),
-          let world = scene.worldMatrix(ofNode: nodeIndex) else { return }
+          let world = scene.worldMatrix(ofNode: nodeIndex, worlds: worlds) else { return }
     let node = scene.asset.nodes[nodeIndex]
 
     if let camera = node.camera {
@@ -374,7 +385,8 @@ private func collectSelectionGizmo(
     if useSilhouetteSelectionOutline,
        usesSilhouetteSelectionOutline(nodeIndex: nodeIndex, scene: scene) { return }
 
-    collectNodeAABB(scene: scene, nodeIndex: nodeIndex, color: OverlayGizmoColors.selectionHighlight, line: line)
+    collectNodeAABB(scene: scene, nodeIndex: nodeIndex, worlds: worlds,
+                    color: OverlayGizmoColors.selectionHighlight, line: line)
 }
 
 private func collectAABB(
@@ -396,10 +408,11 @@ private func collectAABB(
 private func collectNodeAABB(
     scene: MetalScene,
     nodeIndex: Int,
+    worlds: [simd_float4x4]?,
     color: SIMD3<Float>,
     line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
 ) {
-    guard let box = scene.bounds(ofNode: nodeIndex) else { return }
+    guard let box = scene.bounds(ofNode: nodeIndex, worlds: worlds) else { return }
     collectAABB(box, color: color, line: line)
 }
 

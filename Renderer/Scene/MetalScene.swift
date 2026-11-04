@@ -249,17 +249,42 @@ extension MetalScene {
         (node.parent.map(worldMatrix) ?? matrix_identity_float4x4) * node.matrix
     }
 
-    public func worldMatrix(ofNode index: Int) -> simd_float4x4? {
+    public func worldMatrix(ofNode index: Int, worlds: [simd_float4x4]? = nil) -> simd_float4x4? {
         guard asset.nodes.indices.contains(index) else { return nil }
+        if let worlds, worlds.indices.contains(index) { return worlds[index] }
         return worldMatrix(asset.nodes[index])
+    }
+
+    /// Punctual light positions and directions from per-frame node worlds (rest worlds match load-time bake).
+    func posedLights(_ lights: [MetalPunctualLight], worlds: [simd_float4x4]) -> [MetalPunctualLight] {
+        lights.map { light in
+            guard light.nodeIndex >= 0, worlds.indices.contains(light.nodeIndex) else { return light }
+            let transform = worlds[light.nodeIndex]
+            let p = transform * SIMD4<Float>(0, 0, 0, 1)
+            let d = transform * SIMD4<Float>(0, 0, -1, 0)
+            return MetalPunctualLight(
+                type: light.type,
+                position: SIMD3(p.x, p.y, p.z),
+                direction: simd_normalize(SIMD3(d.x, d.y, d.z)),
+                color: light.color,
+                intensity: light.intensity,
+                range: light.range,
+                innerConeCos: light.innerConeCos,
+                outerConeCos: light.outerConeCos,
+                nodeIndex: light.nodeIndex
+            )
+        }
     }
 
     /// Expands `box` by the eight transformed corners of each POSITION accessor's min/max. With
     /// `sphere`, each primitive contributes the cube around its box's bounding sphere instead, as
     /// Khronos `getExtentsFromAccessor` does for the camera.
     private func expand(_ box: inout (min: SIMD3<Double>, max: SIMD3<Double>), node: GLTFNode, sphere: Bool = false) {
+        expand(&box, node: node, world: worldMatrix(node), sphere: sphere)
+    }
+
+    private func expand(_ box: inout (min: SIMD3<Double>, max: SIMD3<Double>), node: GLTFNode, world: simd_float4x4, sphere: Bool = false) {
         guard let mesh = node.mesh else { return }
-        let world = worldMatrix(node)
         for primitive in mesh.primitives {
             expandPrimitive(&box, primitive: primitive, world: world, sphere: sphere)
         }
@@ -359,12 +384,12 @@ extension MetalScene {
     }
 
     /// Node-local AABB from only this node's primitives that use `materialIndex` (not its subtree).
-    public func bounds(ofNode index: Int, usingMaterial materialIndex: Int) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
+    public func bounds(ofNode index: Int, usingMaterial materialIndex: Int, worlds: [simd_float4x4]? = nil) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
         guard asset.nodes.indices.contains(index) else { return nil }
         let node = asset.nodes[index]
         guard node.mesh != nil else { return nil }
         var box = Self.emptyBox
-        let world = worldMatrix(node)
+        let world = worldMatrix(ofNode: index, worlds: worlds) ?? worldMatrix(node)
         for primitive in node.mesh!.primitives {
             let resolved = primitive.material.flatMap { mat in asset.materials.firstIndex { $0 === mat } }
             guard resolved == materialIndex else { continue }
@@ -375,16 +400,19 @@ extension MetalScene {
     }
 
     /// `subtreeAABB`: the node's subtree, or its world origin when it has no mesh.
-    func bounds(ofNode index: Int) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
+    func bounds(ofNode index: Int, worlds: [simd_float4x4]? = nil) -> (min: SIMD3<Float>, max: SIMD3<Float>)? {
         guard asset.nodes.indices.contains(index) else { return nil }
         var box = Self.emptyBox
         var stack = [asset.nodes[index]]
         while let node = stack.popLast() {
             stack.append(contentsOf: node.childNodes)
-            expand(&box, node: node)
+            let nodeIndex = asset.nodes.firstIndex(of: node)
+            let world = nodeIndex.flatMap { worldMatrix(ofNode: $0, worlds: worlds) } ?? worldMatrix(node)
+            expand(&box, node: node, world: world)
         }
         if !box.min.x.isFinite {
-            let origin = worldMatrix(asset.nodes[index]).columns.3
+            guard let originMatrix = worldMatrix(ofNode: index, worlds: worlds) else { return nil }
+            let origin = originMatrix.columns.3
             let point = SIMD3(origin.x, origin.y, origin.z)
             return (point, point)
         }
@@ -396,12 +424,12 @@ extension MetalScene {
     /// `viewportAspect` is the aspect Khronos letterboxes the canvas to: an authored perspective
     /// `aspectRatio`, or `xmag / ymag`; nil fills the canvas. `view` is the camera's view matrix,
     /// used to depth-sort drawables the way the viewer sorts them.
-    func fileCamera(at index: Int, aspect: Float) -> (viewProjection: simd_float4x4, view: simd_float4x4, eye: SIMD3<Float>, viewportAspect: Float?)? {
+    func fileCamera(at index: Int, aspect: Float, worlds: [simd_float4x4]? = nil) -> (viewProjection: simd_float4x4, view: simd_float4x4, eye: SIMD3<Float>, viewportAspect: Float?)? {
         guard asset.nodes.indices.contains(index), let camera = asset.nodes[index].camera else { return nil }
-        func world(_ node: GLTFNode) -> simd_float4x4 {
-            (node.parent.map(world) ?? matrix_identity_float4x4) * node.matrix
+        func restWorld(_ node: GLTFNode) -> simd_float4x4 {
+            (node.parent.map(restWorld) ?? matrix_identity_float4x4) * node.matrix
         }
-        let transform = world(asset.nodes[index])
+        let transform = worldMatrix(ofNode: index, worlds: worlds) ?? restWorld(asset.nodes[index])
         let near = camera.zNear, far = camera.zFar
         let projection: simd_float4x4
         var viewportAspect: Float?
