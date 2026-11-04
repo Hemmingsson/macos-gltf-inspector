@@ -555,7 +555,7 @@ extension MetalRenderer {
     func encodeOverlays(_ lines: [MetalLineVertex], command: any MTLCommandBuffer, output: any MTLTexture,
                         viewProjection: simd_float4x4, viewport: MTLViewport,
                         sceneDepth: any MTLTexture, occlude: Bool,
-                        selectionIDs: (any MTLTexture)? = nil) throws {
+                        selectionIDs: (any MTLTexture)? = nil, liveRingIndex: Int? = nil) throws {
         let samples = 4
         if overlayPipeline == nil || overlayCopyPipeline == nil || (selectionIDs != nil && selectionOutlinePipeline == nil) {
             let line = MTLRenderPipelineDescriptor()
@@ -587,23 +587,9 @@ extension MetalRenderer {
         guard let linePipeline = overlayPipeline, let copyPipeline = overlayCopyPipeline else {
             throw MetalRendererError.resource("overlay pipelines")
         }
-        let descriptor = MTLTextureDescriptor()
-        descriptor.textureType = .type2DMultisample
-        descriptor.pixelFormat = output.pixelFormat
-        descriptor.width = output.width
-        descriptor.height = output.height
-        descriptor.sampleCount = samples
-        descriptor.storageMode = .private
-        descriptor.usage = [.renderTarget]
-        guard let multisample = device.makeTexture(descriptor: descriptor) else {
-            throw MetalRendererError.resource("overlay MSAA target")
-        }
-        // The frame is resolved back into `output`, so read a copy of it.
-        let copyDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: output.pixelFormat,
-            width: output.width, height: output.height, mipmapped: false)
-        copyDescriptor.storageMode = .private
-        copyDescriptor.usage = [.shaderRead]
-        guard let frame = device.makeTexture(descriptor: copyDescriptor), let blit = command.makeBlitCommandEncoder() else {
+        let multisample = try overlayMultisampleTarget(matching: output, samples: samples, liveRingIndex: liveRingIndex)
+        let frame = try overlayFrameCopy(matching: output, liveRingIndex: liveRingIndex)
+        guard let blit = command.makeBlitCommandEncoder() else {
             throw MetalRendererError.resource("overlay frame copy")
         }
         blit.copy(from: output, to: frame)

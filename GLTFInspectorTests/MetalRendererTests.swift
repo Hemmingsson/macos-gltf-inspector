@@ -136,6 +136,41 @@ struct MetalRendererTests {
         #expect(rgbSpread(clay) <= 20, "Clay should not inherit corner colour tints")
     }
 
+    @Test func repeatedFramesReuseGPURenderTargets() async throws {
+        let manifest = try PixelDiffManifest.load()
+        let entry = try #require(manifest.entries.first(where: { $0.name == "BoomBox" }))
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: entry.modelURL)
+        let options = ViewOptions(look: try PixelDiffMetal.renderLook(manifest.look))
+        let pose = MetalCameraPose(try PixelDiffRun.camera(of: entry))
+        let width = 128, height = 128
+        renderer.resetTextureAllocationCount()
+        _ = try renderer.renderTexture(options, pose: pose, width: width, height: height)
+        let firstFrameAllocations = renderer.textureAllocationCount
+        #expect(firstFrameAllocations > 0)
+        for _ in 0..<2 {
+            renderer.resetTextureAllocationCount()
+            _ = try renderer.renderTexture(options, pose: pose, width: width, height: height)
+            #expect(renderer.textureAllocationCount == 0)
+        }
+    }
+
+    @Test func repeatedPicksReusePickTargets() async throws {
+        let manifest = try PixelDiffManifest.load()
+        let entry = try #require(manifest.entries.first(where: { $0.name == "BoomBox" }))
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: entry.modelURL)
+        let options = ViewOptions(look: try PixelDiffMetal.renderLook(manifest.look))
+        let pose = MetalCameraPose(try PixelDiffRun.camera(of: entry))
+        let point = SIMD2(64, 64)
+        renderer.resetTextureAllocationCount()
+        _ = try renderer.pick(options, pose: pose, width: 128, height: 128, point: point)
+        #expect(renderer.textureAllocationCount > 0)
+        renderer.resetTextureAllocationCount()
+        _ = try renderer.pick(options, pose: pose, width: 128, height: 128, point: point)
+        #expect(renderer.textureAllocationCount == 0)
+    }
+
     @Test func damagedFileThrowsRatherThanRenderingABlank() async throws {
         let renderer = try MetalRenderer()
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("metal-corrupt-\(UUID()).glb")

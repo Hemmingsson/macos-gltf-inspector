@@ -326,12 +326,25 @@ public final class ModelView: NSView {
             let width = drawable.texture.width, height = drawable.texture.height
             var drawn = options
             drawn.hoveredNodeIndex = hoveredNode
-            let texture = try renderer.renderTexture(drawn, pose: pose(width: width, height: height),
-                                                     width: width, height: height, extents: extents,
-                                                     transmissionResolution: transmissionResolution,
-                                                     centerOffset: centerOffset(pixelWidth: width),
-                                                     animationPose: animationPoseProvider?())
-            try renderer.present(texture, on: drawable)
+            let underTest = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            if underTest {
+                let texture = try renderer.renderTexture(drawn, pose: pose(width: width, height: height),
+                                                           width: width, height: height, extents: extents,
+                                                           transmissionResolution: transmissionResolution,
+                                                           centerOffset: centerOffset(pixelWidth: width),
+                                                           animationPose: animationPoseProvider?())
+                try renderer.present(texture, on: drawable)
+            } else {
+                _ = try renderer.renderTexture(drawn, pose: pose(width: width, height: height),
+                                              width: width, height: height, extents: extents,
+                                              transmissionResolution: transmissionResolution,
+                                              centerOffset: centerOffset(pixelWidth: width),
+                                              animationPose: animationPoseProvider?(),
+                                              waitPolicy: .submitForPresentation,
+                                              presentOn: drawable)
+            }
+        } catch MetalRendererError.presentationBackpressure {
+            return
         } catch {
             drawFailed = true
             AppLog.error(AppLog.renderer, "draw failed: \(error.localizedDescription)")

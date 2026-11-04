@@ -6,13 +6,14 @@ import QuartzCore
 import simd
 
 public enum MetalRendererError: Error, LocalizedError {
-    case unavailable, resource(String), gpu(String), noScene
+    case unavailable, resource(String), gpu(String), noScene, presentationBackpressure
     public var errorDescription: String? {
         switch self {
         case .unavailable: "Metal is unavailable."
         case .resource(let message): "Metal resource: \(message)"
         case .gpu(let message): "Metal GPU: \(message)"
         case .noScene: "No model has been loaded."
+        case .presentationBackpressure: "Skipped a live frame because three are already in flight."
         }
     }
 }
@@ -53,6 +54,47 @@ public final class MetalRenderer: @unchecked Sendable {
     /// The draw mask of the last filter, so an idle filter is not re-resolved every frame. The
     /// scene identifier is only meaningful while that scene is alive, so `load` clears this.
     private var drawVisibility: (filter: MetalDrawFilter, scene: ObjectIdentifier, visible: [Bool])?
+
+    private struct TextureCacheKey: Hashable {
+        var format: MTLPixelFormat
+        var width: Int
+        var height: Int
+        var sampleCount: Int
+        var textureType: MTLTextureType
+        var usageRaw: UInt
+        var storage: MTLStorageMode
+        var mipmapped: Bool
+        /// Live canvas frames use three in-flight target sets; stills and picks use `nil`.
+        var liveRingIndex: Int?
+
+        init(format: MTLPixelFormat, width: Int, height: Int, sampleCount: Int, textureType: MTLTextureType,
+             usage: MTLTextureUsage, storage: MTLStorageMode, mipmapped: Bool, liveRingIndex: Int?) {
+            self.format = format
+            self.width = width
+            self.height = height
+            self.sampleCount = sampleCount
+            self.textureType = textureType
+            self.usageRaw = usage.rawValue
+            self.storage = storage
+            self.mipmapped = mipmapped
+            self.liveRingIndex = liveRingIndex
+        }
+    }
+
+    private var textureCache: [TextureCacheKey: any MTLTexture] = [:]
+    private var blackTexture: (any MTLTexture)?
+    private var liveRingIndex = 0
+    private let presentationSlots = DispatchSemaphore(value: 3)
+    internal private(set) var textureAllocationCount = 0
+
+    internal enum RenderWaitPolicy {
+        case waitForGPU
+        case submitForPresentation
+    }
+
+    internal func resetTextureAllocationCount() {
+        textureAllocationCount = 0
+    }
 
     public convenience init() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw MetalRendererError.unavailable }
@@ -140,10 +182,21 @@ public final class MetalRenderer: @unchecked Sendable {
     /// User-camera view-projection and letterbox aspect for overlay-aligned gizmo hit tests.
     func gizmoPickFrame(options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
                         centerOffset: SIMD2<Float> = .zero) throws -> (viewProjection: simd_float4x4, viewportAspect: Float?) {
-        guard scene != nil else { throw MetalRendererError.noScene }
-        let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
-                                        centerOffset: centerOffset, scene: scene!)
-        return (setup.frame.viewProjection, setup.viewportAspect)
+        guard let scene else { throw MetalRendererError.noScene }
+        let orthographic = options.isOrthographic
+        var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
+        if centerOffset != .zero {
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: orthographic ? 1 : nil)
+            camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
+        }
+        var viewProjection = camera.openGLProjectionMatrix * camera.viewMatrix
+        var viewportAspect: Float? = orthographic ? 1 : nil
+        if let index = options.fileCameraNodeIndex,
+           let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
+            viewProjection = fileCamera.viewProjection
+            viewportAspect = fileCamera.viewportAspect
+        }
+        return (viewProjection, viewportAspect)
     }
 
     /// glTF node index under `point` (x right, y down), or nil for background / mask holes.
@@ -164,8 +217,8 @@ public final class MetalRenderer: @unchecked Sendable {
         }
         let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
                                         centerOffset: centerOffset, scene: scene, animationPose: animationPose)
-        let pickTarget = try texture(.r32Uint, width, height, [.renderTarget, .shaderRead])
-        let depth = try texture(.depth32Float, width, height, [.renderTarget, .shaderRead])
+        let pickTarget = try cachedTexture(.r32Uint, width, height, [.renderTarget, .shaderRead])
+        let depth = try cachedTexture(.depth32Float, width, height, [.renderTarget, .shaderRead])
         guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
         command.label = "Khronos pick"
         let pass = MTLRenderPassDescriptor()
@@ -182,8 +235,8 @@ public final class MetalRenderer: @unchecked Sendable {
                        viewport: setup.viewport, animationPose: animationPose)
         let x = min(max(point.x, 0), width - 1)
         let y = min(max(point.y, 0), height - 1)
-        let idReadback = try texture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
-        let depthReadback = try texture(.depth32Float, 1, 1, [.shaderRead], storage: .shared)
+        let idReadback = try pickReadbackIDTexture()
+        let depthReadback = try pickReadbackDepthTexture()
         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("pick blit") }
         blit.copy(from: pickTarget, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: x, y: y, z: 0), sourceSize: MTLSize(width: 1, height: 1, depth: 1),
@@ -209,7 +262,10 @@ public final class MetalRenderer: @unchecked Sendable {
                        extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
                        transmissionResolution: Int = 1024,
                        centerOffset: SIMD2<Float> = .zero,
-                       animationPose: AnimationPose? = nil) throws -> any MTLTexture {
+                       animationPose: AnimationPose? = nil,
+                       waitPolicy: RenderWaitPolicy = .waitForGPU,
+                       presentOn drawable: (any CAMetalDrawable)? = nil) throws -> any MTLTexture {
+        if drawable != nil { precondition(waitPolicy == .submitForPresentation) }
         guard let scene else { throw MetalRendererError.noScene }
         guard width > 0, height > 0, width <= 16384, height <= 16384 else {
             throw MetalRendererError.resource("invalid image size")
@@ -224,13 +280,27 @@ public final class MetalRenderer: @unchecked Sendable {
         let viewport = setup.viewport
         let lights = setup.lights
         let order = MetalDrawLists.Frame(transmissionPrepass: setup.transmissionPrepass, main: setup.mainDraws)
-        let hdr = try texture(.rgba16Float, width, height, [.renderTarget, .shaderRead])
-        let flags = try texture(.r8Uint, width, height, [.renderTarget, .shaderRead])
+        var reservedPresentationSlot = false
+        if waitPolicy == .submitForPresentation {
+            // Drop the frame instead of stalling the main thread when three are already on the GPU.
+            guard presentationSlots.wait(timeout: .now()) == .success else {
+                throw MetalRendererError.presentationBackpressure
+            }
+            reservedPresentationSlot = true
+        }
+        defer {
+            if reservedPresentationSlot { presentationSlots.signal() }
+        }
+        let liveRing = waitPolicy == .submitForPresentation ? liveRingIndex : nil
+        let outputStorage: MTLStorageMode = waitPolicy == .submitForPresentation ? .private : .shared
+        let hdr = try cachedTexture(.rgba16Float, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRing)
+        let flags = try cachedTexture(.r8Uint, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRing)
         // Stored for overlay soft depth: floor / gizmo / AABB must sit behind the model.
-        let depth = try texture(.depth32Float, width, height, [.renderTarget, .shaderRead])
-        let output = try texture(.rgba8Unorm, width, height, [.renderTarget, .shaderRead], storage: .shared)
+        let depth = try cachedTexture(.depth32Float, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRing)
+        let output = try cachedTexture(.rgba8Unorm, width, height, [.renderTarget, .shaderRead],
+                                       storage: outputStorage, liveRingIndex: liveRing)
         guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
-        command.label = "Khronos still"
+        command.label = waitPolicy == .submitForPresentation ? "Khronos live" : "Khronos still"
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = hdr
         pass.colorAttachments[0].loadAction = .clear
@@ -245,9 +315,7 @@ public final class MetalRenderer: @unchecked Sendable {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.storeAction = .store
         pass.depthAttachment.clearDepth = 1
-        let black = try texture(.rgba8Unorm, 1, 1, [.shaderRead], storage: .shared)
-        var clear: UInt32 = 0
-        black.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &clear, bytesPerRow: 4)
+        let black = try sharedBlackTexture()
         var background: any MTLTexture = black
         if let prepass = order.transmissionPrepass {
             let prepassStyle = MetalDrawStyle(options.viewMode)
@@ -288,7 +356,7 @@ public final class MetalRenderer: @unchecked Sendable {
                 selectionIDs = try renderSelectionIDBuffer(frame: frame, transforms: setup.transforms, worlds: setup.nodeWorlds,
                                                            viewport: viewport, scene: scene, draws: outlineDraws,
                                                            width: width, height: height, command: command,
-                                                           animationPose: animationPose)
+                                                           animationPose: animationPose, liveRingIndex: liveRing)
             }
         }
         if !lines.isEmpty || selectionIDs != nil {
@@ -296,12 +364,31 @@ public final class MetalRenderer: @unchecked Sendable {
             try encodeOverlays(lines, command: command, output: output,
                                viewProjection: setup.camera.openGLProjectionMatrix * setup.camera.viewMatrix, viewport: viewport,
                                sceneDepth: depth, occlude: options.fileCameraNodeIndex == nil,
-                               selectionIDs: selectionIDs)
+                               selectionIDs: selectionIDs, liveRingIndex: liveRing)
         }
-        command.commit()
-        command.waitUntilCompleted()
-        if let error = command.error { throw MetalRendererError.gpu(error.localizedDescription) }
-        gpuMilliseconds = max(0, command.gpuEndTime - command.gpuStartTime) * 1000
+        if let drawable {
+            try encodePresentation(command: command, texture: output, drawable: drawable)
+            command.present(drawable)
+        }
+        if waitPolicy == .submitForPresentation {
+            liveRingIndex = (liveRingIndex + 1) % 3
+            reservedPresentationSlot = false
+            // The handler owns the semaphore until it signals. A weak self would skip the signal
+            // if the view is gone, and deinit then disposes a semaphore that is still in use.
+            let slots = presentationSlots
+            command.addCompletedHandler { [weak self] finished in
+                if finished.error == nil {
+                    self?.gpuMilliseconds = max(0, finished.gpuEndTime - finished.gpuStartTime) * 1000
+                }
+                slots.signal()
+            }
+            command.commit()
+        } else {
+            command.commit()
+            command.waitUntilCompleted()
+            if let error = command.error { throw MetalRendererError.gpu(error.localizedDescription) }
+            gpuMilliseconds = max(0, command.gpuEndTime - command.gpuStartTime) * 1000
+        }
         return output
     }
 
@@ -398,6 +485,14 @@ public final class MetalRenderer: @unchecked Sendable {
     }
 
     func present(_ texture: any MTLTexture, on drawable: any CAMetalDrawable) throws {
+        guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("presentation command") }
+        try encodePresentation(command: command, texture: texture, drawable: drawable)
+        command.present(drawable)
+        command.commit()
+    }
+
+    private func encodePresentation(command: any MTLCommandBuffer, texture: any MTLTexture,
+                                    drawable: any CAMetalDrawable) throws {
         if presentationPipeline == nil {
             let d = MTLRenderPipelineDescriptor()
             d.vertexFunction = library.makeFunction(name: "khronos_tonemap_vertex")
@@ -405,9 +500,7 @@ public final class MetalRenderer: @unchecked Sendable {
             d.colorAttachments[0].pixelFormat = drawable.texture.pixelFormat
             presentationPipeline = try device.makeRenderPipelineState(descriptor: d)
         }
-        guard let command = queue.makeCommandBuffer(), let pipeline = presentationPipeline else {
-            throw MetalRendererError.resource("presentation command")
-        }
+        guard let pipeline = presentationPipeline else { throw MetalRendererError.resource("presentation pipeline") }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture
         pass.colorAttachments[0].loadAction = .dontCare
@@ -419,8 +512,6 @@ public final class MetalRenderer: @unchecked Sendable {
         encoder.setFragmentTexture(texture, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
-        command.present(drawable)
-        command.commit()
     }
 
     private func transmissionBackground(command: any MTLCommandBuffer, frame: GPUFrame,
@@ -433,25 +524,14 @@ public final class MetalRenderer: @unchecked Sendable {
                                         animationPose: AnimationPose? = nil) throws -> any MTLTexture {
         // Khronos's prepass is 1024². Thumbnail stills pass a smaller edge; never grow past 1024.
         let resolution = min(1024, max(1, requested))
-        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
-            width: resolution, height: resolution, mipmapped: true)
-        d.storageMode = .private
-        d.usage = [.renderTarget, .shaderRead]
-        guard let resolved = device.makeTexture(descriptor: d) else { throw MetalRendererError.resource("transmission resolve") }
-        func multisample(_ format: MTLPixelFormat) throws -> any MTLTexture {
-            let m = MTLTextureDescriptor()
-            m.textureType = .type2DMultisample
-            m.pixelFormat = format
-            m.width = resolution; m.height = resolution
-            m.sampleCount = 4
-            m.storageMode = .private
-            m.usage = [.renderTarget]
-            guard let made = device.makeTexture(descriptor: m) else { throw MetalRendererError.resource("transmission MSAA") }
-            return made
-        }
-        let color = try multisample(.rgba8Unorm)
-        let flag = try multisample(.r8Uint)
-        let depth = try multisample(.depth32Float)
+        let resolved = try cachedTexture(.rgba8Unorm, resolution, resolution, [.renderTarget, .shaderRead],
+                                         mipmapped: true)
+        let color = try cachedTexture(.rgba8Unorm, resolution, resolution, [.renderTarget],
+                                      sampleCount: 4, textureType: .type2DMultisample)
+        let flag = try cachedTexture(.r8Uint, resolution, resolution, [.renderTarget],
+                                     sampleCount: 4, textureType: .type2DMultisample)
+        let depth = try cachedTexture(.depth32Float, resolution, resolution, [.renderTarget],
+                                      sampleCount: 4, textureType: .type2DMultisample)
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = color
         pass.colorAttachments[0].resolveTexture = resolved
@@ -600,9 +680,9 @@ public final class MetalRenderer: @unchecked Sendable {
     private func renderSelectionIDBuffer(frame: GPUFrame, transforms: [DrawFrameTransform], worlds: [simd_float4x4],
                                  viewport: MTLViewport, scene: MetalScene, draws: [Int], width: Int, height: Int,
                                  command: any MTLCommandBuffer,
-                                 animationPose: AnimationPose?) throws -> any MTLTexture {
-        let target = try texture(.r32Uint, width, height, [.renderTarget, .shaderRead])
-        let depth = try texture(.depth32Float, width, height, [.renderTarget])
+                                 animationPose: AnimationPose?, liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        let target = try cachedTexture(.r32Uint, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRingIndex)
+        let depth = try cachedTexture(.depth32Float, width, height, [.renderTarget], liveRingIndex: liveRingIndex)
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = target
         pass.colorAttachments[0].loadAction = .clear
@@ -842,12 +922,62 @@ public final class MetalRenderer: @unchecked Sendable {
         return ring[morphWeightSlot]
     }
 
-    private func texture(_ format: MTLPixelFormat, _ width: Int, _ height: Int, _ usage: MTLTextureUsage,
-                         storage: MTLStorageMode = .private) throws -> any MTLTexture {
-        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: width, height: height, mipmapped: false)
-        d.usage = usage
-        d.storageMode = storage
-        guard let texture = device.makeTexture(descriptor: d) else { throw MetalRendererError.resource("texture \(format)") }
+    func overlayMultisampleTarget(matching output: any MTLTexture, samples: Int,
+                                    liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        try cachedTexture(output.pixelFormat, output.width, output.height, [.renderTarget],
+                          sampleCount: samples, textureType: .type2DMultisample, liveRingIndex: liveRingIndex)
+    }
+
+    func overlayFrameCopy(matching output: any MTLTexture, liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        try cachedTexture(output.pixelFormat, output.width, output.height, [.shaderRead], liveRingIndex: liveRingIndex)
+    }
+
+    private func sharedBlackTexture() throws -> any MTLTexture {
+        if let blackTexture { return blackTexture }
+        let black = try cachedTexture(.rgba8Unorm, 1, 1, [.shaderRead], storage: .shared)
+        var clear: UInt32 = 0
+        black.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &clear, bytesPerRow: 4)
+        blackTexture = black
+        return black
+    }
+
+    private func pickReadbackIDTexture() throws -> any MTLTexture {
+        try cachedTexture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
+    }
+
+    private func pickReadbackDepthTexture() throws -> any MTLTexture {
+        try cachedTexture(.depth32Float, 1, 1, [.shaderRead], storage: .shared)
+    }
+
+    private func cachedTexture(_ format: MTLPixelFormat, _ width: Int, _ height: Int, _ usage: MTLTextureUsage,
+                               storage: MTLStorageMode = .private, sampleCount: Int = 1,
+                               textureType: MTLTextureType = .type2D, mipmapped: Bool = false,
+                               liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        let key = TextureCacheKey(format: format, width: width, height: height, sampleCount: sampleCount,
+                                  textureType: textureType, usage: usage, storage: storage, mipmapped: mipmapped,
+                                  liveRingIndex: liveRingIndex)
+        if let cached = textureCache[key] { return cached }
+        let descriptor: MTLTextureDescriptor
+        if textureType == .type2DMultisample {
+            descriptor = MTLTextureDescriptor()
+            descriptor.textureType = .type2DMultisample
+            descriptor.pixelFormat = format
+            descriptor.width = width
+            descriptor.height = height
+            descriptor.sampleCount = sampleCount
+            descriptor.storageMode = storage
+            descriptor.usage = usage
+        } else {
+            descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: width, height: height,
+                                                                  mipmapped: mipmapped)
+            descriptor.storageMode = storage
+            descriptor.usage = usage
+        }
+        guard let texture = device.makeTexture(descriptor: descriptor) else {
+            throw MetalRendererError.resource("texture \(format)")
+        }
+        textureAllocationCount += 1
+        textureCache[key] = texture
         return texture
     }
 
@@ -871,7 +1001,7 @@ public final class MetalRenderer: @unchecked Sendable {
         }
         memset(captured.contents(), 0, byteCount)
         let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = try texture(.rgba8Unorm, 1, 1, [.renderTarget])
+        pass.colorAttachments[0].texture = try cachedTexture(.rgba8Unorm, 1, 1, [.renderTarget])
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .dontCare
         guard let command = queue.makeCommandBuffer(),
