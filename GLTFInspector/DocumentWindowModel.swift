@@ -68,7 +68,6 @@ final class DocumentWindowModel {
         return EngineSceneModel(
             fileName: fileName,
             document: GLTFSessionDocument(),
-            stats: PreviewStats.empty,
             dimensions: Dimensions(width: 0, height: 0, depth: 0, authoredOrigin: .zero),
             validation: validation
         )

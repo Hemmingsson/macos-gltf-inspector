@@ -16,7 +16,6 @@ struct EngineSceneModel: SceneModel {
     var skins: [SkinInfo]
     var morphs: [MorphInfo]
     var materialVariantNames: [String]
-    var fileSizeBytes: Int64?
     var dimensions: Dimensions
     var validation: ValidationResult
 
@@ -25,7 +24,6 @@ struct EngineSceneModel: SceneModel {
         self.init(
             fileName: fileName,
             document: summary.document,
-            stats: summary.stats,
             dimensions: Self.mapDimensions(summary.bounds),
             validation: validation,
             materialVariantNames: summary.materialVariantNames
@@ -35,7 +33,6 @@ struct EngineSceneModel: SceneModel {
     init(
         fileName: String,
         document: GLTFSessionDocument,
-        stats: PreviewStats,
         dimensions: Dimensions,
         validation: GLTFValidationState? = nil,
         materialVariantNames: [String] = []
@@ -59,11 +56,10 @@ struct EngineSceneModel: SceneModel {
         self.animations = Self.mapAnimations(document.animations)
         self.skins = Self.mapSkins(document.skins)
         self.morphs = Self.mapMorphs(document.morphs)
-        self.fileSizeBytes = stats.fileSizeBytes
         self.dimensions = dimensions
     }
 
-    /// Re-snapshot with a resolved validation outcome (same document / file size / dimensions).
+    /// Re-snapshot with a resolved validation outcome (same document / dimensions).
     func replacingValidation(_ state: GLTFValidationState?) -> EngineSceneModel {
         var copy = self
         copy.validation = Self.mapValidation(state)

@@ -56,7 +56,6 @@ struct LeftSidebar<Model: SceneModel, Selection: SelectionModel, Viewport: Viewp
     private var documentCard: some View {
         DocumentHeader(
             fileName: documentState.isReady ? model.fileName : documentState.panelDocumentTitle,
-            fileSizeBytes: documentState.isReady ? model.fileSizeBytes : nil,
             variantNames: documentState.isReady ? model.materialVariantNames : [],
             selectedVariantIndex: viewport.selectedMaterialVariantIndex,
             onSelectVariant: { viewport.setMaterialVariant($0) }

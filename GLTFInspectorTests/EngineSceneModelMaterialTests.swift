@@ -42,7 +42,6 @@ private func mappedMaterial(_ document: GLTFSessionDocument) -> MaterialInfo? {
     EngineSceneModel(
         fileName: "emissive.gltf",
         document: document,
-        stats: .empty,
         dimensions: Dimensions(width: 0, height: 0, depth: 0)
     ).materials.first
 }

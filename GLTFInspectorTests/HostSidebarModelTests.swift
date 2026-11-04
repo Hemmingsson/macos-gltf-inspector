@@ -47,7 +47,7 @@ struct HostSidebarModelTests {
         #expect(WebPreviewCanvas.Look(viewport, sidebar: sidebar) == WebPreviewCanvas.Look(viewport, sidebar: nil))
 
         let model = EngineSceneModel(
-            fileName: "cam.gltf", document: doc, stats: .empty,
+            fileName: "cam.gltf", document: doc,
             dimensions: Dimensions(width: 0, height: 0, depth: 0, authoredOrigin: .zero)
         )
         let cameraID = try #require(
