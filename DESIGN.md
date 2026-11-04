@@ -75,4 +75,7 @@ The inspector answers *"is the file wrong, or are we?"*
 ## Non-goals
 
 - Not an editor: no shader debugger, GPU counters, or heavy DCC tooling.
+- No second renderer and no renderer setting. Window, Quick Look and Finder use the same page.
 - No fake chrome. No duplicate settings. No section for data that isn't in the file.
+- No control the page cannot drive. Playback, morph weights, hide/solo, double-sided, skeleton,
+  a file-light toggle and a custom environment are not part of the product.

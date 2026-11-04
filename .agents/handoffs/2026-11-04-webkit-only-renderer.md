@@ -1,12 +1,13 @@
 # Handoff: WebKit-only renderer (RealityKit removed)
 
-- **Branch / worktree:** `claude/remove-metal-webkit-only-a816c1` at
-  `.claude/worktrees/remove-metal-webkit-only-a816c1`, based on `8507c3d`.
-- **State:** all work is **uncommitted** (≈354 files, +1.1k / −24.6k lines). `main` has since
-  moved to `69edd88`; sync before merging.
-- **Installed:** this branch's Debug build is in `/Applications/glTF Inspector.app`, and its
-  Quick Look + thumbnail extensions are the registered ones (`pluginkit -mAvvv`). Running
-  `./scripts/build.sh` on main replaces it with main's (two-renderer) build.
+- **Status:** merged. `main` is `7c5e86b` (fast-forward of
+  `claude/remove-metal-webkit-only-a816c1`), 5 commits ahead of `origin/main`. Not pushed.
+- **Verified:** `./scripts/dev.sh test` passed on this tree, including the pixel-diff samples.
+- **Not verified:** `./scripts/dev.sh uitest` (steals focus), a live Quick Look panel, or a Finder
+  thumbnail. `./scripts/build.sh` on `main` has not been run, so `/Applications` may still be an
+  older build.
+- **Behavior reference:** [`docs/pipeline-web-renderer.md`](../../docs/pipeline-web-renderer.md)
+  (What changes the picture). This file is the migration record.
 
 ## Goal
 
@@ -136,9 +137,7 @@ camera, lighting, or line overlays drawn after the Khronos frame (`viewer.html` 
 
 ## Next steps
 
-1. Review the diff (`git diff HEAD` in the worktree), then commit on the branch.
-2. Sync with `main` (`69edd88`) and resolve conflicts; main still has RealityKit, so expect
-   conflicts in deleted RK files and docs.
-3. Run `./scripts/dev.sh uitest` once (it steals focus).
-4. Check Quick Look and Finder thumbnails by hand on a few `.glb` files.
-5. After merging, `./scripts/build.sh` on main installs the merged app to `/Applications`.
+1. Run `./scripts/dev.sh uitest` once (it steals focus).
+2. Check Quick Look and Finder thumbnails by hand on a few `.glb` files.
+3. `./scripts/build.sh` on `main` installs this tree to `/Applications`.
+4. Push `main` when asked.

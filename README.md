@@ -32,8 +32,9 @@
   </tr>
 </table>
 
-The same renderer draws the model on every surface, so a file looks the same in Finder, Quick
-Look and the app.
+The same page draws the model in the app, in Quick Look and in Finder. There is no renderer
+setting. Lighting, cameras and view mode change the picture; the page does not move the model's
+geometry, and it draws the rest pose.
 
 ## Install
 

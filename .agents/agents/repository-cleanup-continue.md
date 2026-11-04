@@ -16,7 +16,7 @@ Find remaining unnecessary complexity in this repo. Do not start from a refactor
 
 ## Product
 
-Native macOS host + Quick Look + Finder thumbnails for `.glb` / `.gltf`, rendered by the Khronos glTF Sample Renderer in a `WKWebView`. Preserve open → render, extensions, and failed loads that show copy not a spinner.
+Native macOS host + Quick Look + Finder thumbnails for `.glb` / `.gltf`. One page, the Khronos glTF Sample Renderer in a `WKWebView` (`RendererWebKit`). There is no second renderer and no renderer setting. Preserve open → render, extensions, and failed loads that show copy not a spinner. Do not add playback, morph weights, hide/solo, double-sided, skeleton, a file-light picker, or a custom HDR.
 
 ## Dex
 

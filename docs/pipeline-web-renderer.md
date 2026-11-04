@@ -17,6 +17,7 @@ The page loads the file itself. The window's panels read the file's JSON
 | --- | --- |
 | Why a web renderer, and why Khronos | [Why this renderer](#why-this-renderer) |
 | What the page draws, and how Swift drives it | This file |
+| What a control actually changes on screen | [What changes the picture](#what-changes-the-picture) |
 | How to catch a renderer regression | [`../TestModels/References/README.md`](../TestModels/References/README.md) |
 | Update the vendored Khronos bundle | [Vendored bundle](#vendored-bundle) |
 
@@ -125,6 +126,41 @@ records the HDR; `open` starts it after the model so first paint does not wait o
 Settings live in the App Group (`GLTFCore/AppGroupSettings.swift`). `Look.stored()` builds the
 look from `AppGroupSettings.rendererLook()` (environment and tone map from the suite) for Quick Look and the thumbnail, so both light a file the same way; the pixel-diff
 goldens use yaw 0 as well (manifest rotation 90).
+
+There is no renderer setting. Window, Quick Look and the Finder thumbnail are this page.
+
+---
+
+## What changes the picture
+
+The page never moves the model's geometry, materials or transforms. Everything below is camera, lighting, or line overlays drawn after the Khronos frame (`viewer.html` `drawOverlays`).
+
+| Control | What it does | Window | Quick Look | Thumbnail |
+| --- | --- | --- | --- | --- |
+| Center | Aims the camera at the scene bounds. Off keeps the authored origin in frame and draws an origin gizmo. | on (`settings.preview.center`) | on | on |
+| Fit | Projected-AABB fit, near-face depth, 1.02 padding, front view. Runs on open, scene switch, centre toggle, and Fit/Reset. | on open | on open | on open |
+| Camera presets | Front / back / left / right / top / bottom at that fit distance. | — | — | — |
+| File camera | Outliner camera row → `cameraNodeIndex`. The page views through that node's camera. | none | none | none |
+| Field of view | User camera `yfov`. | 35° | 45° | 45° |
+| Projection | Orthographic size from the camera distance, restated after every fit. | perspective | perspective | perspective |
+| Auto-rotate | Orbits the camera. The model does not turn. | on | off | off |
+| Floor | Grey polar grid of lines under the model. No shadow or reflection. | on | on | off |
+| Background | Page background behind a transparent canvas. The HDR is not shown as a backdrop. | window | clear | clear |
+| Environment | Bundled Khronos HDR. The first frame is key+fill; the IBL lands a frame or two later. | Studio Neutral | stored setting | stored setting |
+| Environment rotation | `environmentRotation` = 90 + yaw. Yaw 0 is the Khronos default view. | 0 | 0 | 0 |
+| Exposure / intensity | `exposure` = 2^EV, `iblIntensity` 1:1. | 0 EV / 1 | 0 / 1 | 0 / 1 |
+| Tone mapping | Khronos `toneMap` by name. | PBR Neutral | stored | stored |
+| File lights | `KHR_lights_punctual` drawn as authored, alongside the IBL. No toggle. | always | always | always |
+| View mode | Shaded, wireframe, or a Khronos debug channel. Only channels the file has data for. | shaded | shaded | shaded |
+| Selection | Blue AABB around the selected node's subtree. | none | — | — |
+| Material variant | `KHR_materials_variants` index. Nil is the file default. | file default | file default | file default |
+| Scene | Which glTF scene draws. 0 is the file's default scene. | file default | file default | file default |
+| Pointer | Drag orbits, shift/middle-drag pans, scroll dollies with no clamp. | live | live | — |
+| Animations, morphs, skins | The page draws the bind/rest pose. Nothing plays or poses. The inspector still lists them. | — | — | — |
+
+The window field of view is `RenderCamera.defaultFieldOfViewDegrees` (35°). Quick Look and the thumbnail use `Look()`'s 45°.
+
+Page `warning` events are logged (`WebRendererHost`) and are not shown in the inspector.
 
 ---
 
