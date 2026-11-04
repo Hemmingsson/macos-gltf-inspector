@@ -148,7 +148,8 @@ final class ViewState {
             fieldOfView: fieldOfView,
             fileCameraNodeIndex: fileCameraNodeIndex,
             materialVariantIndex: materialVariantIndex,
-            sceneIndex: sceneIndex,
+            // Only a document with scenes has a real index to draw; an empty one keeps the default.
+            sceneIndex: document.scenes.indices.contains(sceneIndex) ? sceneIndex : nil,
             showsFloor: showsFloor,
             showsSceneGizmos: showsSceneGizmos,
             isCentered: isCentered,
@@ -250,14 +251,14 @@ final class ViewState {
 
     /// Hide Selection: hides every selected scene node, or shows them when all are hidden.
     func toggleHiddenSelection() {
-        let nodes = Set(selectedSceneNodes)
+        let nodes = Set(selectedSceneNodes).intersection(activeSceneNodes)
         guard !nodes.isEmpty else { return }
         if selectionIsHidden { hiddenNodes.subtract(nodes) } else { hiddenNodes.formUnion(nodes) }
     }
 
     /// Solo Selection: solos exactly the selected scene nodes; again clears the solo.
     func toggleSoloSelection() {
-        let nodes = Set(selectedSceneNodes)
+        let nodes = Set(selectedSceneNodes).intersection(activeSceneNodes)
         guard !nodes.isEmpty else { return }
         soloNodes = selectionIsSoloed ? [] : nodes
     }
@@ -276,6 +277,7 @@ final class ViewState {
 
     /// Hide or show one scene node in this window; the file is not touched.
     func toggleHidden(_ node: Int) {
+        guard activeSceneNodes.contains(node) else { return }
         if hiddenNodes.contains(node) {
             hiddenNodes.remove(node)
         } else {
@@ -285,7 +287,12 @@ final class ViewState {
 
     /// Solo one node; soloing the only soloed node clears the solo.
     func toggleSolo(_ node: Int) {
+        guard activeSceneNodes.contains(node) else { return }
         soloNodes = soloNodes == [node] ? [] : [node]
+    }
+
+    private var activeSceneNodes: Set<Int> {
+        Set(document.nodeIndices(inScene: sceneIndex))
     }
 
     /// Clears every hidden and soloed node.

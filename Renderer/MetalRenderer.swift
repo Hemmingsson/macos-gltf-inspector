@@ -59,8 +59,9 @@ public final class MetalRenderer: @unchecked Sendable {
     /// A second renderer for the same loaded scene (e.g. an inspector preview): shared GPU
     /// buffers, its own draw lists, pipelines and material resources.
     public convenience init(sharing scene: MetalScene) throws {
-        guard let draw = scene.draws.first else { throw MetalRendererError.noScene }
-        try self.init(device: draw.vertexBuffer.device)
+        let device = scene.draws.first?.vertexBuffer.device ?? MTLCreateSystemDefaultDevice()
+        guard let device else { throw MetalRendererError.unavailable }
+        try self.init(device: device)
         try adopt(scene)
     }
 
@@ -87,8 +88,9 @@ public final class MetalRenderer: @unchecked Sendable {
     /// Points at an already-loaded scene and rebuilds draw lists. Pipelines and per-renderer
     /// material caches stay on this instance; `MetalEnvironment.shared` is unchanged.
     public func adopt(_ loaded: MetalScene) throws {
-        guard let draw = loaded.draws.first else { throw MetalRendererError.noScene }
-        guard draw.vertexBuffer.device === device else { throw MetalRendererError.resource("device mismatch") }
+        if let draw = loaded.draws.first {
+            guard draw.vertexBuffer.device === device else { throw MetalRendererError.resource("device mismatch") }
+        }
         materialResources.removeAll()
         scene = loaded
         drawLists = MetalDrawLists(draws: loaded.draws)

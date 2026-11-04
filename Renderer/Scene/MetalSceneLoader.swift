@@ -91,12 +91,16 @@ private final class Builder {
             scene = asset.scenes[sceneIndex]
         } else { scene = asset.defaultScene ?? asset.scenes.first }
         guard let scene else { throw MetalSceneError.invalid("The glTF has no scene") }
+        try rejectParentCycles()
         let variant: GLTFMaterialVariant?
         if let materialVariantIndex, let variants = asset.materialVariants {
             guard variants.indices.contains(materialVariantIndex) else { throw MetalSceneError.invalid("Material variant index is out of range") }
             variant = variants[materialVariantIndex]
         } else { variant = nil }
+        var inSceneNodes = Set<Int>()
+        var visibleNodes = Set<Int>()
         func collect(_ node: GLTFNode, _ parent: simd_float4x4) {
+            if let index = asset.nodes.firstIndex(of: node) { inSceneNodes.insert(index) }
             let transform = parent * node.matrix
             world[ObjectIdentifier(node)] = transform
             for child in node.childNodes { collect(child, transform) }
@@ -114,6 +118,7 @@ private final class Builder {
         func visit(_ node: GLTFNode, visible: Bool) throws {
             let authoredVisibility = (node.extensions["KHR_node_visibility"] as? [String: Any])?["visible"] as? Bool ?? true
             guard visible && authoredVisibility else { return }
+            if let index = asset.nodes.firstIndex(of: node) { visibleNodes.insert(index) }
             let transform = world[ObjectIdentifier(node)] ?? matrix_identity_float4x4
             if let light = node.light {
                 let p = transform * SIMD4<Float>(0, 0, 0, 1)
@@ -132,10 +137,53 @@ private final class Builder {
             for child in node.childNodes { try visit(child, visible: true) }
         }
         for node in scene.nodes { try visit(node, visible: true) }
-        guard !draws.isEmpty else { throw MetalSceneError.invalid("The glTF scene contains no renderable primitives") }
+        if draws.isEmpty {
+            minimum = .zero
+            maximum = .zero
+        }
         try MetalImageLoader.generateMipmaps(pendingMips, device: device)
         pendingMips.removeAll()
-        return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset, nodeRests: nodeRests(), skins: skins)
+        return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset,
+                          nodeRests: nodeRests(), skins: skins, inSceneNodes: inSceneNodes, visibleNodes: visibleNodes)
+    }
+
+    func rejectParentCycles() throws {
+        let indices = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        var parents = [Int](repeating: -1, count: asset.nodes.count)
+        for (index, node) in asset.nodes.enumerated() {
+            if let parent = node.parent, let parentIndex = indices[ObjectIdentifier(parent)] {
+                parents[index] = parentIndex
+            }
+        }
+        for start in asset.nodes.indices {
+            var seen = Set<Int>()
+            var current = start
+            while parents.indices.contains(current), current >= 0 {
+                guard seen.insert(current).inserted else {
+                    throw MetalSceneError.invalid("The glTF scene graph contains a cycle")
+                }
+                current = parents[current]
+            }
+        }
+        var children = Array(repeating: [Int](), count: asset.nodes.count)
+        for (index, node) in asset.nodes.enumerated() {
+            children[index] = node.childNodes.compactMap { indices[ObjectIdentifier($0)] }
+        }
+        var visiting = Set<Int>()
+        var visited = Set<Int>()
+        func visit(_ index: Int) throws {
+            if visiting.contains(index) {
+                throw MetalSceneError.invalid("The glTF scene graph contains a cycle")
+            }
+            if visited.contains(index) { return }
+            visiting.insert(index)
+            for child in children[index] { try visit(child) }
+            visiting.remove(index)
+            visited.insert(index)
+        }
+        for index in asset.nodes.indices where !visited.contains(index) {
+            try visit(index)
+        }
     }
 
     /// Cached rest worlds. Nodes the scene walk did not reach (a joint outside the scene) get the

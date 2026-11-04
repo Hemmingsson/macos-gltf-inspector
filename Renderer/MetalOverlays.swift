@@ -29,13 +29,16 @@ struct MetalOverlayOptions: Sendable {
     var canvasAspect: Float
     /// Nodes (or ancestors) whose scene gizmos are omitted unless that node is selected.
     var hiddenNodeIndices: Set<Int>
+    /// When non-empty, only subtrees rooted at these nodes draw gizmos and material highlights.
+    var soloNodeIndices: Set<Int> = []
     /// `camera.sceneExtents`: what the viewer sizes the floor and gizmo by. When centring is off it
     /// includes the origin. Nil uses the scene's drawn bounds.
     var extents: (min: SIMD3<Float>, max: SIMD3<Float>)?
     var useSilhouetteSelectionOutline: Bool
     init(floor: Bool = false, origin: Bool = false, sceneGizmos: Bool = false, selectedNode: Int? = nil,
          highlightedNodeIndices: Set<Int> = [], selectedSkinIndex: Int? = nil, skipCameraNodeIndex: Int? = nil,
-         canvasAspect: Float = 1, hiddenNodeIndices: Set<Int> = [], extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
+         canvasAspect: Float = 1, hiddenNodeIndices: Set<Int> = [], soloNodeIndices: Set<Int> = [],
+         extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
          useSilhouetteSelectionOutline: Bool = true) {
         self.floor = floor
         self.origin = origin
@@ -46,6 +49,7 @@ struct MetalOverlayOptions: Sendable {
         self.skipCameraNodeIndex = skipCameraNodeIndex
         self.canvasAspect = canvasAspect
         self.hiddenNodeIndices = hiddenNodeIndices
+        self.soloNodeIndices = soloNodeIndices
         self.extents = extents
         self.useSilhouetteSelectionOutline = useSilhouetteSelectionOutline
     }
@@ -58,11 +62,18 @@ extension MetalOverlayOptions {
                   selectedNode: options.gizmoSelectedNodeIndex ?? options.selectedNodeIndex,
                   highlightedNodeIndices: options.highlightedNodeIndices,
                   selectedSkinIndex: options.selectedSkinIndex, skipCameraNodeIndex: options.fileCameraNodeIndex,
-                  canvasAspect: canvasAspect, hiddenNodeIndices: options.hiddenNodeIndices, extents: extents,
+                  canvasAspect: canvasAspect, hiddenNodeIndices: options.hiddenNodeIndices,
+                  soloNodeIndices: options.soloNodeIndices, extents: extents,
                   useSilhouetteSelectionOutline: options.useSilhouetteSelectionOutline)
         selectedNodes = options.selectedNodeIndices
         hoveredNode = options.hoveredNodeIndex
     }
+}
+
+private func showsSceneGizmo(nodeIndex: Int, scene: MetalScene, options: MetalOverlayOptions) -> Bool {
+    if nodeIndex == options.selectedNode { return true }
+    return scene.isEffectivelyVisible(node: nodeIndex, hidden: options.hiddenNodeIndices,
+                                      solo: options.soloNodeIndices)
 }
 
 struct MetalLineVertex { var position: SIMD4<Float>; var color: SIMD4<Float> }
@@ -133,8 +144,7 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
         for (index, node) in scene.asset.nodes.enumerated() {
             guard node.camera != nil || node.light != nil else { continue }
             if index == options.skipCameraNodeIndex, node.camera != nil { continue }
-            if index != options.selectedNode, lightIsHidden(nodeIndex: index, scene: scene,
-                                                            hidden: options.hiddenNodeIndices) { continue }
+            if !showsSceneGizmo(nodeIndex: index, scene: scene, options: options) { continue }
             let selected = index == options.selectedNode
             collectSceneNodeGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
                                   selected: selected, line: line)
@@ -156,10 +166,14 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
     }
     for index in options.highlightedNodeIndices.sorted() {
         if boxed.contains(index) { continue }
+        guard scene.isEffectivelyVisible(node: index, hidden: options.hiddenNodeIndices,
+                                         solo: options.soloNodeIndices) else { continue }
         collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.materialUsageHighlight, line: line)
     }
     if let index = options.hoveredNode, !boxed.contains(index),
-       scene.asset.nodes.indices.contains(index), scene.asset.nodes[index].mesh != nil {
+       scene.asset.nodes.indices.contains(index), scene.asset.nodes[index].mesh != nil,
+       scene.isEffectivelyVisible(node: index, hidden: options.hiddenNodeIndices,
+                                  solo: options.soloNodeIndices) {
         collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.hover, line: line)
     }
     return vertices
@@ -269,8 +283,7 @@ func overlayGizmoSegments(scene: MetalScene, options: MetalOverlayOptions) -> [M
     for (index, node) in scene.asset.nodes.enumerated() {
         guard node.camera != nil || node.light != nil else { continue }
         if index == options.skipCameraNodeIndex, node.camera != nil { continue }
-        if index != options.selectedNode, lightIsHidden(nodeIndex: index, scene: scene,
-                                                        hidden: options.hiddenNodeIndices) { continue }
+        if !showsSceneGizmo(nodeIndex: index, scene: scene, options: options) { continue }
         let selected = index == options.selectedNode
         appendSceneNodeGizmoSegments(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
                                      selected: selected, into: &segments)

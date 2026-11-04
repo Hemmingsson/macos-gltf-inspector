@@ -81,11 +81,17 @@ public final class ModelView: NSView {
         if let next {
             // The options are for the new file: do not reload the old one for a new scene.
             let previousURL = modelURL
+            let previousOptions = options
             modelURL = nil
             defer { if modelURL == nil { modelURL = previousURL } }
-            try await apply(next)
+            do {
+                try await apply(next)
+            } catch {
+                applyOptions(previousOptions)
+                throw error
+            }
         }
-        try await renderer.load(url: url, sceneIndex: options.sceneIndex == 0 ? nil : options.sceneIndex,
+        try await renderer.load(url: url, sceneIndex: options.sceneIndex,
                                 materialVariantIndex: options.materialVariantIndex)
         modelURL = url
         drawFailed = false
@@ -108,21 +114,26 @@ public final class ModelView: NSView {
     public func apply(_ next: ViewOptions) async throws {
         let previous = options
         applyOptions(next)
-        let sceneChanged = previous.sceneIndex != next.sceneIndex
-        if let modelURL, sceneChanged || previous.materialVariantIndex != next.materialVariantIndex {
-            try await renderer.load(url: modelURL, sceneIndex: next.sceneIndex == 0 ? nil : next.sceneIndex,
-                                    materialVariantIndex: next.materialVariantIndex)
+        do {
+            let sceneChanged = previous.sceneIndex != next.sceneIndex
+            if let modelURL, sceneChanged || previous.materialVariantIndex != next.materialVariantIndex {
+                try await renderer.load(url: modelURL, sceneIndex: next.sceneIndex,
+                                        materialVariantIndex: next.materialVariantIndex)
+            }
+            if renderer.scene != nil, sceneChanged || previous.isCentered != next.isCentered {
+                fitCamera()
+            } else if previous.isOrthographic != next.isOrthographic {
+                camera.applyProjection()
+            }
+            if !sceneChanged, next.orbitsAroundSelection, next.fileCameraNodeIndex == nil,
+               let node = next.selectedNodeIndex, node != previous.selectedNodeIndex {
+                retarget(toNode: node)
+            }
+            redraw()
+        } catch {
+            applyOptions(previous)
+            throw error
         }
-        if renderer.scene != nil, sceneChanged || previous.isCentered != next.isCentered {
-            fitCamera()
-        } else if previous.isOrthographic != next.isOrthographic {
-            camera.applyProjection()
-        }
-        if !sceneChanged, next.orbitsAroundSelection, next.fileCameraNodeIndex == nil,
-           let node = next.selectedNodeIndex, node != previous.selectedNodeIndex {
-            retarget(toNode: node)
-        }
-        redraw()
     }
 
     private func applyOptions(_ next: ViewOptions) {

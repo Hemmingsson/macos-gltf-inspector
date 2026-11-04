@@ -1,3 +1,5 @@
+import Foundation
+import GLTFCore
 import simd
 import Testing
 @testable import Renderer
@@ -5,6 +7,12 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct SceneGizmoTests {
+    private func fixture(_ edit: (inout [String: Any]) -> Void) throws -> URL {
+        var json = try GLBBox.peekDocumentJSON(from: TestFixtures.cameras)
+        edit(&json)
+        return try TestGLB.writeTempGLB(json: json, prefix: "scene-gizmo")
+    }
+
     private func positions(_ vertices: [MetalLineVertex]) -> [SIMD3<Float>] {
         vertices.map { SIMD3($0.position.x, $0.position.y, $0.position.z) }
     }
@@ -229,5 +237,51 @@ struct SceneGizmoTests {
         )
         #expect(vertices.count == 24, "a non-joint group needs its 12-edge subtree box")
         #expect(vertices.contains { $0.position.x > 9 })
+    }
+
+    @Test func gizmosExcludeCamerasOutsideTheLoadedScene() async throws {
+        let url = try fixture { json in
+            json["scenes"] = [["nodes": [0]], ["nodes": [1, 2]]]
+            json["scene"] = 0
+        }
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        let segments = overlayGizmoSegments(scene: try #require(renderer.scene),
+                                            options: MetalOverlayOptions(sceneGizmos: true))
+        #expect(segments.isEmpty, "neither camera belongs to the loaded scene")
+    }
+
+    @Test func gizmosExcludeAuthoredHiddenCameras() async throws {
+        let url = try fixture { json in
+            var nodes = json["nodes"] as! [[String: Any]]
+            nodes[1]["extensions"] = ["KHR_node_visibility": ["visible": false]]
+            json["nodes"] = nodes
+            json["extensionsUsed"] = ["KHR_node_visibility"]
+        }
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        let segments = overlayGizmoSegments(scene: try #require(renderer.scene),
+                                            options: MetalOverlayOptions(sceneGizmos: true))
+        #expect(!segments.contains { $0.nodeIndex == 1 })
+    }
+
+    @Test func gizmosExcludeCamerasUnderAuthoredHiddenParent() async throws {
+        let url = try fixture { json in
+            var nodes = json["nodes"] as! [[String: Any]]
+            nodes[0]["children"] = [1]
+            nodes[1]["extensions"] = ["KHR_node_visibility": ["visible": false]]
+            nodes[1]["children"] = [2]
+            json["nodes"] = nodes
+            json["scenes"] = [["nodes": [0]]]
+            json["extensionsUsed"] = ["KHR_node_visibility"]
+        }
+        defer { try? FileManager.default.removeItem(at: url) }
+        let renderer = try MetalRenderer()
+        try await renderer.load(url: url)
+        let segments = overlayGizmoSegments(scene: try #require(renderer.scene),
+                                            options: MetalOverlayOptions(sceneGizmos: true))
+        #expect(!segments.contains { $0.nodeIndex == 2 })
     }
 }

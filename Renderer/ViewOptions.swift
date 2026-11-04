@@ -15,8 +15,8 @@ public struct ViewOptions: Equatable, Sendable {
     public var fileCameraNodeIndex: Int?
     /// `KHR_materials_variants` index, or nil for the file default.
     public var materialVariantIndex: Int?
-    /// Scene index; 0 keeps the file's default scene.
-    public var sceneIndex: Int
+    /// Real scene index, or nil for the file's default scene.
+    public var sceneIndex: Int?
     public var showsFloor: Bool
     /// Draws authored camera and punctual-light gizmos in the viewport.
     public var showsSceneGizmos: Bool
@@ -57,7 +57,7 @@ public struct ViewOptions: Equatable, Sendable {
         fieldOfView: Double = 45,
         fileCameraNodeIndex: Int? = nil,
         materialVariantIndex: Int? = nil,
-        sceneIndex: Int = 0,
+        sceneIndex: Int? = nil,
         showsFloor: Bool = false,
         showsSceneGizmos: Bool = false,
         isCentered: Bool = true,

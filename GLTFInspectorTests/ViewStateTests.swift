@@ -114,6 +114,10 @@ struct ViewStateTests {
 
     @Test func hideAndSoloReachTheRendererOptions() throws {
         let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "scenes": [["nodes": Array(0..<8)]],
+            "nodes": (0..<8).map { _ in ["name": "N"] as [String: Any] },
+        ])
         view.toggleHidden(2)
         view.toggleHidden(5)
         view.toggleHidden(5)
@@ -146,6 +150,18 @@ struct ViewStateTests {
         view.toggleSolo(3)
         view.sceneIndex = 1
         #expect(view.hiddenNodes.isEmpty && view.soloNodes.isEmpty)
+    }
+
+    @Test func hideAndSoloIgnoreNodesOutsideTheActiveScene() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "scenes": [["nodes": [0]], ["nodes": [1]]],
+            "nodes": [["name": "Scene0"], ["name": "Scene1"]],
+        ])
+        view.toggleSolo(1)
+        #expect(view.soloNodes.isEmpty)
+        view.toggleHidden(1)
+        #expect(view.hiddenNodes.isEmpty)
     }
 
     @Test func optionsCarryTheWindowsLook() throws {

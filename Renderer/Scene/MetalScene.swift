@@ -174,9 +174,15 @@ public final class MetalScene: @unchecked Sendable {
     let skins: [MetalSkin]
     /// Children of each node, in index order. Used to push a posed parent into its subtree.
     let nodeChildren: [[Int]]
+    /// glTF node indices reachable from the loaded scene's roots.
+    let inSceneNodes: Set<Int>
+    /// Subset of `inSceneNodes` that are not under an authored-hidden ancestor (`KHR_node_visibility`).
+    let visibleNodes: Set<Int>
     let asset: GLTFAsset
 
-    init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight], asset: GLTFAsset, nodeRests: [MetalNodeRest], skins: [MetalSkin]) {
+    init(draws: [MetalDraw], boundsMin: SIMD3<Float>, boundsMax: SIMD3<Float>, lights: [MetalPunctualLight],
+         asset: GLTFAsset, nodeRests: [MetalNodeRest], skins: [MetalSkin],
+         inSceneNodes: Set<Int>, visibleNodes: Set<Int>) {
         self.draws = draws
         self.boundsMin = boundsMin
         self.boundsMax = boundsMax
@@ -184,6 +190,8 @@ public final class MetalScene: @unchecked Sendable {
         self.asset = asset
         self.nodeRests = nodeRests
         self.skins = skins
+        self.inSceneNodes = inSceneNodes
+        self.visibleNodes = visibleNodes
         let indices = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
         nodeParents = asset.nodes.map { node in node.parent.flatMap { indices[ObjectIdentifier($0)] } ?? -1 }
         var children = Array(repeating: [Int](), count: nodeParents.count)
@@ -194,15 +202,24 @@ public final class MetalScene: @unchecked Sendable {
     }
 
     /// The node itself, then its parent, grandparent and so on up to a root. Empty for an index
-    /// outside `asset.nodes`; the walk stops after `nodeParents.count` steps if the file has a cycle.
+    /// outside `asset.nodes`.
     public func ancestors(ofNode index: Int) -> [Int] {
         var chain: [Int] = []
         var current = index
-        while nodeParents.indices.contains(current), chain.count < nodeParents.count {
+        while nodeParents.indices.contains(current) {
             chain.append(current)
             current = nodeParents[current]
         }
         return chain
+    }
+
+    /// Active scene membership, authored visibility, and this window's hide / solo filters.
+    public func isEffectivelyVisible(node index: Int, hidden: Set<Int>, solo: Set<Int>) -> Bool {
+        guard inSceneNodes.contains(index), visibleNodes.contains(index) else { return false }
+        let chain = ancestors(ofNode: index)
+        if chain.contains(where: { hidden.contains($0) }) { return false }
+        if !solo.isEmpty && !chain.contains(where: { solo.contains($0) }) { return false }
+        return true
     }
 }
 
@@ -217,9 +234,9 @@ public enum MetalSceneError: LocalizedError {
 /// (`getSceneExtents`, `subtreeAABB`): accessor `min`/`max` corners, transformed by the node's
 /// world matrix, instancing and skinning ignored.
 extension MetalScene {
-    /// The scene drawn for `ViewOptions.sceneIndex` (0 keeps the file's default scene).
-    func gltfSceneIndex(for lookIndex: Int) -> Int? {
-        if lookIndex != 0 { return asset.scenes.indices.contains(lookIndex) ? lookIndex : nil }
+    /// The scene drawn for `ViewOptions.sceneIndex` (nil keeps the file's default scene).
+    func gltfSceneIndex(for sceneIndex: Int?) -> Int? {
+        if let sceneIndex { return asset.scenes.indices.contains(sceneIndex) ? sceneIndex : nil }
         if let scene = asset.defaultScene, let index = asset.scenes.firstIndex(where: { $0 === scene }) { return index }
         return asset.scenes.isEmpty ? nil : 0
     }

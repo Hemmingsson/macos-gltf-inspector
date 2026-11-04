@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import Metal
 import simd
 import Testing
@@ -76,5 +77,49 @@ struct MetalSceneLoaderTests {
         #expect(MemoryLayout<MetalVertex>.offset(of:\.color) == 48)
         #expect(MemoryLayout<MetalVertex>.offset(of:\.uv0) == 64)
         #expect(MemoryLayout<MetalVertex>.offset(of:\.uv1) == 72)
+    }
+
+    private func camerasGLB(_ edit: (inout [String: Any]) -> Void) throws -> URL {
+        var json = try GLBBox.peekDocumentJSON(from: TestFixtures.cameras)
+        edit(&json)
+        return try TestGLB.writeTempGLB(json: json, prefix: "metal-scene-loader")
+    }
+
+    @Test func cameraOnlySceneCanLoadWithoutMeshPrimitives() async throws {
+        let url = try camerasGLB { json in
+            json["scenes"] = [["nodes": [1, 2]]]
+        }
+        defer { try? FileManager.default.removeItem(at: url) }
+        let scene = try await MetalSceneLoader.load(url: url, device: device())
+        #expect(scene.draws.isEmpty)
+        #expect(scene.boundsMin == .zero && scene.boundsMax == .zero)
+        #expect(scene.asset.nodes.contains { $0.camera != nil })
+    }
+
+    @Test func cyclicParentGraphIsRejected() async throws {
+        var json = try GLBBox.peekDocumentJSON(from: TestFixtures.cameras)
+        var nodes = json["nodes"] as! [[String: Any]]
+        nodes = [
+            ["name": "A", "children": [1]],
+            ["name": "B", "children": [0], "camera": 0],
+        ]
+        json["nodes"] = nodes
+        json["scenes"] = [["nodes": [0]]]
+        let url = try TestGLB.writeTempGLB(json: json, prefix: "cycle")
+        defer { try? FileManager.default.removeItem(at: url) }
+        await #expect(throws: (any Error).self) {
+            _ = try await MetalSceneLoader.load(url: url, device: device())
+        }
+    }
+
+    @Test func selfChildNodeIsRejected() async throws {
+        var json = try GLBBox.peekDocumentJSON(from: TestFixtures.cameras)
+        json["nodes"] = [["name": "Loop", "children": [0], "camera": 0]]
+        json["scenes"] = [["nodes": [0]]]
+        let url = try TestGLB.writeTempGLB(json: json, prefix: "self-cycle")
+        defer { try? FileManager.default.removeItem(at: url) }
+        await #expect(throws: (any Error).self) {
+            _ = try await MetalSceneLoader.load(url: url, device: device())
+        }
     }
 }

@@ -35,6 +35,29 @@ enum TestGLB {
         return out
     }
 
+    /// First buffer from a sidecar `.gltf` JSON with a `data:` URI (e.g. fixture models).
+    static func embeddedBin(from json: [String: Any]) throws -> Data {
+        guard let buffers = json["buffers"] as? [[String: Any]],
+              let uri = buffers[0]["uri"] as? String,
+              uri.hasPrefix("data:"),
+              let comma = uri.firstIndex(of: ",")
+        else { throw InvalidJSON() }
+        let payload = String(uri[uri.index(after: comma)...])
+        guard let data = Data(base64Encoded: payload, options: [.ignoreUnknownCharacters]) else { throw InvalidJSON() }
+        return data
+    }
+
+    static func writeTempGLB(json: [String: Any], prefix: String) throws -> URL {
+        let bin = try embeddedBin(from: json)
+        var glbJSON = json
+        if var buffers = glbJSON["buffers"] as? [[String: Any]], !buffers.isEmpty {
+            buffers[0]["byteLength"] = bin.count
+            buffers[0].removeValue(forKey: "uri")
+            glbJSON["buffers"] = buffers
+        }
+        return try writeTemp(try serialize(json: glbJSON, bin: bin), prefix: prefix)
+    }
+
     private static func pad4(_ count: Int) -> Int { (4 - count % 4) % 4 }
 
     private static func uint32(_ value: UInt32) -> [UInt8] {

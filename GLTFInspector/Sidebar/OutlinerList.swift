@@ -9,6 +9,7 @@ import SwiftUI
 /// S1f: native list selection — `NodeRow` draws no selection of its own.
 struct OutlinerList: View {
     var document: GLTFDocument
+    var activeSceneIndex: Int = 0
     var validation: ValidationResult
     /// The primary row (inspector, reveal, ← / →).
     @Binding var selection: NodeID?
@@ -35,7 +36,7 @@ struct OutlinerList: View {
     @State private var expanded = Set<NodeID>()
 
     var body: some View {
-        let sections = OutlinerSection.sections(of: document)
+        let sections = OutlinerSection.sections(of: document, activeSceneIndex: activeSceneIndex)
         let foldingRoots = sections.filter(\.folds).flatMap(\.items)
         let layers = OutlinerTree.layerVisibility(
             foldingRoots,

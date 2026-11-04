@@ -45,7 +45,7 @@ extension OutlinerSection {
     ///
     /// DESIGN.md's "show only what the model has" is enforced here, once, by not producing an
     /// empty section, rather than by an `if` in every view.
-    static func sections(of document: GLTFDocument) -> [OutlinerSection] {
+    static func sections(of document: GLTFDocument, activeSceneIndex: Int = 0) -> [OutlinerSection] {
         func items(_ kind: NodeKind, count: Int, where include: (Int) -> Bool = { _ in true }) -> [OutlinerItem] {
             (0..<count).filter(include).map { index in
                 let id = NodeID(kind: kind, index: index)
@@ -56,7 +56,7 @@ extension OutlinerSection {
             // Plural: the scene picker, distinct from the "Scene" graph below it. Titles are the
             // section identity, so the two must never collide.
             OutlinerSection(title: "Scenes", items: document.scenes.count > 1 ? items(.scene, count: document.scenes.count) : []),
-            OutlinerSection(title: "Scene", items: sceneGraph(document), folds: true),
+            OutlinerSection(title: "Scene", items: sceneGraph(document, activeSceneIndex: activeSceneIndex), folds: true),
             OutlinerSection(title: "Materials", items: items(.material, count: document.materials.count)),
             OutlinerSection(title: "Skins", items: items(.skin, count: document.skins.count)),
             OutlinerSection(title: "Animations", items: items(.animation, count: document.animations.count) {
@@ -67,9 +67,9 @@ extension OutlinerSection {
         return candidates.filter { !$0.items.isEmpty }
     }
 
-    /// Every scene's roots, each once, with their children; a node reached again through a
-    /// cycle is shown without children. A file with no scenes lists its parentless nodes.
-    private static func sceneGraph(_ document: GLTFDocument) -> [OutlinerItem] {
+    /// The active scene's roots and their descendants; a node reached again through a cycle is
+    /// shown without children. A file with no scenes lists its parentless nodes.
+    private static func sceneGraph(_ document: GLTFDocument, activeSceneIndex: Int) -> [OutlinerItem] {
         func item(_ index: Int, path: Set<Int>) -> OutlinerItem? {
             guard let id = document.id(ofNode: index) else { return nil }
             let children = path.contains(index)
@@ -77,10 +77,14 @@ extension OutlinerSection {
                 : document.nodes[index].children.compactMap { item($0, path: path.union([index])) }
             return OutlinerItem(id: id, name: document.displayName(of: id), children: children)
         }
-        var roots = document.scenes.flatMap(\.rootNodeIndices)
-        if roots.isEmpty {
+        var roots: [Int]
+        if document.scenes.isEmpty {
             let children = Set(document.nodes.flatMap(\.children))
             roots = document.nodes.map(\.index).filter { !children.contains($0) }
+        } else if document.scenes.indices.contains(activeSceneIndex) {
+            roots = document.scenes[activeSceneIndex].rootNodeIndices
+        } else {
+            roots = []
         }
         var seen = Set<Int>()
         return roots.filter { seen.insert($0).inserted }.compactMap { item($0, path: []) }
