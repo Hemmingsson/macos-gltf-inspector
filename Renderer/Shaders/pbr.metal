@@ -131,11 +131,17 @@ fragment MetalFragmentOutput khronos_fragment(MetalVaryings in [[stage_in]],bool
     texturecube<float> charlieEnv [[texture(8)]],texture2d<float> charlieLUT [[texture(9)]],
     texture2d<float> sheenELUT [[texture(10)]],texture2d<float> transmissionBackground [[texture(30)]],
     sampler envSampler [[sampler(5)]]) {
-    float4 base=m.baseColor*in.color;
+    float4 vertexColor=((m.flags.z&512u)!=0u) ? float4(1.0f) : in.color;
+    float4 base=m.baseColor*vertexColor;
     if(m.flags.x&1u) base*=materialTextures.maps[0].sample(materialTextures.samplers[0],materialUV(in,m,0));
-    if(m.flags.y==0) base.a=1;
     // Khronos alpha-tests a lit material only under DEBUG_NONE; unlit always.
-    if(m.flags.y==1 && (frame.options.y==0 || (m.flags.z&1u))) { if(base.a<m.surface.w) discard_fragment(); base.a=1; }
+    if(m.flags.y==1 && (frame.options.y==0 || (m.flags.z&1u))) {
+        if(base.a<m.surface.w) discard_fragment();
+        // 0.4 matches MetalDrawStyle.xrayOpacity, applied after the cutoff.
+        if((m.flags.z&256u)!=0u) base.a*=0.4f;
+        else base.a=1;
+    }
+    if(m.flags.y==0 && (m.flags.z&256u)==0u) base.a=1;
     // MATERIAL_UNLIT: TRANSMISSION_PASS writes toneMapInverse(baseColor) with flag 2, else baseColor with flag 1.
     if(m.flags.z&1u) {
         if(frame.options.z&2u) return {float4(toneMapInverse(base.rgb,frame.environment.z,frame.options.x),base.a),2u};

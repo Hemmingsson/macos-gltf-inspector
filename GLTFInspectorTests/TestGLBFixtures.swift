@@ -163,7 +163,10 @@ func reviewQuadsGLB(
 }
 
 /// Two quads stacked on Z: node 0 at z = -1 (back), node 1 at z = 0 (front).
-func writeTempStackedQuadsGLB(prefix: String = "stacked-quads") throws -> URL {
+func writeTempStackedQuadsGLB(
+    sceneNodeOrder: [Int] = [0, 1],
+    prefix: String = "stacked-quads"
+) throws -> URL {
     let bin = floatQuadWithUVBin()
     let json: [String: Any] = [
         "asset": ["version": "2.0"],
@@ -187,7 +190,46 @@ func writeTempStackedQuadsGLB(prefix: String = "stacked-quads") throws -> URL {
             ["name": "Back", "mesh": 0, "translation": [0, 0, -1]],
             ["name": "Front", "mesh": 0],
         ],
-        "scenes": [["nodes": [0, 1]]],
+        "scenes": [["nodes": sceneNodeOrder]],
+        "scene": 0,
+    ]
+    return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)
+}
+
+/// Unit quad with strong per-vertex COLOR_0 (corners differ).
+func writeTempVertexColorQuadGLB(prefix: String = "vertex-color-quad") throws -> URL {
+    var bin = Data()
+    let positions: [Float] = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0]
+    let colors: [Float] = [
+        1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1,
+    ]
+    appendFloats(positions, to: &bin)
+    appendFloats(colors, to: &bin)
+    let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
+    for index in indices {
+        var bits = index.littleEndian
+        Swift.withUnsafeBytes(of: &bits) { bin.append(contentsOf: $0) }
+    }
+    let json: [String: Any] = [
+        "asset": ["version": "2.0"],
+        "buffers": [["byteLength": bin.count]],
+        "bufferViews": [
+            ["buffer": 0, "byteOffset": 0, "byteLength": 48],
+            ["buffer": 0, "byteOffset": 48, "byteLength": 64],
+            ["buffer": 0, "byteOffset": 112, "byteLength": 12],
+        ],
+        "accessors": [
+            ["bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3",
+             "min": [-1, -1, 0], "max": [1, 1, 0]],
+            ["bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC4"],
+            ["bufferView": 2, "componentType": 5123, "count": 6, "type": "SCALAR"],
+        ],
+        "meshes": [["primitives": [[
+            "attributes": ["POSITION": 0, "COLOR_0": 1],
+            "indices": 2,
+        ]]]],
+        "nodes": [["mesh": 0]],
+        "scenes": [["nodes": [0]]],
         "scene": 0,
     ]
     return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: prefix)

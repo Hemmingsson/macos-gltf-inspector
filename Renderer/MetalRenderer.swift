@@ -246,10 +246,12 @@ public final class MetalRenderer: @unchecked Sendable {
         black.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &clear, bytesPerRow: 4)
         var background: any MTLTexture = black
         if let prepass = order.transmissionPrepass {
+            let prepassStyle = MetalDrawStyle(options.viewMode)
             background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass,
                                                     transforms: setup.transforms, worlds: setup.nodeWorlds,
                                                     lights: lights, fallback: black,
-                                                    wireframe: wireframe, resolution: transmissionResolution,
+                                                    wireframe: wireframe, style: prepassStyle,
+                                                    resolution: transmissionResolution,
                                                     animationPose: animationPose)
         }
         try encodeScene(command: command, pass: pass, frame: frame, scene: scene, lights: lights,
@@ -311,7 +313,8 @@ public final class MetalRenderer: @unchecked Sendable {
     func frameDraws(options: ViewOptions, animationPose: AnimationPose?, view: simd_float4x4) -> MetalFrameDraws {
         guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
         let posed = scene.framePose(pose: animationPose)
-        var order = drawLists.frame(draws: scene.draws, models: posed.transforms.map(\.model), view: view)
+        let xray = MetalDrawStyle(options.viewMode) == .xray
+        var order = drawLists.frame(draws: scene.draws, models: posed.transforms.map(\.model), view: view, xray: xray)
         let filter = MetalDrawFilter(options)
         if !filter.isEmpty {
             let visible = visibility(of: filter, in: scene)
@@ -415,6 +418,7 @@ public final class MetalRenderer: @unchecked Sendable {
                                         worlds: [simd_float4x4],
                                         lights: [MetalPunctualLight],
                                         fallback: any MTLTexture, wireframe: Bool = false,
+                                        style: MetalDrawStyle = .shaded,
                                         resolution requested: Int = 1024,
                                         animationPose: AnimationPose? = nil) throws -> any MTLTexture {
         // Khronos's prepass is 1024². Thumbnail stills pass a smaller edge; never grow past 1024.
@@ -456,7 +460,7 @@ public final class MetalRenderer: @unchecked Sendable {
         preFrame.options.z |= 2
         try encodeScene(command: command, pass: pass, frame: preFrame, scene: scene, lights: lights,
             draws: draws, transforms: transforms, worlds: worlds, background: fallback, samples: 4, format: .rgba8Unorm,
-            wireframe: wireframe, animationPose: animationPose)
+            wireframe: wireframe, style: style, animationPose: animationPose)
         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("transmission mips") }
         blit.generateMipmaps(for: resolved)
         blit.endEncoding()
@@ -905,7 +909,7 @@ struct MetalDrawLists {
 
     /// One `drawScene`. `models[i]` is the per-frame model of `draws[i]` (the rest world when no
     /// clip is active). The lists are re-sorted in place, as upstream does every frame.
-    mutating func frame(draws: [MetalDraw], models: [simd_float4x4], view: simd_float4x4) -> Frame {
+    mutating func frame(draws: [MetalDraw], models: [simd_float4x4], view: simd_float4x4, xray: Bool = false) -> Frame {
         var prepass: [Int]?
         var transparentDepths: [Float] = []
         if !transmission.isEmpty {
@@ -917,12 +921,19 @@ struct MetalDrawLists {
         (transparent, transparentDepths) = Self.sortedByDepth(transparent, draws: draws, models: models, view: view)
         // `filter((a) => a.depth <= 0)`: drawables whose centroid is behind the camera are skipped.
         let front = { (list: [Int], depths: [Float]) in zip(list, depths).filter { $0.1 <= 0 }.map(\.0) }
-        return Frame(transmissionPrepass: prepass,
-                     main: opaque + front(transmission, transmissionDepths) + front(transparent, transparentDepths))
+        var main = opaque + front(transmission, transmissionDepths) + front(transparent, transparentDepths)
+        if xray {
+            if let prepassDraws = prepass {
+                prepass = Self.sortedByDepth(prepassDraws, draws: draws, models: models, view: view).0
+            }
+            let (sortedMain, mainDepths) = Self.sortedByDepth(main, draws: draws, models: models, view: view)
+            main = front(sortedMain, mainDepths)
+        }
+        return Frame(transmissionPrepass: prepass, main: main)
     }
 
-    mutating func frame(draws: [MetalDraw], view: simd_float4x4) -> Frame {
-        frame(draws: draws, models: draws.map(\.worldTransform), view: view)
+    mutating func frame(draws: [MetalDraw], view: simd_float4x4, xray: Bool = false) -> Frame {
+        frame(draws: draws, models: draws.map(\.worldTransform), view: view, xray: xray)
     }
 
     /// `Camera.sortPrimitivesByDepth`: the view-space Z of the primitive centroid, ascending
