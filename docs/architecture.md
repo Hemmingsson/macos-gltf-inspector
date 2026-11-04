@@ -10,7 +10,7 @@ Quick Look preview and the Finder thumbnail.
 | --- | --- | --- |
 | `GLTFCore` (framework) | What a file contains: `GLTFDocument` parsed from the JSON (`GLTFDocumentJSON`), the glTF-Validator (`GLTFValidator`, the Khronos validator in a `JSContext`), the look vocabulary (`RenderLook`, `RenderViewMode`, `LightingEnvironment`) and the App Group settings (`AppGroupSettings`). | everything |
 | `Renderer` (framework) | Drawing: `MetalRenderer` (the Khronos port: scene loading via GLTFKit2, shaders, lighting bakes), `ModelView` (the `NSView` that owns a renderer and the Khronos orbit camera), `ModelCanvas` + `ModelCanvasController` (the SwiftUI canvas: loading / ready / failed), `ThumbnailRenderer`. | app, both extensions |
-| `GLTFInspector` (app) | The window: `DocumentWindowModel` (which file, its `GLTFDocument`, validation) and `ViewState` (how this window shows it), the sidebar, inspector, toolbar, menus and Settings. `DesignSystem/` is tokens and glass controls only — no `Renderer` / `GLTFCore` imports; shortcuts live in `App/Shortcuts.swift`. | — |
+| `GLTFInspector` (app) | The window: `DocumentWindowModel` (which file, its `GLTFDocument`, validation) and `ViewState` (how this window shows it), the sidebar, inspector, toolbar, menus and Settings. `DesignSystem/` is tokens, glass controls and icons; shortcuts live in `App/Shortcuts.swift`. | — |
 | `PreviewExtension` | Quick Look: one `ModelCanvas` with the stored look. | — |
 | `ThumbnailExtension` | Finder thumbnails: `ThumbnailRenderer` → a PNG file for `QLThumbnailReply`. | — |
 
@@ -44,7 +44,8 @@ flowchart LR
 
 Every user action edits `ViewState` (toolbar, menu bar and sidebar all bind to it). SwiftUI
 re-renders, `ModelCanvas` hands the new `ViewOptions` to the controller, and the controller
-applies them to the `ModelView` one call at a time, so the latest options always win. Camera
+applies them to the `ModelView` one call at a time, so the latest options always win. Hide/solo
+(`ViewState.hiddenNodes` / `soloNodes`), selection and overlays travel the same way. Camera
 commands (fit, presets, zoom) and Export PNG go from `ViewState` to the controller directly.
 A failed load ends in `.failed(message)`, never a spinner.
 

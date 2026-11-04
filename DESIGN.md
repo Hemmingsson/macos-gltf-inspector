@@ -1,87 +1,28 @@
-# glTF Inspector — Design Guidelines
+# Design
 
-**The model is the product.** Chrome recedes, the file stays in focus, and the user stays in
-control of how it's shown. Native macOS, slim, honest.
+**The model is the product.** Quiet native chrome, the file in focus. When this doc and the app
+disagree, the code wins.
 
-**What this is.** Enduring principles for *how to think* when designing or iterating — not a
-wireframe, not where controls live today, not what's in which column. That belongs in code.
-When this doc and the app disagree, **code wins**.
+## Principles
 
----
-
-## macOS-native
-
-- **System first** — glass, system typography, light/dark and accessibility settings from the OS
-  (Reduced Motion, Increase Contrast, …). Icons: prefer a mapped custom glyph (Blender UI icons
-  for typed lights, etc.); **SF Symbols are the fallback** when nothing is mapped.
-- **Menu bar = the full command set** — every action has a shortcut there. In-window controls are
-  the *discoverable* subset; same actions, same shortcuts, one storage path.
-- **Distributed, not crammed** — stage / look / camera are different jobs; don't pile unrelated
-  actions into one toolbar strip because it fits on a mockup.
-
-## The three-job rule
-
-> Change it because of **this model** → view state. Change it because of **how you always work**
-> → a setting.
-
-| Job | Question | Storage |
-|---|---|---|
-| **App default** | How should *new* windows start? | Settings only |
-| **This window** | How am I looking at *this* file right now? | Per-window session |
-| **This file** | What does *this asset* contain? | Read from the loaded model |
-
-- **One control, one job.** Never mirror the same switch in Settings and the live chrome with
-  separate storage — pick one owner, compute the effective value at render time.
-- Settings seed new windows; live chrome does not silently rewrite defaults.
-
-## glTF & the renderer
-
-- **Closest practical 1:1** with the Khronos Sample Viewer, and the same renderer on every
-  surface (window, Quick Look, and Finder). Fidelity over DCC breadth.
-- **Complexity follows the asset** — a plain mesh should feel calm; a rigged, textured,
-  multi-scene file may legitimately expose more. Never the reverse (empty chrome for a rich file,
-  or chrome for data that isn't there).
-- **Hide, don't disable** — if the file lacks animations, cameras, lights, morphs, maps, or extra
-  scenes, omit that UI. Greyed-out placeholders are noise.
-- **Honest rendering** — the user must be able to tell *file wrong* from *we didn't render it*.
-  Validation and viewer limits are separate stories; nothing silent. The sidebar describes the
-  **file JSON**, not what the renderer kept.
-
-## Inspector honesty
-
-The inspector answers *"is the file wrong, or are we?"*
-
-- Surface **validation** (spec / structural issues in the file).
-- Surface **viewer limits** (what the renderer could not draw) — a valid file can still look
-  wrong in our viewer.
-- Read **dimensions and stats from the real model**, not placeholders.
-- When the user turns off centering, frame the model at its **authored origin** — don't pretend
-  every asset was built at the world origin. No in-scene origin marker: the corner navigation
-  gizmo is the only axis cue.
-
-## Visual language
-
-- **Quiet chrome** — hairline borders, generous whitespace; accent only for selection and active
-  state.
-- **Color = meaning** — type tints encode glTF roles (camera, light, material, …), not
-  decoration. No rainbow DCC palette.
-- **Every control earns its place** — one thousand no's for every yes.
-
-## Defaults & performance
-
-- **Open path is model-only** — first frame shows geometry; lighting and IBL warm in after paint.
-  Never block load on environment probes.
-- **Sensible defaults, easy override** — most files benefit from center + fit; power users can turn
-  them off without fighting the app.
+- **Native macOS.** System glass, fonts, light/dark and accessibility settings. Every command
+  is in the menu bar with its shortcut; in-window controls are a subset of the same actions.
+- **Setting or view state.** A Settings value decides how new windows start. A window's view
+  state is how you look at this file now. One owner per control; live chrome never rewrites
+  Settings.
+- **Show what the file has.** No UI for data the file lacks: hide it, don't grey it out. A
+  simple mesh gets calm chrome; a rich file may show more.
+- **Honest.** The sidebar and inspector describe the file's JSON, not what the renderer kept.
+  Validation issues (the file is wrong) and viewer limits (we didn't draw it) are shown
+  separately. Dimensions and stats come from the real model.
+- **Same picture everywhere.** The Khronos Sample Viewer is the reference, on every surface.
+- **Fast first frame.** Geometry first; lighting warms in after. Center + fit by default, easy
+  to turn off (then the model sits at its authored origin).
+- **Color means type.** Accent only for selection and active state; tints encode glTF roles.
 
 ## Non-goals
 
-- Not an editor: no shader debugger, GPU counters, or heavy DCC tooling.
-- No second renderer and no renderer setting. Window, Quick Look and Finder use the same one.
-- No fake chrome. No duplicate settings. No section for data that isn't in the file.
-- No control the renderer cannot drive. Morph weight sliders, a double-sided override and a
-  custom environment are not part of the product.
-- **View state, never file edits.** Hide / solo, picking, the isolated shape preview, camera /
-  light / skeleton gizmos and animation playback are per-window ways of *looking* at the file.
-  Nothing writes the file. Hiding a light's node turns that light off, honestly, as hiding does.
-  Quick Look and Finder thumbnails stay at the rest pose with nothing hidden.
+- Not an editor. Nothing writes the file. Hide/solo, picking, gizmos and the skeleton overlay are
+  per-window view state; Quick Look and thumbnails show the rest pose with nothing hidden.
+- No renderer setting, no duplicate settings, no control the renderer cannot drive (morph weight
+  sliders, double-sided override, custom environment).
