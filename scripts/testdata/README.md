@@ -29,7 +29,7 @@ Native Khronos Sample Assets (not committed): `./scripts/fetch-test-models.sh` �
 | `offcenter/cube-offset.gltf` (+bin+png) | `.offcenter` | authored origin offset | origin gizmo when Center is off | — (available for UI) |
 | `multiscene/two-scenes.gltf` | `.multiScene` | two scenes | Scene switcher appears | — (available for UI) |
 | `lights/punctual-lights.gltf` | `.lights` | KHR_lights_punctual point + directional + spot | Lights section, file-vs-studio | — (available for UI) |
-| `cameras/persp-and-ortho.gltf` | `.cameras` | one perspective + one orthographic camera | Cameras section | — (available for UI) |
+| `cameras/persp-and-ortho.gltf` | `.cameras` | one perspective + one orthographic camera | file cameras in the outliner / camera picker | — (available for UI) |
 | `missing-channels/basecolor-only.gltf` | `.missingChannels` | material with baseColor factor only | view-mode menu shortens; material chips omit absent maps | — (available for UI) |
 | `missing-texture/missing-image.gltf` | `.missingTexture` | valid JSON, missing image URI | convert `missingTexture` error | ConvertProblemTests |
 | `rigged/two-joint-skin.gltf` | `.rigged` | two-joint skin | skeleton controls | — (available for UI) |
