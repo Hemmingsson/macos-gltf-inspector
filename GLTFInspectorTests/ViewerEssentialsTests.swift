@@ -444,4 +444,54 @@ struct ViewerEssentialsTests {
         #expect(abs(Double(size.width) / Double(size.height) - 2) < 0.01)
     }
 
+    /// Writes a partial file, then throws after `failAfter` frames, like a GPU or disk error mid-export.
+    private final class ThrowingEncoder: TurntableExport.Encoder {
+        struct Failure: Error {}
+        private let url: URL
+        private let failAfter: Int
+        private var appended = 0
+
+        init(url: URL, failAfter: Int) {
+            self.url = url
+            self.failAfter = failAfter
+            FileManager.default.createFile(atPath: url.path, contents: Data("partial".utf8))
+        }
+
+        func append(_ image: CGImage) async throws {
+            appended += 1
+            if appended > failAfter { throw Failure() }
+        }
+
+        func finish() async throws {}
+
+        func cancel() {}
+    }
+
+    @Test func failedTurntableKeepsTheDestinationAndLeavesNoTempFile() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "turntable-failure")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let (state, container) = try await loadedState(url)
+        defer { state.canvas.view?.removeFromSuperview(); _ = container }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("turntable-failure-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("orbit.mp4")
+        let original = Data([1, 2, 3, 4, 5])
+        try original.write(to: output)
+
+        var failed = false
+        do {
+            try await TurntableExport.write(.mp4, from: state.canvas, to: output) { _, url, _, _ in
+                ThrowingEncoder(url: url, failAfter: 3)
+            }
+        } catch is ThrowingEncoder.Failure {
+            failed = true
+        }
+        #expect(failed, "the injected encoder must fail the export")
+        #expect(try Data(contentsOf: output) == original, "the destination keeps its original bytes")
+        let listing = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        #expect(listing == ["orbit.mp4"], "no temp file may remain: \(listing)")
+    }
+
 }

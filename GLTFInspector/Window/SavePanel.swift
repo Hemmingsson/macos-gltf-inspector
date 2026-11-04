@@ -21,4 +21,19 @@ enum SavePanel {
             }
         }
     }
+
+    /// A failed export: an alert sheet on the key window with the error text, or a modal alert
+    /// when no window is available. The file that was there before is untouched.
+    @MainActor
+    static func reportFailure(title: String, error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = error.localizedDescription
+        if let window = NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible) {
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
+        }
+    }
 }
