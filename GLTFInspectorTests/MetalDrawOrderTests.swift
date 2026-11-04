@@ -83,6 +83,27 @@ struct MetalDrawOrderTests {
         #expect(lists.frame(draws: scene.draws, view: view) == frame)
     }
 
+    @Test func xrayOrdersStackedQuadsByDepthNotFileOrder() async throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let forwardURL = try writeTempStackedQuadsGLB(sceneNodeOrder: [0, 1], prefix: "xray-order-fwd")
+        let reversedURL = try writeTempStackedQuadsGLB(sceneNodeOrder: [1, 0], prefix: "xray-order-rev")
+        defer {
+            try? FileManager.default.removeItem(at: forwardURL)
+            try? FileManager.default.removeItem(at: reversedURL)
+        }
+        let forward = try await MetalSceneLoader.load(url: forwardURL, device: device)
+        let reversed = try await MetalSceneLoader.load(url: reversedURL, device: device)
+        var forwardLists = MetalDrawLists(draws: forward.draws)
+        var reversedLists = MetalDrawLists(draws: reversed.draws)
+        #expect(forwardLists.opaque == [0, 1])
+        #expect(reversedLists.opaque == [0, 1])
+
+        let forwardFrame = forwardLists.frame(draws: forward.draws, view: view, xray: true)
+        let reversedFrame = reversedLists.frame(draws: reversed.draws, view: view, xray: true)
+        #expect(forwardFrame.main == [0, 1])
+        #expect(reversedFrame.main == [1, 0])
+    }
+
     @Test func sceneWithoutTransmissionSkipsThePrepass() async throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let scene = try await MetalSceneLoader.load(url: TestFixtures.cube, device: device)

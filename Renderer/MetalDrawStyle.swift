@@ -15,6 +15,10 @@ enum MetalDrawStyle: Equatable {
     static let xrayOpacity: Float = 0.4
     /// `frame.options.z` bit for the tone-map pass: map straight colour, not premultiplied.
     static let straightToneMapBit: UInt32 = 8
+    /// Shader keeps MASK discard while drawing with X-ray blend alpha (`flags.z`).
+    static let xrayBlendBit: UInt32 = 256
+    /// Clay ignores COLOR_0 in the fragment shader (`flags.z`).
+    static let ignoreVertexColorBit: UInt32 = 512
     /// Edge colour for wireframe-on-shaded (linear, before tone mapping).
     static let edgeColor = SIMD4<Float>(0.06, 0.06, 0.07, 1)
 
@@ -44,11 +48,17 @@ enum MetalDrawStyle: Equatable {
     /// X-ray shows the far side of closed shapes; edges are drawn for both faces.
     var drawsBackFaces: Bool { self == .xray || self == .wireframeOnShaded }
 
-    /// X-ray: the shader's BLEND path at reduced opacity.
+    /// X-ray and clay material flags for the fragment shader.
     func adjust(_ material: inout GPUMaterial) {
-        guard self == .xray else { return }
-        material.baseColor.w *= Self.xrayOpacity
-        material.flags.y = 2
+        switch self {
+        case .xray:
+            material.baseColor.w *= Self.xrayOpacity
+            material.flags.z |= Self.xrayBlendBit
+        case .clay:
+            material.flags.z |= Self.ignoreVertexColorBit
+        case .shaded, .wireframeOnShaded:
+            break
+        }
     }
 
     /// Lines, nudged toward the camera so an edge wins the depth test against its own face.
