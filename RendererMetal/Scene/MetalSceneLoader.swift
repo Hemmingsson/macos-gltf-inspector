@@ -21,7 +21,10 @@ private final class Builder {
     let asset: GLTFAsset
     let device: any MTLDevice
     var materialCache: [ObjectIdentifier: MetalMaterial] = [:]
+    /// Keyed by image identifier, with a `:srgb` suffix for the sRGB copy of a raster image.
     var textures: [String: any MTLTexture] = [:]
+    /// Textures made after `prepareTextures`, whose mips `build` generates.
+    var pendingMips: [any MTLTexture] = []
     var draws: [MetalDraw] = []
     var lights: [MetalPunctualLight] = []
     var minimum = SIMD3<Float>(repeating: .infinity)
@@ -42,19 +45,42 @@ private final class Builder {
     }()
 
 
+    /// Decodes every image a material binds, in parallel and once each, then makes the linear
+    /// and/or sRGB textures its slots need and generates all their mips in one command buffer.
     func prepareTextures() async throws {
-        struct ImageJob: @unchecked Sendable { let image: GLTFImage; let device: any MTLDevice }
-        struct Result: @unchecked Sendable { let key: String; let texture: any MTLTexture }
-        let images = asset.images.map { ImageJob(image:$0,device:device) }
-        try await withThrowingTaskGroup(of:Result.self) { group in
-            for job in images {
+        struct ImageJob: @unchecked Sendable { let image: GLTFImage; let linear: Bool; let sRGB: Bool; let device: any MTLDevice }
+        struct Result: @unchecked Sendable { let key: String; let linear: (any MTLTexture)?; let sRGB: (any MTLTexture)?; let needsMips: Bool }
+        var usage: [String: (image: GLTFImage, linear: Bool, sRGB: Bool)] = [:]
+        for material in asset.materials {
+            for (slot, params) in textureSlots(material) {
+                guard let image = Self.image(of: params) else { continue }
+                let key = image.identifier.uuidString
+                var entry = usage[key] ?? (image, false, false)
+                if Self.usesSRGBTexture(slot, image) { entry.sRGB = true } else { entry.linear = true }
+                usage[key] = entry
+            }
+        }
+        let jobs = usage.values.map { ImageJob(image: $0.image, linear: $0.linear, sRGB: $0.sRGB, device: device) }
+        var mipmapped: [any MTLTexture] = []
+        try await withThrowingTaskGroup(of: Result.self) { group in
+            for job in jobs {
                 group.addTask {
-                    let texture = try MetalImageLoader.load(image:job.image,device:job.device,sRGB:false)
-                    return Result(key:job.image.identifier.uuidString,texture:texture)
+                    let decoded = try MetalImageLoader.decode(image: job.image, device: job.device)
+                    let key = job.image.identifier.uuidString
+                    if case let .texture(texture) = decoded { return Result(key: key, linear: texture, sRGB: nil, needsMips: false) }
+                    return Result(key: key,
+                                  linear: job.linear ? try MetalImageLoader.makeTexture(decoded, device: job.device, sRGB: false) : nil,
+                                  sRGB: job.sRGB ? try MetalImageLoader.makeTexture(decoded, device: job.device, sRGB: true) : nil,
+                                  needsMips: true)
                 }
             }
-            for try await result in group { textures[result.key] = result.texture }
+            for try await result in group {
+                if let linear = result.linear { textures[result.key] = linear }
+                if let sRGB = result.sRGB { textures[result.key + ":srgb"] = sRGB }
+                if result.needsMips { mipmapped += [result.linear, result.sRGB].compactMap { $0 } }
+            }
         }
+        try MetalImageLoader.generateMipmaps(mipmapped, device: device)
     }
 
     func build(sceneIndex: Int?, materialVariantIndex: Int?) throws -> MetalScene {
@@ -104,6 +130,8 @@ private final class Builder {
         }
         for node in scene.nodes { try visit(node, visible: true) }
         guard !draws.isEmpty else { throw MetalSceneError.invalid("The glTF scene contains no renderable primitives") }
+        try MetalImageLoader.generateMipmaps(pendingMips, device: device)
+        pendingMips.removeAll()
         return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset)
     }
 
@@ -124,17 +152,10 @@ private final class Builder {
         let colorAccessor = primitive.attribute(forName: "COLOR_0")?.accessor
         let colorComponents = colorAccessor?.dimension == .vector3 ? 3 : 4
         let color = try attribute("COLOR_0", colorComponents)
-        var vertices: [MetalVertex] = []
-        vertices.reserveCapacity(count)
-        for i in 0..<count {
-            let p = SIMD4<Float>(positions[i*3], positions[i*3+1], positions[i*3+2], 1)
-            let n = SIMD4<Float>(normal?[i*3] ?? 0, normal?[i*3+1] ?? 0, normal?[i*3+2] ?? 0, 0)
-            let t = SIMD4<Float>(tangent?[i*4] ?? 1, tangent?[i*4+1] ?? 0, tangent?[i*4+2] ?? 0, tangent?[i*4+3] ?? 1)
-            let alpha: Float = colorComponents == 4 ? (color?[i*4+3] ?? 1) : 1
-            let c = SIMD4<Float>(color?[i*colorComponents] ?? 1, color?[i*colorComponents+1] ?? 1, color?[i*colorComponents+2] ?? 1, alpha)
-            let u0 = SIMD2<Float>(uv0?[i*2] ?? 0, uv0?[i*2+1] ?? 0)
-            let u1 = SIMD2<Float>(uv1?[i*2] ?? 0, uv1?[i*2+1] ?? 0)
-            vertices.append(MetalVertex(position:p, normal:n, tangent:t, color:c, uv0:u0, uv1:u1))
+        var vertices = [MetalVertex](unsafeUninitializedCapacity: count) { buffer, initialized in
+            GLTFMetalPackVertices(UnsafeMutableRawPointer(buffer.baseAddress!).assumingMemoryBound(to: Float.self), count,
+                                  positions, normal, tangent, color, colorComponents, uv0, uv1)
+            initialized = count
         }
         let weights = node.weights ?? node.mesh?.weights ?? []
         for (targetIndex, target) in primitive.targets.enumerated() where targetIndex < weights.count && weights[targetIndex].floatValue != 0 {
@@ -180,8 +201,7 @@ private final class Builder {
                 }
             }
         }
-        var indices = try primitive.indices.map { try indexValues($0) } ?? (0..<count).map(UInt32.init)
-        guard indices.allSatisfy({ $0 < count }) else { throw MetalSceneError.invalid("Index outside vertex buffer") }
+        var indices = try primitive.indices.map { try indexValues($0, vertexCount: count) } ?? Self.sequence(count)
         let topology: MTLPrimitiveType
         switch primitive.primitiveType.rawValue - 1 {
         case 0: topology = .point
@@ -200,33 +220,34 @@ private final class Builder {
         }
         if normal == nil && topology == .triangle {
             // Khronos generates a face normal when absent: split shared vertices to preserve hard edges.
-            var flat: [MetalVertex] = []; flat.reserveCapacity(indices.count)
-            for i in stride(from: 0, to: indices.count - indices.count%3, by: 3) {
-                var a = vertices[Int(indices[i])], b = vertices[Int(indices[i+1])], c = vertices[Int(indices[i+2])]
-                let e1 = b.position-a.position, e2 = c.position-a.position
-                let cross = simd_cross(SIMD3(e1.x,e1.y,e1.z),SIMD3(e2.x,e2.y,e2.z))
-                let n = simd_length_squared(cross) > 0 ? simd_normalize(cross) : SIMD3<Float>(0,0,1)
-                a.normal = SIMD4(n,0); b.normal = a.normal; c.normal = a.normal
-                flat.append(contentsOf:[a,b,c])
-            }
-            vertices = flat; indices = (0..<flat.count).map(UInt32.init)
+            let flatCount = indices.count - indices.count%3
+            vertices = Self.deindexed(vertices, indices, count: flatCount, faceNormals: true)
+            indices = Self.sequence(flatCount)
         }
         if tangent == nil && uv0 != nil && topology == .triangle {
             // A tangent discontinuity can split one indexed vertex into several corners.
             // Keep Mikk's corner results by deindexing before running its callback interface.
-            var corners = indices.map { vertices[Int($0)] }
+            var corners = Self.deindexed(vertices, indices, count: indices.count, faceNormals: false)
             let cornerCount = corners.count
             let generated = corners.withUnsafeMutableBytes { raw in
                 GLTFMetalGenerateTangents(raw.baseAddress, cornerCount)
             }
             guard generated else { throw MetalSceneError.invalid("MikkTSpace tangent generation failed") }
             vertices = corners
-            indices = (0..<corners.count).map(UInt32.init)
+            indices = Self.sequence(corners.count)
         }
         guard !indices.isEmpty else { return }
-        for vertex in vertices {
-            let p = model * vertex.position
-            minimum = simd_min(minimum,SIMD3(p.x,p.y,p.z)); maximum = simd_max(maximum,SIMD3(p.x,p.y,p.z))
+        withUnsafeBytes(of: model) { matrix in
+            withUnsafeMutableBytes(of: &minimum) { lo in
+                withUnsafeMutableBytes(of: &maximum) { hi in
+                    vertices.withUnsafeBytes { raw in
+                        GLTFMetalBounds(raw.baseAddress?.assumingMemoryBound(to: Float.self), vertices.count,
+                                        matrix.baseAddress!.assumingMemoryBound(to: Float.self),
+                                        lo.baseAddress!.assumingMemoryBound(to: Float.self),
+                                        hi.baseAddress!.assumingMemoryBound(to: Float.self))
+                    }
+                }
+            }
         }
         guard let vb = device.makeBuffer(bytes: vertices, length: vertices.count*MemoryLayout<MetalVertex>.stride, options: .storageModeShared), let ib = device.makeBuffer(bytes:indices,length:indices.count*4,options:.storageModeShared) else { throw MetalSceneError.invalid("Metal buffer allocation failed") }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
@@ -237,15 +258,43 @@ private final class Builder {
     func values(_ accessor: GLTFAccessor, components: Int) throws -> [Float] {
         let packed = GLTFPackedDataForAccessor(accessor)
         let data = accessor.componentType == .float ? packed : GLTFTransformPackedDataToFloat(packed,accessor)
-        guard data.count >= accessor.count*components*4 else { throw MetalSceneError.invalid("Truncated accessor data") }
-        return data.withUnsafeBytes { bytes in (0..<accessor.count*components).map { bytes.loadUnaligned(fromByteOffset:$0*4,as:Float.self) } }
+        let count = accessor.count*components
+        guard data.count >= count*4 else { throw MetalSceneError.invalid("Truncated accessor data") }
+        return [Float](unsafeUninitializedCapacity: count) { buffer, initialized in
+            data.withUnsafeBytes { bytes in UnsafeMutableRawBufferPointer(buffer).copyMemory(from: UnsafeRawBufferPointer(rebasing: bytes[..<(count*4)])) }
+            initialized = count
+        }
     }
-    func indexValues(_ accessor: GLTFAccessor) throws -> [UInt32] {
+    func indexValues(_ accessor: GLTFAccessor, vertexCount: Int) throws -> [UInt32] {
         let data = GLTFPackedDataForAccessor(accessor)
         let width: Int
         switch accessor.componentType { case .unsignedByte: width=1; case .unsignedShort: width=2; case .unsignedInt: width=4; default: throw MetalSceneError.invalid("Invalid index component type") }
-        guard data.count >= accessor.count*width else { throw MetalSceneError.invalid("Truncated index data") }
-        return data.withUnsafeBytes { bytes in (0..<accessor.count).map { i in switch width { case 1: UInt32(bytes.load(fromByteOffset:i,as:UInt8.self)); case 2: UInt32(bytes.loadUnaligned(fromByteOffset:i*2,as:UInt16.self)); default: bytes.loadUnaligned(fromByteOffset:i*4,as:UInt32.self) } } }
+        let count = accessor.count
+        guard data.count >= count*width else { throw MetalSceneError.invalid("Truncated index data") }
+        var inRange = true
+        let indices = [UInt32](unsafeUninitializedCapacity: count) { buffer, initialized in
+            data.withUnsafeBytes { bytes in inRange = GLTFMetalWidenIndices(bytes.baseAddress, width, count, buffer.baseAddress, vertexCount) }
+            initialized = count
+        }
+        guard inRange else { throw MetalSceneError.invalid("Index outside vertex buffer") }
+        return indices
+    }
+    static func sequence(_ count: Int) -> [UInt32] {
+        [UInt32](unsafeUninitializedCapacity: count) { buffer, initialized in
+            GLTFMetalSequentialIndices(buffer.baseAddress, count); initialized = count
+        }
+    }
+    /// One vertex per index (the first `count`), optionally with a face normal per triangle.
+    static func deindexed(_ vertices: [MetalVertex], _ indices: [UInt32], count: Int, faceNormals: Bool) -> [MetalVertex] {
+        [MetalVertex](unsafeUninitializedCapacity: count) { buffer, initialized in
+            let destination = UnsafeMutableRawPointer(buffer.baseAddress)?.assumingMemoryBound(to: Float.self)
+            vertices.withUnsafeBytes { source in
+                let source = source.baseAddress?.assumingMemoryBound(to: Float.self)
+                if faceNormals { GLTFMetalFlatNormals(destination, source, indices, count) }
+                else { GLTFMetalGatherVertices(destination, source, indices, count) }
+            }
+            initialized = count
+        }
     }
 }
 
@@ -259,29 +308,50 @@ private extension Builder {
         m.alphaMode = Int(source.alphaMode.rawValue); m.alphaCutoff = source.alphaCutoff
         m.ior = source.indexOfRefraction?.floatValue ?? 1.5
         m.dispersion = source.dispersion?.floatValue ?? 0
-        func add(_ slot: MetalTextureSlot, _ params: GLTFTextureParams?) throws {
-            if let params { m.textures[slot] = try binding(params, slot:slot) }
-        }
-        if let p = source.metallicRoughness {
-            m.baseColor = p.baseColorFactor; m.metallic = p.metallicFactor; m.roughness = p.roughnessFactor
-            try add(.baseColor,p.baseColorTexture); try add(.metallicRoughness,p.metallicRoughnessTexture)
-        }
-        if let p = source.specularGlossiness {
-            m.isSpecularGlossiness = true; m.baseColor = p.diffuseFactor; m.specularColor = p.specularFactor; m.glossiness = p.glossinessFactor
-            try add(.baseColor,p.diffuseTexture); try add(.specularGlossiness,p.specularGlossinessTexture)
-        }
-        if let p = source.emissive { m.emissive = p.emissiveFactor*p.emissiveStrength; try add(.emissive,p.emissiveTexture) }
-        try add(.normal,source.normalTexture); try add(.occlusion,source.occlusionTexture)
-        if let p = source.specular { m.specular = p.specularFactor; m.specularColor = p.specularColorFactor; try add(.specular,p.specularTexture); try add(.specularColor,p.specularColorTexture) }
-        if let p = source.clearcoat { m.clearcoat = p.clearcoatFactor; m.clearcoatRoughness = p.clearcoatRoughnessFactor; try add(.clearcoat,p.clearcoatTexture); try add(.clearcoatRoughness,p.clearcoatRoughnessTexture); try add(.clearcoatNormal,p.clearcoatNormalTexture) }
-        if let p = source.sheen { m.sheenColor = p.sheenColorFactor; m.sheenRoughness = p.sheenRoughnessFactor; try add(.sheenColor,p.sheenColorTexture); try add(.sheenRoughness,p.sheenRoughnessTexture) }
-        if let p = source.iridescence { m.iridescence = p.iridescenceFactor; m.iridescenceIOR = p.iridescenceIndexOfRefraction; m.iridescenceThicknessMin = p.iridescenceThicknessMinimum; m.iridescenceThicknessMax = p.iridescenceThicknessMaximum; try add(.iridescence,p.iridescenceTexture); try add(.iridescenceThickness,p.iridescenceThicknessTexture) }
-        if let p = source.anisotropy { m.anisotropy = p.strength; m.anisotropyRotation = p.rotation; try add(.anisotropy,p.anisotropyTexture) }
-        if let p = source.transmission { m.transmission = p.transmissionFactor; try add(.transmission,p.transmissionTexture ?? authoredTransmissionTexture(source)) }
-        if let p = source.volume { m.thickness = p.thicknessFactor; m.attenuationDistance = p.attenuationDistance; m.attenuationColor = p.attenuationColor; try add(.thickness,p.thicknessTexture) }
-        if let p = source.diffuseTransmission { m.diffuseTransmission = p.diffuseTransmissionFactor; m.diffuseTransmissionColor = p.diffuseTransmissionColorFactor; try add(.diffuseTransmission,p.diffuseTransmissionTexture); try add(.diffuseTransmissionColor,p.diffuseTransmissionColorTexture) }
+        if let p = source.metallicRoughness { m.baseColor = p.baseColorFactor; m.metallic = p.metallicFactor; m.roughness = p.roughnessFactor }
+        if let p = source.specularGlossiness { m.isSpecularGlossiness = true; m.baseColor = p.diffuseFactor; m.specularColor = p.specularFactor; m.glossiness = p.glossinessFactor }
+        if let p = source.emissive { m.emissive = p.emissiveFactor*p.emissiveStrength }
+        if let p = source.specular { m.specular = p.specularFactor; m.specularColor = p.specularColorFactor }
+        if let p = source.clearcoat { m.clearcoat = p.clearcoatFactor; m.clearcoatRoughness = p.clearcoatRoughnessFactor }
+        if let p = source.sheen { m.sheenColor = p.sheenColorFactor; m.sheenRoughness = p.sheenRoughnessFactor }
+        if let p = source.iridescence { m.iridescence = p.iridescenceFactor; m.iridescenceIOR = p.iridescenceIndexOfRefraction; m.iridescenceThicknessMin = p.iridescenceThicknessMinimum; m.iridescenceThicknessMax = p.iridescenceThicknessMaximum }
+        if let p = source.anisotropy { m.anisotropy = p.strength; m.anisotropyRotation = p.rotation }
+        if let p = source.transmission { m.transmission = p.transmissionFactor }
+        if let p = source.volume { m.thickness = p.thicknessFactor; m.attenuationDistance = p.attenuationDistance; m.attenuationColor = p.attenuationColor }
+        if let p = source.diffuseTransmission { m.diffuseTransmission = p.diffuseTransmissionFactor; m.diffuseTransmissionColor = p.diffuseTransmissionColorFactor }
+        for (slot, params) in textureSlots(source) { m.textures[slot] = try binding(params, slot: slot) }
         materialCache[key] = m
         return m
+    }
+
+    /// Every texture a material binds, by slot. The specular-glossiness diffuse texture replaces
+    /// the metallic-roughness base colour texture, as it did when assigned second.
+    func textureSlots(_ source: GLTFMaterial) -> [(MetalTextureSlot, GLTFTextureParams)] {
+        var slots: [MetalTextureSlot: GLTFTextureParams] = [:]
+        func add(_ slot: MetalTextureSlot, _ params: GLTFTextureParams?) { if let params { slots[slot] = params } }
+        if let p = source.metallicRoughness { add(.baseColor,p.baseColorTexture); add(.metallicRoughness,p.metallicRoughnessTexture) }
+        if let p = source.specularGlossiness { add(.baseColor,p.diffuseTexture); add(.specularGlossiness,p.specularGlossinessTexture) }
+        if let p = source.emissive { add(.emissive,p.emissiveTexture) }
+        add(.normal,source.normalTexture); add(.occlusion,source.occlusionTexture)
+        if let p = source.specular { add(.specular,p.specularTexture); add(.specularColor,p.specularColorTexture) }
+        if let p = source.clearcoat { add(.clearcoat,p.clearcoatTexture); add(.clearcoatRoughness,p.clearcoatRoughnessTexture); add(.clearcoatNormal,p.clearcoatNormalTexture) }
+        if let p = source.sheen { add(.sheenColor,p.sheenColorTexture); add(.sheenRoughness,p.sheenRoughnessTexture) }
+        if let p = source.iridescence { add(.iridescence,p.iridescenceTexture); add(.iridescenceThickness,p.iridescenceThicknessTexture) }
+        if let p = source.anisotropy { add(.anisotropy,p.anisotropyTexture) }
+        if let p = source.transmission { add(.transmission,p.transmissionTexture ?? authoredTransmissionTexture(source)) }
+        if let p = source.volume { add(.thickness,p.thicknessTexture) }
+        if let p = source.diffuseTransmission { add(.diffuseTransmission,p.diffuseTransmissionTexture); add(.diffuseTransmissionColor,p.diffuseTransmissionColorTexture) }
+        return MetalTextureSlot.allCases.compactMap { slot in slots[slot].map { (slot, $0) } }
+    }
+
+    static func image(of params: GLTFTextureParams) -> GLTFImage? {
+        params.texture.basisUSource ?? params.texture.webpSource ?? params.texture.source
+    }
+    /// KTX2 keeps its file-declared transfer function, as the page's glUpload does.
+    /// WebGL generates colour-texture mipmaps through its sRGB texture format.
+    /// Sharing linear-data mips with an sRGB view averages encoded values instead.
+    static func usesSRGBTexture(_ slot: MetalTextureSlot, _ image: GLTFImage) -> Bool {
+        slot.isSRGB && image.inferMediaType() != GLTFMediaTypeKTX2
     }
 
     /// GLTFKit2 0.5.15 tests its new, empty params object instead of cgltf's texture view, so
@@ -313,26 +383,18 @@ private extension Builder {
 
     func binding(_ params: GLTFTextureParams, slot: MetalTextureSlot) throws -> MetalTextureBinding {
         let source = params.texture
-        guard let image = source.basisUSource ?? source.webpSource ?? source.source else { throw MetalSceneError.invalid("Texture has no image source") }
-        let key = image.identifier.uuidString
-        let linearTexture: any MTLTexture
-        if let cached = textures[key] { linearTexture = cached }
-        else {
-            linearTexture = try MetalImageLoader.load(image: image, device: device, sRGB:false)
-            textures[key] = linearTexture
-        }
+        guard let image = Self.image(of: params) else { throw MetalSceneError.invalid("Texture has no image source") }
+        let sRGB = Self.usesSRGBTexture(slot, image)
+        let key = image.identifier.uuidString + (sRGB ? ":srgb" : "")
         let texture: any MTLTexture
-        if slot.isSRGB && image.inferMediaType() != GLTFMediaTypeKTX2 {
-            // KTX2 keeps its file-declared transfer function, as the page's glUpload does.
-            // WebGL generates colour-texture mipmaps through its sRGB texture format.
-            // Sharing linear-data mips with an sRGB view averages encoded values instead.
-            let colorKey = key + ":srgb"
-            if let cached = textures[colorKey] { texture = cached }
-            else {
-                texture = try MetalImageLoader.load(image: image, device: device, sRGB: true)
-                textures[colorKey] = texture
-            }
-        } else { texture = linearTexture }
+        if let cached = textures[key] { texture = cached }
+        else {
+            // Only reached when `prepareTextures` did not see this binding.
+            let decoded = try MetalImageLoader.decode(image: image, device: device)
+            texture = try MetalImageLoader.makeTexture(decoded, device: device, sRGB: sRGB)
+            if case .pixels = decoded { pendingMips.append(texture) }
+            textures[key] = texture
+        }
         let desc = MTLSamplerDescriptor()
         let sampler = source.sampler
         let storedMin = sampler.map { Int($0.minMipFilter.rawValue) } ?? 0
