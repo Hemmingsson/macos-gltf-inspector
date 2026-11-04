@@ -205,6 +205,39 @@ struct AnimationPoseTests {
         #expect(AnimationClip.defaultSelectedClipIndices(in: [a, b, c]) == [0, 2])
     }
 
+    @Test func nonLoopingPoseHoldsShortClipAtItsEnd() {
+        let short = AnimationClip(name: "short", channels: [
+            AnimationClipChannel(
+                target: .translation(nodeIndex: 0),
+                sampler: AnimationSampler(
+                    input: [0, 1],
+                    output: [0, 0, 0, 0, 1, 0],
+                    componentCount: 3,
+                    interpolation: .linear,
+                    clipMaxTime: 1
+                )
+            ),
+        ])
+        let long = AnimationClip(name: "long", channels: [
+            AnimationClipChannel(
+                target: .translation(nodeIndex: 1),
+                sampler: AnimationSampler(
+                    input: [0, 3],
+                    output: [0, 0, 0, 0, 3, 0],
+                    componentCount: 3,
+                    interpolation: .linear,
+                    clipMaxTime: 3
+                )
+            ),
+        ])
+        let held = AnimationPose(clips: [short, long], at: 2, wraps: false)
+        let shortEnd = AnimationPose(clips: [short], at: 1, wraps: false)
+        #expect(abs((held.nodeOverrides[0]?.translation?.y ?? -1) - (shortEnd.nodeOverrides[0]?.translation?.y ?? -2)) < 1e-5)
+        #expect(abs((held.nodeOverrides[1]?.translation?.y ?? -1) - 2) < 1e-5)
+        let wrapped = AnimationPose(clips: [short], at: 2, wraps: true)
+        #expect(abs((wrapped.nodeOverrides[0]?.translation?.y ?? -1) - 0) < 1e-5)
+    }
+
     @Test func clipMaxTimeIsMaximumInputEnd() throws {
         let clips = try loadClips(TestFixtures.boxAnimated)
         #expect(abs(clips[0].maxTime - 3.708329916000366) < 1e-4)

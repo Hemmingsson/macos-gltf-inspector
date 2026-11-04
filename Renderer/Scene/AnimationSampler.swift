@@ -36,7 +36,7 @@ public struct AnimationSampler: Sendable {
     }
 
     /// Samples the channel at `rawTime` (seconds in clip time, before wrap).
-    public func evaluate(at rawTime: Float) -> [Float] {
+    public func evaluate(at rawTime: Float, wraps: Bool = true) -> [Float] {
         guard !input.isEmpty, componentCount > 0 else { return [] }
 
         let valueStride = outputStride
@@ -45,7 +45,7 @@ public struct AnimationSampler: Sendable {
         }
         precondition(output.count == input.count * valueStride, "output count must match key count × stride")
 
-        let t = wrappedAndClampedTime(rawTime)
+        let t = wraps ? wrappedAndClampedTime(rawTime) : clampedTime(rawTime)
         let nextKey = nextKeyframeIndex(for: t)
         let prevKey = nextKey - 1
         let tPrev = input[prevKey]
@@ -103,9 +103,14 @@ public struct AnimationSampler: Sendable {
         if t < 0 || (t == 0 && rawTime != 0) {
             t += maxTime
         }
+        return clampedTime(t)
+    }
+
+    private func clampedTime(_ rawTime: Float) -> Float {
+        guard !input.isEmpty else { return 0 }
         let first = input[0]
         let last = input[input.count - 1]
-        return min(max(t, first), last)
+        return min(max(rawTime, first), last)
     }
 
     private func nextKeyframeIndex(for t: Float) -> Int {

@@ -157,6 +157,19 @@ struct AnimationPlaybackTests {
         _ = container
     }
 
+    @Test func scrubbingHoldsPlaybackTime() async throws {
+        let canvas = ModelCanvasController()
+        try await ready(canvas, url: TestFixtures.boxAnimated)
+        canvas.play()
+        canvas.isScrubbing = true
+        let frozen = canvas.time
+        canvas.advancePlayback(elapsed: 0.5)
+        #expect(canvas.time == frozen)
+        canvas.isScrubbing = false
+        canvas.advancePlayback(elapsed: 0.1)
+        #expect(canvas.time > frozen)
+    }
+
     @Test func selectingShorterClipClampsTime() async throws {
         let url = try writeTempTwoDurationClipsGLB()
         defer { try? FileManager.default.trashItem(at: url, resultingItemURL: nil) }

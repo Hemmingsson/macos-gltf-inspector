@@ -35,14 +35,15 @@ public struct AnimationPose: Sendable, Equatable {
     }
 
     /// Evaluates `clips` at `time`, skipping TRS on `matrixAuthoredNodes` and ignoring pointer targets.
-    public init(clips: [AnimationClip], at time: Float, matrixAuthoredNodes: Set<Int> = []) {
+    public init(clips: [AnimationClip], at time: Float, matrixAuthoredNodes: Set<Int> = [], wraps: Bool = true) {
         var nodeOverrides: [Int: NodePoseOverride] = [:]
         var nodeWeights: [Int: [Float]] = [:]
         var meshWeights: [Int: [Float]] = [:]
 
         for clip in clips {
+            let sampleTime = wraps ? time : min(time, clip.maxTime)
             for channel in clip.channels {
-                let values = channel.sampler.evaluate(at: time)
+                let values = channel.sampler.evaluate(at: sampleTime, wraps: wraps)
                 guard !values.isEmpty else { continue }
 
                 switch channel.target {

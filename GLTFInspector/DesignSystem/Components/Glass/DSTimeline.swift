@@ -15,6 +15,7 @@ struct DSTimeline: View {
     let selectedClipIndices: [Int]
     let defaultClipIndices: [Int]
     var onSelectClip: (Int?) -> Void
+    var onScrubbingChanged: (Bool) -> Void = { _ in }
 
     private static let speedChoices: [Float] = [0.25, 0.5, 1, 1.5, 2]
 
@@ -75,6 +76,8 @@ struct DSTimeline: View {
             Text(PlaybackTimeFormat.string(time))
         } maximumValueLabel: {
             Text(PlaybackTimeFormat.string(duration))
+        } onEditingChanged: { editing in
+            onScrubbingChanged(editing)
         }
         .labelsHidden()
         .frame(maxWidth: .infinity)

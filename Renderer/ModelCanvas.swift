@@ -110,6 +110,14 @@ public final class ModelCanvasController {
         }
     }
     public private(set) var isPlaying = false
+    /// True while the user is dragging the timeline scrubber; playback time does not advance.
+    public var isScrubbing = false {
+        didSet {
+            if oldValue, !isScrubbing, isPlaying {
+                lastPlaybackInstant = playbackClock.now()
+            }
+        }
+    }
     /// Current time in seconds along the active clips; 0 at rest when the window opens.
     public var time: Float = 0
     public var loops = true
@@ -216,7 +224,7 @@ public final class ModelCanvasController {
 
     /// Advances playback by `elapsed` seconds of clip time (honours `speed`). For unit tests.
     func advancePlayback(elapsed: Float) {
-        guard isPlaying, !selectedClipIndices.isEmpty else { return }
+        guard isPlaying, !isScrubbing, !selectedClipIndices.isEmpty else { return }
         applyTimeDelta(elapsed * speed)
     }
 
@@ -232,11 +240,11 @@ public final class ModelCanvasController {
         let clips = selectedClipIndices.compactMap { loadedAnimationClips.indices.contains($0) ? loadedAnimationClips[$0] : nil }
         guard !clips.isEmpty else { return nil }
         if !isPlaying, time == 0 { return nil }
-        return AnimationPose(clips: clips, at: time, matrixAuthoredNodes: matrixAuthoredNodes)
+        return AnimationPose(clips: clips, at: time, matrixAuthoredNodes: matrixAuthoredNodes, wraps: loops)
     }
 
     func tickAnimationFromDisplayLink() {
-        guard isPlaying else { return }
+        guard isPlaying, !isScrubbing else { return }
         let now = playbackClock.now()
         defer { lastPlaybackInstant = now }
         guard let last = lastPlaybackInstant else { return }

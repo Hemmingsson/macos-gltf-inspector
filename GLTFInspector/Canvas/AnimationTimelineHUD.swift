@@ -20,7 +20,8 @@ struct AnimationTimelineHUD: View {
             clips: canvas.animationClips,
             selectedClipIndices: canvas.selectedClipIndices,
             defaultClipIndices: canvas.defaultSelectedAnimationClipIndices,
-            onSelectClip: { canvas.selectAnimationClip(at: $0) }
+            onSelectClip: { canvas.selectAnimationClip(at: $0) },
+            onScrubbingChanged: { canvas.isScrubbing = $0 }
         )
         .focusSection()
         .onKeyPress(.space) {
