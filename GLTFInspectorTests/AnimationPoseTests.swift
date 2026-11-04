@@ -205,6 +205,47 @@ struct AnimationPoseTests {
         #expect(AnimationClip.defaultSelectedClipIndices(in: [a, b, c]) == [0, 2])
     }
 
+    @Test func pointerClipsWithDistinctPathsAreBothSelected() {
+        let sampler = AnimationSampler(
+            input: [0],
+            output: [0],
+            componentCount: 1,
+            interpolation: .linear,
+            clipMaxTime: 1
+        )
+        let mat0 = AnimationClip(name: "mat0", channels: [
+            AnimationClipChannel(
+                target: .pointer("/materials/0/pbrMetallicRoughness/baseColorFactor/0"),
+                sampler: sampler
+            ),
+        ])
+        let mat1 = AnimationClip(name: "mat1", channels: [
+            AnimationClipChannel(
+                target: .pointer("/materials/1/pbrMetallicRoughness/baseColorFactor/0"),
+                sampler: sampler
+            ),
+        ])
+        #expect(AnimationClip.defaultSelectedClipIndices(in: [mat0, mat1]) == [0, 1])
+    }
+
+    @Test func pointerClipsWithSamePathExcludeEachOther() {
+        let sampler = AnimationSampler(
+            input: [0],
+            output: [0],
+            componentCount: 1,
+            interpolation: .linear,
+            clipMaxTime: 1
+        )
+        let path = "/materials/0/pbrMetallicRoughness/baseColorFactor/0"
+        let a = AnimationClip(name: "a", channels: [
+            AnimationClipChannel(target: .pointer(path), sampler: sampler),
+        ])
+        let b = AnimationClip(name: "b", channels: [
+            AnimationClipChannel(target: .pointer(path), sampler: sampler),
+        ])
+        #expect(AnimationClip.defaultSelectedClipIndices(in: [a, b]) == [0])
+    }
+
     @Test func clipMaxTimeIsMaximumInputEnd() throws {
         let clips = try loadClips(TestFixtures.boxAnimated)
         #expect(abs(clips[0].maxTime - 3.708329916000366) < 1e-4)

@@ -6,6 +6,7 @@ public enum AnimationChannelPath: String, Sendable, Hashable {
     case rotation
     case scale
     case weights
+    case pointer
 }
 
 /// Identifies one animatable property for disjoint-clip selection and pose application.
@@ -15,11 +16,19 @@ public struct AnimationTargetKey: Sendable, Hashable {
     public var nodeIndex: Int?
     /// Set when the channel drives `/meshes/m/weights` (node has no weights).
     public var meshIndex: Int?
+    /// Set for `KHR_animation_pointer` JSON pointer paths.
+    public var pointer: String?
 
-    public init(path: AnimationChannelPath, nodeIndex: Int? = nil, meshIndex: Int? = nil) {
+    public init(
+        path: AnimationChannelPath,
+        nodeIndex: Int? = nil,
+        meshIndex: Int? = nil,
+        pointer: String? = nil
+    ) {
         self.path = path
         self.nodeIndex = nodeIndex
         self.meshIndex = meshIndex
+        self.pointer = pointer
     }
 }
 
@@ -44,8 +53,8 @@ public enum AnimationChannelTarget: Sendable, Equatable {
             AnimationTargetKey(path: .weights, nodeIndex: nodeIndex)
         case let .weightsOnMesh(meshIndex):
             AnimationTargetKey(path: .weights, meshIndex: meshIndex)
-        case .pointer:
-            AnimationTargetKey(path: .translation, nodeIndex: -1)
+        case let .pointer(path):
+            AnimationTargetKey(path: .pointer, pointer: path)
         }
     }
 
