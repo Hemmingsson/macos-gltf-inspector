@@ -39,6 +39,13 @@ struct CanvasRegion<Content: View>: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(DS.Color.Canvas.ground)
                         .ignoresSafeArea()
+                        // The panes are the leading/trailing safe area: the renderer centres
+                        // the model between them. Written after layout, never during an update.
+                        .onGeometryChange(for: EdgeInsets.self, of: \.safeAreaInsets) { insets in
+                            view.canvas.contentInsets = NSEdgeInsets(
+                                top: 0, left: insets.leading, bottom: 0, right: insets.trailing
+                            )
+                        }
                 case .empty, .loading, .failed:
                     // Stay inside the safe area so the empty group centers in the visible pane.
                     DocumentStatusView(state: documentState, placement: .canvas)

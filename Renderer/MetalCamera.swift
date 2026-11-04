@@ -54,6 +54,9 @@ struct MetalCamera: Sendable {
     var pose: MetalCameraPose
     var isOrthographic = false
     var aspect: Float = 1
+    /// Lens shift in clip space (NDC units): moves the projection centre without turning the
+    /// camera, so the model centres in the part of the canvas no pane covers.
+    var centerShift: SIMD2<Float> = .zero
 
     var transformMatrix: simd_float4x4 {
         let yaw = pose.azimuth * .pi / 180
@@ -85,6 +88,13 @@ struct MetalCamera: Sendable {
     /// WebGL clip coordinates (depth -1...1), as the Khronos renderer computes them; the vertex
     /// shader remaps depth to Metal's 0...1, as ANGLE does.
     var openGLProjectionMatrix: simd_float4x4 {
+        guard centerShift != .zero else { return unshiftedProjection }
+        var shift = matrix_identity_float4x4
+        shift.columns.3 = SIMD4(centerShift.x, centerShift.y, 0, 1)
+        return shift * unshiftedProjection
+    }
+
+    private var unshiftedProjection: simd_float4x4 {
         if !isOrthographic {
             let near = pose.znear, far = pose.zfar
             let f = 1 / tan(pose.yfov / 2)

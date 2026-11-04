@@ -27,6 +27,14 @@ public final class ModelView: NSView {
     private var fitDistance: Double?
     private var reportedZoom: Int?
     private var drawFailed = false
+    /// Points along each edge that a pane covers. The orbit camera centres and fits the model in
+    /// the rest of the view; the canvas itself still draws under the panes.
+    public var contentInsets = NSEdgeInsets() {
+        didSet {
+            guard contentInsets.left != oldValue.left || contentInsets.right != oldValue.right else { return }
+            redraw()
+        }
+    }
     private var displayLink: CADisplayLink?
 
     public init(renderer: MetalRenderer) {
@@ -144,8 +152,18 @@ public final class ModelView: NSView {
         }
     }
 
+    /// The aspect of the uncovered part of the view, which the fit frames for.
     private var canvasAspect: Double {
-        bounds.height > 0 ? bounds.width / bounds.height : 1
+        let width = bounds.width - contentInsets.left - contentInsets.right
+        return bounds.height > 0 && width > 0 ? width / bounds.height : 1
+    }
+
+    /// Pixels the projection centre moves right so it sits mid-way between the panes. Off for a
+    /// file camera, whose framing is authored.
+    private func centerOffset(pixelWidth: Int) -> SIMD2<Float> {
+        guard options.fileCameraNodeIndex == nil, bounds.width > 0 else { return .zero }
+        let scale = Double(pixelWidth) / bounds.width
+        return SIMD2(Float((contentInsets.left - contentInsets.right) / 2 * scale), 0)
     }
 
     // MARK: - Images
@@ -181,7 +199,8 @@ public final class ModelView: NSView {
         do {
             let width = drawable.texture.width, height = drawable.texture.height
             let texture = try renderer.renderTexture(options, pose: pose(width: width, height: height),
-                                                     width: width, height: height, extents: extents)
+                                                     width: width, height: height, extents: extents,
+                                                     centerOffset: centerOffset(pixelWidth: width))
             try renderer.present(texture, on: drawable)
         } catch {
             drawFailed = true

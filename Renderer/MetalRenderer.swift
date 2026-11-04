@@ -98,9 +98,12 @@ public final class MetalRenderer: @unchecked Sendable {
         return image
     }
 
+    /// `centerOffset` moves the orbit camera's projection centre by that many pixels (x right,
+    /// y up); the live canvas uses it to centre the model beside the sidebar and inspector.
     func renderTexture(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
                        extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
-                       transmissionResolution: Int = 1024) throws -> any MTLTexture {
+                       transmissionResolution: Int = 1024,
+                       centerOffset: SIMD2<Float> = .zero) throws -> any MTLTexture {
         guard let scene else { throw MetalRendererError.noScene }
         guard width > 0, height > 0, width <= 16384, height <= 16384 else {
             throw MetalRendererError.resource("invalid image size")
@@ -114,7 +117,12 @@ public final class MetalRenderer: @unchecked Sendable {
             environment = try MetalEnvironment.shared(device: device, environment: look.environment)
             environmentID = look.environment
         }
-        let camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
+        var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
+        if centerOffset != .zero {
+            // NDC spans the orbit camera's viewport: the whole canvas, or its square in ortho.
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: orthographic ? 1 : nil)
+            camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
+        }
         var frame = GPUFrame(viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix,
                              cameraPosition: SIMD4(camera.eye, 1),
                              environment: SIMD4(Float((90 + look.environmentYawDegrees) * .pi / 180),

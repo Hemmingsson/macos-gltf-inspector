@@ -54,6 +54,10 @@ public final class ModelCanvasController {
     @ObservationIgnored private var wanted: (url: URL, options: ViewOptions)?
     @ObservationIgnored private var loadedURL: URL?
     @ObservationIgnored private var isSyncing = false
+    /// Points the sidebar and inspector cover at each side; see `ModelView.contentInsets`.
+    @ObservationIgnored public var contentInsets = NSEdgeInsets() {
+        didSet { view?.contentInsets = contentInsets }
+    }
 
     public init() {}
 
@@ -80,6 +84,7 @@ public final class ModelCanvasController {
                 let view = ModelView(renderer: try MetalRenderer())
                 view.onZoom = { [weak self] in self?.zoomPercent = $0 }
                 view.onFailure = { [weak self] in self?.fail($0) }
+                view.contentInsets = contentInsets
                 self.view = view
             } catch {
                 loadedURL = url
