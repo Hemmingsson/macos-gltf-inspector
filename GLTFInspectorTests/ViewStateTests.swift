@@ -95,6 +95,47 @@ struct ViewStateTests {
         #expect(view.options.selectedNodeIndex == nil)
     }
 
+    @Test func materialHighlightFollowsVariantMappings() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "extensions": ["KHR_materials_variants": ["variants": [["name": "Alt"]]]],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "Base"], ["name": "Alt"]],
+            "meshes": [[
+                "primitives": [[
+                    "attributes": ["POSITION": 0],
+                    "material": 0,
+                    "extensions": ["KHR_materials_variants": ["mappings": [
+                        ["variants": [0], "material": 1],
+                    ]]],
+                ]],
+            ]],
+            "nodes": [["name": "Mesh", "mesh": 0]],
+            "scenes": [["nodes": [0]]],
+        ])
+        view.materialVariantIndex = 0
+        view.selection = NodeID(kind: .material, index: 1)
+        #expect(view.options.highlightedNodeIndices == [0])
+        view.selection = NodeID(kind: .material, index: 0)
+        #expect(view.options.highlightedNodeIndices.isEmpty)
+    }
+
+    @Test func hiddenNodesAreOmittedFromMaterialHighlights() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "Shared"]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "nodes": [["name": "A", "mesh": 0], ["name": "B", "mesh": 0]],
+            "scenes": [["nodes": [0, 1]]],
+        ])
+        view.selection = NodeID(kind: .material, index: 0)
+        view.toggleHidden(0)
+        #expect(view.options.highlightedNodeIndices == [1])
+    }
+
     @Test func materialSelectionHighlightsEveryUserNode() throws {
         let view = ViewState(settings: try settings())
         view.document = GLTFDocumentJSON.makeDocument(json: [
@@ -181,6 +222,71 @@ struct ViewStateTests {
     }
 
     /// A file camera clears the canned angle; a preset needs a drawn model to act on.
+    /// Shift-click range: primary is the far end in outliner order, not the first empty by kind name.
+    @Test func shiftRangePrimaryIsTheFarEndInOutlinerOrder() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "scenes": [["nodes": [0]]],
+            "nodes": [["name": "Root", "children": [1, 3]],
+                      ["name": "Group", "children": [2]],
+                      ["name": "Mesh A", "mesh": 0], ["name": "Mesh B", "mesh": 0]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "Shared"]],
+        ])
+        let meshA = NodeID(kind: .mesh, index: 2)
+        let meshB = NodeID(kind: .mesh, index: 3)
+        let root = NodeID(kind: .empty, index: 0)
+        let group = NodeID(kind: .empty, index: 1)
+        // Equal distance up to Group and down to Mesh B keeps the later row.
+        view.selection = meshA
+        view.selectedIDs = [group, meshA, meshB]
+        #expect(view.selection == meshB)
+        // Upward to the root: the click is the empty at the far end, not the row beside Mesh B.
+        view.selection = meshB
+        view.selectedIDs = [root, group, meshA, meshB]
+        #expect(view.selection == root)
+
+        let flat = ViewState(settings: try settings())
+        flat.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "scenes": [["nodes": [0, 1, 2]]],
+            "nodes": [["name": "Mesh A", "mesh": 0], ["name": "Gap"], ["name": "Mesh B", "mesh": 0]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "Shared"]],
+        ])
+        let left = NodeID(kind: .mesh, index: 0)
+        let gap = NodeID(kind: .empty, index: 1)
+        let right = NodeID(kind: .mesh, index: 2)
+        flat.selection = left
+        flat.selectedIDs = [left, gap, right]
+        #expect(flat.selection == right)
+        flat.selection = right
+        flat.selectedIDs = [left, gap, right]
+        #expect(flat.selection == left)
+    }
+
+    @Test func resetClearsSceneGizmosAndPickMemory() throws {
+        let view = ViewState(settings: try settings())
+        view.document = GLTFDocumentJSON.makeDocument(json: [
+            "asset": ["version": "2.0"],
+            "scenes": [["nodes": [0, 1]]],
+            "nodes": [["name": "A", "mesh": 0], ["name": "B", "mesh": 0]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "material": 0]]]],
+            "accessors": [["componentType": 5126, "count": 3, "type": "VEC3"]],
+            "materials": [["name": "M"]],
+        ])
+        view.showsSceneGizmos = true
+        view.pick(0)
+        view.pick(0)
+        view.reset()
+        #expect(!view.showsSceneGizmos)
+        view.pick(0)
+        #expect(view.selection == NodeID(kind: .mesh, index: 0))
+    }
+
     @Test func fileCameraClearsTheActivePreset() async throws {
         let view = ViewState(settings: try settings())
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))

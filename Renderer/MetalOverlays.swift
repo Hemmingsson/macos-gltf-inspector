@@ -17,6 +17,7 @@ struct MetalOverlayOptions: Sendable {
     var selectedNode: Int?
     /// glTF mesh nodes using the selected material (muted AABB each).
     var highlightedNodeIndices: Set<Int>
+    var materialHighlightMaterialIndex: Int?
     /// Every selected mesh or empty node (multi-select), each with the selection box.
     var selectedNodes: Set<Int> = []
     /// Node under the pointer: thin muted box.
@@ -36,7 +37,8 @@ struct MetalOverlayOptions: Sendable {
     var extents: (min: SIMD3<Float>, max: SIMD3<Float>)?
     var useSilhouetteSelectionOutline: Bool
     init(floor: Bool = false, origin: Bool = false, sceneGizmos: Bool = false, selectedNode: Int? = nil,
-         highlightedNodeIndices: Set<Int> = [], selectedSkinIndex: Int? = nil, skipCameraNodeIndex: Int? = nil,
+         highlightedNodeIndices: Set<Int> = [], materialHighlightMaterialIndex: Int? = nil,
+         selectedSkinIndex: Int? = nil, skipCameraNodeIndex: Int? = nil,
          canvasAspect: Float = 1, hiddenNodeIndices: Set<Int> = [], soloNodeIndices: Set<Int> = [],
          extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
          useSilhouetteSelectionOutline: Bool = true) {
@@ -45,6 +47,7 @@ struct MetalOverlayOptions: Sendable {
         self.sceneGizmos = sceneGizmos
         self.selectedNode = selectedNode
         self.highlightedNodeIndices = highlightedNodeIndices
+        self.materialHighlightMaterialIndex = materialHighlightMaterialIndex
         self.selectedSkinIndex = selectedSkinIndex
         self.skipCameraNodeIndex = skipCameraNodeIndex
         self.canvasAspect = canvasAspect
@@ -61,6 +64,7 @@ extension MetalOverlayOptions {
         self.init(floor: options.showsFloor, origin: !options.isCentered, sceneGizmos: options.showsSceneGizmos,
                   selectedNode: options.gizmoSelectedNodeIndex ?? options.selectedNodeIndex,
                   highlightedNodeIndices: options.highlightedNodeIndices,
+                  materialHighlightMaterialIndex: options.materialHighlightMaterialIndex,
                   selectedSkinIndex: options.selectedSkinIndex, skipCameraNodeIndex: options.fileCameraNodeIndex,
                   canvasAspect: canvasAspect, hiddenNodeIndices: options.hiddenNodeIndices,
                   soloNodeIndices: options.soloNodeIndices, extents: extents,
@@ -168,7 +172,12 @@ func overlayVertices(scene: MetalScene, options: MetalOverlayOptions) -> [MetalL
         if boxed.contains(index) { continue }
         guard scene.isEffectivelyVisible(node: index, hidden: options.hiddenNodeIndices,
                                          solo: options.soloNodeIndices) else { continue }
-        collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.materialUsageHighlight, line: line)
+        if let material = options.materialHighlightMaterialIndex,
+           let box = scene.bounds(ofNode: index, usingMaterial: material) {
+            collectAABB(box, color: OverlayGizmoColors.materialUsageHighlight, line: line)
+        } else {
+            collectNodeAABB(scene: scene, nodeIndex: index, color: OverlayGizmoColors.materialUsageHighlight, line: line)
+        }
     }
     if let index = options.hoveredNode, !boxed.contains(index),
        scene.asset.nodes.indices.contains(index), scene.asset.nodes[index].mesh != nil,
@@ -368,13 +377,11 @@ private func collectSelectionGizmo(
     collectNodeAABB(scene: scene, nodeIndex: nodeIndex, color: OverlayGizmoColors.selectionHighlight, line: line)
 }
 
-private func collectNodeAABB(
-    scene: MetalScene,
-    nodeIndex: Int,
+private func collectAABB(
+    _ box: (min: SIMD3<Float>, max: SIMD3<Float>),
     color: SIMD3<Float>,
     line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
 ) {
-    guard let box = scene.bounds(ofNode: nodeIndex) else { return }
     let size = box.max - box.min
     let pad = 0.01 * max(size.x, size.y, size.z, 0.01)
     let a = box.min - pad, b = box.max + pad
@@ -384,6 +391,16 @@ private func collectNodeAABB(
     ]
     let edges = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
     for (i, j) in edges { line(corners[i], corners[j], color) }
+}
+
+private func collectNodeAABB(
+    scene: MetalScene,
+    nodeIndex: Int,
+    color: SIMD3<Float>,
+    line: (SIMD3<Float>, SIMD3<Float>, SIMD3<Float>) -> Void
+) {
+    guard let box = scene.bounds(ofNode: nodeIndex) else { return }
+    collectAABB(box, color: color, line: line)
 }
 
 private func cameraAxes(from world: simd_float4x4) -> (eye: SIMD3<Float>, forward: SIMD3<Float>, up: SIMD3<Float>, right: SIMD3<Float>) {

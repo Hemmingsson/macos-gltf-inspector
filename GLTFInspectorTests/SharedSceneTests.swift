@@ -2,6 +2,8 @@ import AppKit
 import Foundation
 import Metal
 import Testing
+@testable import GLTFCore
+@testable import GLTFInspector
 @testable import Renderer
 
 @MainActor
@@ -75,6 +77,33 @@ struct SharedSceneTests {
         try preview.show(scene: reloaded)
         #expect(preview.renderer.scene?.draws.count == 1)
         #expect(try centreAlpha(preview.image(width: 128, height: 128)) > 200)
+    }
+
+    @Test func shapePreviewResetReleasesTheAdoptedScene() async throws {
+        let url = try writeTempStackedQuadsGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let state = ViewState(settings: AppSettings(defaults: try #require(UserDefaults(suiteName: "gltf.shared-scene.\(UUID().uuidString)"))))
+        let container = NSView(frame: CGRect(x: 0, y: 0, width: 256, height: 256))
+        state.canvas.mount(in: container, url: url, options: ViewOptions())
+        _ = try await waitUntil { state.canvas.phase == .ready }
+        weak var weakFirst: MetalScene?
+        do {
+            weakFirst = try #require(state.canvas.scene)
+        }
+        await state.shapePreview.sync(canvas: state.canvas, windowOptions: state.options,
+                                      selection: NodeID(kind: .mesh, index: 0))
+        try #require(state.shapePreview.view != nil)
+
+        state.canvas.update(url: TestFixtures.cube, options: ViewOptions())
+        _ = try await waitUntil {
+            guard let weakFirst else { return false }
+            return state.canvas.scene !== weakFirst
+        }
+        await state.shapePreview.sync(canvas: state.canvas, windowOptions: state.options, selection: nil)
+        await state.shapePreview.sync(canvas: state.canvas, windowOptions: state.options,
+                                      selection: NodeID(kind: .mesh, index: 0))
+        #expect(weakFirst == nil)
     }
 
     @Test func disposingSourceLeavesPreviewRenderable() async throws {

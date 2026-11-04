@@ -81,7 +81,9 @@ struct Inspector: View {
                 if !node.children.isEmpty {
                     TotalsSection(title: "Subtree", totals: document.totals(ofSubtree: index))
                 }
-                if node.kind == .mesh || node.kind == .empty || node.kind == .camera {
+                if node.kind == .camera
+                    || node.kind == .mesh
+                    || (node.kind == .empty && document.totals(ofSubtree: index).drawCallCount > 0) {
                     ShapeSection(view: view, selection: id)
                 }
                 if node.kind == .mesh {

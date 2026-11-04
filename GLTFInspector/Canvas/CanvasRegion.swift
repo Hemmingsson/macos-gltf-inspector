@@ -1,4 +1,5 @@
 import GLTFCore
+import Renderer
 import SwiftUI
 
 /// Centre column — the viewport's box and the chrome that floats over it.
@@ -118,8 +119,8 @@ struct CanvasRegion<Content: View>: View {
             .ignoresSafeArea(.container, edges: .top)
             // Bottom overlays.
             .overlay(alignment: .bottomLeading) {
-                NavigationGizmo(
-                    viewRotation: view.canvas.viewRotation,
+                NavigationGizmoHost(
+                    canvas: view.canvas,
                     activePreset: view.activeCameraPreset,
                     onSelect: { view.show($0) },
                     onOrbit: { dx, dy in view.orbit(dx: dx, dy: dy) }
@@ -128,7 +129,7 @@ struct CanvasRegion<Content: View>: View {
                 .padding(OverlayMetrics.inset)
             }
             .overlay(alignment: .bottomTrailing) {
-                DimensionsReadout(size: readout.size, name: readout.name)
+                DimensionsReadoutHost(view: view, modelBounds: bounds)
                     .padding(.trailing, OverlayMetrics.inset)
                     .padding(.bottom, view.canvas.showsAnimationTimeline
                         ? OverlayMetrics.inset + OverlayMetrics.timelineHeight + DS.Spacing.m
@@ -147,11 +148,6 @@ struct CanvasRegion<Content: View>: View {
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isInspectorVisible)
     }
 
-    /// The selected scene node's drawn box when it has one, otherwise the whole model.
-    private var readout: (size: SIMD3<Float>, name: String?) {
-        SelectionDimensions.readout(view: view, fileBounds: bounds)
-    }
-
     private var stageLeadingInset: CGFloat {
         // Collapsed: Stage follows the traffic lights in the band (no sidebar toggle; ⌘B).
         isSidebarVisible
@@ -168,6 +164,38 @@ struct CanvasRegion<Content: View>: View {
     /// Keep the timeline between the navigation gizmo and the dimensions readout.
     private var bottomOverlayClearance: CGFloat {
         OverlayMetrics.inset + OverlayMetrics.navigationGizmoSize + DS.Spacing.xl
+    }
+}
+
+/// Reads `viewRotation` from the canvas so camera motion does not rebuild the rest of `CanvasRegion`.
+private struct NavigationGizmoHost: View {
+    var canvas: ModelCanvasController
+    var activePreset: CameraPreset?
+    var onSelect: (CameraPreset) -> Void
+    var onOrbit: (Double, Double) -> Void
+
+    var body: some View {
+        NavigationGizmo(
+            viewRotation: canvas.viewRotation,
+            activePreset: activePreset,
+            onSelect: onSelect,
+            onOrbit: onOrbit
+        )
+    }
+}
+
+/// Selection dimensions readout; isolated so orbit does not re-measure bounds for the gizmo host.
+private struct DimensionsReadoutHost: View {
+    var view: ViewState
+    var modelBounds: ModelBounds?
+
+    var body: some View {
+        let readout = readout
+        DimensionsReadout(size: readout.size, name: readout.name)
+    }
+
+    private var readout: (size: SIMD3<Float>, name: String?) {
+        SelectionDimensions.readout(view: view, fileBounds: modelBounds)
     }
 }
 

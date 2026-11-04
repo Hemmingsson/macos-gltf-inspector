@@ -33,18 +33,39 @@ public struct GLTFDocument: Sendable, Equatable {
 
     /// Flat glTF node with child indices — small tree, no nested copies.
     /// One draw primitive on a mesh (`meshes[].primitives[]`).
+    public struct MaterialVariantMapping: Sendable, Equatable {
+        public var variantIndices: [Int]
+        public var materialIndex: Int
+    }
+
     public struct MeshPrimitive: Sendable, Equatable {
         /// glTF `material` index, when present and in range.
         public var materialIndex: Int?
+        /// `KHR_materials_variants` mappings on this primitive.
+        public var variantMappings: [MaterialVariantMapping] = []
         /// Triangle count for triangle-compatible topologies; zero for points and lines.
         public var triangleCount: Int
         /// glTF primitive `mode` (0–6). Omitted in JSON means `4` (triangles).
         public var mode: Int
 
-        public init(materialIndex: Int? = nil, triangleCount: Int = 0, mode: Int = 4) {
+        public init(
+            materialIndex: Int? = nil,
+            variantMappings: [MaterialVariantMapping] = [],
+            triangleCount: Int = 0,
+            mode: Int = 4
+        ) {
             self.materialIndex = materialIndex
+            self.variantMappings = variantMappings
             self.triangleCount = triangleCount
             self.mode = mode
+        }
+
+        public func effectiveMaterialIndex(for variantIndex: Int?) -> Int? {
+            if let variantIndex,
+               let mapped = variantMappings.first(where: { $0.variantIndices.contains(variantIndex) })?.materialIndex {
+                return mapped
+            }
+            return materialIndex
         }
     }
 
@@ -209,11 +230,13 @@ extension GLTFDocument {
     }
 
     /// Scene node indices whose mesh uses `materialIndex` on at least one primitive (each once).
-    public func nodeIndices(usingMaterial materialIndex: Int) -> [Int] {
+    public func nodeIndices(usingMaterial materialIndex: Int, materialVariantIndex: Int? = nil) -> [Int] {
         var seen = Set<Int>()
         var indices: [Int] = []
         for node in nodes where node.kind == .mesh {
-            guard node.meshPrimitives.contains(where: { $0.materialIndex == materialIndex }) else { continue }
+            guard node.meshPrimitives.contains(where: {
+                $0.effectiveMaterialIndex(for: materialVariantIndex) == materialIndex
+            }) else { continue }
             if seen.insert(node.index).inserted { indices.append(node.index) }
         }
         return indices

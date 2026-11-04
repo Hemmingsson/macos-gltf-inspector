@@ -38,6 +38,8 @@ public struct ViewOptions: Equatable, Sendable {
     public var zoomsTowardPointer: Bool
     /// Meshes using the selected material (muted AABB each); cleared for mesh/node selection.
     public var highlightedNodeIndices: Set<Int>
+    /// When set, material highlights use node-local primitive bounds for this material index.
+    public var materialHighlightMaterialIndex: Int?
     /// glTF node indices hidden in this window. A hidden node hides its whole subtree, draws and
     /// punctual lights alike.
     public var hiddenNodeIndices: Set<Int>
@@ -67,6 +69,7 @@ public struct ViewOptions: Equatable, Sendable {
         orbitsAroundSelection: Bool = false,
         zoomsTowardPointer: Bool = false,
         highlightedNodeIndices: Set<Int> = [],
+        materialHighlightMaterialIndex: Int? = nil,
         gizmoSelectedNodeIndex: Int? = nil,
         selectedSkinIndex: Int? = nil,
         hiddenNodeIndices: Set<Int> = [],
@@ -91,6 +94,7 @@ public struct ViewOptions: Equatable, Sendable {
         self.orbitsAroundSelection = orbitsAroundSelection
         self.zoomsTowardPointer = zoomsTowardPointer
         self.highlightedNodeIndices = highlightedNodeIndices
+        self.materialHighlightMaterialIndex = materialHighlightMaterialIndex
         self.gizmoSelectedNodeIndex = gizmoSelectedNodeIndex
         self.selectedSkinIndex = selectedSkinIndex
         self.hiddenNodeIndices = hiddenNodeIndices

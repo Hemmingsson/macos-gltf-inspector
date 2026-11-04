@@ -109,11 +109,12 @@ final class ViewState {
         get { storedSelectedIDs }
         set {
             let added = newValue.subtracting(storedSelectedIDs)
+            let anchor = primarySelection
             storedSelectedIDs = newValue
-            if let first = added.min(by: Self.rowOrder) {
-                primarySelection = first
+            if let next = Self.primaryAfterAdding(added, anchor: anchor, document: document) {
+                primarySelection = next
             } else if primarySelection.map(newValue.contains) != true {
-                primarySelection = newValue.min(by: Self.rowOrder)
+                primarySelection = newValue.min(by: { Self.outlinerOrder($0, $1, document: document) })
             }
         }
     }
@@ -158,7 +159,8 @@ final class ViewState {
             selectedNodeIndices: Set(storedSelectedIDs.filter { $0.kind == .mesh || $0.kind == .empty }.map(\.index)),
             orbitsAroundSelection: settings.orbitsAroundSelection,
             zoomsTowardPointer: settings.zoomsTowardPointer,
-            highlightedNodeIndices: materialHighlightNodeIndices,
+            highlightedNodeIndices: materialHighlightNodeIndices.nodes,
+            materialHighlightMaterialIndex: materialHighlightNodeIndices.materialIndex,
             gizmoSelectedNodeIndex: selection.flatMap { $0.kind.isSceneNode ? $0.index : nil },
             selectedSkinIndex: selection.flatMap { $0.kind == .skin ? $0.index : nil },
             hiddenNodeIndices: hiddenNodes,
@@ -176,6 +178,9 @@ final class ViewState {
         fileCameraNodeIndex = nil
         selection = nil
         activeCameraPreset = nil
+        showsSceneGizmos = false
+        lastPick = nil
+        shapePreview.reset()
         showAll()
         canvas.stopPlayback()
     }
@@ -243,9 +248,49 @@ final class ViewState {
         return document.id(ofNode: parent)
     }
 
-    /// Stable order for picking a new primary out of a set: outliner kinds, then index.
-    private static func rowOrder(_ a: NodeID, _ b: NodeID) -> Bool {
-        a.kind == b.kind ? a.index < b.index : a.kind.rawValue < b.kind.rawValue
+    /// Depth-first sidebar order; tie-break by glTF index only.
+    private static func outlinerOrder(_ a: NodeID, _ b: NodeID, document: GLTFDocument) -> Bool {
+        let ranks = outlinerRanks(in: document)
+        let ra = ranks[a] ?? Int.max
+        let rb = ranks[b] ?? Int.max
+        if ra != rb { return ra < rb }
+        return a.index < b.index
+    }
+
+    /// New primary after a range or toggle add: the added row farthest from the previous primary
+    /// in outliner order (the clicked end of the range).
+    private static func primaryAfterAdding(
+        _ added: Set<NodeID>,
+        anchor: NodeID?,
+        document: GLTFDocument
+    ) -> NodeID? {
+        guard !added.isEmpty else { return nil }
+        let ranks = outlinerRanks(in: document)
+        guard let anchor, let anchorRank = ranks[anchor] else {
+            return added.max(by: { outlinerOrder($0, $1, document: document) })
+        }
+        return added.max { a, b in
+            let da = abs((ranks[a] ?? anchorRank) - anchorRank)
+            let db = abs((ranks[b] ?? anchorRank) - anchorRank)
+            if da != db { return da < db }
+            return outlinerOrder(a, b, document: document)
+        }
+    }
+
+    private static func outlinerRanks(in document: GLTFDocument) -> [NodeID: Int] {
+        var ranks: [NodeID: Int] = [:]
+        var rank = 0
+        func walk(_ items: [OutlinerItem]) {
+            for item in items {
+                ranks[item.id] = rank
+                rank += 1
+                walk(item.children)
+            }
+        }
+        for section in OutlinerSection.sections(of: document) {
+            walk(section.items)
+        }
+        return ranks
     }
 
     // MARK: - Layer visibility
@@ -397,9 +442,12 @@ final class ViewState {
         }
     }
 
-    private var materialHighlightNodeIndices: Set<Int> {
-        guard let selection, selection.kind == .material else { return [] }
-        return Set(document.nodeIndices(usingMaterial: selection.index))
+    private var materialHighlightNodeIndices: (nodes: Set<Int>, materialIndex: Int?) {
+        guard let selection, selection.kind == .material else { return ([], nil) }
+        let nodes = Set(document.nodeIndices(usingMaterial: selection.index,
+                                              materialVariantIndex: materialVariantIndex))
+            .subtracting(hiddenNodes)
+        return (nodes, nodes.isEmpty ? nil : selection.index)
     }
 
     private func restoreStageAndLook() {
