@@ -65,6 +65,20 @@ public struct DSListRow<Icon: View, Accessory: View>: View {
     }
 }
 
+public extension DSListRow where Accessory == EmptyView {
+    /// Row without a trailing accessory.
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        isSelected: Bool = false,
+        @ViewBuilder icon: () -> Icon
+    ) {
+        self.init(title, subtitle: subtitle, isSelected: isSelected, icon: icon) {
+            EmptyView()
+        }
+    }
+}
+
 public extension DSListRow where Icon == DSTypeIcon {
     /// Row whose icon is the glTF type glyph; the glyph follows `isSelected`.
     init(

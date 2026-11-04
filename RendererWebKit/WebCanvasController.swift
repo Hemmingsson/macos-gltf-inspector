@@ -183,7 +183,7 @@ public final class WebCanvasController {
                     )
                     let info = try await host.load(model: url)
                     try Task.checkCancellation()
-                    revealLive(host: host)
+                    revealLive()
                     AppLog.signposter.emitEvent("first frame")
                     AppLog.info(
                         AppLog.webRenderer,
@@ -241,7 +241,7 @@ public final class WebCanvasController {
         phase = .failed(WebRendererError.userMessage(for: error))
     }
 
-    private func revealLive(host: WebRendererHost) {
+    private func revealLive() {
         didRevealLive = true
         phase = .ready
         placeholderView?.isHidden = true
