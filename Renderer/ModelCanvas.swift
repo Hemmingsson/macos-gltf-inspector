@@ -82,6 +82,10 @@ public final class ModelCanvasController {
     @ObservationIgnored public var onPick: ((Int?) -> Void)? {
         didSet { view?.onPick = onPick }
     }
+    /// Ignores canvas pointer and wheel input while a turntable export runs; forwards to the live `ModelView`.
+    @ObservationIgnored public var inputLocked = false {
+        didSet { view?.inputLocked = inputLocked }
+    }
     /// ⌘- / ⇧-click on a node; forwards to the live `ModelView`.
     @ObservationIgnored public var onTogglePick: ((Int) -> Void)? {
         didSet { view?.onTogglePick = onTogglePick }
@@ -134,6 +138,8 @@ public final class ModelCanvasController {
     @ObservationIgnored private var defaultSelectedClipIndices: [Int] = []
     @ObservationIgnored private var matrixAuthoredNodes: Set<Int> = []
     @ObservationIgnored private var lastPlaybackInstant: ContinuousClock.Instant?
+    /// When true, the renderer sees the glTF rest pose (nil animation pose), including at time 0.
+    @ObservationIgnored private var animationAtRest = true
 
     /// Longest active clip duration in seconds; 0 when nothing is selected.
     public var activePlaybackDuration: Float { playbackDuration }
@@ -148,6 +154,7 @@ public final class ModelCanvasController {
         if !loops, time >= playbackDuration {
             time = 0
         }
+        animationAtRest = false
         isPlaying = true
         lastPlaybackInstant = playbackClock.now()
         playbackStateDidChange()
@@ -163,6 +170,7 @@ public final class ModelCanvasController {
     /// Sets clip time in seconds and redraws; does not start playback.
     public func scrub(to seconds: Float) {
         time = max(0, seconds)
+        animationAtRest = false
         if isPlaying { lastPlaybackInstant = playbackClock.now() }
         playbackStateDidChange()
     }
@@ -171,6 +179,7 @@ public final class ModelCanvasController {
     public func stopPlayback() {
         isPlaying = false
         time = 0
+        animationAtRest = true
         lastPlaybackInstant = nil
         playbackStateDidChange()
     }
@@ -239,7 +248,7 @@ public final class ModelCanvasController {
     private func animationPoseForRender() -> AnimationPose? {
         let clips = selectedClipIndices.compactMap { loadedAnimationClips.indices.contains($0) ? loadedAnimationClips[$0] : nil }
         guard !clips.isEmpty else { return nil }
-        if !isPlaying, time == 0 { return nil }
+        if animationAtRest { return nil }
         return AnimationPose(clips: clips, at: time, matrixAuthoredNodes: matrixAuthoredNodes, wraps: loops)
     }
 
@@ -280,6 +289,7 @@ public final class ModelCanvasController {
         selectedClipIndices = []
         isPlaying = false
         time = 0
+        animationAtRest = true
         lastPlaybackInstant = nil
         do {
             GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
@@ -377,6 +387,7 @@ public final class ModelCanvasController {
                     viewRotation = rotation
                 }
                 view.contentInsets = contentInsets
+                view.inputLocked = inputLocked
                 wirePlayback(on: view)
                 self.view = view
             } catch {

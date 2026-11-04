@@ -83,6 +83,10 @@ struct CanvasRegion<Content: View>: View {
             if documentState.isReady {
                 controls
             }
+
+            if view.isExportingTurntable {
+                TurntableExportHUD(view: view)
+            }
         }
     }
 

@@ -33,45 +33,85 @@ enum TurntableExport {
 
     // MARK: - Writing
 
-    /// Streams frames to a file; `finish` closes it.
+    /// Streams frames to a file; `finish` closes it. `cancel` drops a half-written file's
+    /// writer after a failed `append`, before the temp file is removed.
     protocol Encoder: AnyObject {
         func append(_ image: CGImage) async throws
         func finish() async throws
+        func cancel()
     }
 
     static func encoder(_ format: Format, url: URL, width: Int, height: Int) throws -> any Encoder {
-        try? FileManager.default.removeItem(at: url)
-        return switch format {
+        switch format {
         case .mp4: try MP4Encoder(url: url, width: width, height: height, framesPerSecond: format.framesPerSecond)
         case .gif: try GIFEncoder(url: url, frameCount: format.frameCount, framesPerSecond: format.framesPerSecond)
         }
     }
 
-    /// Renders the orbit from `canvas` into `url`. Throws when the canvas is not ready.
+    /// Renders the orbit from `canvas` into `url`. The frames go to a temp file beside `url`,
+    /// which replaces `url` only once the encoder finishes: a failure or cancel leaves `url` as it
+    /// was and no temp file behind. `progress` gets the number of frames written so far. Throws
+    /// when the canvas is not ready; a cancelled task throws `CancellationError`.
     @MainActor
-    static func write(_ format: Format, from canvas: ModelCanvasController, to url: URL) async throws {
-        guard let pixelSize = canvas.pixelSize else { throw CocoaError(.fileWriteUnknown) }
-        let size = frameSize(for: pixelSize, format: format)
-        let encoder = try encoder(format, url: url, width: size.width, height: size.height)
-        try await canvas.turntable(count: format.frameCount, width: size.width, height: size.height) { _, image in
-            try await encoder.append(image)
-        }
-        try await encoder.finish()
+    static func write(_ format: Format, from canvas: ModelCanvasController, to url: URL,
+                      progress: (Int) -> Void = { _ in }) async throws {
+        try await write(format, from: canvas, to: url, makeEncoder: encoder, progress: progress)
     }
 
-    /// Save panel, then the export. Cancel writes nothing.
+    /// `write` with the encoder factory injected (tests).
     @MainActor
-    static func save(_ format: Format, from canvas: ModelCanvasController, suggestedName: String) async {
+    static func write(_ format: Format, from canvas: ModelCanvasController, to url: URL,
+                      makeEncoder: (Format, URL, Int, Int) throws -> any Encoder,
+                      progress: (Int) -> Void = { _ in }) async throws {
+        guard let pixelSize = canvas.pixelSize else { throw CocoaError(.fileWriteUnknown) }
+        let size = frameSize(for: pixelSize, format: format)
+        let temp = url.appendingPathExtension("tmp-\(UUID().uuidString)")
+        var encoder: (any Encoder)?
+        do {
+            let made = try makeEncoder(format, temp, size.width, size.height)
+            encoder = made
+            try await canvas.turntable(count: format.frameCount, width: size.width, height: size.height) { index, image in
+                try await made.append(image)
+                progress(index + 1)
+            }
+            try await made.finish()
+            try AtomicFile.replace(url, with: temp)
+        } catch {
+            encoder?.cancel()
+            try? FileManager.default.removeItem(at: temp)
+            throw error
+        }
+    }
+
+    /// Save panel, then the export. Cancel writes nothing; a cancelled export is silent and a
+    /// failure shows an alert.
+    @MainActor
+    static func save(_ format: Format, from canvas: ModelCanvasController, suggestedName: String,
+                     progress: (Int) -> Void = { _ in }) async {
         guard let url = await SavePanel.choose(format.contentType, name: "\(suggestedName) turntable.\(format.rawValue)",
                                                title: format.title,
                                                message: "One full turn around the model from the current camera.")
         else { return }
         let started = ContinuousClock.now
         do {
-            try await write(format, from: canvas, to: url)
+            try await write(format, from: canvas, to: url, progress: progress)
             AppLog.info(AppLog.app, "turntable export wrote \(url.lastPathComponent) in \(started.duration(to: .now))")
+        } catch is CancellationError {
+            AppLog.info(AppLog.app, "turntable export cancelled")
         } catch {
             AppLog.error(AppLog.app, "turntable export failed: \(error.localizedDescription)")
+            SavePanel.reportFailure(title: "Turntable export failed", error: error)
+        }
+    }
+}
+
+/// Replaces a destination with a finished temp file, or moves it into place when there is none.
+enum AtomicFile {
+    static func replace(_ url: URL, with temp: URL) throws {
+        if FileManager.default.fileExists(atPath: url.path) {
+            _ = try FileManager.default.replaceItemAt(url, withItemAt: temp)
+        } else {
+            try FileManager.default.moveItem(at: temp, to: url)
         }
     }
 }
@@ -79,13 +119,20 @@ enum TurntableExport {
 /// Looping GIF through ImageIO; keeps the canvas's transparency.
 private final class GIFEncoder: TurntableExport.Encoder {
     private let destination: CGImageDestination
+    private let data: NSMutableData
+    private let url: URL
 
+    /// Encoded in memory and written to `url` by `finish`: ImageIO creates a file as soon as it is
+    /// given a URL and cannot be told to cancel, so a stopped export would leave that file behind.
     init(url: URL, frameCount: Int, framesPerSecond: Int) throws {
-        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString,
-                                                                frameCount, nil) else {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data as CFMutableData, UTType.gif.identifier as CFString,
+                                                                 frameCount, nil) else {
             throw CocoaError(.fileWriteUnknown)
         }
         self.destination = destination
+        self.data = data
+        self.url = url
         CGImageDestinationSetProperties(destination, [
             kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0],
         ] as CFDictionary)
@@ -102,7 +149,11 @@ private final class GIFEncoder: TurntableExport.Encoder {
 
     func finish() async throws {
         guard CGImageDestinationFinalize(destination) else { throw CocoaError(.fileWriteUnknown) }
+        try data.write(to: url)
     }
+
+    /// Nothing is on disk before `finish`, so there is nothing to stop.
+    func cancel() {}
 }
 
 /// H.264 MP4 through AVAssetWriter. Video has no alpha: a transparent canvas is flattened onto
@@ -163,5 +214,9 @@ private final class MP4Encoder: TurntableExport.Encoder {
         input.markAsFinished()
         await writer.finishWriting()
         if writer.status != .completed { throw writer.error ?? CocoaError(.fileWriteUnknown) }
+    }
+
+    func cancel() {
+        if writer.status == .writing { writer.cancelWriting() }
     }
 }
