@@ -13,6 +13,8 @@ private enum MaterialBlendDecision {
 }
 
 extension RealityKitConvert {
+    typealias TextureResolver = (GLTFTextureParams, RealityKitResourceContext.ColorMask, RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
+
     @MainActor func convert(material gltfMaterial: GLTFMaterial?,
                             context: RealityKitResourceContext) throws -> any RealityKit.Material
     {
@@ -42,7 +44,7 @@ extension RealityKitConvert {
     private func makeUnlit(
         _ gltfMaterial: GLTFMaterial,
         context: RealityKitResourceContext,
-        tex: (GLTFTextureParams, RealityKitResourceContext.ColorMask, RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
+        tex: TextureResolver
     ) -> UnlitMaterial {
         var material = UnlitMaterial()
         if let metallicRoughness = gltfMaterial.metallicRoughness {
@@ -69,7 +71,7 @@ extension RealityKitConvert {
     private func makePBR(
         _ gltfMaterial: GLTFMaterial,
         context: RealityKitResourceContext,
-        tex: (GLTFTextureParams, RealityKitResourceContext.ColorMask, RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
+        tex: TextureResolver
     ) -> PhysicallyBasedMaterial {
         let name = gltfMaterial.name
         var material = PhysicallyBasedMaterial()
@@ -97,9 +99,7 @@ extension RealityKitConvert {
         if let normal = gltfMaterial.normalTexture, abs(normal.scale) > 0.0001 {
             material.normal.texture = tex(normal, .all, .normal)
         }
-        if let emissive = gltfMaterial.emissive {
-            applyEmissive(emissive, of: gltfMaterial, to: &material, context: context, tex: tex)
-        }
+        applyEmissive(of: gltfMaterial, to: &material, context: context, tex: tex)
         if let occlusion = gltfMaterial.occlusionTexture {
             material.ambientOcclusion.texture = tex(occlusion, .red, .scalar)
         }
@@ -134,12 +134,12 @@ extension RealityKitConvert {
     }
 
     private func applyEmissive(
-        _ emissive: GLTFEmissiveParams,
         of gltfMaterial: GLTFMaterial,
         to material: inout PhysicallyBasedMaterial,
         context: RealityKitResourceContext,
-        tex: (GLTFTextureParams, RealityKitResourceContext.ColorMask, RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
+        tex: TextureResolver
     ) {
+        guard let emissive = gltfMaterial.emissive else { return }
         let hint = RealityPolicy.EmissiveHint(gltfMaterial)
         if RealityPolicy.dropsEmissive(hint, fileLooksBaked: ignoreBakedEmissive) {
             if hint.hasEmissive {
@@ -157,7 +157,7 @@ extension RealityKitConvert {
     private func applyClearcoat(
         _ clearcoat: GLTFClearcoatParams,
         to material: inout PhysicallyBasedMaterial,
-        tex: (GLTFTextureParams, RealityKitResourceContext.ColorMask, RealityKit.TextureResource.Semantic) -> RealityKit.PhysicallyBasedMaterial.Texture?
+        tex: TextureResolver
     ) {
         material.clearcoat.scale = clearcoat.clearcoatFactor
         if let clearcoatTexture = clearcoat.clearcoatTexture {

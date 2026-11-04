@@ -62,12 +62,8 @@ extension PreviewCamera {
         aspect: Float,
         padding: Float
     ) -> Float {
-        let axes = RenderCamera.framingAxes(toCamera: toCamera)
-        let half = extent * 0.5
-        let safeAspect = RenderCamera.clampedAspect(aspect)
-        let height = 2 * RenderCamera.projectedHalf(axes.up, halfExtent: half)
-        let width = 2 * RenderCamera.projectedHalf(axes.right, halfExtent: half)
-        return max(0.0001, max(height, width / safeAspect) * padding)
+        let height = RenderCamera.orthographicHeight(extent: extent, toCamera: toCamera, aspect: aspect)
+        return max(0.0001, height * padding)
     }
 
     /// Keep the cluster of typical mesh sizes; drop a single km-scale leftover
@@ -116,7 +112,7 @@ extension PreviewCamera {
             pitch: pitch,
             applyThinAxisOverride: applyThinAxisOverride
         )
-        let distance = fitDistance(
+        let distance = RenderCamera.fitDistance(
             extent: extent,
             toCamera: toCamera,
             aspect: aspect,
@@ -124,27 +120,6 @@ extension PreviewCamera {
             fieldOfViewInDegrees: fieldOfViewInDegrees
         )
         return center + distance * toCamera
-    }
-
-    /// Distance that frames the model's *projected bounding box* — not its bounding
-    /// sphere — so irregular shapes (a tree, a car) fill the viewport instead of
-    /// floating inside the sphere's slack. Fits both the horizontal and vertical FOV.
-    private static func fitDistance(
-        extent: SIMD3<Float>,
-        toCamera: SIMD3<Float>,
-        aspect: Float,
-        padding: Float,
-        fieldOfViewInDegrees: Float = RenderCamera.defaultFieldOfViewDegrees
-    ) -> Float {
-        // RealityView.make often runs before layout; a ~0 aspect used to push the
-        // camera tens of kilometers away so the first frames looked empty.
-        return RenderCamera.fitDistance(
-            extent: extent,
-            toCamera: toCamera,
-            aspect: aspect,
-            padding: padding,
-            fieldOfViewInDegrees: fieldOfViewInDegrees
-        )
     }
 
     /// Unit vector from model center toward the camera for yaw/pitch (degrees).

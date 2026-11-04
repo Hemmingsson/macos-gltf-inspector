@@ -191,7 +191,10 @@ extension EngineSceneModel {
         return roots
     }
 
-    private static func cameraInfo(_ camera: GLTFSessionDocument.Camera, index: Int) -> CameraInfo {
+    /// Single camera from the document cameras array (outliner / inspector).
+    static func cameraInfo(index: Int, document: GLTFSessionDocument) -> CameraInfo? {
+        guard document.cameras.indices.contains(index) else { return nil }
+        let camera = document.cameras[index]
         let projection: Projection =
             camera.type.lowercased() == "orthographic" ? .orthographic : .perspective
         return CameraInfo(
@@ -204,12 +207,6 @@ extension EngineSceneModel {
             zNear: Double(camera.znear),
             zFar: camera.zfar.map(Double.init)
         )
-    }
-
-    /// Single camera from the document cameras array (outliner / inspector).
-    static func cameraInfo(index: Int, document: GLTFSessionDocument) -> CameraInfo? {
-        guard document.cameras.indices.contains(index) else { return nil }
-        return cameraInfo(document.cameras[index], index: index)
     }
 
     private static func mapLights(_ lights: [GLTFSessionDocument.Light]) -> [LightInfo] {

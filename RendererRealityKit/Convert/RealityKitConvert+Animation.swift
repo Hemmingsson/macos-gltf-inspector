@@ -81,18 +81,12 @@ extension RealityKitConvert {
 
     private func skeletalAnimations(for joints: AnimatedJointData) -> [AnimationDefinition] {
         guard !joints.jointNames.isEmpty else { return [] }
-        var jointAnimation = joints
         var result = [AnimationDefinition]()
-        if !jointAnimation.minTime.isFinite { jointAnimation.minTime = 0 }
-        if !jointAnimation.maxTime.isFinite { jointAnimation.maxTime = jointAnimation.minTime }
-        if jointAnimation.maxTime < jointAnimation.minTime { jointAnimation.maxTime = jointAnimation.minTime }
+        let minTime = joints.minTime.isFinite ? joints.minTime : 0
+        let maxTime = joints.maxTime.isFinite ? max(joints.maxTime, minTime) : minTime
         var jointTransforms = [JointTransforms]()
-        for t in AnimationSampling.sampleTimes(
-            from: jointAnimation.minTime,
-            through: jointAnimation.maxTime,
-            by: jointAnimation.sampleInterval
-        ) {
-            let sampledTransforms = zip(jointAnimation.jointNames, jointAnimation.jointTransformSamplers).map { jointName, transformSampler -> Transform in
+        for t in AnimationSampling.sampleTimes(from: minTime, through: maxTime, by: joints.sampleInterval) {
+            let sampledTransforms = zip(joints.jointNames, joints.jointTransformSamplers).map { jointName, transformSampler -> Transform in
                 var jointTransform = transformSampler.transform(at: t)
                 if let ancestorTransform = skeletonTransformsByJointName[jointName] {
                     jointTransform = Transform(matrix: ancestorTransform.matrix * jointTransform.matrix)
@@ -101,20 +95,20 @@ extension RealityKitConvert {
             }
             jointTransforms.append(JointTransforms(sampledTransforms))
         }
-        let delay = TimeInterval(jointAnimation.minTime)
+        let delay = TimeInterval(minTime)
 
         var animatedSkeletonIDs = Set</*MeshResource.Skeleton.ID*/String>()
-        for jointName in jointAnimation.jointNames {
+        for jointName in joints.jointNames {
             if let skeletonIDs = skeletonIDsByJointName[jointName] {
                 animatedSkeletonIDs.formUnion(skeletonIDs)
             }
         }
         let animatedBindPaths = animatedSkeletonIDs.compactMap { pathsForSkeletonIDs[$0] }
         for bindPath in animatedBindPaths {
-            let skeletalAnimation = SampledAnimation(jointNames: jointAnimation.jointNames,
+            let skeletalAnimation = SampledAnimation(jointNames: joints.jointNames,
                                                      frames: jointTransforms,
                                                      tweenMode: .linear, // glTF STEP is not mapped; samples stay linear.
-                                                     frameInterval: jointAnimation.sampleInterval,
+                                                     frameInterval: joints.sampleInterval,
                                                      bindTarget: bindPath.jointTransforms,
                                                      delay: delay)
             result.append(skeletalAnimation)

@@ -74,10 +74,7 @@ enum PreviewSkeletonOverlay {
     }
 
     /// Reposition existing bone segments after animation / auto-rotate.
-    static func updateBones(
-        pivot: Entity,
-        thickness: Float? = nil
-    ) {
+    static func updateBones(pivot: Entity, thickness: Float? = nil) {
         guard let overlay = pivot.children.first(where: { $0.name == overlayRootName }),
               let state = overlay.components[SkeletonOverlayState.self]
         else { return }
