@@ -1,4 +1,5 @@
 import Foundation
+import Metal
 import simd
 
 /// A complete camera pose, independent of model bounds and renderer implementation.
@@ -11,10 +12,14 @@ public struct MetalCameraPose: Sendable, Equatable {
     public var yfov: Double
     public var znear: Double
     public var zfar: Double
+    /// The page's `camera.orthographic`, captured when it last restated the projection. Wheel
+    /// zoom moves the camera without restating it, so the ortho scale and planes stay put until
+    /// the next fit or camera command. Nil derives both from this pose, as `applyProjection` does.
+    public var orthographic: MetalOrthographic?
 
     public init(
         azimuth: Double, elevation: Double, distance: Double, target: SIMD3<Float>,
-        yfov: Double, znear: Double, zfar: Double
+        yfov: Double, znear: Double, zfar: Double, orthographic: MetalOrthographic? = nil
     ) {
         self.azimuth = azimuth
         self.elevation = elevation
@@ -23,6 +28,22 @@ public struct MetalCameraPose: Sendable, Equatable {
         self.yfov = yfov
         self.znear = znear
         self.zfar = zfar
+        self.orthographic = orthographic
+    }
+
+    /// What `applyProjection` in viewer.html would assign for this pose.
+    public var orthographicProjection: MetalOrthographic {
+        orthographic ?? MetalOrthographic(magnitude: distance * tan(yfov / 2), znear: znear, zfar: zfar)
+    }
+}
+
+/// Khronos `OrthographicCamera` as viewer.html fills it: the same `xmag` and `ymag`.
+public struct MetalOrthographic: Sendable, Equatable {
+    public var magnitude: Double
+    public var znear: Double
+    public var zfar: Double
+    public init(magnitude: Double, znear: Double, zfar: Double) {
+        self.magnitude = magnitude; self.znear = znear; self.zfar = zfar
     }
 }
 
@@ -74,7 +95,8 @@ public struct MetalCamera: Sendable {
     public var viewMatrix: simd_float4x4 { simd_inverse(transformMatrix) }
 
     public var projectionMatrix: simd_float4x4 {
-        let near = pose.znear, far = pose.zfar
+        var near = pose.znear, far = pose.zfar
+        if projection == .orthographic { (near, far) = (pose.orthographicProjection.znear, pose.orthographicProjection.zfar) }
         switch projection {
         case .perspective:
             let f = 1 / tan(pose.yfov / 2)
@@ -89,7 +111,7 @@ public struct MetalCamera: Sendable {
             ))
         case .orthographic:
             // viewer.html deliberately assigns the same xmag and ymag, even on a wide canvas.
-            let magnitude = pose.distance * tan(pose.yfov / 2)
+            let magnitude = pose.orthographicProjection.magnitude
             return simd_float4x4(columns: (
                 SIMD4(Float(1 / magnitude), 0, 0, 0),
                 SIMD4(0, Float(1 / magnitude), 0, 0),
@@ -101,8 +123,8 @@ public struct MetalCamera: Sendable {
 
     /// Preserve WebGL clip coordinates until the vertex shader remaps depth, as ANGLE does.
     public var openGLProjectionMatrix: simd_float4x4 {
-        let near = pose.znear, far = pose.zfar
         if projection == .perspective {
+            let near = pose.znear, far = pose.zfar
             let f = 1 / tan(pose.yfov / 2)
             return simd_float4x4(columns: (
                 SIMD4(Float(f) / aspect, 0, 0, 0), SIMD4(0, Float(f), 0, 0),
@@ -110,7 +132,8 @@ public struct MetalCamera: Sendable {
                 SIMD4(0, 0, Float(far.isInfinite ? -2 * near : 2 * far * near / (near - far)), 0)
             ))
         }
-        let magnitude = pose.distance * tan(pose.yfov / 2)
+        let ortho = pose.orthographicProjection
+        let magnitude = ortho.magnitude, near = ortho.znear, far = ortho.zfar
         return simd_float4x4(columns: (
             SIMD4(Float(1 / magnitude), 0, 0, 0), SIMD4(0, Float(1 / magnitude), 0, 0),
             SIMD4(0, 0, Float(2 / (near - far)), 0),
@@ -119,4 +142,17 @@ public struct MetalCamera: Sendable {
     }
 
     public var viewProjectionMatrix: simd_float4x4 { projectionMatrix * viewMatrix }
+}
+
+/// `drawScene`'s letterbox: `gl.viewport(aspectOffsetX, aspectOffsetY, aspectWidth, aspectHeight)`
+/// (GL truncates to integers and counts y from the bottom).
+func khronosViewport(width: Int, height: Int, aspect: Float?) -> MTLViewport {
+    var w = Double(width), h = Double(height)
+    if let aspect, aspect > 0 {
+        if Double(aspect) > w / h { h = w / Double(aspect) } else { w = h * Double(aspect) }
+    }
+    let x = Int((Double(width) - w) / 2), yFromBottom = Int((Double(height) - h) / 2)
+    let iw = Int(w), ih = Int(h)
+    return MTLViewport(originX: Double(x), originY: Double(height - yFromBottom - ih),
+                       width: Double(iw), height: Double(ih), znear: 0, zfar: 1)
 }

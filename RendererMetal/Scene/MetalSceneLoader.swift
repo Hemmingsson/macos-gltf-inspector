@@ -129,7 +129,8 @@ private final class Builder {
         for i in 0..<count {
             let p = SIMD4<Float>(positions[i*3], positions[i*3+1], positions[i*3+2], 1)
             let n = SIMD4<Float>(normal?[i*3] ?? 0, normal?[i*3+1] ?? 0, normal?[i*3+2] ?? 0, 0)
-            let t = SIMD4<Float>(tangent?[i*4] ?? 1, tangent?[i*4+1] ?? 0, tangent?[i*4+2] ?? 0, tangent?[i*4+3] ?? 1)
+            // No authored or generated tangent stays zero: the shader then derives one, as Khronos does.
+            let t = SIMD4<Float>(tangent?[i*4] ?? 0,tangent?[i*4+1] ?? 0, tangent?[i*4+2] ?? 0, tangent?[i*4+3] ?? 1)
             let alpha: Float = colorComponents == 4 ? (color?[i*4+3] ?? 1) : 1
             let c = SIMD4<Float>(color?[i*colorComponents] ?? 1, color?[i*colorComponents+1] ?? 1, color?[i*colorComponents+2] ?? 1, alpha)
             let u0 = SIMD2<Float>(uv0?[i*2] ?? 0, uv0?[i*2+1] ?? 0)
@@ -230,7 +231,8 @@ private final class Builder {
         }
         guard let vb = device.makeBuffer(bytes: vertices, length: vertices.count*MemoryLayout<MetalVertex>.stride, options: .storageModeShared), let ib = device.makeBuffer(bytes:indices,length:indices.count*4,options:.storageModeShared) else { throw MetalSceneError.invalid("Metal buffer allocation failed") }
         let material = variant.map { primitive.effectiveMaterial(for: $0) } ?? primitive.material
-        let m = try convert(material)
+        var m = try convert(material)
+        m.hasTexCoord0 = uv0 != nil
         draws.append(MetalDraw(vertexBuffer:vb,indexBuffer:ib,indexCount:indices.count,primitiveType:topology,worldTransform:model,material:m,nodeIndex:asset.nodes.firstIndex(of:node) ?? -1,negativeScale:simd_determinant(model)<0))
     }
 
@@ -274,6 +276,7 @@ private extension Builder {
         try add(.normal,source.normalTexture); try add(.occlusion,source.occlusionTexture)
         if let p = source.specular { m.specular = p.specularFactor; m.specularColor = p.specularColorFactor; try add(.specular,p.specularTexture); try add(.specularColor,p.specularColorTexture) }
         if let p = source.clearcoat { m.clearcoat = p.clearcoatFactor; m.clearcoatRoughness = p.clearcoatRoughnessFactor; try add(.clearcoat,p.clearcoatTexture); try add(.clearcoatRoughness,p.clearcoatRoughnessTexture); try add(.clearcoatNormal,p.clearcoatNormalTexture) }
+        m.hasSpecular = source.specular != nil; m.hasClearcoat = source.clearcoat != nil
         if let p = source.sheen { m.sheenColor = p.sheenColorFactor; m.sheenRoughness = p.sheenRoughnessFactor; try add(.sheenColor,p.sheenColorTexture); try add(.sheenRoughness,p.sheenRoughnessTexture) }
         if let p = source.iridescence { m.iridescence = p.iridescenceFactor; m.iridescenceIOR = p.iridescenceIndexOfRefraction; m.iridescenceThicknessMin = p.iridescenceThicknessMinimum; m.iridescenceThicknessMax = p.iridescenceThicknessMaximum; try add(.iridescence,p.iridescenceTexture); try add(.iridescenceThickness,p.iridescenceThicknessTexture) }
         if let p = source.anisotropy { m.anisotropy = p.strength; m.anisotropyRotation = p.rotation; try add(.anisotropy,p.anisotropyTexture) }
