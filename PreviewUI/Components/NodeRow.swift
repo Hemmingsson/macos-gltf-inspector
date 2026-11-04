@@ -111,11 +111,9 @@ private struct NodeRowPreviewHost: View {
         case hidden
     }
 
-    var mode: Mode
     @State private var selection: MockSelectionModel
 
     init(mode: Mode) {
-        self.mode = mode
         let materialID = NodeRowPreviewFixtures.materialID
         switch mode {
         case .flat:
