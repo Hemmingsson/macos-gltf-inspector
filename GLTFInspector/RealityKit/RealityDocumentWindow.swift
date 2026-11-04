@@ -173,7 +173,6 @@ struct RealityDocumentWindow: View {
             case .ready(let model):
                 window.adopt(
                     document: model.document,
-                    materialVariantNames: model.materialVariantNames,
                     sceneModel: EngineSceneModel(loaded: model, fileName: url.lastPathComponent, validation: window.validation),
                     viewModes: model.debugModes.map(\.renderViewMode),
                     dimStudioForFileLights: model.studioIBLExponent < 0
@@ -290,7 +289,6 @@ struct RealityDocumentWindow: View {
                 )
                 guard window.isCurrent(generation) else { return }
                 interaction = PreviewInteraction()
-                sidebar.materialVariantNames = model.materialVariantNames
                 applyReloaded(model, fileName: url.lastPathComponent, sidebar: sidebar)
                 AppLog.info(
                     AppLog.host,

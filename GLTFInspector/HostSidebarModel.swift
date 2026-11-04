@@ -21,7 +21,6 @@ final class HostSidebarModel {
     var selectedNodeIndex: Int?
     /// Nil keeps authored primitive materials; index applies `KHR_materials_variants`.
     var selectedMaterialVariantIndex: Int?
-    var materialVariantNames: [String] = []
     var overlayRevision = 0
     let document: GLTFSessionDocument
 

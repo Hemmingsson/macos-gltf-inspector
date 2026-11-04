@@ -143,13 +143,11 @@ final class DocumentWindowModel {
     /// The loaded document's chrome. Resets exposure / yaw and the view mode, as a fresh open does.
     func adopt(
         document: GLTFSessionDocument,
-        materialVariantNames: [String],
         sceneModel: EngineSceneModel,
         viewModes: [RenderViewMode],
         dimStudioForFileLights: Bool
     ) {
         let modelSidebar = HostSidebarModel(document: document)
-        modelSidebar.materialVariantNames = materialVariantNames
         sidebar = modelSidebar
         previewSession.viewModes = viewModes.isEmpty ? [.shaded] : viewModes
         engineViewport.applyConvertedLighting(
@@ -195,7 +193,6 @@ final class DocumentWindowModel {
             guard isCurrent(generation) else { return }
             adopt(
                 document: summary.document,
-                materialVariantNames: summary.materialVariantNames,
                 sceneModel: EngineSceneModel(summary: summary, fileName: url.lastPathComponent, validation: validation),
                 viewModes: summary.viewModes,
                 dimStudioForFileLights: !summary.document.lights.isEmpty
