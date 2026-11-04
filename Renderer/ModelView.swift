@@ -49,8 +49,16 @@ public final class ModelView: NSView {
 
     // MARK: - Model and options
 
-    /// Loads `url`, frames it from the front and draws it.
-    public func load(_ url: URL) async throws {
+    /// Loads `url` drawn with `options` (the current ones when nil), frames it from the front and
+    /// draws it. A file that fails to load leaves the previous model in place.
+    public func load(_ url: URL, options next: ViewOptions? = nil) async throws {
+        if let next {
+            // The options are for the new file: do not reload the old one for a new scene.
+            let previousURL = modelURL
+            modelURL = nil
+            defer { if modelURL == nil { modelURL = previousURL } }
+            try await apply(next)
+        }
         try await renderer.load(url: url, sceneIndex: options.sceneIndex == 0 ? nil : options.sceneIndex,
                                 materialVariantIndex: options.materialVariantIndex)
         modelURL = url

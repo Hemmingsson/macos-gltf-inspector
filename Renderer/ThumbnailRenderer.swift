@@ -25,8 +25,7 @@ public final class ThumbnailRenderer {
         let view = try self.view ?? ModelView(renderer: MetalRenderer())
         self.view = view
         view.frame = NSRect(x: 0, y: 0, width: pixel, height: pixel)
-        try await view.apply(.stored())
-        try await view.load(url)
+        try await view.load(url, options: .stored())
         // Thumbnails at Finder sizes match the transmission prepass to the image, not 1024².
         return try view.image(width: pixel, height: pixel, transmissionResolution: pixel <= 256 ? pixel : 1024)
     }

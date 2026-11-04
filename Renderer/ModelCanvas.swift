@@ -116,8 +116,7 @@ public final class ModelCanvasController {
                     loadedURL = wanted.url
                     phase = .loading
                     let started = ContinuousClock.now
-                    try await view.apply(wanted.options)
-                    try await view.load(wanted.url)
+                    try await view.load(wanted.url, options: wanted.options)
                     guard self.wanted?.url == wanted.url else { continue }
                     phase = .ready
                     AppLog.info(AppLog.renderer, "canvas ready \(wanted.url.lastPathComponent) in \(started.duration(to: .now))")

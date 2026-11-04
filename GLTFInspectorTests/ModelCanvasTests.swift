@@ -108,6 +108,16 @@ struct ModelCanvasControllerTests {
         #expect(try await waitUntil { canvas.view?.options == options })
     }
 
+    /// A new document in the same window loads with its own options, scene included.
+    @Test func aSecondFileLoadsWithItsOwnScene() async throws {
+        let canvas = ModelCanvasController()
+        _ = mount(canvas, url: TestFixtures.cube)
+        #expect(try await settled(canvas) == .ready)
+        canvas.update(url: TestFixtures.multiScene, options: ViewOptions(sceneIndex: 1))
+        #expect(try await waitUntil { canvas.phase == .ready && canvas.view?.options.sceneIndex == 1 })
+        #expect(try canvas.snapshot().width > 1)
+    }
+
     @Test func zoomPercentFollowsCameraCommands() async throws {
         let canvas = ModelCanvasController()
         _ = mount(canvas, url: TestFixtures.cube)
