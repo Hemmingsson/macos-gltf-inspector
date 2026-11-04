@@ -13,7 +13,7 @@ struct RealityDocumentWindow: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var window: DocumentWindowModel
-    @State private var convert: RealityCanvasView.State = .loading
+    @State private var convert: RealityLoadState = .loading
     @State private var interaction = PreviewInteraction()
     /// Inspector morph sliders — mirrored from `PreviewMorph` on the loaded entity.
     @State private var morphTargets: [MorphTargetControl] = []
@@ -167,7 +167,7 @@ struct RealityDocumentWindow: View {
         playbackController = EngineAnimationPlaybackController()
         interaction = PreviewInteraction()
         Task {
-            let state = await RealityCanvasView.State.loaded(from: url)
+            let state = await RealityLoadState.loaded(from: url)
             guard window.isCurrent(generation) else { return }
             switch state {
             case .ready(let model):

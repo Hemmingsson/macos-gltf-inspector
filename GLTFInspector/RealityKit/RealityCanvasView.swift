@@ -2,25 +2,22 @@ import RendererRealityKit
 import SwiftUI
 
 /// RealityKit document-window canvas: `RealityPreviewCanvas` over a converted model. Mounted only
-/// once convert lands (loading and failure are drawn by PreviewUI's `CanvasRegion`); `State` is the
-/// window's convert state. Quick Look has its own RealityKit root
-/// (`PreviewExtension/QuickLookRealityKit.swift`).
+/// once convert lands (loading and failure are drawn by PreviewUI's `CanvasRegion`). Quick Look
+/// has its own RealityKit root (`PreviewExtension/QuickLookRealityKit.swift`).
 struct RealityCanvasView: View {
-    typealias State = RealityLoadState
-
     let model: EntityLoader.LoadedModel
     var interaction: PreviewInteraction
     var isDark: Bool
-    var sidebar: (any PreviewOverlay)? = nil
+    var sidebar: (any PreviewOverlay)?
     /// Host passes `HostSidebarModel.overlayRevision` so RealityView updates on select/hide.
     /// Reading it through `any PreviewOverlay` alone is not a reliable SwiftUI dependency.
-    var overlayRevision: Int = 0
+    var overlayRevision: Int
     /// Host-owned session; nil lets `PreviewScene` seed local `@State`.
-    var session: PreviewSessionBindings? = nil
+    var session: PreviewSessionBindings?
     /// RealityKit camera commands, registered while the canvas is mounted.
-    var commands: FocusedPreviewCommands? = nil
+    var commands: FocusedPreviewCommands?
     /// Called with the mounted canvas's commands. Runs in `onAppear`, never during a view update.
-    var registerCommands: (FocusedPreviewCommands?) -> Void = { _ in }
+    var registerCommands: (FocusedPreviewCommands?) -> Void
 
     var body: some View {
         RealityPreviewCanvas(

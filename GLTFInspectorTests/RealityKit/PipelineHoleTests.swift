@@ -39,7 +39,7 @@ struct PipelineHoleTests {
     @MainActor
     @Test func truncatedGLBSurfacesFailedPreviewState() async {
         #expect(TestFixtures.exists(TestFixtures.corrupt))
-        let state = await RealityCanvasView.State.loaded(from: TestFixtures.corrupt)
+        let state = await RealityLoadState.loaded(from: TestFixtures.corrupt)
         guard case .failed(let message) = state else {
             Issue.record("expected .failed, got \(String(describing: state))")
             return
