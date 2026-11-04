@@ -54,6 +54,33 @@ struct ShapePreviewTests {
         #expect(state.canvas.view!.options == canvasOptionsBefore)
     }
 
+    @Test func exposureChangeKeepsOrbitAndDoesNotReAdopt() async throws {
+        let url = try writeTempStackedQuadsGLB()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let state = ViewState(settings: try settings())
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 256, height: 256))
+        state.canvas.mount(in: container, url: url, options: ViewOptions())
+        try #require(try await waitUntil { state.canvas.phase == .ready })
+        defer { state.canvas.view?.removeFromSuperview() }
+
+        let selection = NodeID(kind: .mesh, index: 0)
+        await state.shapePreview.sync(canvas: state.canvas, windowOptions: state.options, selection: selection)
+        let preview = try #require(state.shapePreview.view)
+        preview.orbit(dx: 120, dy: 60)
+        let azimuth = preview.camera.rotAroundY
+        let elevation = preview.camera.rotAroundX
+        #expect(azimuth != 0)
+        let adoptsBefore = state.shapePreview.adoptCount
+
+        state.exposure = 1.5
+        await state.shapePreview.sync(canvas: state.canvas, windowOptions: state.options, selection: selection)
+
+        #expect(preview.camera.rotAroundY == azimuth)
+        #expect(preview.camera.rotAroundX == elevation)
+        #expect(state.shapePreview.adoptCount == adoptsBefore)
+    }
+
     @Test func previewModelViewStaysStableAcrossSelectionAndReAdoptsOnReload() async throws {
         let url = try writeTempStackedQuadsGLB()
         defer { try? FileManager.default.removeItem(at: url) }

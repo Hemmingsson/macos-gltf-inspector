@@ -30,13 +30,10 @@ struct ShapeSection: View {
             .padding(.horizontal, DS.Spacing.l)
             .padding(.bottom, DS.Spacing.m)
         }
-        .task(id: ShapePreviewTaskID(generation: view.canvas.sceneGeneration, selection: selection)) {
+        // One trigger: a change of scene, selection or window options re-runs the task (a new id
+        // cancels the previous run), so each change syncs exactly once.
+        .task(id: ShapePreviewTaskID(generation: view.canvas.sceneGeneration, selection: selection, options: view.options)) {
             await view.shapePreview.sync(canvas: view.canvas, windowOptions: view.options, selection: selection)
-        }
-        .onChange(of: view.options) { _, _ in
-            Task {
-                await view.shapePreview.sync(canvas: view.canvas, windowOptions: view.options, selection: selection)
-            }
         }
     }
 }
@@ -45,11 +42,13 @@ private struct ShapePreviewTaskID: Equatable {
     let generation: Int
     let kind: NodeKind
     let index: Int
+    let options: ViewOptions
 
-    init(generation: Int, selection: NodeID) {
+    init(generation: Int, selection: NodeID, options: ViewOptions) {
         self.generation = generation
         kind = selection.kind
         index = selection.index
+        self.options = options
     }
 }
 
@@ -77,23 +76,59 @@ final class ShapePreviewController {
 
     @ObservationIgnored private(set) var view: ModelView?
     @ObservationIgnored private var adoptedSceneGeneration = -1
+    /// Scene adoptions (`show(scene:)`) so far; tests use it to prove a change did not re-adopt.
+    @ObservationIgnored private(set) var adoptCount = 0
+    /// The scene generation and orbit fit the preview last framed; a change of node or scene refits.
+    @ObservationIgnored private var fitted: FitKey?
+    /// The inputs of the last `sync`; an identical request repeats no work.
+    @ObservationIgnored private var lastSync: SyncKey?
+
+    private struct FitKey: Equatable {
+        let node: Int
+        let generation: Int
+    }
+
+    private struct SyncKey: Equatable {
+        let kind: NodeKind
+        let node: Int
+        let generation: Int
+        let options: ViewOptions
+    }
 
     func sync(canvas: ModelCanvasController, windowOptions: ViewOptions, selection: NodeID?) async {
-        showsInteractivePreview = false
-        showsCameraStill = false
-        cameraImage = nil
+        guard canvas.phase == .ready, let scene = canvas.scene, let selection else {
+            showsInteractivePreview = false
+            showsCameraStill = false
+            cameraImage = nil
+            lastSync = nil
+            return
+        }
 
-        guard canvas.phase == .ready, let scene = canvas.scene, let selection else { return }
-
+        let generation = canvas.sceneGeneration
         switch selection.kind {
         case .mesh, .empty:
+            let options = Self.previewOptions(from: windowOptions, isolatedNode: selection.index)
+            let key = SyncKey(kind: selection.kind, node: selection.index, generation: generation, options: options)
+            guard key != lastSync else { return }
+            lastSync = key
             showsInteractivePreview = true
-            await updateInteractive(canvas: canvas, scene: scene, windowOptions: windowOptions, nodeIndex: selection.index)
+            showsCameraStill = false
+            cameraImage = nil
+            await updateInteractive(scene: scene, generation: generation, options: options, nodeIndex: selection.index)
         case .camera:
+            var options = Self.previewOptions(from: windowOptions, isolatedNode: nil)
+            options.fileCameraNodeIndex = selection.index
+            let key = SyncKey(kind: selection.kind, node: selection.index, generation: generation, options: options)
+            guard key != lastSync else { return }
+            lastSync = key
+            showsInteractivePreview = false
             showsCameraStill = true
-            updateCameraStill(canvas: canvas, scene: scene, windowOptions: windowOptions, nodeIndex: selection.index)
+            updateCameraStill(scene: scene, generation: generation, options: options)
         default:
-            break
+            showsInteractivePreview = false
+            showsCameraStill = false
+            cameraImage = nil
+            lastSync = nil
         }
     }
 
@@ -116,40 +151,36 @@ final class ShapePreviewController {
         return view
     }
 
-    private func updateInteractive(
-        canvas: ModelCanvasController,
-        scene: MetalScene,
-        windowOptions: ViewOptions,
-        nodeIndex: Int
-    ) async {
+    /// Adopts `scene` into the shared view once per scene generation.
+    private func adoptIfNeeded(_ view: ModelView, scene: MetalScene, generation: Int) throws {
+        guard generation != adoptedSceneGeneration else { return }
+        try view.show(scene: scene)
+        adoptedSceneGeneration = generation
+        adoptCount += 1
+    }
+
+    private func updateInteractive(scene: MetalScene, generation: Int, options: ViewOptions, nodeIndex: Int) async {
         do {
             let preview = try ensureView(sharing: scene)
-            if canvas.sceneGeneration != adoptedSceneGeneration {
-                try preview.show(scene: scene)
-                adoptedSceneGeneration = canvas.sceneGeneration
-            }
-            let options = Self.previewOptions(from: windowOptions, isolatedNode: nodeIndex)
+            try adoptIfNeeded(preview, scene: scene, generation: generation)
+            // Exposure and other cheap look changes keep the orbit; only a new node or scene refits.
             try await preview.apply(options)
-            preview.fit(nodeIndex: nodeIndex)
+            let fit = FitKey(node: nodeIndex, generation: generation)
+            if fitted != fit {
+                preview.fit(nodeIndex: nodeIndex)
+                fitted = fit
+            }
         } catch {
             AppLog.error(AppLog.renderer, "shape preview failed: \(error.localizedDescription)")
         }
     }
 
-    private func updateCameraStill(
-        canvas: ModelCanvasController,
-        scene: MetalScene,
-        windowOptions: ViewOptions,
-        nodeIndex: Int
-    ) {
+    private func updateCameraStill(scene: MetalScene, generation: Int, options: ViewOptions) {
         do {
             let snapshotView = try ensureView(sharing: scene)
-            if canvas.sceneGeneration != adoptedSceneGeneration {
-                try snapshotView.show(scene: scene)
-                adoptedSceneGeneration = canvas.sceneGeneration
-            }
-            var options = Self.previewOptions(from: windowOptions, isolatedNode: nil)
-            options.fileCameraNodeIndex = nodeIndex
+            try adoptIfNeeded(snapshotView, scene: scene, generation: generation)
+            // The still re-frames the shared view's camera, so the next interactive sync must refit.
+            fitted = nil
             try snapshotView.show(scene: scene, options: options)
             snapshotView.transmissionResolution = 256
             cameraImage = try snapshotView.image(width: 200, height: 200, transmissionResolution: 256)
@@ -170,6 +201,9 @@ final class ShapePreviewController {
         options.selectedSkinIndex = nil
         options.hiddenNodeIndices = []
         options.soloNodeIndices = []
+        options.selectedNodeIndices = []
+        options.hoveredNodeIndex = nil
+        options.useSilhouetteSelectionOutline = false
         options.isolatedNodeIndex = isolatedNode
         options.fileCameraNodeIndex = nil
         options.autoRotates = false
