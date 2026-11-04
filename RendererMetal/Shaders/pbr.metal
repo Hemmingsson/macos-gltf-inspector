@@ -59,7 +59,11 @@ fragment MetalFragmentOutput khronos_fragment(MetalVaryings in [[stage_in]],bool
     if(m.flags.x&1u) base*=materialTextures.maps[0].sample(materialTextures.samplers[0],materialUV(in,m,0));
     if(m.flags.y==0) base.a=1;
     if(m.flags.y==1) { if(base.a<m.surface.w) discard_fragment(); base.a=1; }
-    if(m.flags.z&1u) return {base,1u};
+    // MATERIAL_UNLIT: TRANSMISSION_PASS writes toneMapInverse(baseColor) with flag 2, else baseColor with flag 1.
+    if(m.flags.z&1u) {
+        if(frame.options.z&2u) return {float4(toneMapInverse(base.rgb,frame.environment.z,frame.options.x),base.a),2u};
+        return {base,1u};
+    }
     float metallic=m.surface.x, roughness=m.surface.y;
     if(m.flags.x&2u) { float4 mr=materialTextures.maps[1].sample(materialTextures.samplers[1],materialUV(in,m,1)); metallic*=mr.b; roughness*=mr.g; }
     metallic=clamp(metallic,0.0f,1.0f); roughness=clamp(roughness,0.0f,1.0f);
