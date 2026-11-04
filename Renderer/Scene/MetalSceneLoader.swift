@@ -1,4 +1,5 @@
 import Foundation
+import GLTFCore
 import GLTFKit2
 import Metal
 import simd
@@ -170,9 +171,19 @@ private final class Builder {
         pendingMips.removeAll()
         let skinJointNodeIndices = skins.map(\.jointNodeIndices)
         let jointNodeSet = Set(skinJointNodeIndices.flatMap { $0 })
+        let matrixAuthoredNodes = AnimationClipLoader.matrixAuthoredNodeIndices(json: rawJSON)
+        let clips: [AnimationClip]
+        do {
+            clips = try AnimationClipLoader.loadClips(from: asset)
+        } catch {
+            AppLog.error(AppLog.renderer, "animation clips failed during load: \(error)")
+            clips = []
+        }
         return MetalScene(draws: draws, boundsMin: minimum, boundsMax: maximum, lights: lights, asset: asset,
-                          nodeRests: nodeRests(), skins: skins, inSceneNodes: inSceneNodes, visibleNodes: visibleNodes,
-                          skinJointNodeIndices: skinJointNodeIndices, jointNodeSet: jointNodeSet)
+                          nodeRests: nodeRests(matrixAuthoredNodes: matrixAuthoredNodes), skins: skins,
+                          inSceneNodes: inSceneNodes, visibleNodes: visibleNodes,
+                          skinJointNodeIndices: skinJointNodeIndices, jointNodeSet: jointNodeSet,
+                          clips: clips, matrixAuthoredNodes: matrixAuthoredNodes)
     }
 
     func rejectParentCycles() throws {
@@ -216,8 +227,7 @@ private final class Builder {
 
     /// Cached rest worlds. Nodes the scene walk did not reach (a joint outside the scene) get the
     /// same `parent * matrix` the loader uses for them.
-    func nodeRests() -> [MetalNodeRest] {
-        let matrixNodes = AnimationClipLoader.matrixAuthoredNodeIndices(sourceURL: sourceURL)
+    func nodeRests(matrixAuthoredNodes matrixNodes: Set<Int>) -> [MetalNodeRest] {
         func ensure(_ node: GLTFNode) -> simd_float4x4 {
             if let value = world[ObjectIdentifier(node)] { return value }
             let value = (node.parent.map { ensure($0) } ?? matrix_identity_float4x4) * node.matrix

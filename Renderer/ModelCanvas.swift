@@ -285,7 +285,7 @@ public final class ModelCanvasController {
         playbackStateDidChange()
     }
 
-    private func reloadAnimationClips(from url: URL) {
+    private func reloadAnimationClips(from scene: MetalScene) {
         loadedAnimationClips = []
         defaultSelectedClipIndices = []
         matrixAuthoredNodes = []
@@ -295,19 +295,12 @@ public final class ModelCanvasController {
         time = 0
         animationAtRest = true
         lastPlaybackInstant = nil
-        do {
-            GLTFAsset.dracoDecompressorClassName = "GLBDracoDecompressor"
-            let options: [GLTFAssetLoadingOption: Any] = [.assetDirectoryURLKey: url.deletingLastPathComponent()]
-            let asset = try GLTFAsset(url: url, options: options)
-            let clips = try AnimationClipLoader.loadClips(from: asset)
-            loadedAnimationClips = clips
-            matrixAuthoredNodes = AnimationClipLoader.matrixAuthoredNodeIndices(sourceURL: url)
-            animationClips = clips.map { AnimationClipDescriptor(name: $0.name, duration: $0.maxTime) }
-            defaultSelectedClipIndices = AnimationClip.defaultSelectedClipIndices(in: clips)
-            selectedClipIndices = defaultSelectedClipIndices
-        } catch {
-            AppLog.error(AppLog.renderer, "animation clips failed \(url.lastPathComponent): \(error)")
-        }
+        let clips = scene.clips
+        loadedAnimationClips = clips
+        matrixAuthoredNodes = scene.matrixAuthoredNodes
+        animationClips = clips.map { AnimationClipDescriptor(name: $0.name, duration: $0.maxTime) }
+        defaultSelectedClipIndices = AnimationClip.defaultSelectedClipIndices(in: clips)
+        selectedClipIndices = defaultSelectedClipIndices
         playbackStateDidChange()
     }
 
@@ -440,7 +433,9 @@ public final class ModelCanvasController {
                     let started = ContinuousClock.now
                     try await view.load(wanted.url, options: wanted.options)
                     guard self.wanted?.url == wanted.url else { continue }
-                    reloadAnimationClips(from: wanted.url)
+                    if let scene = view.renderer.scene {
+                        reloadAnimationClips(from: scene)
+                    }
                     phase = .ready
                     sceneGeneration += 1
                     AppLog.info(AppLog.renderer, "canvas ready \(wanted.url.lastPathComponent) in \(started.duration(to: .now))")

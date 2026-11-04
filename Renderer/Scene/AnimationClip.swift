@@ -51,11 +51,15 @@ public enum AnimationClipLoader {
     }
 
     /// Node indices whose glTF JSON includes an authored `matrix` (never TRS-animated).
-    public static func matrixAuthoredNodeIndices(sourceURL: URL) -> Set<Int> {
-        guard let nodes = rawJSONObject(at: sourceURL)?["nodes"] as? [[String: Any]] else { return [] }
+    public static func matrixAuthoredNodeIndices(json: [String: Any]?) -> Set<Int> {
+        guard let nodes = json?["nodes"] as? [[String: Any]] else { return [] }
         return Set(nodes.enumerated().compactMap { index, node in
             node["matrix"] != nil ? index : nil
         })
+    }
+
+    public static func matrixAuthoredNodeIndices(sourceURL: URL) -> Set<Int> {
+        matrixAuthoredNodeIndices(json: rawJSONObject(at: sourceURL))
     }
 
     private static func clip(from animation: GLTFAnimation, asset: GLTFAsset) throws -> AnimationClip {
