@@ -1,0 +1,1167 @@
+⚙️  Generating plists...
+⚙️  Generating project...
+⚙️  Writing project...
+Created project at /Users/mattias/dev/glb-preview/GLTFInspector.xcodeproj
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme GLTFInspector -destination platform=macOS -derivedDataPath /tmp/GLTFInspector-main-dd test "-skip-testing:GLTFInspectorTests/PerfBench" "-only-testing:GLTFInspectorTests/SceneInteractionComponentTests" "-only-testing:GLTFInspectorTests/SceneGizmoTests"
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  GLTFKit2: https://github.com/warrenm/GLTFKit2 @ 0.5.15
+  DracoSwift: https://github.com/warrenm/DracoSwift @ 1.5.7
+  Sparkle: https://github.com/sparkle-project/Sparkle @ 2.9.6
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (9 targets)
+    Target 'GLTFInspectorTests' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFInspector' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+    Target 'GLTFInspector' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'PreviewExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'ThumbnailExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFKit2-product' in project 'GLTFKit2'
+        ➜ Explicit dependency on target 'Sparkle-product' in project 'Sparkle'
+    Target 'Sparkle-product' in project 'Sparkle' (no dependencies)
+    Target 'ThumbnailExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+    Target 'PreviewExtension' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'Renderer' in project 'GLTFInspector'
+    Target 'Renderer' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFCore' in project 'GLTFInspector'
+        ➜ Explicit dependency on target 'GLTFKit2-product' in project 'GLTFKit2'
+        ➜ Explicit dependency on target 'DracoSwift-product' in project 'DracoSwift'
+    Target 'DracoSwift-product' in project 'DracoSwift' (no dependencies)
+    Target 'GLTFKit2-product' in project 'GLTFKit2' (no dependencies)
+    Target 'GLTFCore' in project 'GLTFInspector' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x objective-c++ -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -x c++ -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 3330c3f8dabdc642755ec2f4e95c327b
+Build description path: /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/XCBuildData/3330c3f8dabdc642755ec2f4e95c327b.xcbuilddata
+note: Removed stale file '/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/OrientationGizmo.o'
+
+note: Removed stale file '/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/OrientationGizmo.swiftconstvalues'
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache
+    cd /Users/mattias/dev/glb-preview/GLTFInspector.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -o /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache
+
+WriteAuxiliaryFile /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    write-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftConstValuesFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    write-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.LinkFileList (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    write-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.LinkFileList
+
+WriteAuxiliaryFile /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-OutputFileMap.json (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    write-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-OutputFileMap.json
+
+ProcessInfoPlistFile /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources/Info.plist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/empty-GLTFCore.plist (in target 'GLTFCore' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-infoPlistUtility /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFCore.build/empty-GLTFCore.plist -producttype com.apple.product-type.framework -expandbuildsettings -platform macosx -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFCore.framework/Versions/A/Resources/Info.plist
+
+SwiftDriver Renderer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Renderer -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/Users/mattias/dev/glb-preview/Vendor/libktx/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-Swift.h -import-underlying-module -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+ProcessInfoPlistFile /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/Info.plist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/empty-Renderer.plist (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-infoPlistUtility /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/empty-Renderer.plist -producttype com.apple.product-type.framework -expandbuildsettings -platform macosx -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources/Info.plist
+
+SwiftCompile normal arm64 Compiling\ ModelView.swift /Users/mattias/dev/glb-preview/Renderer/ModelView.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/Renderer/ModelView.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ModelView.swift
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ Renderer (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+
+SwiftCompile normal arm64 Compiling\ ModelCanvas.swift /Users/mattias/dev/glb-preview/Renderer/ModelCanvas.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/Renderer/ModelCanvas.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ModelCanvas.swift
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for Renderer (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation\ Requirements Renderer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Renderer -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/Users/mattias/dev/glb-preview/Vendor/libktx/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-Swift.h -import-underlying-module -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftsourceinfo (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftsourceinfo /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/arm64-apple-macos.swiftmodule /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/arm64-apple-macos.abi.json /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.abi.json (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.abi.json /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/arm64-apple-macos.swiftdoc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftdoc (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftdoc /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Modules/Renderer.swiftmodule/arm64-apple-macos.swiftdoc
+
+SwiftDriver ThumbnailExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ThumbnailExtension -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver PreviewExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name PreviewExtension -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling ModelCanvas.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ModelView.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 Compiling\ ThumbnailRenderer.swift /Users/mattias/dev/glb-preview/Renderer/ThumbnailRenderer.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/Renderer/ThumbnailRenderer.swift (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ThumbnailRenderer.swift
+
+SwiftDriverJobDiscovery normal arm64 Compiling ThumbnailRenderer.swift (in target 'Renderer' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation Renderer normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Renderer -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/Users/mattias/dev/glb-preview/Vendor/libktx/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer-Swift.h -import-underlying-module -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/unextended-module-overlay.yaml -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/GLTFKit2-SLH43UFMVZK2.swiftmodule
+
+Ld /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Renderer normal (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ -Xlinker -reproducible -target arm64-apple-macos26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/GLTFInspector-main-dd/Build/Products/Debug -F/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/GLTFInspector-main-dd/Build/Products/Debug -filelist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.LinkFileList -install_name @rpath/Renderer.framework/Versions/A/Renderer -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_dependency_info.dat -stdlib\=libc++ -fobjc-arc -fobjc-link-runtime -fapplication-extension -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.swiftmodule -framework GLTFCore -framework GLTFKit2 -ldraco -compatibility_version 1 -current_version 1 -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Renderer
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ ThumbnailExtension (in target 'ThumbnailExtension' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ PreviewExtension (in target 'PreviewExtension' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+
+SwiftCompile normal arm64 Compiling\ ThumbnailProvider.swift /Users/mattias/dev/glb-preview/ThumbnailExtension/ThumbnailProvider.swift (in target 'ThumbnailExtension' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/ThumbnailExtension/ThumbnailProvider.swift (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ThumbnailProvider.swift
+
+SwiftCompile normal arm64 Compiling\ PreviewViewController.swift /Users/mattias/dev/glb-preview/PreviewExtension/PreviewViewController.swift (in target 'PreviewExtension' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/PreviewExtension/PreviewViewController.swift (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PreviewViewController.swift
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for ThumbnailExtension (in target 'ThumbnailExtension' from project 'GLTFInspector')
+
+ExtractAppIntentsMetadata (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --module-name Renderer --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --xcode-version 27B52 --platform-family macOS --deployment-target 26.0 --bundle-identifier lol.mattias.gltf-inspector.Renderer --output /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Renderer --dependency-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer_dependency_info.dat --stringsdata-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftFileList --metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.DependencyMetadataFileList --static-metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Renderer.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/Renderer.build/Objects-normal/arm64/Renderer.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-04 14:04:59.179 appintentsmetadataprocessor[49511:367529] Starting App Intents metadata extraction
+2026-11-04 14:04:59.187 appintentsmetadataprocessor[49511:367529] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+
+SwiftDriver\ Compilation\ Requirements ThumbnailExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ThumbnailExtension -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.swiftmodule/arm64-apple-macos.abi.json /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.abi.json (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.abi.json /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.swiftmodule/arm64-apple-macos.abi.json
+
+GenerateTAPI /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/Renderer.framework/Versions/A/Renderer.tbd (in target 'Renderer' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/tapi stubify -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -F/tmp/GLTFInspector-main-dd/Build/Products/Debug -L/tmp/GLTFInspector-main-dd/Build/Products/Debug /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework/Versions/A/Renderer -o /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug/Renderer.framework/Versions/A/Renderer.tbd
+
+SwiftDriverJobDiscovery normal arm64 Compiling ThumbnailProvider.swift (in target 'ThumbnailExtension' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation ThumbnailExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name ThumbnailExtension -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+ProcessInfoPlistFile /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/Info.plist /Users/mattias/dev/glb-preview/ThumbnailExtension/Info.plist (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-infoPlistUtility /Users/mattias/dev/glb-preview/ThumbnailExtension/Info.plist -producttype com.apple.product-type.app-extension -expandbuildsettings -platform macosx -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/Info.plist
+
+ProcessInfoPlistFile /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex/Contents/Info.plist /Users/mattias/dev/glb-preview/PreviewExtension/Info.plist (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-infoPlistUtility /Users/mattias/dev/glb-preview/PreviewExtension/Info.plist -producttype com.apple.product-type.app-extension -expandbuildsettings -platform macosx -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex/Contents/Info.plist
+
+Ld /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/MacOS/ThumbnailExtension normal (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/GLTFInspector-main-dd/Build/Products/Debug -F/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/GLTFInspector-main-dd/Build/Products/Debug -filelist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.LinkFileList -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -rpath -Xlinker @executable_path/../../../../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_dependency_info.dat -e _NSExtensionMain -fapplication-extension -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.swiftmodule -framework GLTFCore -framework Renderer -Xlinker -no_adhoc_codesign -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/MacOS/ThumbnailExtension
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for PreviewExtension (in target 'PreviewExtension' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation\ Requirements PreviewExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name PreviewExtension -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.swiftmodule/arm64-apple-macos.abi.json /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.abi.json (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.abi.json /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.swiftmodule/arm64-apple-macos.abi.json
+
+SwiftDriver GLTFInspector normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFInspector -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling PreviewViewController.swift (in target 'PreviewExtension' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation PreviewExtension normal arm64 com.apple.xcode.tools.swift.compiler (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name PreviewExtension -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -parse-as-library -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex/Contents/MacOS/PreviewExtension normal (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/GLTFInspector-main-dd/Build/Products/Debug -F/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/GLTFInspector-main-dd/Build/Products/Debug -filelist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.LinkFileList -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -rpath -Xlinker @executable_path/../../../../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_dependency_info.dat -e _NSExtensionMain -fapplication-extension -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.swiftmodule -framework GLTFCore -framework Renderer -Xlinker -no_adhoc_codesign -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex/Contents/MacOS/PreviewExtension
+
+ExtractAppIntentsMetadata (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --module-name ThumbnailExtension --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --xcode-version 27B52 --platform-family macOS --deployment-target 26.0 --bundle-identifier lol.mattias.gltf-inspector.ThumbnailExtension --output /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex/Contents/MacOS/ThumbnailExtension --dependency-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension_dependency_info.dat --stringsdata-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftFileList --metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.DependencyMetadataFileList --static-metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/Objects-normal/arm64/ThumbnailExtension.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-04 14:04:59.589 appintentsmetadataprocessor[49523:367628] Starting App Intents metadata extraction
+2026-11-04 14:04:59.590 appintentsmetadataprocessor[49523:367628] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+
+CodeSign /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex (in target 'ThumbnailExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+    Signing Identity:     "Apple Development: hemmingsson.m@gmail.com (JZFM6ULBH8)"
+    
+    /usr/bin/codesign --force --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -o runtime --entitlements /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/ThumbnailExtension.build/ThumbnailExtension.appex.xcent --timestamp\=none --generate-entitlement-der --strip-disallowed-xattrs /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex
+
+ExtractAppIntentsMetadata (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --module-name PreviewExtension --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --xcode-version 27B52 --platform-family macOS --deployment-target 26.0 --bundle-identifier lol.mattias.gltf-inspector.PreviewExtension --output /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex/Contents/MacOS/PreviewExtension --dependency-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension_dependency_info.dat --stringsdata-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftFileList --metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.DependencyMetadataFileList --static-metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/Objects-normal/arm64/PreviewExtension.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-04 14:04:59.719 appintentsmetadataprocessor[49526:367653] Starting App Intents metadata extraction
+2026-11-04 14:04:59.720 appintentsmetadataprocessor[49526:367653] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+
+SwiftCompile normal arm64 Compiling\ DSFactRow.swift,\ DSFactorRow.swift,\ DSFlowLayout.swift,\ DSGizmoPanel.swift,\ DSGlassCluster.swift,\ DSGlassIsland.swift,\ DSGlassMenuButton.swift,\ DSGlassPlacement.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSFactRow.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSFactorRow.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSFlowLayout.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGizmoPanel.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassCluster.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassIsland.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassMenuButton.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassPlacement.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSFactRow.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSFactRow.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSFactorRow.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSFactorRow.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSFlowLayout.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSFlowLayout.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGizmoPanel.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSGizmoPanel.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassCluster.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSGlassCluster.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassIsland.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSGlassIsland.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassMenuButton.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSGlassMenuButton.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassPlacement.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSGlassPlacement.swift
+
+SwiftCompile normal arm64 Compiling\ AboutSettingsPane.swift,\ AppSettings.swift,\ CameraCluster.swift,\ CanvasRegion.swift,\ DS.swift,\ DSChip.swift,\ DSDisclosureCard.swift,\ DSDocumentCard.swift /Users/mattias/dev/glb-preview/GLTFInspector/Settings/AboutSettingsPane.swift /Users/mattias/dev/glb-preview/GLTFInspector/App/AppSettings.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/CameraCluster.swift /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/CanvasRegion.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/DS.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSChip.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSDisclosureCard.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSDocumentCard.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Settings/AboutSettingsPane.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile AboutSettingsPane.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/App/AppSettings.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile AppSettings.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/CameraCluster.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile CameraCluster.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/CanvasRegion.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile CanvasRegion.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/DS.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DS.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSChip.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSChip.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSDisclosureCard.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSDisclosureCard.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSDocumentCard.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSDocumentCard.swift
+
+SwiftCompile normal arm64 Compiling\ DSGlassPopoverButton.swift,\ DSGlassToggleButton.swift,\ DSHUDCapsule.swift,\ DSOutlineRow.swift,\ DSPicker.swift,\ DSPopoverPanel.swift,\ DSSectionHeader.swift,\ DSSlider.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassPopoverButton.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassToggleButton.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSHUDCapsule.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSOutlineRow.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Controls/DSPicker.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Controls/DSPopoverPanel.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSSectionHeader.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Controls/DSSlider.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassPopoverButton.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSGlassPopoverButton.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSGlassToggleButton.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSGlassToggleButton.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSHUDCapsule.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSHUDCapsule.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSOutlineRow.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSOutlineRow.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Controls/DSPicker.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSPicker.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Controls/DSPopoverPanel.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSPopoverPanel.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSSectionHeader.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSSectionHeader.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Controls/DSSlider.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSSlider.swift
+
+SwiftCompile normal arm64 Compiling\ OutlinerList.swift,\ OutlinerSection.swift,\ OutlinerTree.swift,\ OverlayMetrics.swift,\ PNGExport.swift,\ SettingsView.swift,\ Shortcuts.swift /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/OutlinerList.swift /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/OutlinerSection.swift /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/OutlinerTree.swift /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/OverlayMetrics.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/PNGExport.swift /Users/mattias/dev/glb-preview/GLTFInspector/Settings/SettingsView.swift /Users/mattias/dev/glb-preview/GLTFInspector/App/Shortcuts.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/OutlinerList.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile OutlinerList.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/OutlinerSection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile OutlinerSection.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/OutlinerTree.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile OutlinerTree.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/OverlayMetrics.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile OverlayMetrics.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/PNGExport.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PNGExport.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Settings/SettingsView.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile SettingsView.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/App/Shortcuts.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile Shortcuts.swift
+
+SwiftCompile normal arm64 Compiling\ DSStatus.swift,\ DSStatusBadge.swift,\ DSSwatchPicker.swift,\ DSTypeIcon.swift,\ DSValueCell.swift,\ DSVectorRow.swift,\ DevLaunch.swift,\ DimensionsReadout.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSStatus.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSStatusBadge.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSSwatchPicker.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSTypeIcon.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSValueCell.swift /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSVectorRow.swift /Users/mattias/dev/glb-preview/GLTFInspector/App/DevLaunch.swift /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/DimensionsReadout.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSStatus.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSStatus.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSStatusBadge.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSStatusBadge.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Glass/DSSwatchPicker.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSSwatchPicker.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSTypeIcon.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSTypeIcon.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSValueCell.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSValueCell.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/DesignSystem/Components/Content/DSVectorRow.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DSVectorRow.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/App/DevLaunch.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DevLaunch.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/DimensionsReadout.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DimensionsReadout.swift
+
+SwiftCompile normal arm64 Compiling\ DocumentHeader.swift,\ DocumentOpening.swift,\ DocumentState.swift,\ DocumentStatusView.swift,\ DocumentWindow.swift,\ DocumentWindowModel.swift,\ FactSections.swift,\ FieldOfViewPopover.swift /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/DocumentHeader.swift /Users/mattias/dev/glb-preview/GLTFInspector/App/DocumentOpening.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentState.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentStatusView.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentWindow.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentWindowModel.swift /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/FactSections.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/FieldOfViewPopover.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/DocumentHeader.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DocumentHeader.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/App/DocumentOpening.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DocumentOpening.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentState.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DocumentState.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentStatusView.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DocumentStatusView.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentWindow.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DocumentWindow.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/DocumentWindowModel.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DocumentWindowModel.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/FactSections.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile FactSections.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/FieldOfViewPopover.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile FieldOfViewPopover.swift
+
+SwiftCompile normal arm64 Compiling\ GLTFDocument+Display.swift,\ GLTFInspectorApp.swift,\ GeneralSettingsPane.swift,\ GeometrySection.swift,\ IdentityRow.swift,\ Inspector.swift,\ IssuesSection.swift,\ LightingPopover.swift /Users/mattias/dev/glb-preview/GLTFInspector/Document/GLTFDocument+Display.swift /Users/mattias/dev/glb-preview/GLTFInspector/App/GLTFInspectorApp.swift /Users/mattias/dev/glb-preview/GLTFInspector/Settings/GeneralSettingsPane.swift /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/GeometrySection.swift /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/IdentityRow.swift /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/Inspector.swift /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/IssuesSection.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/LightingPopover.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Document/GLTFDocument+Display.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GLTFDocument+Display.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/App/GLTFInspectorApp.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GLTFInspectorApp.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Settings/GeneralSettingsPane.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GeneralSettingsPane.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/GeometrySection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GeometrySection.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/IdentityRow.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile IdentityRow.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/Inspector.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile Inspector.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/IssuesSection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile IssuesSection.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/LightingPopover.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile LightingPopover.swift
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ GLTFInspector (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+
+SwiftCompile normal arm64 Compiling\ Sidebar.swift,\ StageCluster.swift,\ Titles.swift,\ TransformSection.swift,\ UpdateConfig.swift,\ ValidationResult.swift,\ ValidationSection.swift /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/Sidebar.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/StageCluster.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/Titles.swift /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/TransformSection.swift /Users/mattias/dev/glb-preview/GLTFInspector/App/UpdateConfig.swift /Users/mattias/dev/glb-preview/GLTFInspector/Document/ValidationResult.swift /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/ValidationSection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/Sidebar.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile Sidebar.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/StageCluster.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile StageCluster.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/Titles.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile Titles.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/TransformSection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile TransformSection.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/App/UpdateConfig.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile UpdateConfig.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Document/ValidationResult.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ValidationResult.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/ValidationSection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ValidationSection.swift
+
+SwiftCompile normal arm64 Compiling\ ViewMenu.swift,\ ViewModeMenu.swift,\ ViewSettingsPane.swift,\ ViewState.swift,\ ViewportCommands.swift,\ WindowLayout.swift,\ GeneratedAssetSymbols.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/ViewMenu.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/ViewModeMenu.swift /Users/mattias/dev/glb-preview/GLTFInspector/Settings/ViewSettingsPane.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/ViewState.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/ViewportCommands.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/WindowLayout.swift /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/ViewMenu.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ViewMenu.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/ViewModeMenu.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ViewModeMenu.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Settings/ViewSettingsPane.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ViewSettingsPane.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/ViewState.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ViewState.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/ViewportCommands.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ViewportCommands.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/WindowLayout.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile WindowLayout.swift
+
+SwiftCompile normal arm64 /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GeneratedAssetSymbols.swift
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for GLTFInspector (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 Compiling\ LookCluster.swift,\ MaterialSection.swift,\ MenuCommands.swift,\ NavigationGizmo.swift,\ NodeID.swift,\ NodeRow.swift,\ OpenInButton.swift,\ OriginGizmo.swift /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/LookCluster.swift /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/MaterialSection.swift /Users/mattias/dev/glb-preview/GLTFInspector/App/MenuCommands.swift /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/NavigationGizmo.swift /Users/mattias/dev/glb-preview/GLTFInspector/Document/NodeID.swift /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/NodeRow.swift /Users/mattias/dev/glb-preview/GLTFInspector/Window/OpenInButton.swift /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/OriginGizmo.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Toolbar/LookCluster.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile LookCluster.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Inspector/MaterialSection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MaterialSection.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/App/MenuCommands.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MenuCommands.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/NavigationGizmo.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile NavigationGizmo.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Document/NodeID.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile NodeID.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Sidebar/NodeRow.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile NodeRow.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Window/OpenInButton.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile OpenInButton.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspector/Canvas/OriginGizmo.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile OriginGizmo.swift
+
+SwiftDriver\ Compilation\ Requirements GLTFInspector normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFInspector -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling Sidebar.swift, StageCluster.swift, Titles.swift, TransformSection.swift, UpdateConfig.swift, ValidationResult.swift, ValidationSection.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+CodeSign /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex (in target 'PreviewExtension' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+    Signing Identity:     "Apple Development: hemmingsson.m@gmail.com (JZFM6ULBH8)"
+    
+    /usr/bin/codesign --force --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -o runtime --entitlements /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/PreviewExtension.build/PreviewExtension.appex.xcent --timestamp\=none --generate-entitlement-der --strip-disallowed-xattrs /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex
+
+SwiftDriverJobDiscovery normal arm64 Compiling DSFactRow.swift, DSFactorRow.swift, DSFlowLayout.swift, DSGizmoPanel.swift, DSGlassCluster.swift, DSGlassIsland.swift, DSGlassMenuButton.swift, DSGlassPlacement.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling DSStatus.swift, DSStatusBadge.swift, DSSwatchPicker.swift, DSTypeIcon.swift, DSValueCell.swift, DSVectorRow.swift, DevLaunch.swift, DimensionsReadout.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling OutlinerList.swift, OutlinerSection.swift, OutlinerTree.swift, OverlayMetrics.swift, PNGExport.swift, SettingsView.swift, Shortcuts.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling DSGlassPopoverButton.swift, DSGlassToggleButton.swift, DSHUDCapsule.swift, DSOutlineRow.swift, DSPicker.swift, DSPopoverPanel.swift, DSSectionHeader.swift, DSSlider.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ViewMenu.swift, ViewModeMenu.swift, ViewSettingsPane.swift, ViewState.swift, ViewportCommands.swift, WindowLayout.swift, GeneratedAssetSymbols.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/arm64-apple-macos.abi.json /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.abi.json (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.abi.json /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/arm64-apple-macos.swiftdoc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftdoc (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftdoc /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftsourceinfo (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftsourceinfo /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/arm64-apple-macos.swiftmodule /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftmodule (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftmodule /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspector.swiftmodule/arm64-apple-macos.swiftmodule
+
+SwiftDriver GLTFInspectorTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFInspectorTests -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling DocumentHeader.swift, DocumentOpening.swift, DocumentState.swift, DocumentStatusView.swift, DocumentWindow.swift, DocumentWindowModel.swift, FactSections.swift, FieldOfViewPopover.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling AboutSettingsPane.swift, AppSettings.swift, CameraCluster.swift, CanvasRegion.swift, DS.swift, DSChip.swift, DSDisclosureCard.swift, DSDocumentCard.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling GLTFDocument+Display.swift, GLTFInspectorApp.swift, GeneralSettingsPane.swift, GeometrySection.swift, IdentityRow.swift, Inspector.swift, IssuesSection.swift, LightingPopover.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 Compiling\ MetalCameraTests.swift,\ MetalDrawFilterTests.swift,\ MetalDrawOrderTests.swift,\ MetalPickTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalCameraTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalDrawFilterTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalDrawOrderTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalPickTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalCameraTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MetalCameraTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalDrawFilterTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MetalDrawFilterTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalDrawOrderTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MetalDrawOrderTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalPickTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MetalPickTests.swift
+
+SwiftCompile normal arm64 Compiling\ PixelDiffMetalTests.swift,\ PixelDiffRun.swift,\ PixelDiffTests.swift,\ RecentGLTFFilesTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffMetalTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffRun.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/RecentGLTFFilesTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffMetalTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PixelDiffMetalTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffRun.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PixelDiffRun.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PixelDiffTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/RecentGLTFFilesTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile RecentGLTFFilesTests.swift
+
+SwiftCompile normal arm64 Compiling\ OutlinerTreeTests.swift,\ PerfBench.swift,\ PixelDiff.swift,\ PixelDiffManifest.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/OutlinerTreeTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/PerfBench.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiff.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffManifest.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/OutlinerTreeTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile OutlinerTreeTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/PerfBench.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PerfBench.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiff.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PixelDiff.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/PixelDiffManifest.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile PixelDiffManifest.swift
+
+SwiftCompile normal arm64 Compiling\ MetalRendererTests.swift,\ MetalSceneLoaderTests.swift,\ ModelCanvasTests.swift,\ ModelViewPickTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalRendererTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalSceneLoaderTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/ModelCanvasTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/ModelViewPickTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalRendererTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MetalRendererTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/MetalSceneLoaderTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MetalSceneLoaderTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/ModelCanvasTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ModelCanvasTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/ModelViewPickTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ModelViewPickTests.swift
+
+SwiftCompile normal arm64 Compiling\ GLTFIssueResolverTests.swift,\ GLTFValidatorTests.swift,\ JSONModelBoundsTests.swift,\ MaterialDisplayTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFIssueResolverTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFValidatorTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/JSONModelBoundsTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/MaterialDisplayTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFIssueResolverTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GLTFIssueResolverTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFValidatorTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GLTFValidatorTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/JSONModelBoundsTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile JSONModelBoundsTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/MaterialDisplayTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile MaterialDisplayTests.swift
+
+SwiftCompile normal arm64 Compiling\ ShortcutsTests.swift,\ TestFixtures.swift,\ TestGLBFixtures.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/ShortcutsTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/TestFixtures.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/TestGLBFixtures.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/ShortcutsTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ShortcutsTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/TestFixtures.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile TestFixtures.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/TestGLBFixtures.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile TestGLBFixtures.swift
+
+SwiftCompile normal arm64 Compiling\ AppGroupSettingsTests.swift,\ AutoOrthographicTests.swift,\ CanvasRoutingTests.swift,\ DocumentWindowValidationTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/AppGroupSettingsTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/AutoOrthographicTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/CanvasRoutingTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/DocumentWindowValidationTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/AppGroupSettingsTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile AppGroupSettingsTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/AutoOrthographicTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile AutoOrthographicTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/CanvasRoutingTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile CanvasRoutingTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/DocumentWindowValidationTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile DocumentWindowValidationTests.swift
+
+SwiftCompile normal arm64 Compiling\ SceneGizmoTests.swift,\ SceneInteractionComponentTests.swift,\ SceneInteractionGestureTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/SceneGizmoTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/SceneInteractionComponentTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/SceneInteractionGestureTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/SceneGizmoTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile SceneGizmoTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/SceneInteractionComponentTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile SceneInteractionComponentTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/SceneInteractionGestureTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile SceneInteractionGestureTests.swift
+
+SwiftCompile normal arm64 Compiling\ FrameSelectionTests.swift,\ GLTFDocumentContentTests.swift,\ GLTFDocumentGLBTests.swift,\ GLTFDocumentJSONTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/FrameSelectionTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFDocumentContentTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFDocumentGLBTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFDocumentJSONTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/FrameSelectionTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile FrameSelectionTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFDocumentContentTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GLTFDocumentContentTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFDocumentGLBTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GLTFDocumentGLBTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/GLTFDocumentJSONTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile GLTFDocumentJSONTests.swift
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ GLTFInspectorTests (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling ShortcutsTests.swift, TestFixtures.swift, TestGLBFixtures.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 Compiling\ UpdateConfigTests.swift,\ ValidationResultTests.swift,\ ViewStateTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/UpdateConfigTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/ValidationResultTests.swift /Users/mattias/dev/glb-preview/GLTFInspectorTests/ViewStateTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/UpdateConfigTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile UpdateConfigTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/ValidationResultTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ValidationResultTests.swift
+
+SwiftCompile normal arm64 /Users/mattias/dev/glb-preview/GLTFInspectorTests/ViewStateTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-SwiftPerFileCompile ViewStateTests.swift
+
+SwiftDriverJobDiscovery normal arm64 Compiling LookCluster.swift, MaterialSection.swift, MenuCommands.swift, NavigationGizmo.swift, NodeID.swift, NodeRow.swift, OpenInButton.swift, OriginGizmo.swift (in target 'GLTFInspector' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SceneGizmoTests.swift, SceneInteractionComponentTests.swift, SceneInteractionGestureTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation GLTFInspector normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFInspector -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib normal (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/GLTFInspector-main-dd/Build/Products/Debug -F/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/GLTFInspector-main-dd/Build/Products/Debug -filelist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.LinkFileList -install_name @rpath/glTF\ Inspector.debug.dylib -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/GLTFInspector.swiftmodule -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -framework GLTFKit2 -framework GLTFCore -framework Renderer -framework Sparkle -Xlinker -no_adhoc_codesign -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib
+
+SwiftDriverJobDiscovery normal arm64 Compiling AppGroupSettingsTests.swift, AutoOrthographicTests.swift, CanvasRoutingTests.swift, DocumentWindowValidationTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling GLTFIssueResolverTests.swift, GLTFValidatorTests.swift, JSONModelBoundsTests.swift, MaterialDisplayTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PixelDiffMetalTests.swift, PixelDiffRun.swift, PixelDiffTests.swift, RecentGLTFFilesTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling OutlinerTreeTests.swift, PerfBench.swift, PixelDiff.swift, PixelDiffManifest.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+ConstructStubExecutorLinkFileList /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-ExecutorLinkFileList-normal-arm64.txt (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    construct-stub-executor-link-file-list /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'GLTFInspector' from project 'GLTFInspector')
+
+Ld /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector normal (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/tmp/GLTFInspector-main-dd/Build/Products/Debug -F/tmp/GLTFInspector-main-dd/Build/Products/Debug -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/../Frameworks -rdynamic -Xlinker -no_deduplicate -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector-ExecutorLinkFileList-normal-arm64.txt /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib -Xlinker -no_adhoc_codesign -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/ThumbnailExtension.appex /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /tmp/GLTFInspector-main-dd/Build/Products/Debug/ThumbnailExtension.appex /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/PreviewExtension.appex /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /tmp/GLTFInspector-main-dd/Build/Products/Debug/PreviewExtension.appex /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks/Renderer.framework /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks
+
+CodeSign /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks/Renderer.framework/Versions/A (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+    Signing Identity:     "Apple Development: hemmingsson.m@gmail.com (JZFM6ULBH8)"
+    
+    /usr/bin/codesign --force --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -o runtime --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der --strip-disallowed-xattrs /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks/Renderer.framework/Versions/A
+/tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF Inspector.app/Contents/Frameworks/Renderer.framework/Versions/A: replacing existing signature
+
+ProcessInfoPlistFile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Info.plist /Users/mattias/dev/glb-preview/GLTFInspector/Info.plist (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-infoPlistUtility /Users/mattias/dev/glb-preview/GLTFInspector/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/assetcatalog_generated_info.plist -scanforprivacyfile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks/GLTFCore.framework -scanforprivacyfile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks/GLTFKit2.framework -scanforprivacyfile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks/Renderer.framework -scanforprivacyfile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks/Sparkle.framework -scanforprivacyfile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/PreviewExtension.appex -scanforprivacyfile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/ThumbnailExtension.appex -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Info.plist
+
+SwiftDriverJobDiscovery normal arm64 Compiling MetalCameraTests.swift, MetalDrawFilterTests.swift, MetalDrawOrderTests.swift, MetalPickTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+CopySwiftLibs /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-swiftStdLibTool --copy --verbose --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 --scan-executable /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Library/SystemExtensions --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Extensions --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFCore.framework --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --module-name GLTFInspector --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --xcode-version 27B52 --platform-family macOS --deployment-target 26.0 --bundle-identifier lol.mattias.gltf-inspector --output /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector --dependency-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector_dependency_info.dat --stringsdata-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftFileList --metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.DependencyMetadataFileList --static-metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/Objects-normal/arm64/glTF\ Inspector.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-04 14:05:03.853 appintentsmetadataprocessor[49590:368093] Starting App Intents metadata extraction
+2026-11-04 14:05:03.855 appintentsmetadataprocessor[49590:368093] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+
+ProcessInfoPlistFile /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/Info.plist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/empty-GLTFInspectorTests.plist (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-infoPlistUtility /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/empty-GLTFInspectorTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/Info.plist
+
+SwiftDriverJobDiscovery normal arm64 Compiling MetalRendererTests.swift, MetalSceneLoaderTests.swift, ModelCanvasTests.swift, ModelViewPickTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for GLTFInspectorTests (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation\ Requirements GLTFInspectorTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFInspectorTests -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspectorTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftsourceinfo (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftsourceinfo /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspectorTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspectorTests.swiftmodule/arm64-apple-macos.swiftmodule /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftmodule (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftmodule /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspectorTests.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspectorTests.swiftmodule/arm64-apple-macos.abi.json /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.abi.json (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.abi.json /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFInspectorTests.swiftmodule/arm64-apple-macos.abi.json
+
+SwiftDriverJobDiscovery normal arm64 Compiling UpdateConfigTests.swift, ValidationResultTests.swift, ViewStateTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriverJobDiscovery normal arm64 Compiling FrameSelectionTests.swift, GLTFDocumentContentTests.swift, GLTFDocumentGLBTests.swift, GLTFDocumentJSONTests.swift (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+
+SwiftDriver\ Compilation GLTFInspectorTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name GLTFInspectorTests -Onone @/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/GLTFInspector-main-dd/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/GLTFInspector-main-dd/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/GLTFInspector-main-dd/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/GLTFInspector-main-dd/SDKStatCaches.noindex/macosx27.2-26B118-9aa026f88bf9ed31cff8761912ac5bd1a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/GLTFInspector-main-dd/ModuleCache.noindex -sdk-module-cache-path /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /tmp/GLTFInspector-main-dd/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-generated-files.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-own-target-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector-d8a4f24ee47d5b557b009b0834b1e4bd-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests-project-headers.hmap -Xcc -I/tmp/GLTFInspector-main-dd/Build/Products/Debug/include -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources/arm64 -Xcc -I/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests-Swift.h -working-directory /Users/mattias/dev/glb-preview -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/MacOS/GLTFInspectorTests normal (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/GLTFInspector-main-dd/Build/Products/Debug -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F/tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/GLTFInspector-main-dd/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.LinkFileList -Xlinker -rpath -Xlinker @loader_path/../Frameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -bundle_loader /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector -Xlinker -object_path_lto -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.swiftmodule -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -framework GLTFCore -framework Renderer /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib -Xlinker -no_adhoc_codesign -o /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/MacOS/GLTFInspectorTests
+
+CopySwiftLibs /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-swiftStdLibTool --copy --verbose --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 --scan-executable /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/MacOS/GLTFInspectorTests --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/Frameworks --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/PlugIns --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/Extensions --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/GLTFCore.framework --scan-folder /tmp/GLTFInspector-main-dd/Build/Products/Debug/Renderer.framework --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.U78Kio/Metal.xctoolchain --module-name GLTFInspectorTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --xcode-version 27B52 --platform-family macOS --deployment-target 26.0 --bundle-identifier lol.mattias.gltf-inspector.tests --output /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest/Contents/MacOS/GLTFInspectorTests --dependency-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests_dependency_info.dat --stringsdata-file /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftFileList --metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.DependencyMetadataFileList --static-metadata-file-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/GLTFInspectorTests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspectorTests.build/Objects-normal/arm64/GLTFInspectorTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-04 14:05:04.685 appintentsmetadataprocessor[49593:368127] Starting App Intents metadata extraction
+2026-11-04 14:05:04.686 appintentsmetadataprocessor[49593:368127] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+
+CodeSign /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest (in target 'GLTFInspectorTests' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+    Signing Identity:     "Apple Development: hemmingsson.m@gmail.com (JZFM6ULBH8)"
+    
+    /usr/bin/codesign --force --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -o runtime --timestamp\=none --generate-entitlement-der --strip-disallowed-xattrs /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/GLTFInspectorTests.xctest
+
+CodeSign /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+    Signing Identity:     "Apple Development: hemmingsson.m@gmail.com (JZFM6ULBH8)"
+    
+    /usr/bin/codesign --force --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -o runtime --timestamp\=none --generate-entitlement-der --strip-disallowed-xattrs /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/glTF\ Inspector.debug.dylib
+
+CodeSign /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/__preview.dylib (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+    Signing Identity:     "Apple Development: hemmingsson.m@gmail.com (JZFM6ULBH8)"
+    
+    /usr/bin/codesign --force --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -o runtime --timestamp\=none --generate-entitlement-der --strip-disallowed-xattrs /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/MacOS/__preview.dylib
+/tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF Inspector.app/Contents/MacOS/__preview.dylib: replacing existing signature
+
+CodeSign /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    
+    Signing Identity:     "Apple Development: hemmingsson.m@gmail.com (JZFM6ULBH8)"
+    
+    /usr/bin/codesign --force --sign B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -o runtime --entitlements /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/GLTFInspector.build/Debug/GLTFInspector.build/glTF\ Inspector.app.xcent --timestamp\=none --generate-entitlement-der --strip-disallowed-xattrs /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app
+
+Validate /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-validationUtility /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+ValidateEmbeddedBinary /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/ThumbnailExtension.appex (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/usr/bin/embeddedBinaryValidationUtility /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/ThumbnailExtension.appex -signing-cert B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -info-plist-path /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Info.plist
+
+ValidateEmbeddedBinary /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/PreviewExtension.appex (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    /Applications/Xcode.app/Contents/Developer/usr/bin/embeddedBinaryValidationUtility /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/PlugIns/PreviewExtension.appex -signing-cert B7D8F7671338E7AD210E44BB6CFD2CDFD7A155F8 -info-plist-path /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app/Contents/Info.plist
+
+RegisterWithLaunchServices /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app (in target 'GLTFInspector' from project 'GLTFInspector')
+    cd /Users/mattias/dev/glb-preview
+    builtin-lsregisterurl --record-path /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/XCBuildData/registered-launchservices.txt -- /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/GLTFInspector-main-dd/Build/Products/Debug/glTF\ Inspector.app
+
+PruneExplicitPrecompiledModules /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /tmp/GLTFInspector-main-dd/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /tmp/GLTFInspector-main-dd/SDKExplicitPrecompiledModules
+
+2026-11-04 14:05:06.588197+0100 glTF Inspector[49604:368380] [User Defaults] Couldn't read values in CFPrefsPlistSource<0x76508aea80> (Domain: 94A9N4B67S.lol.mattias.gltf-inspector, User: kCFPreferencesAnyUser, ByHost: Yes, Container: (null), Contents Need Refresh: Yes (Cached: 0, Newest: 0, Index: 0): Using kCFPreferencesAnyUser with a container is only allowed for System Containers, detaching from cfprefsd
+2026-11-04 14:05:06.784726+0100 glTF Inspector[49604:368380] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/44/71j5cc814jq976sy8_phhv_w0000gn/T/lol.mattias.gltf-inspector.savedState
+Test Suite 'Selected tests' started at 2026-11-04 14:05:07.947.
+Test Suite 'GLTFInspectorTests.xctest' started at 2026-11-04 14:05:07.948.
+Test Suite 'GLTFInspectorTests.xctest' passed at 2026-11-04 14:05:07.948.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-11-04 14:05:07.948.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+􀟈 Test run started.
+􀄵 Testing Library Version: 2403
+􀄵 Target Platform: arm64e-apple-macos14.0
+􀟈 Suite SceneGizmoTests started.
+􀟈 Test selectedPerspectiveCameraHasFrustumEdgesAtItsAuthoredPosition() started.
+􀢄 Test selectedPerspectiveCameraHasFrustumEdgesAtItsAuthoredPosition() recorded an issue at SceneGizmoTests.swift:15:9: Expectation failed: vertices.contains { simd_distance($0.position, SIMD4<Float>(0, 0, 3, 1)) < 1e-5 }
+􀄵 the frustum apex must be the authored camera position
+􀄵 vertices.contains { simd_distance($0.position, SIMD4<Float>(0, 0, 3, 1)) < 1e-5 } → <not evaluated>
+􀢄 Test selectedPerspectiveCameraHasFrustumEdgesAtItsAuthoredPosition() failed after 0.011 seconds with 1 issue.
+􀄵 // Backlog y3hdxwwh: a selected camera is visible even with the global gizmo toggle off.
+􀟈 Test selectedDirectionalLightHasAPlateAndDirectionLine() started.
+􀢄 Test selectedDirectionalLightHasAPlateAndDirectionLine() recorded an issue at SceneGizmoTests.swift:29:9: Expectation failed: longest >= 0.49
+􀄵 the direction ray must span half the unit-sized scene, not a tiny selection box
+􀄵 longest >= 0.49 → false
+􀄵   longest → 0.0002
+􀢄 Test selectedDirectionalLightHasAPlateAndDirectionLine() failed after 0.001 seconds with 1 issue.
+􀄵 // Backlog umczfxl2: the directional light's node has no mesh bounds to outline.
+􀟈 Test selectedJointShowsItsBoneToTheParentJoint() started.
+􀢄 Test selectedJointShowsItsBoneToTheParentJoint() recorded an issue at SceneGizmoTests.swift:42:9: Expectation failed: segments.contains { a, b in
+            (simd_distance(a, hip) < 1e-5 && simd_distance(b, knee) < 1e-5)
+                || (simd_distance(b, hip) < 1e-5 && simd_distance(a, knee) < 1e-5)
+        }
+􀄵 selecting a joint must show the bone, even though the joint itself has no mesh
+􀄵 segments.contains { a, b in
+               (simd_distance(a, hip) < 1e-5 && simd_distance(b, knee) < 1e-5)
+                   || (simd_distance(b, hip) < 1e-5 && simd_distance(a, knee) < 1e-5)
+           } → <not evaluated>
+􀢄 Test selectedJointShowsItsBoneToTheParentJoint() failed after 0.002 seconds with 1 issue.
+􀄵 // Backlog fnaam6pc: selecting the knee must show its connection to the hip.
+􀟈 Test noSelectionAndDefaultOptionsEmitNoGizmos() started.
+􁁛 Test noSelectionAndDefaultOptionsEmitNoGizmos() passed after 0.001 seconds.
+􀢄 Suite SceneGizmoTests failed after 0.015 seconds with 3 issues.
+􀟈 Suite SceneInteractionComponentTests started.
+􀟈 Test hostReadsTheExistingInspectorContent() started.
+􀢄 Test hostReadsTheExistingInspectorContent() recorded an issue at SceneInteractionComponentTests.swift:80:9: Expectation failed: host.text.contains("Inspector")
+􀄵 host.text.contains("Inspector") → false
+􀄵   host.text → ""
+􀢄 Test hostReadsTheExistingInspectorContent() recorded an issue at SceneInteractionComponentTests.swift:81:9: Expectation failed: host.text.contains("Panel")
+􀄵 host.text.contains("Panel") → false
+􀄵   host.text → ""
+􀢄 Test hostReadsTheExistingInspectorContent() recorded an issue at SceneInteractionComponentTests.swift:82:9: Expectation failed: host.text.contains("Geometry")
+􀄵 host.text.contains("Geometry") → false
+􀄵   host.text → ""
+􀢄 Test hostReadsTheExistingInspectorContent() recorded an issue at SceneInteractionComponentTests.swift:83:9: Expectation failed: host.text.contains("Copper")
+􀄵 host.text.contains("Copper") → false
+􀄵   host.text → ""
+􀢄 Test hostReadsTheExistingInspectorContent() failed after 0.057 seconds with 4 issues.
+􀄵 // A passing control: if this fails, missing-text tests are harness errors, not feature red.
+􀟈 Test meshInspectorExposesEveryPrimitiveMaterial() started.
+􀢄 Test meshInspectorExposesEveryPrimitiveMaterial() recorded an issue at SceneInteractionComponentTests.swift:90:9: Expectation failed: host.text.contains("Copper")
+􀄵 host.text.contains("Copper") → false
+􀄵   host.text → ""
+􀢄 Test meshInspectorExposesEveryPrimitiveMaterial() recorded an issue at SceneInteractionComponentTests.swift:91:9: Expectation failed: host.text.contains("Rubber")
+􀄵 the second primitive's material must appear in the mesh inspector
+􀄵 host.text.contains("Rubber") → false
+􀄵   host.text → ""
+􀢄 Test meshInspectorExposesEveryPrimitiveMaterial() failed after 0.019 seconds with 2 issues.
+􀄵 // Backlog 9toe55f5: both primitive materials must be discoverable, not only the first.
+􀟈 Test emptySelectionShowsSceneGeometryTotals() started.
+􀢄 Test emptySelectionShowsSceneGeometryTotals() recorded an issue at SceneInteractionComponentTests.swift:99:9: Expectation failed: text.contains("tris") || text.contains("triangles")
+􀄵 whole-scene geometry totals must be available without a selection
+􀄵 text.contains("tris") || text.contains("triangles") → false
+􀄵   text.contains("tris") → false
+􀄵   text.contains("triangles") → false
+􀢄 Test emptySelectionShowsSceneGeometryTotals() failed after 0.007 seconds with 1 issue.
+􀄵 // Backlog mdleya4f: clearing selection should expose scene totals instead of an empty prompt.
+􀟈 Test groupSelectionShowsSubtreeGeometryTotals() started.
+􀢄 Test groupSelectionShowsSubtreeGeometryTotals() recorded an issue at SceneInteractionComponentTests.swift:106:9: Expectation failed: text.contains("tris") || text.contains("triangles")
+􀄵 a selected group needs totals for its descendant geometry
+􀄵 text.contains("tris") || text.contains("triangles") → false
+􀄵   text.contains("tris") → false
+􀄵   text.contains("triangles") → false
+􀢄 Test groupSelectionShowsSubtreeGeometryTotals() failed after 0.034 seconds with 1 issue.
+􀟈 Test meshInspectorOffersShapePreview() started.
+􀢄 Test meshInspectorOffersShapePreview() recorded an issue at SceneInteractionComponentTests.swift:113:9: Expectation failed: host.text.contains("Shape")
+􀄵 a selected mesh must have an isolated shape preview
+􀄵 host.text.contains("Shape") → false
+􀄵   host.text → ""
+􀢄 Test meshInspectorOffersShapePreview() failed after 0.024 seconds with 1 issue.
+􀄵 // Backlog hw4fh7zp: a mesh selection must offer the isolated Shape section.
+􀟈 Test navigationGizmoOffersAllSixAxisActions() started.
+􀢄 Test navigationGizmoOffersAllSixAxisActions() recorded an issue at SceneInteractionComponentTests.swift:124:13: Expectation failed: actions.contains("View from \(direction)")
+􀄵 the navigation gizmo must expose the top action
+􀄵 actions.contains("View from \(direction)") → false
+􀄵   actions → []
+􀄵   "View from \(direction)" → "View from top"
+􀢄 Test navigationGizmoOffersAllSixAxisActions() recorded an issue at SceneInteractionComponentTests.swift:124:13: Expectation failed: actions.contains("View from \(direction)")
+􀄵 the navigation gizmo must expose the bottom action
+􀄵 actions.contains("View from \(direction)") → false
+􀄵   actions → []
+􀄵   "View from \(direction)" → "View from bottom"
+􀢄 Test navigationGizmoOffersAllSixAxisActions() recorded an issue at SceneInteractionComponentTests.swift:124:13: Expectation failed: actions.contains("View from \(direction)")
+􀄵 the navigation gizmo must expose the front action
+􀄵 actions.contains("View from \(direction)") → false
+􀄵   actions → []
+􀄵   "View from \(direction)" → "View from front"
+􀢄 Test navigationGizmoOffersAllSixAxisActions() recorded an issue at SceneInteractionComponentTests.swift:124:13: Expectation failed: actions.contains("View from \(direction)")
+􀄵 the navigation gizmo must expose the back action
+􀄵 actions.contains("View from \(direction)") → false
+􀄵   actions → []
+􀄵   "View from \(direction)" → "View from back"
+􀢄 Test navigationGizmoOffersAllSixAxisActions() recorded an issue at SceneInteractionComponentTests.swift:124:13: Expectation failed: actions.contains("View from \(direction)")
+􀄵 the navigation gizmo must expose the left action
+􀄵 actions.contains("View from \(direction)") → false
+􀄵   actions → []
+􀄵   "View from \(direction)" → "View from left"
+􀢄 Test navigationGizmoOffersAllSixAxisActions() recorded an issue at SceneInteractionComponentTests.swift:124:13: Expectation failed: actions.contains("View from \(direction)")
+􀄵 the navigation gizmo must expose the right action
+􀄵 actions.contains("View from \(direction)") → false
+􀄵   actions → []
+􀄵   "View from \(direction)" → "View from right"
+􀢄 Test navigationGizmoOffersAllSixAxisActions() failed after 0.015 seconds with 6 issues.
+􀄵 // Backlog 2kwjzlmj: the public accessibility contract works without pointer coordinates.
+􀟈 Test dimensionsReadoutExposesItsRenderedValue() started.
+􀢄 Test dimensionsReadoutExposesItsRenderedValue() recorded an issue at SceneInteractionComponentTests.swift:131:9: Expectation failed: host.text.contains("1.00 × 2.00 × 3.00 m")
+􀄵 host.text.contains("1.00 × 2.00 × 3.00 m") → false
+􀄵   host.text → ""
+􀢄 Test dimensionsReadoutExposesItsRenderedValue() failed after 0.012 seconds with 1 issue.
+􀢄 Suite SceneInteractionComponentTests failed after 0.170 seconds with 16 issues.
+􀢄 Test run with 11 tests in 2 suites failed after 0.186 seconds with 19 issues.
+2026-11-04 14:05:13.009 xcodebuild[49310:366498] [MT] IDETestOperationsObserverDebug: 7.151 elapsed -- Testing started completed.
+2026-11-04 14:05:13.009 xcodebuild[49310:366498] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-04 14:05:13.009 xcodebuild[49310:366498] [MT] IDETestOperationsObserverDebug: 7.151 sec, +7.151 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/GLTFInspector-main-dd/Logs/Test/Test-GLTFInspector-2026.11.04_14-04-55-+0100.xcresult
+
+Failing tests:
+	SceneGizmoTests.selectedPerspectiveCameraHasFrustumEdgesAtItsAuthoredPosition()
+	SceneGizmoTests.selectedDirectionalLightHasAPlateAndDirectionLine()
+	SceneGizmoTests.selectedJointShowsItsBoneToTheParentJoint()
+	SceneInteractionComponentTests.hostReadsTheExistingInspectorContent()
+	SceneInteractionComponentTests.hostReadsTheExistingInspectorContent()
+	SceneInteractionComponentTests.hostReadsTheExistingInspectorContent()
+	SceneInteractionComponentTests.hostReadsTheExistingInspectorContent()
+	SceneInteractionComponentTests.meshInspectorExposesEveryPrimitiveMaterial()
+	SceneInteractionComponentTests.meshInspectorExposesEveryPrimitiveMaterial()
+	SceneInteractionComponentTests.emptySelectionShowsSceneGeometryTotals()
+	SceneInteractionComponentTests.groupSelectionShowsSubtreeGeometryTotals()
+	SceneInteractionComponentTests.meshInspectorOffersShapePreview()
+	SceneInteractionComponentTests.navigationGizmoOffersAllSixAxisActions()
+	SceneInteractionComponentTests.navigationGizmoOffersAllSixAxisActions()
+	SceneInteractionComponentTests.navigationGizmoOffersAllSixAxisActions()
+	SceneInteractionComponentTests.navigationGizmoOffersAllSixAxisActions()
+	SceneInteractionComponentTests.navigationGizmoOffersAllSixAxisActions()
+	SceneInteractionComponentTests.navigationGizmoOffersAllSixAxisActions()
+	SceneInteractionComponentTests.dimensionsReadoutExposesItsRenderedValue()
+
+** TEST FAILED **
+
+Testing started

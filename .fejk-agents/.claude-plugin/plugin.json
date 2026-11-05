@@ -1,0 +1,6 @@
+{
+  "name": "next-workflow",
+  "version": "0.1.0",
+  "description": "Spec-driven, test-first workflow: brainstorm → breakdown → build → review → land.",
+  "author": { "name": "Mattias Hemmingsson" }
+}

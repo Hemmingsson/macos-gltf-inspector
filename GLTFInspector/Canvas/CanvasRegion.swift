@@ -24,6 +24,8 @@ struct CanvasRegion<Content: View>: View {
     var isSidebarVisible: Bool = true
     /// When false, Camera clears the floating inspector Open in action.
     var isInspectorVisible: Bool = true
+    /// Hides the sidebar and the inspector together. The model stays selected.
+    var chromeHidden: Binding<Bool> = .constant(false)
     @ViewBuilder var content: () -> Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -42,14 +44,15 @@ struct CanvasRegion<Content: View>: View {
                         .ignoresSafeArea()
                         .focusSection()
                         .overlay {
-                            if view.canvas.showsAnimationTimeline {
+                            if showsAnimationPlayer {
                                 SpaceKeyView { view.canvas.togglePlayback() }
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                                     .allowsHitTesting(false)
                             }
                         }
+                        .onAppear { installCanvasMenu() }
                         .onKeyPress(.space) {
-                            guard view.canvas.showsAnimationTimeline else { return .ignored }
+                            guard showsAnimationPlayer else { return .ignored }
                             view.canvas.togglePlayback()
                             return .handled
                         }
@@ -88,6 +91,22 @@ struct CanvasRegion<Content: View>: View {
             if view.isExportingTurntable {
                 TurntableExportHUD(view: view)
             }
+        }
+    }
+
+    /// The transport is the selected animation. A file that merely contains clips stays at rest.
+    private var showsAnimationPlayer: Bool {
+        guard let id = view.selection, id.kind == .animation else { return false }
+        let clips = view.canvas.animationClips
+        guard clips.indices.contains(id.index) else { return false }
+        return clips[id.index].duration > 0
+    }
+
+    private func installCanvasMenu() {
+        let hidden = chromeHidden
+        let state = view
+        state.canvas.contextMenu = {
+            CanvasContextMenu.menu(view: state, chromeHidden: hidden)
         }
     }
 
@@ -131,19 +150,19 @@ struct CanvasRegion<Content: View>: View {
             .overlay(alignment: .bottomTrailing) {
                 DimensionsReadoutHost(view: view, modelBounds: bounds)
                     .padding(.trailing, OverlayMetrics.inset)
-                    .padding(.bottom, view.canvas.showsAnimationTimeline
+                    .padding(.bottom, showsAnimationPlayer
                         ? OverlayMetrics.inset + OverlayMetrics.timelineHeight + DS.Spacing.m
                         : OverlayMetrics.inset)
             }
             .overlay(alignment: .bottom) {
-                if view.canvas.showsAnimationTimeline {
+                if showsAnimationPlayer {
                     AnimationTimelineHUD(canvas: view.canvas)
                         .padding(.bottom, OverlayMetrics.inset)
                         .padding(.horizontal, bottomOverlayClearance)
                 }
             }
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: view.isCentered)
-            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: view.canvas.showsAnimationTimeline)
+            .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: showsAnimationPlayer)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isSidebarVisible)
             .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: isInspectorVisible)
     }
@@ -199,24 +218,28 @@ private struct DimensionsReadoutHost: View {
     }
 }
 
-/// The name of the node under the resting pointer, just below and right of it. Its own view, so
-/// only it re-renders as the pointer moves.
+/// The name of the node under the pointer, just below and right of it. Its own view, so only it
+/// re-renders as the pointer moves. Opaque, with no animation: a glass capsule samples the
+/// canvas a frame late and the tag lags the cursor.
 private struct HoverTooltip: View {
     var view: ViewState
 
     var body: some View {
         if let node = view.canvas.hoveredNode, let location = view.canvas.hoverLocation,
            let id = view.document.id(ofNode: node) {
-            DSHUDCapsule(height: OverlayMetrics.tooltipHeight, horizontalPadding: DS.Spacing.m) {
-                Text(view.document.displayName(of: id))
-                    .font(.callout)
-                    .lineLimit(1)
-            }
-            .fixedSize()
-            .offset(x: location.x + OverlayMetrics.tooltipOffset, y: location.y + OverlayMetrics.tooltipOffset)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-            .ignoresSafeArea()
+            Text(view.document.displayName(of: id))
+                .font(.caption)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .padding(.horizontal, DS.Spacing.s)
+                .padding(.vertical, DS.Spacing.xs)
+                .background(.black, in: Capsule())
+                .fixedSize()
+                .offset(x: location.x + OverlayMetrics.tooltipOffset, y: location.y + OverlayMetrics.tooltipOffset)
+                .transaction { $0.animation = nil }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+                .ignoresSafeArea()
         }
     }
 }

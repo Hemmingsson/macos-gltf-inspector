@@ -1,0 +1,4 @@
+interface:
+  display_name: "Full Send"
+  short_description: "Prove, Sol, launch, then land on main"
+  default_prompt: "Use $n-full-send to land this. I will approve in the app."

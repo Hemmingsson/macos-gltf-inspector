@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify"
+  short_description: "Fresh command output before a pass claim"
+  default_prompt: "Use $n-verify before calling this done."

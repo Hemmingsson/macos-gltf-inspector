@@ -96,9 +96,11 @@ public final class ModelCanvasController {
         didSet { view?.onTogglePick = onTogglePick }
     }
     /// A pointer orbit drag started on the canvas (not a pan); forwards to the live `ModelView`.
-    @ObservationIgnored public var onOrbitStart: (() -> Void)? {
+    @ObservationIgnored     public var onOrbitStart: (() -> Void)? {
         didSet { view?.onOrbitStart = onOrbitStart }
     }
+    /// Right-click menu. The view forwards here so the window can replace the items after mount.
+    @ObservationIgnored public var contextMenu: (@MainActor () -> NSMenu)?
     /// glTF node under the resting pointer, for the name tooltip and the layer-row tint.
     public private(set) var hoveredNode: Int?
     /// Pointer position for the tooltip: canvas view points, origin top-left.
@@ -193,6 +195,18 @@ public final class ModelCanvasController {
     public func selectDefaultAnimationClips() {
         guard !defaultSelectedClipIndices.isEmpty else { return }
         selectedClipIndices = defaultSelectedClipIndices
+    }
+
+    /// Rest pose and the file's default clip set. No-op when playback is already there,
+    /// so selecting a mesh does not redraw.
+    public func dismissAnimationPlayer() {
+        let playing = isPlaying || time > 0 || currentAnimationPose() != nil
+        let clipChanged = selectedClipIndices != defaultSelectedClipIndices
+        guard playing || clipChanged else { return }
+        if playing { stopPlayback() }
+        if selectedClipIndices != defaultSelectedClipIndices {
+            selectedClipIndices = defaultSelectedClipIndices
+        }
     }
 
     /// One clip, or the default disjoint set when `index` is nil.
@@ -404,6 +418,7 @@ public final class ModelCanvasController {
                     reportedViewRotation = rotation
                     viewRotation = rotation
                 }
+                view.contextMenu = { [weak self] in self?.contextMenu?() }
                 view.contentInsets = contentInsets
                 view.inputLocked = inputLocked
                 wirePlayback(on: view)

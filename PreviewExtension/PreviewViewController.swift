@@ -43,7 +43,11 @@ private struct QuickLookCanvas: View {
                 .foregroundStyle(isDark ? .white : Color(white: 0.15))
                 .padding()
             } else {
-                ModelCanvas(url: url, options: .stored(showsFloor: true), controller: canvas)
+                ModelCanvas(
+                    url: url,
+                    options: .stored(showsFloor: true, autoRotates: true, isCentered: false, centerWhenFarFromOrigin: true),
+                    controller: canvas
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

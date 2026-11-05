@@ -22,6 +22,9 @@ public struct ViewOptions: Equatable, Sendable {
     public var showsSceneGizmos: Bool
     /// False frames the authored origin too.
     public var isCentered: Bool
+    /// Quick Look: frame the mesh instead of the origin when the mesh sits away from it.
+    /// The app leaves this off.
+    public var centerWhenFarFromOrigin: Bool
     /// glTF node index for mesh / camera / light / joint selection gizmos.
     public var gizmoSelectedNodeIndex: Int?
     /// Index into `skins` when the outliner selection is a skin row.
@@ -63,6 +66,7 @@ public struct ViewOptions: Equatable, Sendable {
         showsFloor: Bool = false,
         showsSceneGizmos: Bool = false,
         isCentered: Bool = true,
+        centerWhenFarFromOrigin: Bool = false,
         selectedNodeIndex: Int? = nil,
         selectedNodeIndices: Set<Int> = [],
         hoveredNodeIndex: Int? = nil,
@@ -88,6 +92,7 @@ public struct ViewOptions: Equatable, Sendable {
         self.showsFloor = showsFloor
         self.showsSceneGizmos = showsSceneGizmos
         self.isCentered = isCentered
+        self.centerWhenFarFromOrigin = centerWhenFarFromOrigin
         self.selectedNodeIndex = selectedNodeIndex
         self.selectedNodeIndices = selectedNodeIndices
         self.hoveredNodeIndex = hoveredNodeIndex
@@ -105,8 +110,15 @@ public struct ViewOptions: Equatable, Sendable {
 
     /// The look Settings stored in the App Group. Quick Look and the Finder thumbnail have no
     /// window state of their own, so both start here and light a file the same way.
-    public static func stored(showsFloor: Bool = false, defaults: UserDefaults = AppGroupSettings.defaults) -> Self {
-        Self(look: AppGroupSettings.look(defaults: defaults), showsFloor: showsFloor)
+    public static func stored(
+        showsFloor: Bool = false,
+        autoRotates: Bool = false,
+        isCentered: Bool = true,
+        centerWhenFarFromOrigin: Bool = false,
+        defaults: UserDefaults = AppGroupSettings.defaults
+    ) -> Self {
+        Self(look: AppGroupSettings.look(defaults: defaults), autoRotates: autoRotates, showsFloor: showsFloor,
+             isCentered: isCentered, centerWhenFarFromOrigin: centerWhenFarFromOrigin)
     }
 }
 

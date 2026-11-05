@@ -1,0 +1,137 @@
+{
+ "type": "swimlane",
+ "title": "One task, start to land",
+ "subtitle": "Board updated at every hand-off",
+ "lanes": [
+  {
+   "id": "u",
+   "label": "User"
+  },
+  {
+   "id": "c",
+   "label": "Conductor"
+  },
+  {
+   "id": "i",
+   "label": "n-implementer"
+  },
+  {
+   "id": "r",
+   "label": "n-task-reviewer"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "start",
+   "label": "backlog start + worktree",
+   "lane": "c",
+   "col": 0
+  },
+  {
+   "id": "red",
+   "label": "Red \u2192 green",
+   "focal": true,
+   "lane": "i",
+   "col": 1
+  },
+  {
+   "id": "rep",
+   "label": "Report + commit",
+   "lane": "i",
+   "col": 2
+  },
+  {
+   "id": "judge",
+   "label": "Spec + quality",
+   "lane": "r",
+   "col": 3
+  },
+  {
+   "id": "pass",
+   "label": "Clean?",
+   "shape": "decision",
+   "lane": "c",
+   "col": 4
+  },
+  {
+   "id": "fix",
+   "label": "Fix round",
+   "lane": "i",
+   "col": 4
+  },
+  {
+   "id": "launch",
+   "label": "Prove, Sol, launch",
+   "lane": "c",
+   "col": 5
+  },
+  {
+   "id": "ok",
+   "label": "Approve?",
+   "shape": "decision",
+   "lane": "u",
+   "col": 6
+  },
+  {
+   "id": "land",
+   "label": "Land on main",
+   "shape": "terminal",
+   "lane": "c",
+   "col": 7
+  }
+ ],
+ "edges": [
+  [
+   "start",
+   "red",
+   "brief",
+   "primary"
+  ],
+  [
+   "red",
+   "rep"
+  ],
+  [
+   "rep",
+   "judge",
+   "diff file"
+  ],
+  [
+   "judge",
+   "pass",
+   "verdicts"
+  ],
+  [
+   "pass",
+   "launch",
+   "yes",
+   "primary"
+  ],
+  [
+   "pass",
+   "fix",
+   "no"
+  ],
+  [
+   "fix",
+   "judge",
+   "re-review"
+  ],
+  [
+   "launch",
+   "ok",
+   "running app"
+  ],
+  [
+   "ok",
+   "land",
+   "yes",
+   "primary"
+  ],
+  [
+   "ok",
+   "fix",
+   "change"
+  ]
+ ]
+}

@@ -46,8 +46,15 @@ struct MetalCameraTests {
         let p = perspective.openGLProjectionMatrix * point
         let o = orthographic.openGLProjectionMatrix * point
         #expect(abs(p.y / p.w - o.y / o.w) < 0.00001)
-        // The Khronos viewer assigns the same xmag and ymag, whatever the canvas aspect.
-        #expect(orthographic.openGLProjectionMatrix.columns.0.x == orthographic.openGLProjectionMatrix.columns.1.y)
+        // A wide window stretches xmag so a circle stays a circle on the full viewport.
+        let x = orthographic.openGLProjectionMatrix.columns.0.x
+        let y = orthographic.openGLProjectionMatrix.columns.1.y
+        #expect(abs(x * orthographic.aspect - y) < 0.00001)
+    }
+
+    @Test func originFarFromTheModelMeansTheBoxClearsTheOrigin() {
+        #expect(!MetalUserCamera.originIsFarFromModel(min: SIMD3(-1, -1, -1), max: SIMD3(1, 1, 1)))
+        #expect(MetalUserCamera.originIsFarFromModel(min: SIMD3(10, 0, 0), max: SIMD3(12, 1, 1)))
     }
 
     @Test func perspectiveCanReplayAnInfiniteFarPlane() {

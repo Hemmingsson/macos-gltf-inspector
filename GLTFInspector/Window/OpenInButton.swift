@@ -36,6 +36,9 @@ struct OpenInButton: View {
                     Divider()
                     TurntableExportButtons(view: view, suggestedName: exportName)
                 }
+
+                Divider()
+                CopyGLBButton(url: documentURL)
             }
             .dsGlassPlacement(.standalone)
         }

@@ -94,25 +94,19 @@ public struct MetalUserCamera: Sendable, Equatable {
 
     // MARK: - Viewer essentials: pivot and pointer zoom
 
-    /// Turns the camera in place so it looks at `newTarget`: the eye stays where it is, the
-    /// orbit target (pivot) and distance change. Elevation keeps the orbit's pole limit.
-    /// Orthographic: the view is the look direction and scale, so the eye and target slide
-    /// together by the in-plane offset instead, and nothing about the view turns.
-    public mutating func retargetKeepingEye(to newTarget: SIMD3<Double>) {
-        if isOrthographic {
-            let offset = newTarget - target
-            position += offset - lookDirection * simd_dot(offset, lookDirection)
-            return
-        }
-        let eye = position
-        let toTarget = newTarget - eye
-        let length = simd_length(toTarget)
-        guard length > 1e-9, length.isFinite else { return }
-        let look = toTarget / length
+    /// `orbit(x, y)` about `pivot` instead of the target: the whole camera turns rigidly about the
+    /// pivot, so the pivot keeps its place on screen and nothing jumps when the pivot is off-centre
+    /// (after a pan or pointer zoom). Distance is kept; the target stays on the look axis.
+    /// Works the same in orthographic, where the view-space position of the pivot is all that shows.
+    public mutating func orbit(_ x: Double, _ y: Double, around pivot: SIMD3<Double>) {
+        let before = rotation
+        let offset = position - pivot
+        let local = SIMD3(simd_dot(offset, before.right), simd_dot(offset, before.up), simd_dot(offset, before.back))
         let limit = Double.pi / 2 - 0.01
-        rotAroundX = min(max(asin(min(max(look.y, -1), 1)), -limit), limit)
-        rotAroundY = atan2(-look.x, -look.z)
-        setDistanceFromTarget(length, newTarget)
+        rotAroundY += -x / 180
+        rotAroundX = min(max(rotAroundX + -y / 180, -limit), limit)
+        let after = rotation
+        position = pivot + after.right * local.x + after.up * local.y + after.back * local.z
         fitCameraPlanesToExtents(sceneMin, sceneMax)
     }
 
@@ -190,6 +184,15 @@ public struct MetalUserCamera: Sendable, Equatable {
         return distance
     }
 
+    /// The authored origin sits outside the model: the box is clear of the origin by a quarter
+    /// of its diagonal. A model that contains the origin, or merely touches it, is not far.
+    public static func originIsFarFromModel(min: SIMD3<Double>, max: SIMD3<Double>) -> Bool {
+        let span = max - min
+        let pad = Swift.max(simd_length(span) * 0.25, 1e-4)
+        guard pad.isFinite else { return false }
+        return min.x > pad || max.x < -pad || min.y > pad || max.y < -pad || min.z > pad || max.z < -pad
+    }
+
     /// Gizmo span as a fraction of the scene span (`ModelView` gizmo sizing).
     static let minimumFramingFraction = 0.15
 
@@ -227,7 +230,7 @@ public struct MetalUserCamera: Sendable, Equatable {
         let half = extent * 0.5
         func projectedHalf(_ axis: SIMD3<Double>) -> Double { simd_dot(simd_abs(axis), half) }
         let safeAspect = aspect > 0.05 && aspect < 20 ? aspect : 1
-        let vHalf = min(90, max(15, fieldOfViewDegrees)) * .pi / 360
+        let vHalf = min(160, max(15, fieldOfViewDegrees)) * .pi / 360
         let hHalf = atan(tan(vHalf) * safeAspect)
         let distance = max(projectedHalf(up) / tan(vHalf), projectedHalf(right) / tan(hHalf)) + projectedHalf(forward)
         return max(0.0001, distance * padding)

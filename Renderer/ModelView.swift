@@ -46,9 +46,20 @@ public final class ModelView: NSView {
     public var contentInsets = NSEdgeInsets() {
         didSet {
             guard contentInsets.left != oldValue.left || contentInsets.right != oldValue.right else { return }
-            redraw()
+            let target = (contentInsets.left - contentInsets.right) / 2
+            if hasDrawnModel, window != nil {
+                shiftGlide = Glide(from: centerShift, to: target, start: CACurrentMediaTime())
+                updateDisplayLink()
+            } else {
+                centerShift = target
+                redraw()
+            }
         }
     }
+    /// Points the projection centre sits right of the view centre: half the pane imbalance,
+    /// eased toward it when a pane opens or closes over a drawn model.
+    private(set) var centerShift = 0.0
+    private var hasDrawnModel = false
     private var displayLink: CADisplayLink?
     /// True while animation playback runs; keeps the display link alive with auto-rotate.
     var isPlaybackRunning = false
@@ -57,7 +68,12 @@ public final class ModelView: NSView {
     /// True while a turntable export runs: pointer, wheel, pinch and hover input are ignored so
     /// the export's view and selection cannot change under it.
     public var inputLocked = false {
-        didSet { if inputLocked { clearHover() } }
+        didSet {
+            if inputLocked {
+                clearHover()
+                cancelCameraGlide()
+            }
+        }
     }
 
     public init(renderer: MetalRenderer) {
@@ -130,6 +146,9 @@ public final class ModelView: NSView {
             } else if previous.isOrthographic != next.isOrthographic {
                 camera.applyProjection()
             }
+            if next.selectedNodeIndex != previous.selectedNodeIndex, next.selectedNodeIndex != nil {
+                centreOnSelection()
+            }
             redraw()
         } catch {
             applyOptions(previous)
@@ -152,6 +171,7 @@ public final class ModelView: NSView {
     /// Frames the model from the front.
     public func fit() {
         guard renderer.scene != nil else { return }
+        cancelCameraGlide()
         fitCamera()
         orbit(azimuth: 0, elevation: 0)
         fitDistance = camera.distance
@@ -164,6 +184,7 @@ public final class ModelView: NSView {
     /// Frames the union of several nodes' subtrees at the current orbit angles.
     public func frame(nodeIndices: [Int]) {
         guard let scene = renderer.scene else { return }
+        cancelCameraGlide()
         let worlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
         let boxes = nodeIndices.compactMap { scene.bounds(ofNode: $0, worlds: worlds) }
         guard let first = boxes.first else { return }
@@ -187,6 +208,7 @@ public final class ModelView: NSView {
     /// Frames the model from a canned angle.
     public func show(_ preset: CameraPreset) {
         guard renderer.scene != nil else { return }
+        cancelCameraGlide()
         fitCamera()
         let angles = preset.angles
         let azimuth = angles.azimuth * .pi / 180, elevation = angles.elevation * .pi / 180
@@ -202,6 +224,7 @@ public final class ModelView: NSView {
     /// Dollies toward (`factor` < 1) or away from (`factor` > 1) the target at the current angle.
     public func zoom(by factor: Double) {
         guard renderer.scene != nil, factor > 0, camera.distance.isFinite else { return }
+        cancelCameraGlide()
         orbit(azimuth: camera.rotAroundY * 180 / .pi, elevation: camera.rotAroundX * 180 / .pi,
               distance: camera.distance * factor)
         redraw()
@@ -216,6 +239,7 @@ public final class ModelView: NSView {
     /// Khronos pointer orbit in view points (`UserCamera.orbit`).
     public func orbit(dx: Double, dy: Double) {
         guard renderer.scene != nil else { return }
+        cancelCameraGlide()
         camera.orbit(dx, dy)
         camera.applyProjection()
         redraw()
@@ -224,13 +248,16 @@ public final class ModelView: NSView {
     /// Khronos `fitCamera` at the canvas aspect, for the current scene.
     private func fitCamera() {
         guard let scene = renderer.scene, let index = scene.gltfSceneIndex(for: options.sceneIndex) else { return }
+        cancelCameraGlide()
         camera.isOrthographic = options.isOrthographic
         var extents = scene.accessorExtents(sceneIndex: index)
         // Draco replaces POSITION with an accessor without min/max; the decoded bounds are the same box.
         if !extents.min.x.isFinite || !extents.max.x.isFinite {
             extents = (SIMD3<Double>(scene.boundsMin), SIMD3<Double>(scene.boundsMax))
         }
-        if let fitted = camera.fit(extents: extents, centered: options.isCentered, aspect: canvasAspect) {
+        let far = options.centerWhenFarFromOrigin
+            && MetalUserCamera.originIsFarFromModel(min: extents.min, max: extents.max)
+        if let fitted = camera.fit(extents: extents, centered: options.isCentered || far, aspect: canvasAspect) {
             fitDistance = fitted
         }
     }
@@ -246,7 +273,7 @@ public final class ModelView: NSView {
     private func centerOffset(pixelWidth: Int) -> SIMD2<Float> {
         guard options.fileCameraNodeIndex == nil, bounds.width > 0 else { return .zero }
         let scale = Double(pixelWidth) / bounds.width
-        return SIMD2(Float((contentInsets.left - contentInsets.right) / 2 * scale), 0)
+        return SIMD2(Float(centerShift * scale), 0)
     }
 
     // MARK: - Images
@@ -343,6 +370,7 @@ public final class ModelView: NSView {
                                               waitPolicy: .submitForPresentation,
                                               presentOn: drawable)
             }
+            hasDrawnModel = true
         } catch MetalRendererError.presentationBackpressure {
             return
         } catch {
@@ -380,7 +408,7 @@ public final class ModelView: NSView {
         var camera = MetalCamera(pose: pose(width: width, height: height), isOrthographic: options.isOrthographic,
                                  aspect: Float(width) / Float(height))
         if centerOffset(pixelWidth: width) != .zero {
-            let cameraViewport = khronosViewport(width: width, height: height, aspect: options.isOrthographic ? 1 : nil)
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: nil)
             let offset = centerOffset(pixelWidth: width)
             camera.centerShift = 2 * offset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
         }
@@ -420,7 +448,7 @@ public final class ModelView: NSView {
 
     /// Auto-rotate and animation playback share one display link at the Khronos viewer's 60 Hz.
     func updateDisplayLink() {
-        let wanted = window != nil && (options.autoRotates || isPlaybackRunning)
+        let wanted = window != nil && (options.autoRotates || isPlaybackRunning || isGliding)
         guard wanted != (displayLink != nil) else { return }
         displayLink?.invalidate()
         displayLink = nil
@@ -433,6 +461,7 @@ public final class ModelView: NSView {
 
     @objc func displayLinkStep() {
         guard renderer.scene != nil else { return }
+        stepGlides(at: CACurrentMediaTime())
         if options.autoRotates {
             if !didReportAutoRotate {
                 didReportAutoRotate = true
@@ -497,6 +526,15 @@ public final class ModelView: NSView {
             window.performDrag(with: event)
         }
     }
+    /// Built by the window when it wants a canvas menu. Nil in Quick Look and tests.
+    public var contextMenu: (@MainActor () -> NSMenu?)?
+    override public func rightMouseDown(with event: NSEvent) {
+        guard !inputLocked, let menu = contextMenu?(), menu.numberOfItems > 0 else {
+            super.rightMouseDown(with: event)
+            return
+        }
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
     override public func otherMouseDown(with event: NSEvent) { beginDrag(event, pan: event.buttonNumber == 2) }
     override public func mouseDragged(with event: NSEvent) { drag(event) }
     override public func otherMouseDragged(with event: NSEvent) { drag(event) }
@@ -513,12 +551,14 @@ public final class ModelView: NSView {
     private func beginDrag(_ event: NSEvent, pan: Bool) {
         guard !inputLocked else { return }
         clearHover()
+        cancelCameraGlide()
         let location = event.locationInWindow
         dragAnchor = location
         pointerDownStart = location
         pointerDownModifiers = event.modifierFlags
         dragExceededClickThreshold = false
         didReportOrbit = false
+        orbitPivot = nil
         isPanning = pan
     }
 
@@ -617,17 +657,74 @@ public final class ModelView: NSView {
 
     // MARK: - Orbit pivot on the selection
 
-    /// Selecting never moves the camera (a second click at the same pixel must still hit the same
-    /// part). The first orbit step of a drag re-aims at the selection's box centre instead, so the
-    /// orbit turns about the selected part. Perspective keeps the eye; orthographic slides the target.
-    private func reaimAtSelectionForOrbit() {
-        guard options.orbitsAroundSelection, options.fileCameraNodeIndex == nil,
+    /// The selection's box centre, which an orbit drag turns about. Selecting never moves the
+    /// camera (a second click at the same pixel must still hit the same part), and neither does the
+    /// start of the orbit: the camera turns rigidly about this point, so it stays put on screen.
+    private var orbitPivot: SIMD3<Double>?
+
+    private func selectionOrbitPivot() -> SIMD3<Double>? {
+        options.orbitsAroundSelection ? selectionCentre() : nil
+    }
+
+    /// Box centre of the selected node's subtree in the pose on screen; nil for a file camera.
+    private func selectionCentre() -> SIMD3<Double>? {
+        guard options.fileCameraNodeIndex == nil,
               let scene = renderer.scene,
-              let node = options.selectedNodeIndex else { return }
+              let node = options.selectedNodeIndex else { return nil }
         let worlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
-        guard let box = scene.bounds(ofNode: node, worlds: worlds) else { return }
-        camera.retargetKeepingEye(to: SIMD3<Double>((box.min + box.max) / 2))
-        camera.applyProjection()
+        guard let box = scene.bounds(ofNode: node, worlds: worlds) else { return nil }
+        let centre = SIMD3<Double>((box.min + box.max) / 2)
+        return centre.x.isFinite && centre.y.isFinite && centre.z.isFinite ? centre : nil
+    }
+
+    // MARK: - Glides: centre on selection, pane re-centring
+
+    /// An eased move sampled by the display link.
+    struct Glide<Value> {
+        var from: Value
+        var to: Value
+        var start: CFTimeInterval
+        static var duration: CFTimeInterval { 0.35 }
+        /// Ease-out cubic progress in 0...1.
+        func progress(at now: CFTimeInterval) -> Double {
+            let t = min(max((now - start) / Self.duration, 0), 1)
+            return 1 - pow(1 - t, 3)
+        }
+    }
+
+    /// Orbit target moving to the newly selected item. Angles and distance stay, so the view
+    /// slides rather than turns or zooms. Started only when the selection changes; any camera
+    /// input or command cancels it, and nothing re-centres after the user moves the camera.
+    private(set) var targetGlide: Glide<SIMD3<Double>>?
+    private var shiftGlide: Glide<Double>?
+    var isGliding: Bool { targetGlide != nil || shiftGlide != nil }
+
+    private func centreOnSelection() {
+        guard !inputLocked, let centre = selectionCentre() else { return }
+        guard simd_distance(centre, camera.target) > 1e-9 else { return }
+        targetGlide = Glide(from: camera.target, to: centre, start: CACurrentMediaTime())
+        updateDisplayLink()
+    }
+
+    private func cancelCameraGlide() {
+        guard targetGlide != nil else { return }
+        targetGlide = nil
+        updateDisplayLink()
+    }
+
+    /// Advances both glides to `now`; the display link calls it, tests call it directly.
+    func stepGlides(at now: CFTimeInterval) {
+        if let glide = targetGlide {
+            let p = glide.progress(at: now)
+            camera.setDistanceFromTarget(camera.distance, glide.from + (glide.to - glide.from) * p)
+            if p >= 1 { targetGlide = nil }
+        }
+        if let glide = shiftGlide {
+            let p = glide.progress(at: now)
+            centerShift = glide.from + (glide.to - glide.from) * p
+            if p >= 1 { shiftGlide = nil }
+        }
+        if !isGliding { updateDisplayLink() }
     }
 
     /// `UserCamera.orbit(dx, dy)` or `pan(-dx, dy)`, in view points with y down.
@@ -644,9 +741,13 @@ public final class ModelView: NSView {
             if !didReportOrbit, dx != 0 || dy != 0 {
                 didReportOrbit = true
                 onOrbitStart?()
-                reaimAtSelectionForOrbit()
+                orbitPivot = selectionOrbitPivot()
             }
-            camera.orbit(dx, dy)
+            if let orbitPivot {
+                camera.orbit(dx, dy, around: orbitPivot)
+            } else {
+                camera.orbit(dx, dy)
+            }
         }
         redraw()
     }
@@ -668,6 +769,7 @@ public final class ModelView: NSView {
     /// view zooms on screen as well as in the readout.
     func wheel(deltaY: Double, at windowPoint: NSPoint) {
         guard renderer.scene != nil, !inputLocked else { return }
+        cancelCameraGlide()
         if options.zoomsTowardPointer,
            let pointer = pointerWorldPoint(atViewPoint: convert(windowPoint, from: nil)) {
             camera.zoomBy(deltaY * 0.01, toward: pointer)
@@ -701,6 +803,11 @@ public final class ModelView: NSView {
         if isInSideInset(event) { return clearHover(notifyEvenWhenIdle: true) }
         guard onHover != nil, renderer.scene != nil else { return clearHover() }
         hoverPoint = event.locationInWindow
+        // The name tag follows the pointer on this event. Which node it names still waits for
+        // the paced pick below, so the label does not sit a pick behind the cursor.
+        if hoveredNode != nil {
+            onHover?(hoveredNode, tooltipPoint(event.locationInWindow))
+        }
         let isBusy = dragAnchor != nil || options.autoRotates || isPlaybackRunning
         guard !hoverPending, let delay = hoverThrottle.delay(at: CACurrentMediaTime(), isBusy: isBusy) else {
             if isBusy { clearHover() }
@@ -721,12 +828,16 @@ public final class ModelView: NSView {
         hoverThrottle.didPick(at: CACurrentMediaTime())
         guard let location = hoverPoint, dragAnchor == nil, window != nil else { return }
         let index = (try? nodeIndex(atWindowPoint: location)) ?? nil
-        let viewPoint = convert(location, from: nil)
-        let point = CGPoint(x: viewPoint.x, y: isFlipped ? viewPoint.y : bounds.height - viewPoint.y)
-        onHover?(index, index == nil ? nil : point)
-        guard index != hoveredNode else { return }
+        let changed = index != hoveredNode
         hoveredNode = index
+        onHover?(index, index == nil ? nil : tooltipPoint(location))
+        guard changed else { return }
         redraw()
+    }
+
+    private func tooltipPoint(_ windowPoint: NSPoint) -> CGPoint {
+        let viewPoint = convert(windowPoint, from: nil)
+        return CGPoint(x: viewPoint.x, y: isFlipped ? viewPoint.y : bounds.height - viewPoint.y)
     }
 
     private func clearHover(notifyEvenWhenIdle: Bool = false) {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build"
+  short_description: "Build ready tasks with agents in worktrees"
+  default_prompt: "Use $n-build to build the ready tasks."

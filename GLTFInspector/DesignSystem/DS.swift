@@ -27,7 +27,7 @@ enum DS {
 
     enum Metrics {
         static let hairline: CGFloat = 1
-        /// Rounded-square navigation gizmo on the canvas.
+        /// Hit area of the navigation gizmo on the canvas.
         static let navigationGizmoSize: CGFloat = 76
         /// Side of an icon-only glass button.
         static let glassControl: CGFloat = 32

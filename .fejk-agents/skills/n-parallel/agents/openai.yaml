@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parallel"
+  short_description: "Dispatch independent work in one message"
+  default_prompt: "Use $n-parallel for these independent pieces of work."

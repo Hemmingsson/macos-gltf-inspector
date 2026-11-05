@@ -13,7 +13,7 @@ import Renderer
 @Observable
 final class ViewState {
     static let defaultFieldOfView = 35.0
-    static let fieldOfViewRange = 15.0...90.0
+    static let fieldOfViewRange = 15.0...160.0
     /// One Zoom In step; Zoom Out is its inverse.
     static let zoomStep = 0.8
 
@@ -44,8 +44,9 @@ final class ViewState {
         get { overrides.autoRotates ?? settings.autoRotates }
         set { overrides.autoRotates = newValue }
     }
-    /// False frames the authored origin too.
-    var isCentered = true
+    /// False frames the authored origin too. The app never turns this on; Quick Look centres
+    /// a model only when its bounds sit away from the origin.
+    var isCentered = false
     /// Any explicit change (menu, toolbar) makes it the person's choice again.
     var isOrthographic = false {
         didSet { autoOrthographic = false }
@@ -98,8 +99,10 @@ final class ViewState {
     var selection: NodeID? {
         get { primarySelection }
         set {
+            let previous = primarySelection
             primarySelection = newValue
             storedSelectedIDs = newValue.map { [$0] } ?? []
+            if previous != newValue { syncAnimationPlayer(to: newValue) }
         }
     }
     /// Every selected row (outliner ⌘/⇧-click, canvas ⌘/⇧-click). Contains `selection` when
@@ -116,6 +119,7 @@ final class ViewState {
             } else if primarySelection.map(newValue.contains) != true {
                 primarySelection = newValue.min(by: { Self.outlinerOrder($0, $1, document: document) })
             }
+            if primarySelection != anchor { syncAnimationPlayer(to: primarySelection) }
         }
     }
     private var primarySelection: NodeID?
@@ -166,6 +170,16 @@ final class ViewState {
             hiddenNodeIndices: hiddenNodes,
             soloNodeIndices: soloNodes
         )
+    }
+
+    /// The transport follows the outliner: one selected animation clip shows the player.
+    /// Any other row returns the canvas to the rest pose and the file's default clip set.
+    private func syncAnimationPlayer(to id: NodeID?) {
+        if let id, id.kind == .animation {
+            canvas.selectAnimationClip(at: id.index)
+        } else {
+            canvas.dismissAnimationPlayer()
+        }
     }
 
     /// A new document in this window: Settings' lighting and every other choice back to how a
@@ -392,6 +406,14 @@ final class ViewState {
         canvas.show(preset)
     }
 
+    /// Front view, perspective, the default lens, fitted to the model. Lighting stays as it is.
+    func resetCamera() {
+        guard canvas.phase == .ready else { return }
+        isOrthographic = false
+        fieldOfView = Self.defaultFieldOfView
+        fit()
+    }
+
     /// Reset View: this window's stage, look and camera back to how it opened, then Fit.
     func resetView() {
         restoreStageAndLook()
@@ -450,9 +472,18 @@ final class ViewState {
         return (nodes, nodes.isEmpty ? nil : selection.index)
     }
 
+    /// Every scene-graph row in the active scene.
+    func selectAll() {
+        let roots = OutlinerSection.sections(of: document, activeSceneIndex: sceneIndex)
+            .first { $0.folds }?.items ?? []
+        let ids = Set(OutlinerTree.treeIdentity(roots))
+        guard !ids.isEmpty else { return }
+        selectedIDs = ids
+    }
+
     private func restoreStageAndLook() {
         overrides = StageOverrides()
-        isCentered = true
+        isCentered = false
         isOrthographic = false
         fieldOfView = Self.defaultFieldOfView
         viewMode = .shaded

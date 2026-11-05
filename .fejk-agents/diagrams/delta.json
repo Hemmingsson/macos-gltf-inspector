@@ -1,0 +1,14 @@
+{"type":"architecture-delta","title":"m-workflow → next-workflow","subtitle":"Nine m- skills become seven n- skills; TDD, review and landing are new","budget":"faithful","nodes":[
+ {"id":"brain","label":"m-brainstorm","change":"removed","row":0,"col":0},
+ {"id":"wp","label":"m-write-plan","change":"removed","row":1,"col":0},
+ {"id":"bs","label":"n-brainstorm","change":"added","focal":true,"row":0,"col":1},
+ {"id":"bp","label":"m-breakdown-plan","change":"removed","row":2,"col":0},
+ {"id":"ct","label":"m-create-task","change":"removed","row":3,"col":0},
+ {"id":"bd","label":"n-breakdown","change":"added","row":2,"col":1},
+ {"id":"dev","label":"m-development","change":"removed","row":4,"col":0},
+ {"id":"orch","label":"m-orchestrate","change":"removed","row":5,"col":0},
+ {"id":"build","label":"n-build","change":"added","row":4,"col":1},
+ {"id":"tdd","label":"n-tdd","change":"added","focal":true,"row":4,"col":2},
+ {"id":"rev","label":"n-review","change":"added","row":5,"col":2},
+ {"id":"ship","label":"n-full-send","change":"added","row":4,"col":3}],
+ "edges":[{"from":"brain","to":"bs","label":"+ grilling, spec","change":"removed"},{"from":"wp","to":"bs","change":"removed"},{"from":"bp","to":"bd","change":"removed"},{"from":"ct","to":"bd","change":"removed"},{"from":"dev","to":"build","change":"removed"},{"from":"orch","to":"build","change":"removed"},["bs","bd","","primary"],["bd","build","","primary"],["build","tdd","","primary"],["build","rev"],["tdd","ship","","primary"]]}

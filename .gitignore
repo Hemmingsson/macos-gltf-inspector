@@ -16,7 +16,6 @@ build/
 .xcodebuildmcp/
 .conductor/
 .dex/
-.atelier/
 .superpowers/
 plans/
 TestModels/Khronos samples/

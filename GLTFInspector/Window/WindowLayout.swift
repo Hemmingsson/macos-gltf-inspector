@@ -13,13 +13,15 @@ struct WindowLayout<Canvas: View>: View {
 
     /// Sidebar shown or collapsed; `ToggleSidebarCommand` (⌘B) toggles it through the split view.
     @State private var columnVisibility = NavigationSplitViewVisibility.all
+    /// Right-click ▸ Toggle UI. Selection is kept, so the inspector returns with the sidebar.
+    @State private var chromeHidden = false
     /// Full screen shows the toolbar only on hover, so the sidebar keeps its band clear itself.
     @State private var isFullScreen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let validation = window.validation
-        NavigationSplitView(columnVisibility: $columnVisibility) {
+        NavigationSplitView(columnVisibility: sidebarVisibility) {
             Sidebar(document: window.document, fileName: window.fileName, validation: validation,
                         view: window.view, documentState: window.phase)
                 .toolbar(removing: .sidebarToggle)
@@ -46,12 +48,13 @@ struct WindowLayout<Canvas: View>: View {
                 bounds: window.document.bounds,
                 view: window.view,
                 documentState: canvasState,
-                isSidebarVisible: columnVisibility != .detailOnly,
-                isInspectorVisible: showsInspector,
+                isSidebarVisible: !chromeHidden && columnVisibility != .detailOnly,
+                isInspectorVisible: !chromeHidden && showsInspector,
+                chromeHidden: $chromeHidden,
                 content: canvas
             )
             .overlay(alignment: .topTrailing) {
-                if window.phase.isReady, !showsInspector {
+                if window.phase.isReady, !chromeHidden, !showsInspector {
                     OpenInButton(documentURL: documentURL, view: window.view, exportName: window.exportName)
                         .ignoresSafeArea(.container, edges: .top)
                 }
@@ -89,10 +92,20 @@ struct WindowLayout<Canvas: View>: View {
     /// the setter, never during a view update (AGENTS.md pitfall 1).
     private var inspectorPresented: Binding<Bool> {
         Binding(
-            get: { showsInspector },
+            get: { showsInspector && !chromeHidden },
             set: { isPresented in
+                if chromeHidden { return }
                 if !isPresented, window.view.selection != nil { window.view.selection = nil }
             }
+        )
+    }
+
+    /// While the panels are hidden, the split view reports detail-only without forgetting the
+    /// user's sidebar choice.
+    private var sidebarVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { chromeHidden ? .detailOnly : columnVisibility },
+            set: { if !chromeHidden { columnVisibility = $0 } }
         )
     }
 

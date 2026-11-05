@@ -4,39 +4,17 @@ import SwiftUI
 /// glass; nothing is nested glass-on-glass.
 struct CameraCluster: View {
     @Bindable var view: ViewState
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         DSGlassCluster {
             DSGlassToggleButton(
-                "Auto-rotate",
-                systemImage: "arrow.trianglehead.counterclockwise.rotate.90",
-                isOn: autoRotate,
-                shortcut: Shortcuts.action(.autoRotate)
-            )
-            .disabled(reduceMotion)
-            DSGlassToggleButton(
-                "Center Model",
-                systemImage: "dot.scope",
-                isOn: $view.isCentered,
-                shortcut: Shortcuts.action(.center)
-            )
-            DSGlassToggleButton(
-                "Orthographic",
-                systemImage: "perspective",
+                view.isOrthographic ? "Orthographic" : "Perspective",
+                assetImage: view.isOrthographic ? SplineIcons.cameraOrthographic : SplineIcons.cameraPerspective,
                 isOn: $view.isOrthographic,
                 shortcut: Shortcuts.action(.orthographic)
             )
             FieldOfViewPopover(view: view)
             ViewMenu(view: view)
         }
-    }
-
-    /// Reduce Motion parks the toggle off even if the window's flag is still set.
-    private var autoRotate: Binding<Bool> {
-        Binding(
-            get: { view.autoRotates && !reduceMotion },
-            set: { if !reduceMotion { view.autoRotates = $0 } }
-        )
     }
 }

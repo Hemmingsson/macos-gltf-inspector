@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# PreToolUse (Edit|Write|MultiEdit|NotebookEdit): no code change without a task in progress.
+# Active only in repos with a backlog board. Docs, agent notes and scratch paths are exempt.
+set -uo pipefail
+input=""; [ -t 0 ] || IFS= read -r -d '' input || true
+
+path="$(printf '%s' "$input" | python3 -c 'import json,sys
+try:
+  d=json.load(sys.stdin); t=d.get("tool_input") or {}
+  print(t.get("file_path") or t.get("notebook_path") or "")
+except Exception: print("")' 2>/dev/null)"
+[ -n "$path" ] || exit 0
+
+dir="$(dirname "$path")"; [ -d "$dir" ] || dir="$(pwd)"
+common="$(git -C "$dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || exit 0
+repo="${common%/.git}"
+[ -f "$repo/.atelier/backlog.jsonl" ] || exit 0     # no board → not our business
+
+case "$path" in
+  *.md|*.txt|*/.agents/*|*/.atelier/*|*/.claude/*|*/.fejk-agents/*|*/.git/*) exit 0 ;;
+esac
+case "$path" in "$repo"/*) ;; *) exit 0 ;; esac                            # outside the repo
+
+command -v backlog >/dev/null 2>&1 || exit 0
+wip="$(cd "$repo" && backlog list --in-progress --flat 2>/dev/null | grep -v '^No tasks found' | head -1)"
+[ -n "$wip" ] && exit 0
+
+reason="next-workflow: no task is in progress, so this code change has no home on the board. First: backlog start <id> for the open task, or create a one-off (bug fix / spike) and start it. Then retry the edit."
+printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$reason"
+exit 0

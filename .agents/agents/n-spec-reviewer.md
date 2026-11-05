@@ -1,0 +1,1 @@
+../../.fejk-agents/agents/n-spec-reviewer.md

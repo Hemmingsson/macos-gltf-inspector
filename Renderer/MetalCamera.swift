@@ -106,8 +106,11 @@ struct MetalCamera: Sendable {
         }
         let ortho = pose.orthographicProjection
         let magnitude = ortho.magnitude, near = ortho.znear, far = ortho.zfar
+        // Wide windows keep circles round: xmag grows with aspect, and the viewport is the
+        // full canvas rather than a centred square.
+        let wide = max(aspect, 0.05)
         return simd_float4x4(columns: (
-            SIMD4(Float(1 / magnitude), 0, 0, 0), SIMD4(0, Float(1 / magnitude), 0, 0),
+            SIMD4(Float(1 / (magnitude * Double(wide))), 0, 0, 0), SIMD4(0, Float(1 / magnitude), 0, 0),
             SIMD4(0, 0, Float(2 / (near - far)), 0),
             SIMD4(0, 0, Float((near + far) / (near - far)), 1)
         ))

@@ -7,9 +7,8 @@ enum OverlayMetrics {
     static let dimensionsHeight: CGFloat = 30
     static let timelineHeight: CGFloat = DS.Metrics.glassControl
     static let navigationGizmoSize = DS.Metrics.navigationGizmoSize
-    /// Hover name tag: compact, offset so the pointer never covers it.
-    static let tooltipHeight: CGFloat = 24
-    static let tooltipOffset: CGFloat = 14
+    /// Hover name tag sits just clear of the pointer.
+    static let tooltipOffset: CGFloat = 8
 
     static func strokeAxis(
         _ context: GraphicsContext,

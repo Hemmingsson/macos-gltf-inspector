@@ -34,11 +34,27 @@ struct ViewStateTests {
         #expect(other.backdrop == .window)
     }
 
+    @Test func copyFilePutsAglbURLOnThePasteboard() {
+        let board = NSPasteboard(name: NSPasteboard.Name("gltf.copy.\(UUID().uuidString)"))
+        DocumentOpening.copyFile(TestFixtures.cube, pasteboard: board)
+        #expect(DocumentOpening.pastedGLTFURL(pasteboard: board)?.path == TestFixtures.cube.path)
+    }
+
+    @Test func aNewWindowLeavesTheModelOnItsOrigin() throws {
+        let view = ViewState(settings: try settings())
+        #expect(!view.isCentered)
+        #expect(!view.options.isCentered)
+        view.isCentered = true
+        view.reset()
+        #expect(!view.isCentered)
+    }
+
     @Test func fieldOfViewStaysInRange() throws {
         let view = ViewState(settings: try settings())
         view.fieldOfView = 5
         #expect(view.fieldOfView == ViewState.fieldOfViewRange.lowerBound)
         view.fieldOfView = 200
+        #expect(view.fieldOfView == 160)
         #expect(view.fieldOfView == ViewState.fieldOfViewRange.upperBound)
     }
 

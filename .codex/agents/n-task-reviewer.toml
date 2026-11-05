@@ -1,0 +1,5 @@
+# Generated from /Users/mattias/dev/glb-preview/.fejk-agents/agents/n-task-reviewer.md by sync-agents.py. Edit the .md, not this file.
+name = "n-task-reviewer"
+description = "Judges one task's diff for spec compliance and quality, from a diff file. Read-only. Use after an n-implementer reports DONE."
+model_reasoning_effort = "medium"
+developer_instructions = "Read-only: do not edit files or change git state.\n\nYou review one task. Read-only: leave the working tree, index and HEAD as they are, and spawn no agents.\n\nFollow `.fejk-agents/skills/n-review/references/task-review.md`: the task, the report (claims, not evidence) and the diff file from the brief; two verdicts, findings with path:line.\n"

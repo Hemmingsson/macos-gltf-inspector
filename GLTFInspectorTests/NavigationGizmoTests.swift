@@ -19,6 +19,9 @@ struct NavigationGizmoTests {
         #expect(front != nil && back != nil)
         #expect(front!.viewDepth > back!.viewDepth, "+Z should be closer than −Z at identity")
         #expect(sorted.last?.axis == .posZ)
+        let side = layouts.first { $0.axis == .posX }
+        #expect(front!.radius > side!.radius, "the facing ball stays full size; the others are smaller")
+        #expect(abs(side!.radius - NavigationGizmoLayout.positiveRadius * NavigationGizmoLayout.inactiveScale) < 0.01)
     }
 
     @Test func rotatedViewReordersAxisEnds() {

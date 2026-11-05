@@ -6,6 +6,8 @@ import SwiftUI
 enum SplineIcons {
     /// Four-dot component glyph for a mesh referenced by more than one node.
     static let sharedMesh = "spline.type.component"
+    static let cameraPerspective = "icon.camera.perspective"
+    static let cameraOrthographic = "icon.camera.orthographic"
 
     static func nodeKind(_ kind: NodeKind) -> String? {
         switch kind {

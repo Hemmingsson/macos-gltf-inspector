@@ -12,6 +12,41 @@ being added and verified as the review proceeds. This is a review, not a patch o
   navigation gizmo, camera/light gizmos and hit testing, skeletons, shared scenes, animation
   sampler through GPU skin/morph, playback, timeline, and silhouette outline.
 
+## Final summary — review complete (epic `6tjaejue` done)
+
+Every leaf of the scene-interaction epic is done, and all of its code has been reviewed across six
+passes (R1–R15, A1–A8, M01–M10, V01–V11, H01–H09, S01–S07, plus the provisional P-A notes).
+
+**Fixes epic `6ddtcd5k`** (11 tasks, 41 leaves, built from passes 1–5) is also fully done on main
+(397 tests per its Result). Independent check at HEAD `bacfa1a` + working tree, in a scratch copy:
+the 13 review probe tests went from **13/13 red** (on `c40b96a`) to **12/13 green**. The remaining
+red, `occludedLightDoesNotWinOverTheMeshInFront` in the review copy, is a limit of that probe:
+it calls the raw `gizmoHit` primitive, which still reports the light by design. The fix (`a80eb43`)
+compares the gizmo depth with the mesh pick inside `ModelView` (`:572–576`), and has its own test of
+the same name on main. Treat R9 as fixed. Log:
+[2026-11-04-head-probes-after-fixes.log](2026-11-04-head-probes-after-fixes.log).
+Fixes for the A*, M*, V*, H* findings were not re-verified independently beyond the backlog Results.
+
+**Still open after the epic: Pass 6 (S01–S07)**, found after the fixes epic was planned and not in any backlog yet:
+
+| ID | P | Defect |
+|----|---|--------|
+| S01 | P2 | Animated Khronos refs only sample exact keyframes; interpolation is untested |
+| S02 | P2 | Selecting a mesh node with mesh children outlines only the parent |
+| S03 | P3 | Skinned rest bounds use different weight math from the GPU |
+| S04 | P3 | Skin tests use identity inverse binds, don't check the normal quirk; no skinned pixel ref |
+| S05 | P3 | Outline tests partly vacuous; the default outline look has no reference |
+| S06 | P3 | Outline ignores scene depth, unlike the other overlays (decide and document) |
+| S07 | P3 | Outline is 2 device px (1 pt on Retina) with a hard-coded colour |
+
+**Process observations** across the epic, for the next one:
+- Several leaves were marked done with Done-when items unmet and noted as such in their own Results
+  ("pixel refs pending confirm", "on-screen deferred", tests that cannot fail). A completion gate that
+  rejects those phrases, or requires the mutation check the TDD contract already describes, would have
+  caught H06, S01, S04 and S05.
+- Most defects sat at integration seams (pose ↔ pick, scene membership ↔ overlays, camera ↔ ViewState),
+  where each leaf's own tests were green. The root-cause grouping in this review is the reusable lesson.
+
 ## Summary for the handoff (priority order)
 
 Backlog: epic `6ddtcd5k` ("Review fixes") breaks these findings into 11 L1s and 41 leaves, ordered by impact (`dex list 6ddtcd5k`).
@@ -993,6 +1028,123 @@ be hit); arrows move 0.01 s per press.
 zero-duration behaviour wrong (H01, H03, H07). `sygpfhz7` **not met** — the required UI test of play and
 scrub through the controls and the light/dark on-screen screenshots are missing ("On-screen deferred");
 whether Space reaches `.onKeyPress` while `ModelView` is first responder is unverified.
+
+## Pass 6 — GPU skinning (`huj04ed6`), animated references (`115ut2u1`), selection outline (`63uvhpzt`)
+
+Read at HEAD `bacfa1a` (the three leaves plus review-fix merges are committed). Source traces; keyframe
+times read from the sample files with a script. S02 and S05 were re-checked by the review lead
+(`usesSilhouetteSelectionOutline` checks only `node.mesh != nil`, `MetalOverlays.swift:216–221`;
+`emptySelectionMatchesUnselectedRender` compares `ViewOptions()` with an identical value).
+
+**Pre-implementation notes for huj04ed6:** 1 (skin constants in every cache key, joints bound in
+every encoder), 2 (posed pick), 3 (morph before skin, CPU bake removed) and 5 (posed joint worlds,
+ring above 32 joints, one buffer index) are **satisfied**. 4 is **partly**: the order is right but the
+weight math differs from the GPU (S03). 6 is **satisfied for the rigid path**; for skinned output, no
+reference or CPU-bake comparison exercises it (S04).
+
+Checked and correct: Khronos skin quirks (no model on position, `normalMatrix·(skinN·n)`,
+`model·(skin·t)`, blended normal matrices, no renormalize, identity at zero sum); JOINTS_1/WEIGHTS_1
+only when both are present; out-of-range joints skipped; missing IBM → identity; one palette per skin
+per frame; 3-deep joint ring matches the presentation slots; the outline ID pass uses the posed
+transforms, file camera, letterbox, `centerOffset` and hide/solo filter, with ring-cached textures.
+
+### S01 · P2 · Every animated reference samples an exact keyframe, so interpolation is untested against Khronos
+
+**Location:** `TestModels/References/Animated/manifest.json` (t = 0.5, 1.0, 1.0); `AnimatedReferenceTests`.
+
+AnimatedMorphCube keys every 1/30 s (0.5 and 1.0 are keys); SimpleSkin keys at 0, 0.5, 1.0 …. A
+sampler that returns the nearest or the previous key, or uses nlerp for slerp, passes all three refs.
+
+**Fix direction:** add an off-key time per clip (AnimatedMorphCube 0.517, SimpleSkin 1.25) with the existing Chrome capture script.
+
+**Required regression:** mutate the sampler to return the lower key → `posedFramesMatchKhronosReferences` fails.
+
+### S02 · P2 · Selecting a mesh node with mesh children outlines only its own primitives
+
+**Location:** `MetalOverlays.swift:216–227`, `MetalRenderer.swift:671–678` (`selectionOutlineDrawIndices`
+keeps only the node's own draws); `collectSelectionGizmo` then skips the subtree AABB.
+
+A car body with wheel children: only the body is outlined, though hide/solo/frame act on the whole
+subtree. The ticket keeps the AABB "for groups"; a mesh node with children is a group, and the test
+covers only an empty parent.
+
+**Fix direction:** outline every draw in the subtree, or keep the AABB whenever the node has children.
+
+**Required regression:** mesh parent + mesh child selected → the child is outlined (or a 24-vertex subtree box).
+
+### S03 · P3 · Skinned rest bounds use different weight math from the GPU
+
+**Location:** `MetalSceneLoader.swift:366–389` (renormalizes by the weight sum; a zero-sum vertex keeps
+object space and is multiplied by `model`), versus `pbr.metal:76–110` (no renormalize; zero sum → bind
+position with no model).
+
+With a mesh node translation and unweighted vertices, the bounds hold `model·p` while the GPU draws
+`p`; with weights summing to 0.5 the bounds use the full blend. Camera fit and the floor are sized for
+geometry that isn't there.
+
+**Fix direction:** make the CPU bounds pass mirror the shader exactly.
+
+**Required regression:** mesh translation (4,0,0), one zero-weight vertex, one 0.5-sum vertex →
+`boundsMin/Max` equal the AABB of `captureMorphedVertices`.
+
+### S04 · P3 · Skin tests never use a non-identity inverse bind or check the normal quirk; no skinned pixel reference
+
+**Location:** `MetalSkinTests.swift` (every fixture's IBMs are identity; `meshNodeTransformIsIgnored`
+checks position only); `TestModels/References/manifest.json` has no Fox, CesiumMan or Rigged* entry.
+
+A palette built as `IBM·J` (wrong order) or a dropped `normalMatrix` on skinned normals passes every test.
+Defined test 1 ("known inverse binds and nonidentity mesh transform") is not really met. The only
+real-asset check is SimpleSkin (identity mesh node, two joints).
+
+**Fix direction:** two-joint fixture with a translated and rotated IBM and a transformed mesh node;
+assert position `J·IBM·p` and normal `N_mesh·Σw·(J·IBM)⁻ᵀ·n` at rest and posed. Add CesiumMan or
+RiggedFigure as a posed Khronos reference.
+
+**Required regression:** swapped IBM order or dropped normal matrix fails.
+
+### S05 · P3 · Outline tests are partly vacuous and the default outline look has no reference
+
+**Location:** `SelectionOutlineTests.swift:50–55` (two identical option sets);
+`PixelDiffMetalTests.swift:175` (feature refs force `useSilhouetteSelectionOutline = false`).
+
+"Off when nothing is selected" is never really tested; the selection feature refs pin the AABB path
+the app no longer shows for meshes. No tests for multi-select, a hidden or soloed selection, a posed
+skin, a file camera or `centerOffset`.
+
+**Fix direction:** compare no selection against a hidden/empty selected node; add one outline feature
+ref (non-default render, captured in its own case); add hidden, multi-select and posed-skin cases.
+
+**Required regression:** outline on posed SimpleSkin at t = 1 is at the posed location; absent when the selected node is hidden.
+
+### S06 · P3 · The outline ignores scene depth, unlike the other overlays
+
+**Location:** `MetalRenderer.renderSelectionIDBuffer` (own cleared depth), outline pass in
+`encodeOverlays` (no scene-depth test), `pbr.metal:438–455`.
+
+A selected bolt behind a panel draws its full ring over the panel while the AABB lines in the same pass
+are occluded. May be intended; it isn't documented.
+
+**Fix direction:** decide and document: depth-test against the scene, or draw the hidden part dimmed.
+
+**Required regression:** a selected quad behind an opaque quad → no full-strength accent over the front quad.
+
+### S07 · P3 · Outline width is 2 device pixels and its colour bypasses the Design System
+
+**Location:** `pbr.metal:444` (`radius = 2` on the backing-pixel ID texture), `MetalRenderer.swift:669`.
+
+On Retina the ring is 1 pt, half the ticket's 2 px; the accent is hard-coded, not the DS selection token.
+
+**Fix direction:** radius `2 × backingScale` in a uniform; colour from the DS token.
+
+**Required regression:** a 2× render gives a ~4 device-px ring.
+
+**Done-when status:** `huj04ed6` mostly met (S03, S04 open; "references unchanged" holds but no reference
+exercises skinning). `115ut2u1` met as specified, PNGs from the pinned Khronos bundle in headless
+Chrome, rest refs untouched; sensitivity limited by S01. `63uvhpzt` partial (S02, S05; S06/S07 design
+gaps); no recorded on-screen evidence.
+
+**Not checked:** instanced skinned meshes collapse to one place because the instance matrix is dropped
+with the model matrix (consistent with the quirk); not compared with the EXT_mesh_gpu_instancing spec.
 
 ## Provisional — animation clip/pose (in progress, not yet wired to the renderer)
 

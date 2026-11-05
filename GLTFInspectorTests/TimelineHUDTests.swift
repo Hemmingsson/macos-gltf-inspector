@@ -10,12 +10,6 @@ import SwiftUI
 @MainActor
 @Suite(.serialized)
 struct TimelineHUDTests {
-    private func clipTitles(for canvas: ModelCanvasController) -> [String] {
-        canvas.animationClips.enumerated().map { index, clip in
-            clip.name?.isEmpty == false ? clip.name! : "Clip \(index + 1)"
-        }
-    }
-
     private func accessibilityFrame<Content: View>(labeled label: String, in host: AccessibilityTestHost<Content>) -> NSRect? {
         for element in host.elements {
             guard let modern = element as? any NSAccessibilityProtocol, modern.accessibilityLabel() == label else { continue }
@@ -78,11 +72,7 @@ struct TimelineHUDTests {
                 loops: .constant(true),
                 speed: .constant(1),
                 duration: canvas.activePlaybackDuration,
-                capsuleHeight: OverlayMetrics.timelineHeight,
-                clipTitles: clipTitles(for: canvas),
-                selectedClipIndices: canvas.selectedClipIndices,
-                defaultClipIndices: canvas.defaultSelectedAnimationClipIndices,
-                onSelectClip: { _ in }
+                capsuleHeight: OverlayMetrics.timelineHeight
             )
         )
         defer { host.close() }
@@ -150,6 +140,7 @@ struct TimelineHUDTests {
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
         state.canvas.mount(in: container, url: TestFixtures.boxAnimated, options: state.options)
         #expect(try await waitUntil { state.canvas.phase == .ready && state.canvas.showsAnimationTimeline })
+        state.selection = NodeID(kind: .animation, index: 0)
         defer { state.canvas.view?.removeFromSuperview() }
         let host = await AccessibilityTestHost(
             CanvasRegion(bounds: document.bounds, view: state) { Color.clear }
@@ -236,19 +227,18 @@ struct TimelineHUDTests {
                 loops: .constant(true),
                 speed: .constant(1),
                 duration: canvas.activePlaybackDuration,
-                capsuleHeight: OverlayMetrics.timelineHeight,
-                clipTitles: clipTitles(for: canvas),
-                selectedClipIndices: canvas.selectedClipIndices,
-                defaultClipIndices: canvas.defaultSelectedAnimationClipIndices,
-                onSelectClip: { canvas.selectAnimationClip(at: $0) }
+                capsuleHeight: OverlayMetrics.timelineHeight
             )
         )
         defer { host.close() }
-        #expect(host.text.contains(PlaybackTimeFormat.string(0.5)))
+        let formatted = PlaybackTimeFormat.string(0.5)
+        let lines = host.text.split(separator: "\n").map(String.init)
+        let shown = lines.filter { $0 == formatted }
+        #expect(shown.count == 1, "time \(formatted) is drawn once, got \(shown.count) in:\n\(host.text)")
         _ = container
     }
 
-    @Test func singleSelectedClipShowsItsNameInThePicker() async throws {
+    @Test func playerOmitsTheClipMenu() async throws {
         let host = await AccessibilityTestHost(
             DSTimeline(
                 isPlaying: .constant(false),
@@ -256,16 +246,14 @@ struct TimelineHUDTests {
                 loops: .constant(true),
                 speed: .constant(1),
                 duration: 3,
-                capsuleHeight: OverlayMetrics.timelineHeight,
-                clipTitles: ["Alpha", "Beta", "Gamma"],
-                selectedClipIndices: [0],
-                defaultClipIndices: [0, 1, 2],
-                onSelectClip: { _ in }
+                capsuleHeight: OverlayMetrics.timelineHeight
             )
         )
         defer { host.close() }
-        #expect(host.text.contains("Alpha"))
+        #expect(host.text.contains("Play"))
+        #expect(host.text.contains("Loop"))
         #expect(!host.text.contains("Default"))
+        #expect(!host.text.contains("Animation clip"))
     }
 
     @Test func timelineAndReadoutDoNotOverlapAt800x600() async throws {

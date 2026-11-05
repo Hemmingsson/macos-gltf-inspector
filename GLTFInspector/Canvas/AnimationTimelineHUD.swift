@@ -18,12 +18,6 @@ struct AnimationTimelineHUD: View {
             speed: $canvas.speed,
             duration: canvas.activePlaybackDuration,
             capsuleHeight: OverlayMetrics.timelineHeight,
-            clipTitles: canvas.animationClips.enumerated().map { index, clip in
-                clip.name?.isEmpty == false ? clip.name! : "Clip \(index + 1)"
-            },
-            selectedClipIndices: canvas.selectedClipIndices,
-            defaultClipIndices: canvas.defaultSelectedAnimationClipIndices,
-            onSelectClip: { canvas.selectAnimationClip(at: $0) },
             onScrubbingChanged: { canvas.isScrubbing = $0 }
         )
         .focusSection()

@@ -14,7 +14,7 @@ import SwiftUI
 ///
 struct DSGlassPopoverButton<PopoverContent: View>: View {
     private let title: String
-    private let systemImage: String
+    private let systemImage: String?
     private let help: String?
     private let value: String?
     private let popoverContent: () -> PopoverContent
@@ -24,13 +24,14 @@ struct DSGlassPopoverButton<PopoverContent: View>: View {
     /// - Parameters:
     ///   - title: What the popover adjusts ("Lighting"): accessibility label and, unless `help` is
     ///     given, the tooltip.
-    ///   - systemImage: SF Symbol name.
+    ///   - systemImage: SF Symbol. Nil draws `value` (or the title) and the chevron, as the
+    ///     field-of-view chip does.
     ///   - value: Optional current reading announced as the accessibility value ("35°").
     ///   - help: Tooltip override.
     ///   - content: The popover body, built lazily when it opens.
     init(
         _ title: String,
-        systemImage: String,
+        systemImage: String? = nil,
         value: String? = nil,
         help: String? = nil,
         @ViewBuilder content: @escaping () -> PopoverContent
@@ -46,12 +47,7 @@ struct DSGlassPopoverButton<PopoverContent: View>: View {
         Button {
             isPresented.toggle()
         } label: {
-            HStack(spacing: DS.Spacing.xs) {
-                Image(systemName: systemImage)
-                    .dsGlassPrimaryGlyph(isHighlighted: isPresented)
-                DSGlassChevron()
-            }
-            .dsGlassControlLabel(.wide, isHighlighted: isPresented)
+            label
         }
         .buttonStyle(.plain)
         .dsGlassControlSurface(isEngaged: isPresented)
@@ -61,6 +57,29 @@ struct DSGlassPopoverButton<PopoverContent: View>: View {
         .accessibilityAddTraits(isPresented ? .isSelected : [])
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             popoverContent()
+        }
+    }
+
+    @ViewBuilder
+    private var label: some View {
+        if let systemImage {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: systemImage)
+                    .dsGlassPrimaryGlyph(isHighlighted: isPresented)
+                DSGlassChevron()
+            }
+            .dsGlassControlLabel(.wide, isHighlighted: isPresented)
+        } else {
+            HStack(spacing: DS.Spacing.s) {
+                Text(value ?? title)
+                    .font(.body)
+                    .foregroundStyle(HierarchicalShapeStyle.primary)
+                    .lineLimit(1)
+                    .contentTransition(.identity)
+                    .transaction { $0.animation = nil }
+                DSGlassChevron()
+            }
+            .dsGlassControlLabel(.titled, isHighlighted: isPresented)
         }
     }
 }

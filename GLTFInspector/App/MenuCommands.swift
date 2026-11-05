@@ -74,6 +74,20 @@ struct ExportPNGCommand: View {
         .disabled(window?.view.canvas.phase != .ready)
 
         TurntableExportButtons(view: window?.view, suggestedName: window?.exportName ?? "export")
+        CopyGLBButton(url: window?.documentURL)
+    }
+}
+
+/// File ▸ Export and the canvas Share menu: the open file, as a Finder-pasteable URL.
+struct CopyGLBButton: View {
+    var url: URL?
+
+    var body: some View {
+        Button("Copy GLB", systemImage: "doc.on.doc") {
+            guard let url else { return }
+            DocumentOpening.copyFile(url)
+        }
+        .disabled(url == nil)
     }
 }
 
@@ -116,6 +130,9 @@ struct SelectionMenuCommands: View {
 
     var body: some View {
         let view = window?.view
+        Button("Select All") { view?.selectAll() }
+            .keyboardShortcut("a", modifiers: .command)
+            .disabled(view == nil)
         Button("Select Parent") { view?.selectParent() }
             .keyboardShortcut(Shortcuts.action(.selectParent))
             .disabled(view?.canSelectParent != true)
@@ -156,9 +173,6 @@ private struct ViewMenuItems: View {
 
         Toggle("Auto-Rotate", systemImage: "arrow.trianglehead.counterclockwise.rotate.90", isOn: $view.autoRotates)
             .keyboardShortcut(Shortcuts.action(.autoRotate))
-
-        Toggle("Center Model", systemImage: "dot.scope", isOn: $view.isCentered)
-            .keyboardShortcut(Shortcuts.action(.center))
 
         Toggle("Orthographic", systemImage: "perspective", isOn: $view.isOrthographic)
             .keyboardShortcut(Shortcuts.action(.orthographic))

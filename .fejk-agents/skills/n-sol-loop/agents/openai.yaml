@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sol Loop"
+  short_description: "One Sol review of the local diff"
+  default_prompt: "Use $n-sol-loop on this diff."

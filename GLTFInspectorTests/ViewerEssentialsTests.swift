@@ -330,15 +330,30 @@ struct ViewerEssentialsTests {
 
     // MARK: - lf9s93sq orbit pivot and pointer zoom
 
-    @Test func retargetKeepsTheEyeAndLooksAtTheNewPivot() {
+    /// The point in camera space (right, up, back): what decides where it shows on screen.
+    private func viewSpace(_ camera: MetalUserCamera, _ point: SIMD3<Double>) -> SIMD3<Double> {
+        let y = camera.rotAroundY, x = camera.rotAroundX
+        let right = SIMD3(cos(y), 0, -sin(y))
+        let up = SIMD3(sin(y) * sin(x), cos(x), cos(y) * sin(x))
+        let relative = point - camera.position
+        return SIMD3(simd_dot(relative, right), simd_dot(relative, up), simd_dot(relative, -camera.lookDirection))
+    }
+
+    @Test(arguments: [false, true])
+    func orbitAroundAnOffCentrePivotKeepsItStillOnScreen(orthographic: Bool) {
         var camera = MetalUserCamera()
-        camera.orbitTo(azimuth: 30, elevation: -20, distance: 5, target: SIMD3(0, 0, 0))
-        let eye = camera.position
+        camera.isOrthographic = orthographic
+        camera.orbitTo(azimuth: 30, elevation: -20, distance: 5, target: .zero)
         let pivot = SIMD3<Double>(1, 0.5, -0.25)
-        camera.retargetKeepingEye(to: pivot)
-        #expect(simd_distance(camera.position, eye) < 1e-9)
-        #expect(simd_distance(camera.target, pivot) < 1e-9)
-        #expect(abs(camera.distance - simd_distance(eye, pivot)) < 1e-9)
+        let before = viewSpace(camera, pivot)
+        let look = camera.lookDirection, distance = camera.distance
+        var plain = camera
+        plain.orbit(15, -8)
+        camera.orbit(15, -8, around: pivot)
+        #expect(simd_distance(viewSpace(camera, pivot), before) < 1e-9)
+        #expect(simd_distance(camera.lookDirection, plain.lookDirection) < 1e-12, "same turn as a plain orbit")
+        #expect(simd_distance(camera.lookDirection, look) > 0.05)
+        #expect(camera.distance == distance)
     }
 
     @Test func pointerZoomKeepsThePointerSpotFixedOnScreen() {
@@ -359,32 +374,103 @@ struct ViewerEssentialsTests {
         #expect(MetalUserCamera.pointerDollyTarget(target: .zero, pointer: pointer, factor: 1) == .zero)
     }
 
-    @Test func selectingANodeLeavesTheViewAlone() async throws {
-        let url = try writeTempStackedQuadsGLB(prefix: "orbit-pivot")
+    @Test func selectingANodeGlidesToCentreItKeepingAnglesAndZoom() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "select-glide")
         defer { try? FileManager.default.removeItem(at: url) }
         let view = ModelView(renderer: try MetalRenderer())
         try await view.load(url)
-        let eye = view.camera.position, target = view.camera.target
+        let target = view.camera.target, distance = view.camera.distance
         let rotation = (view.camera.rotAroundX, view.camera.rotAroundY)
-        try await view.apply(ViewOptions(selectedNodeIndex: 0, orbitsAroundSelection: true))
-        #expect(simd_distance(view.camera.position, eye) < 1e-9)
-        #expect(simd_distance(view.camera.target, target) < 1e-9)
+        try await view.apply(ViewOptions(selectedNodeIndex: 0))
+        let glide = try #require(view.targetGlide)
+        #expect(simd_distance(glide.to, SIMD3(0, 0, -1)) < 1e-5)
+        #expect(simd_distance(view.camera.target, target) < 1e-9, "the move is animated, not instant")
+        view.stepGlides(at: glide.start + ModelView.Glide<Double>.duration / 2)
+        let halfway = simd_distance(view.camera.target, target)
+        #expect(halfway > 1e-3 && halfway < simd_distance(glide.to, target))
+        view.stepGlides(at: glide.start + 1)
+        #expect(view.targetGlide == nil)
+        #expect(simd_distance(view.camera.target, glide.to) < 1e-9)
+        #expect(view.camera.distance == distance)
         #expect(view.camera.rotAroundX == rotation.0 && view.camera.rotAroundY == rotation.1)
     }
 
-    @Test func orbitDragAimsTheOrbitAtTheSelectionBox() async throws {
-        let url = try writeTempStackedQuadsGLB(prefix: "orbit-drag-pivot")
+    @Test func aMoveAfterCentringIsNeverUndone() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "select-no-recentre")
         defer { try? FileManager.default.removeItem(at: url) }
         let view = ModelView(renderer: try MetalRenderer())
-        try await view.load(url, options: ViewOptions(selectedNodeIndex: 0, orbitsAroundSelection: true))
+        try await view.load(url)
+        try await view.apply(ViewOptions(selectedNodeIndex: 0))
+        view.stepGlides(at: try #require(view.targetGlide).start + 1)
+        view.orbit(dx: 40, dy: 10)
+        view.wheel(deltaY: 200, at: NSPoint(x: 100, y: 100))
+        let moved = view.camera
+        try await view.apply(ViewOptions(showsFloor: true, selectedNodeIndex: 0))
+        try await view.apply(ViewOptions(selectedNodeIndex: 0, orbitsAroundSelection: true))
+        #expect(view.targetGlide == nil)
+        #expect(view.camera == moved)
+    }
+
+    @Test func cameraInputStopsTheGlideWhereItIs() async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "select-glide-cancel")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(url)
+        try await view.apply(ViewOptions(selectedNodeIndex: 0))
+        let glide = try #require(view.targetGlide)
+        view.stepGlides(at: glide.start + ModelView.Glide<Double>.duration / 3)
+        view.wheel(deltaY: 50, at: NSPoint(x: 100, y: 100))
+        #expect(view.targetGlide == nil)
+        let stopped = view.camera
+        view.stepGlides(at: glide.start + 1)
+        #expect(view.camera == stopped)
+        try await view.apply(ViewOptions(selectedNodeIndex: 1))
+        #expect(view.targetGlide != nil, "a different item centres again")
+    }
+
+    @Test func openingAPaneEasesTheModelBetweenThePanes() async throws {
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(TestFixtures.cube)
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
         window.isReleasedWhenClosed = false
         window.contentView = view
         defer { window.contentView = nil; window.close() }
+        view.redraw()
+        view.contentInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 200)
+        #expect(view.centerShift == 0, "no snap when the inspector opens")
+        #expect(view.isGliding)
+        view.stepGlides(at: CACurrentMediaTime() + 1)
+        #expect(view.centerShift == -100)
+        #expect(!view.isGliding)
+    }
+
+    /// Select, pan the selection off-centre, then orbit: the first orbit step turns the view by
+    /// that step only and the selection keeps its place on screen. It used to snap to look at it.
+    @Test(arguments: [false, true])
+    func orbitDragAfterPanTurnsAboutTheSelectionWithoutAJump(orthographic: Bool) async throws {
+        let url = try writeTempStackedQuadsGLB(prefix: "orbit-drag-pivot")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let view = ModelView(renderer: try MetalRenderer())
+        try await view.load(url, options: ViewOptions(isOrthographic: orthographic, selectedNodeIndex: 0,
+                                                      orbitsAroundSelection: true))
+        let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        defer { window.contentView = nil; window.close() }
+        let selection = SIMD3<Double>(0, 0, -1)
+        view.mouseDown(with: try testMouseEvent(.leftMouseDown, NSPoint(x: 200, y: 200), in: window, modifiers: .shift))
+        view.mouseDragged(with: try testMouseEvent(.leftMouseDragged, NSPoint(x: 280, y: 150), in: window, modifiers: .shift))
+        view.mouseUp(with: try testMouseEvent(.leftMouseUp, NSPoint(x: 280, y: 150), in: window, modifiers: .shift))
+        let look = view.camera.lookDirection, onScreen = viewSpace(view.camera, selection)
+        #expect(abs(onScreen.x) > 1e-3 || abs(onScreen.y) > 1e-3, "the pan moved the selection off-centre")
         view.mouseDown(with: try testMouseEvent(.leftMouseDown, NSPoint(x: 200, y: 200), in: window))
-        view.mouseDragged(with: try testMouseEvent(.leftMouseDragged, NSPoint(x: 210, y: 200), in: window))
-        view.mouseUp(with: try testMouseEvent(.leftMouseUp, NSPoint(x: 210, y: 200), in: window))
-        #expect(simd_distance(view.camera.target, SIMD3(0, 0, -1)) < 1e-5)
+        view.mouseDragged(with: try testMouseEvent(.leftMouseDragged, NSPoint(x: 202, y: 200), in: window))
+        let turn = acos(min(1, simd_dot(look, view.camera.lookDirection)))
+        #expect(turn <= 2.0 / 180 + 1e-9, "a 2 pt drag turns 2/180 rad, no more")
+        #expect(simd_distance(viewSpace(view.camera, selection), onScreen) < 1e-6)
+        view.mouseDragged(with: try testMouseEvent(.leftMouseDragged, NSPoint(x: 260, y: 230), in: window))
+        view.mouseUp(with: try testMouseEvent(.leftMouseUp, NSPoint(x: 260, y: 230), in: window))
+        #expect(simd_distance(viewSpace(view.camera, selection), onScreen) < 1e-6)
     }
 
     @Test func orthographicSelectionKeepsTheAxisViewAndScale() async throws {
@@ -397,19 +483,6 @@ struct ViewerEssentialsTests {
         try await view.apply(ViewOptions(isOrthographic: true, selectedNodeIndex: 0, orbitsAroundSelection: true))
         #expect(simd_distance(view.camera.lookDirection, look) < 1e-9)
         #expect(abs(view.camera.orthographic.magnitude - magnitude) < 1e-9)
-    }
-
-    @Test func orthographicRetargetSlidesTheTargetWithoutTurningTheView() {
-        var camera = MetalUserCamera()
-        camera.isOrthographic = true
-        camera.orbitTo(azimuth: 0, elevation: 0, distance: 4, target: .zero)
-        camera.applyProjection()
-        let look = camera.lookDirection, magnitude = camera.orthographic.magnitude
-        camera.retargetKeepingEye(to: SIMD3(1, 0.5, -2))
-        #expect(simd_distance(camera.lookDirection, look) < 1e-9)
-        #expect(abs(camera.orthographic.magnitude - magnitude) < 1e-9)
-        #expect(abs(camera.target.x - 1) < 1e-9 && abs(camera.target.y - 0.5) < 1e-9)
-        #expect(abs(camera.target.z) < 1e-9, "the depth offset is not in the view plane, so the target keeps its depth")
     }
 
     // MARK: - yel6vru3 hover

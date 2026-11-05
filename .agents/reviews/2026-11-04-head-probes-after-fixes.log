@@ -1,0 +1,16 @@
+􁁛 Test sceneZeroCanBeSelectedWhenDefaultSceneIsOne() passed after 0.247 seconds.
+􁁛 Test frameCameraLeavesAFiniteProjection() passed after 0.001 seconds.
+􁁛 Test gizmosExcludeCamerasOutsideTheLoadedScene() passed after 0.006 seconds.
+􁁛 Test gizmosExcludeAuthoredHiddenCameras() passed after 0.005 seconds.
+􁁛 Test nestedGroupSelectionShowsItsDescendantBox() passed after 0.004 seconds.
+􁁛 Test cameraOnlySceneCanLoadWithoutMeshPrimitives() passed after 0.005 seconds.
+􁁛 Test transparentPickingUsesNearestSurfaceRatherThanCentroidOrder() passed after 0.075 seconds.
+􁁛 Test stepReturnsTheExactKeyValueAndHoldsTheLastKey() passed after 0.001 seconds.
+􁁛 Test segmentCrossingTheWholeViewportIsPickable() passed after 0.001 seconds.
+􁁛 Test segmentBeyondTheFarPlaneIsNotPickable() passed after 0.001 seconds.
+􁁛 Test frameSelectionTargetsTheSelectionWhenCentringIsOff() passed after 0.005 seconds.
+􁁛 Test frameSelectionKeepsTheRestOfTheSceneInsideTheClipRange() passed after 0.004 seconds.
+􀢄 Test occludedLightDoesNotWinOverTheMeshInFront() recorded an issue at CriticalReviewRegressionTests2.swift:112:9: Expectation failed: hit == nil
+􀢄 Test occludedLightDoesNotWinOverTheMeshInFront() failed after 0.014 seconds with 1 issue.
+􀢄 Suite CriticalReviewRegressionTests2 failed after 0.025 seconds with 1 issue.
+􀢄 Test run with 13 tests in 2 suites failed after 0.372 seconds with 1 issue.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brainstorm"
+  short_description: "Grill an idea into an approved spec"
+  default_prompt: "Use $n-brainstorm to turn this idea into a spec."

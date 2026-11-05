@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// An icon-only on/off glass control (Floor, Auto-rotate, Center, Orthographic).
+/// An icon-only on/off glass control (Floor, the perspective / orthographic toggle).
 ///
 /// A real `Toggle` in `.button` style, so VoiceOver announces it as a toggle with its state
 /// ("Floor, on") under a **fixed** label — the label names the feature, never the action the
@@ -16,30 +16,34 @@ import SwiftUI
 struct DSGlassToggleButton: View {
     private let title: String
     private let systemImage: String
+    private let assetImage: String?
     @Binding private var isOn: Bool
     private let shortcut: KeyboardShortcut?
 
     /// - Parameters:
     ///   - title: Fixed feature name ("Floor"): tooltip and accessibility label.
-    ///   - systemImage: SF Symbol name.
+    ///   - systemImage: SF Symbol name, used when `assetImage` is nil.
+    ///   - assetImage: Catalog image drawn instead of the symbol.
     ///   - isOn: The state.
     ///   - shortcut: Optional keyboard shortcut — pass the `Shortcuts` entry so the menu bar
     ///     and the control share one binding.
     init(
         _ title: String,
-        systemImage: String,
+        systemImage: String = "circle",
+        assetImage: String? = nil,
         isOn: Binding<Bool>,
         shortcut: KeyboardShortcut? = nil
     ) {
         self.title = title
         self.systemImage = systemImage
+        self.assetImage = assetImage
         self._isOn = isOn
         self.shortcut = shortcut
     }
 
     var body: some View {
         Toggle(isOn: $isOn) {
-            Label(title, systemImage: systemImage)
+            icon
                 .labelStyle(.iconOnly)
                 .dsGlassControlLabel(.circle, isHighlighted: isOn)
         }
@@ -48,5 +52,22 @@ struct DSGlassToggleButton: View {
         .dsGlassControlSurface(isEngaged: isOn)
         .keyboardShortcut(shortcut)
         .help(title)
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        if let assetImage {
+            Label {
+                Text(title)
+            } icon: {
+                Image(assetImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 14, height: 14)
+            }
+        } else {
+            Label(title, systemImage: systemImage)
+        }
     }
 }

@@ -36,6 +36,31 @@ enum DocumentOpening {
         return true
     }
 
+    /// Puts the open file on the clipboard as a file URL, so Finder pastes a copy.
+    static func copyFile(_ url: URL, pasteboard: NSPasteboard = .general) {
+        pasteboard.clearContents()
+        pasteboard.writeObjects([url as NSURL])
+    }
+
+    /// A glTF or GLB file URL currently on the given pasteboard.
+    static func pastedGLTFURL(pasteboard: NSPasteboard = .general) -> URL? {
+        let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [
+            .urlReadingFileURLsOnly: true
+        ]) as? [URL]
+        return urls?.first { isGLTFFile($0) }
+    }
+
+    /// Opens the glTF file on the clipboard, if there is one.
+    @MainActor
+    static func pasteGLTF() {
+        guard let url = pastedGLTFURL() else { return }
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
+            if let error {
+                AppLog.error(AppLog.app, "paste failed \(error.localizedDescription)")
+            }
+        }
+    }
+
     static func closeWelcomeWindows() {
         for window in NSApp.windows where window.identifier?.rawValue == WelcomeWindow.id {
             window.close()

@@ -186,11 +186,11 @@ public final class MetalRenderer: @unchecked Sendable {
         let orthographic = options.isOrthographic
         var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
         if centerOffset != .zero {
-            let cameraViewport = khronosViewport(width: width, height: height, aspect: orthographic ? 1 : nil)
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: nil)
             camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
         }
         var viewProjection = camera.openGLProjectionMatrix * camera.viewMatrix
-        var viewportAspect: Float? = orthographic ? 1 : nil
+        var viewportAspect: Float? = nil
         if let index = options.fileCameraNodeIndex,
            let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
             viewProjection = fileCamera.viewProjection
@@ -444,7 +444,7 @@ public final class MetalRenderer: @unchecked Sendable {
         }
         var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
         if centerOffset != .zero {
-            let cameraViewport = khronosViewport(width: width, height: height, aspect: orthographic ? 1 : nil)
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: nil)
             camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
         }
         let filter = MetalDrawFilter(options)
@@ -459,7 +459,7 @@ public final class MetalRenderer: @unchecked Sendable {
                              options: SIMD4(toneMap(look.toneMapping), debugOutput(options.viewMode), environment == nil ? 0 : 1, UInt32(lights.count)),
                              viewport: SIMD4(Float(width), Float(height), 0, 0))
         var view = camera.viewMatrix
-        var viewportAspect: Float? = orthographic ? 1 : nil
+        var viewportAspect: Float? = nil
         if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height), worlds: nodeWorlds) {
             frame.viewProjection = fileCamera.viewProjection
             frame.cameraPosition = SIMD4(fileCamera.eye, 1)

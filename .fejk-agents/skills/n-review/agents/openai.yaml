@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review"
+  short_description: "Request or act on a code review"
+  default_prompt: "Use $n-review to review this change."

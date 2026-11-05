@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# SessionStart: inject the using-next-workflow bootstrap in full.
+# After compact/resume/clear, also inject the board: in-progress tasks and live worktrees,
+# because chat memory does not survive compaction and the board does.
+set -uo pipefail
+
+case "$0" in */*) ROOT="${0%/*}/.." ;; *) ROOT=".." ;; esac
+ROOT="$(cd "$ROOT" 2>/dev/null && pwd -P || printf '%s' "$ROOT")"
+skill="$ROOT/skills/using-next-workflow/SKILL.md"
+body="Error reading using-next-workflow"
+[ -r "$skill" ] && { IFS= read -r -d '' body < "$skill" || true; }
+
+# Hook input JSON on stdin carries "source": startup | resume | clear | compact.
+input=""; [ -t 0 ] || IFS= read -r -d '' input || true
+board=""
+if [[ "$input" != *'"source":"startup"'* && "$input" != *'"source": "startup"'* ]] && command -v backlog >/dev/null 2>&1; then
+  wip="$(backlog list --in-progress --flat 2>/dev/null | grep -v '^No tasks found' | head -20)"
+  trees="$(git worktree list 2>/dev/null | grep '/.worktrees/' | head -10)"
+  if [ -n "$wip$trees" ]; then
+    board=$'\n\n## Board now (resume here; trust this over memory)\n\nIn progress:\n'"${wip:-none}"$'\n\nWorktrees:\n'"${trees:-none}"
+  fi
+fi
+
+esc() { local s="$1"; s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; s="${s//$'\n'/\\n}"; s="${s//$'\r'/\\r}"; s="${s//$'\t'/\\t}"; out="$s"; }
+esc "<EXTREMELY_IMPORTANT>
+You have next-workflow. This is the full using-next-workflow skill; load the others with the Skill tool. Plugin root (GLOSSARY.md): ${ROOT}
+
+${body}${board}
+</EXTREMELY_IMPORTANT>"
+
+trap '' PIPE
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+  printf '{\n  "additional_context": "%s"\n}\n' "$out" 2>/dev/null || true
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+  printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$out" 2>/dev/null || true
+else
+  printf '{\n  "additionalContext": "%s"\n}\n' "$out" 2>/dev/null || true
+fi
+exit 0

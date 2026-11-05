@@ -83,19 +83,35 @@ enum NavigationGizmoLayout {
     static let axisLength: CGFloat = 24
     static let positiveRadius: CGFloat = 7
     static let negativeRadius: CGFloat = 5
+    /// Axis ends that are not the one facing the camera.
+    static let inactiveScale: CGFloat = 0.85
     static let axisLineWidth: CGFloat = 1.25
 
     static func ballLayouts(viewRotation: simd_float3x3, panelSize: CGSize) -> [NavigationGizmoBallLayout] {
         let hub = CGPoint(x: panelSize.width / 2, y: panelSize.height / 2)
-        return NavigationAxis.allCases.map { axis in
+        let placed = NavigationAxis.allCases.map { axis in
             let viewDir = viewRotation * axis.worldDirection
             let center = CGPoint(
                 x: hub.x + CGFloat(viewDir.x) * axisLength,
                 y: hub.y - CGFloat(viewDir.y) * axisLength
             )
-            let radius = axis.isPositive ? positiveRadius : negativeRadius
-            return NavigationGizmoBallLayout(axis: axis, center: center, radius: radius, viewDepth: viewDir.z)
+            return (axis, center, viewDir.z)
         }
+        let frontDepth = placed.map(\.2).max() ?? 0
+        return placed.map { axis, center, depth in
+            NavigationGizmoBallLayout(
+                axis: axis,
+                center: center,
+                radius: radius(axis: axis, viewDepth: depth, frontDepth: frontDepth),
+                viewDepth: depth
+            )
+        }
+    }
+
+    static func radius(axis: NavigationAxis, viewDepth: Float, frontDepth: Float) -> CGFloat {
+        let base = axis.isPositive ? positiveRadius : negativeRadius
+        guard viewDepth < frontDepth - 0.001 else { return base }
+        return base * inactiveScale
     }
 
     /// Back-to-front draw order (farther axis ends first).
@@ -127,12 +143,11 @@ struct NavigationGizmo: View {
     @State private var dragAnchor: CGPoint?
 
     var body: some View {
-        DSGizmoPanel {
-            GeometryReader { geo in
-                let layouts = NavigationGizmoLayout.sortedForDrawing(
-                    NavigationGizmoLayout.ballLayouts(viewRotation: viewRotation, panelSize: geo.size)
-                )
-                ZStack {
+        GeometryReader { geo in
+            let layouts = NavigationGizmoLayout.sortedForDrawing(
+                NavigationGizmoLayout.ballLayouts(viewRotation: viewRotation, panelSize: geo.size)
+            )
+            ZStack {
                     Canvas { context, size in
                         let hub = CGPoint(x: size.width / 2, y: size.height / 2)
                         for layout in layouts {
@@ -177,9 +192,9 @@ struct NavigationGizmo: View {
                             }
                         }
                         .modifier(NavigationGizmoAccessibility(activePreset: activePreset, onSelect: onSelect))
-                }
             }
         }
+        .frame(width: DS.Metrics.navigationGizmoSize, height: DS.Metrics.navigationGizmoSize)
     }
 
     private func hitTest(_ location: CGPoint, in size: CGSize) -> NavigationAxis? {

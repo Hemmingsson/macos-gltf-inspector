@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Canvas-bottom animation transport: play/pause, scrubber, clip picker, loop, and speed.
+/// Canvas-bottom animation transport: play/pause, scrubber, loop, and speed.
 ///
 /// Drawn as one `DSHUDCapsule` island. The scrubber uses a system slider; other controls are
 /// DS glass buttons from the same family as the toolbar clusters.
@@ -12,10 +12,6 @@ struct DSTimeline: View {
     @Binding var speed: Float
     let duration: Float
     let capsuleHeight: CGFloat
-    let clipTitles: [String]
-    let selectedClipIndices: [Int]
-    let defaultClipIndices: [Int]
-    var onSelectClip: (Int?) -> Void
     var onScrubbingChanged: (Bool) -> Void = { _ in }
 
     private static let speedChoices: [Float] = [0.25, 0.5, 1, 1.5, 2]
@@ -29,8 +25,6 @@ struct DSTimeline: View {
             timeReadout
             scrubber
             durationReadout
-            DSGlassIslandDivider()
-            clipPicker
             DSGlassIslandDivider()
             DSGlassToggleButton("Loop", systemImage: "repeat", isOn: $loops)
             DSGlassIslandDivider()
@@ -55,29 +49,26 @@ struct DSTimeline: View {
     }
 
     private var timeReadout: some View {
-        Text(PlaybackTimeFormat.string(time))
-            .font(.caption.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .accessibilityHidden(true)
+        timeLabel(PlaybackTimeFormat.string(time), prominence: .secondary)
     }
 
     private var durationReadout: some View {
-        Text(PlaybackTimeFormat.string(duration))
+        timeLabel(PlaybackTimeFormat.string(duration), prominence: .tertiary)
+    }
+
+    /// One line, always the `mm:ss.ff` width. The slider must not add its own value labels:
+    /// on macOS those sit beside the track, wrap the last digit, and redraw on top of these.
+    private func timeLabel(_ text: String, prominence: HierarchicalShapeStyle) -> some View {
+        Text(text)
             .font(.caption.monospacedDigit())
-            .foregroundStyle(.tertiary)
-            .accessibilityHidden(true)
+            .foregroundStyle(prominence)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private var scrubber: some View {
-        Slider(
-            value: $time,
-            in: 0 ... max(duration, 0.001)
-        ) {
+        Slider(value: $time, in: 0 ... max(duration, 0.001)) {
             Text("Timeline")
-        } minimumValueLabel: {
-            Text(PlaybackTimeFormat.string(time))
-        } maximumValueLabel: {
-            Text(PlaybackTimeFormat.string(duration))
         } onEditingChanged: { editing in
             onScrubbingChanged(editing)
         }
@@ -105,34 +96,6 @@ struct DSTimeline: View {
         large ? largeStep : frameStep
     }
 
-    private var clipPicker: some View {
-        DSGlassMenuButton("Animation clip", systemImage: "stopwatch", style: .text(clipPickerTitle), isEngaged: isSingleClipSelected) {
-            Button {
-                onSelectClip(nil)
-            } label: {
-                clipMenuRow(title: "Default", isChecked: selectedClipIndices == defaultClipIndices)
-            }
-            Divider()
-            ForEach(Array(clipTitles.enumerated()), id: \.offset) { index, title in
-                Button {
-                    onSelectClip(index)
-                } label: {
-                    clipMenuRow(title: title, isChecked: selectedClipIndices == [index])
-                }
-            }
-        }
-    }
-
-    private func clipMenuRow(title: String, isChecked: Bool) -> some View {
-        HStack {
-            Text(title)
-            Spacer(minLength: DS.Spacing.m)
-            if isChecked {
-                Image(systemName: "checkmark")
-            }
-        }
-    }
-
     private var speedMenu: some View {
         DSGlassMenuButton("Speed", systemImage: "gauge.with.dots.needle.67percent", style: .text(speedLabel), isEngaged: speed != 1) {
             ForEach(Self.speedChoices, id: \.self) { choice in
@@ -141,20 +104,6 @@ struct DSTimeline: View {
                 }
             }
         }
-    }
-
-    private var isSingleClipSelected: Bool {
-        selectedClipIndices != defaultClipIndices && selectedClipIndices.count == 1
-    }
-
-    private var clipPickerTitle: String {
-        if selectedClipIndices == defaultClipIndices {
-            return "Default"
-        }
-        if selectedClipIndices.count == 1, let index = selectedClipIndices.first, clipTitles.indices.contains(index) {
-            return clipTitles[index]
-        }
-        return "Default"
     }
 
     private var speedLabel: String {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "TDD"
+  short_description: "Red, green, refactor for a task or bug"
+  default_prompt: "Use $n-tdd to build this test-first."

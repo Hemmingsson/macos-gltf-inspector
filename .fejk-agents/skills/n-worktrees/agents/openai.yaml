@@ -1,0 +1,4 @@
+interface:
+  display_name: "Worktrees"
+  short_description: "Detached worktree per task, land onto main"
+  default_prompt: "Use $n-worktrees to isolate this task."

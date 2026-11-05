@@ -1,0 +1,12 @@
+{"type":"gantt","title":"An epic, start to finish","subtitle":"Illustrative days; tasks in a wave run in parallel worktrees","tasks":[
+ {"id":"bs","label":"Brainstorm → spec","section":"Define","start":0,"days":2},
+ {"id":"bd","label":"Breakdown: epic, tasks","section":"Define","after":"bs","days":1},
+ {"id":"w1","label":"W1 tracer-bullet task","section":"Build","after":"bd","days":2,"focal":true},
+ {"id":"w2a","label":"W2 task A","section":"Build","after":"w1","days":3},
+ {"id":"w2b","label":"W2 task B","section":"Build","after":"w1","days":2},
+ {"id":"w2c","label":"W2 task C","section":"Build","after":"w1","days":3},
+ {"id":"w3a","label":"W3 task D","section":"Build","after":"w2a","days":2},
+ {"id":"w3b","label":"W3 task E","section":"Build","after":"w2a","days":2},
+ {"id":"fr","label":"Epic review + fixes","section":"Close","after":"w3a","days":1,"focal":true},
+ {"id":"done","label":"Complete epic","section":"Close","after":"fr","days":1}],
+ "milestones":[{"label":"Spec approved","date":2},{"label":"Path proven","date":5},{"label":"Epic done","date":12}]}

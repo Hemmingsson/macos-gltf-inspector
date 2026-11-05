@@ -95,9 +95,23 @@ struct SceneInteractionComponentTests {
         state.canvas.mount(in: container, url: TestFixtures.boxAnimated, options: state.options)
         try #require(try await waitUntil { state.canvas.phase == .ready && state.canvas.showsAnimationTimeline })
         defer { state.canvas.view?.removeFromSuperview() }
+        let hidden = await AccessibilityTestHost(CanvasRegion(bounds: document.bounds, view: state) { Color.clear })
+        #expect(!hidden.text.contains("Play"), "the player stays hidden until an animation row is selected")
+        hidden.close()
+        state.selection = NodeID(kind: .animation, index: 0)
         let host = await AccessibilityTestHost(CanvasRegion(bounds: document.bounds, view: state) { Color.clear })
         defer { host.close() }
         #expect(host.text.contains("Play"))
+        #expect(!host.text.contains("Default"))
+        #expect(!host.text.contains("Animation clip"))
+        state.canvas.play()
+        #expect(state.canvas.isPlaying)
+        state.selection = NodeID(kind: .mesh, index: 0)
+        #expect(!state.canvas.isPlaying)
+        #expect(state.canvas.time == 0)
+        let after = await AccessibilityTestHost(CanvasRegion(bounds: document.bounds, view: state) { Color.clear })
+        defer { after.close() }
+        #expect(!after.text.contains("Play"), "leaving the animation row hides the player")
     }
 
     @Test func staticFileDoesNotOfferPlaybackControls() async throws {

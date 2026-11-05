@@ -1,0 +1,12 @@
+{"type":"flowchart","title":"Enter where the work is","subtitle":"Pick the first missing stage; never redo one that exists","budget":"faithful","nodes":[
+ {"id":"ask","label":"New ask","shape":"terminal","row":0,"col":2},
+ {"id":"wt","label":"Worktree reviewed?","shape":"decision","row":1,"col":2},
+ {"id":"tasks","label":"Tasks on board?","shape":"decision","row":2,"col":2},
+ {"id":"spec","label":"Spec or plan?","shape":"decision","row":3,"col":2},
+ {"id":"open","label":"Open decisions?","shape":"decision","row":4,"col":2},
+ {"id":"ship","label":"n-full-send","row":1,"col":4},
+ {"id":"build","label":"n-build","focal":true,"row":2,"col":4},
+ {"id":"bd","label":"n-breakdown","row":3,"col":4},
+ {"id":"bs","label":"n-brainstorm","row":4,"col":4},
+ {"id":"tdd","label":"task + n-tdd","sub":"small change or bug","row":5,"col":2}],
+ "edges":[["ask","wt"],["wt","ship","yes"],["wt","tasks","no","primary"],["tasks","build","yes"],["tasks","spec","no","primary"],["spec","bd","yes"],["spec","open","no","primary"],["open","bs","yes"],["open","tdd","no","primary"],["bs","bd"],["bd","build"]]}

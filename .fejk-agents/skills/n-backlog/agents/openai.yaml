@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backlog"
+  short_description: "Board commands, rich task formats, artifact paths"
+  default_prompt: "Use $n-backlog to put this on the board."

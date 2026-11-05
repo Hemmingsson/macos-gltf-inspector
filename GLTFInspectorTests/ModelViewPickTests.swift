@@ -98,6 +98,10 @@ struct ModelViewPickTests {
             view.mouseMoved(with: modelMove)
         }
         #expect(lastHover == 0)
+        var followed: CGPoint?
+        view.onHover = { _, point in followed = point }
+        view.mouseMoved(with: try testMouseEvent(.mouseMoved, NSPoint(x: 120, y: 110), in: window))
+        #expect(followed != nil, "once a node is hovered, the tag follows this move without waiting for the next pick")
     }
 
     @Test func lightInFrontOfQuadStillWins() async throws {

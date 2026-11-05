@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute"
+  short_description: "Build ready tasks in this session, one at a time"
+  default_prompt: "Use $n-execute to build these tasks yourself."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Breakdown"
+  short_description: "Break a spec or plan into epic, tasks, subtasks"
+  default_prompt: "Use $n-breakdown to break this plan into tasks."
