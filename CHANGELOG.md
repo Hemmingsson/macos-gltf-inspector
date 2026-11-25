@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 — 2026-11-25
+
+Build 5. No change to the window, the renderer, or which files open.
+
+### Changed
+
+- Shared document, renderer, and settings helpers. Parsing, shading, and the window behave as in 1.0.
+
 ## 1.0 — 2026-11-25
 
 First public release. Build 4. macOS 26+ on Apple Silicon.
