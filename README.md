@@ -17,15 +17,15 @@ Preview them in Finder with Quick Look and thumbnails.
 <table>
   <tr>
     <td align="center" valign="top" width="33%">
-      <img src="assets/finder_thumbnails.png" alt="Finder thumbnails for .glb and .gltf files"><br>
+      <img src="assets/mockups/finder-thumbnails.png" alt="Finder thumbnails for .glb and .gltf files"><br>
       <small>Thumbnails</small>
     </td>
     <td align="center" valign="top" width="33%">
-      <img src="assets/quick_look.webp" alt="Quick Look preview of a .glb file"><br>
+      <img src="assets/mockups/quick-look.webp" alt="Quick Look preview of a .glb file"><br>
       <small>Quick Look</small>
     </td>
     <td align="center" valign="top" width="33%">
-      <img src="assets/finder_details_pane.webp" alt="Finder preview pane for a .glb file"><br>
+      <img src="assets/mockups/preview-pane.webp" alt="Finder preview pane for a .glb file"><br>
       <small>Preview pane</small>
     </td>
   </tr>

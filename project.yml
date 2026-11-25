@@ -47,7 +47,7 @@ packages:
     exactVersion: "1.5.7"
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
-    from: "2.9.6"
+    exactVersion: "2.9.6"
 
 targets:
   # Extension-safe core: what the file contains (JSON summary, validator, stats), the look

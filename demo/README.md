@@ -1,6 +1,8 @@
 # Screenshots
 
-README media must show the real app or Finder — no HTML mockups of the window.
+The app hero shows the real app. The three README Finder mockups live in
+`assets/mockups/` and must stay separate from generated captures. Do not overwrite
+them when capturing release media.
 
 ## App hero
 
@@ -19,9 +21,9 @@ Override the wallpaper with a second argument or `SCREENSHOT_WALLPAPER`.
 
 Keep these three for the README:
 
-- [Thumbnails](../assets/finder_thumbnails.png)
-- [Preview pane](../assets/finder_details_pane.webp)
-- [Quick Look](../assets/quick_look.webp)
+- [Thumbnails](../assets/mockups/finder-thumbnails.png)
+- [Preview pane](../assets/mockups/preview-pane.webp)
+- [Quick Look](../assets/mockups/quick-look.webp)
 
 To capture an already-open Release window without rebuilding:
 

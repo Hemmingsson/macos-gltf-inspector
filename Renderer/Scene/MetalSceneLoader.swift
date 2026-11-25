@@ -802,6 +802,8 @@ private extension Builder {
             textures[key] = texture
         }
         let desc = MTLSamplerDescriptor()
+        // Material samplers are encoded into the fragment argument buffer.
+        desc.supportArgumentBuffers = true
         let sampler = source.sampler
         let storedMin = sampler.map { Int($0.minMipFilter.rawValue) } ?? 0
         let minFilter = storedMin == 0 ? 9987 : storedMin
