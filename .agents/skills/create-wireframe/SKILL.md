@@ -7,7 +7,7 @@ description: Create or update glTF Inspector window wireframes and visual docume
 
 Use this skill for the document window, sidebar, canvas controls, inspector, and visible states. For behavior or message order, use [create-diagram](../create-diagram/SKILL.md).
 
-1. Read `DESIGN.md`, `DESIGN.md`, and the relevant SwiftUI/AppKit source under `GLTFInspector/`. Use `assets/docs/window-anatomy.json` and `assets/docs/window-anatomy.mjs` as the existing editable geometry and renderer. Preserve the document-window vocabulary: sidebar, Metal canvas, toolbar clusters, validation, and inspector.
+1. Read `docs/design.md` and the relevant SwiftUI/AppKit source under `GLTFInspector/`. Use `assets/docs/window-anatomy.json` and `assets/docs/window-anatomy.mjs` as the existing editable geometry and renderer. Preserve the document-window vocabulary: sidebar, Metal canvas, toolbar clusters, validation, and inspector.
 2. Extend or add a JSON spec under `assets/docs/`. Keep dimensions in points, use real labels and controls from the app, and keep geometry in the JSON rather than hard-coding a new export.
 3. If the existing `window-anatomy.mjs` can render the change, run it from `assets/docs/`:
 

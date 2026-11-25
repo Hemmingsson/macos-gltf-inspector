@@ -58,12 +58,13 @@ brew install xcodegen
 ./scripts/dev.sh build
 ```
 
-See [setup and tests](docs/development.md), [architecture](ARCHITECTURE.md), and [design](DESIGN.md).
+See [setup and tests](docs/development.md), [architecture](docs/architecture.md), and [design](docs/design.md).
 
 ## License
 
 [MIT](LICENSE). [Dependencies](GLTFInspector/Resources/ThirdPartyLicenses) and
 [lighting images](Renderer/Environments/LICENSES.md) have their own licenses.
 
-Some demo previews combine rendered model frames with illustrated interfaces.
+The app hero is a real window capture. The three existing feature demos are
+`assets/finder_thumbnails.png`, `assets/finder_details_pane.webp`, and `assets/quick_look.webp`.
 [Capture details](demo/README.md).

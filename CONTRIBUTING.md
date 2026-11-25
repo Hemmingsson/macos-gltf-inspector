@@ -1,7 +1,7 @@
 # Contributing
 
 Short version: work on a branch, use `./scripts/dev.sh`, and read [`AGENTS.md`](AGENTS.md) for the
-rules. How the code fits together is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+rules. How the code fits together is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Requirements
 

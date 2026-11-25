@@ -2,7 +2,7 @@ import GLTFCore
 import SwiftUI
 
 /// Right column: what the file says about the selected outliner row. Sections are omitted when
-/// the row's type has no such data (DESIGN.md: hide, don't disable).
+/// the row's type has no such data (docs/design.md: hide, don't disable).
 struct Inspector: View {
     @Bindable var view: ViewState
     var document: GLTFDocument

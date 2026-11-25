@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// material-variant `DSMenuPicker`. Shows the name without its extension, and the file format
 /// under it.
 ///
-/// The window has no title band (DESIGN.md: the file name lives in the sidebar), so if this
+/// The window has no title band (docs/design.md: the file name lives in the sidebar), so if this
 /// block is missing there is nothing anywhere on screen that says which file you are looking at.
 struct DocumentHeader: View {
     var fileName: String

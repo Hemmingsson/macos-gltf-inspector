@@ -1,6 +1,6 @@
 import Foundation
 
-/// What a row in the outliner is. Drives icon + tint (DESIGN.md: colour = meaning).
+/// What a row in the outliner is. Drives icon + tint (docs/design.md: colour = meaning).
 enum NodeKind: String, Sendable, Hashable, Codable, CaseIterable {
     case scene
     case mesh

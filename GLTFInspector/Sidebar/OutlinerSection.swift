@@ -43,7 +43,7 @@ struct OutlinerSection: Identifiable, Hashable, Sendable {
 extension OutlinerSection {
     /// The whole sidebar, in order: Scenes · Scene · Materials · Skins · Animations · Morphs.
     ///
-    /// DESIGN.md's "show only what the model has" is enforced here, once, by not producing an
+    /// docs/design.md's "show only what the model has" is enforced here, once, by not producing an
     /// empty section, rather than by an `if` in every view.
     static func sections(of document: GLTFDocument, activeSceneIndex: Int = 0) -> [OutlinerSection] {
         func items(_ kind: NodeKind, count: Int, where include: (Int) -> Bool = { _ in true }) -> [OutlinerItem] {

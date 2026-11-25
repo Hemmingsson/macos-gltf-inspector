@@ -2,7 +2,7 @@
 
 Keep the model in focus. Use quiet native controls. Check the code when this guide and the app differ.
 
-These rules do not certify feature coverage. See [limits](docs/usage.md#limits).
+These rules do not certify feature coverage. See [limits](usage.md#limits).
 
 This file defines product, layout, component, and copy rules.
 
@@ -19,13 +19,13 @@ This file defines product, layout, component, and copy rules.
 - Never write the source file. Hide/solo, picking, gizmos, skeleton overlays, and animation are window state. Quick Look and thumbnails keep the rest pose with nothing hidden.
 - Do not add a renderer selector, duplicate settings, or controls the renderer cannot drive: morph sliders, double-sided overrides, or custom environments.
 
-Use tokens from [`DS.swift`](GLTFInspector/DesignSystem/DS.swift) and existing
-[`DS` components](GLTFInspector/DesignSystem/Components). These are authoring rules;
+Use tokens from [`DS.swift`](../GLTFInspector/DesignSystem/DS.swift) and existing
+[`DS` components](../GLTFInspector/DesignSystem/Components). These are authoring rules;
 check the implementation when a view differs.
 
 ## Window anatomy
 
-![The document window: sidebar, canvas with three glass clusters, inspector](assets/docs/window-anatomy.svg)
+![The document window: sidebar, canvas with three glass clusters, inspector](../assets/docs/window-anatomy.svg)
 
 | Part | Size (pt) | Token |
 | --- | --- | --- |
@@ -177,7 +177,7 @@ Values are read-only. The app does not write the file.
 
 ## Icons
 
-Browse the [icon set](assets/icons/inspector/README.md) and its [drawing guide](assets/icons/inspector/STYLEGUIDE.md).
+Browse the [icon set](../assets/icons/inspector/README.md) and its [drawing guide](../assets/icons/inspector/STYLEGUIDE.md).
 
 Use `DSGlyphs` or a model enum's `.glyph`. Call sites name the role, not an image.
 Each glyph supplies an Inspector icon and an SF Symbol fallback.

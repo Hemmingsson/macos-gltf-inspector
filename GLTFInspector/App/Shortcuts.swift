@@ -3,7 +3,7 @@ import Renderer
 import SwiftUI
 
 /// The single keyboard-shortcut table. Menu items and in-window controls read the same entry
-/// (DESIGN.md › menu bar = full command set).
+/// (docs/design.md › menu bar = full command set).
 enum Shortcuts {
     enum Action: String, CaseIterable, Sendable {
         case orthographic, center, fit, frameSelection, reset, autoRotate, zoomIn, zoomOut, toggleSidebar

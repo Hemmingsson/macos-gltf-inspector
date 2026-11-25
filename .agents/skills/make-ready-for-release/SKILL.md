@@ -11,7 +11,7 @@ Do not push, publish, tag, distribute builds, change signing identities, access 
 
 ## Plan and assign
 
-Read repository instructions, status, and diff. Check the code, `ARCHITECTURE.md`, `DESIGN.md`, and developer scripts. Verify previous findings against current files.
+Read repository instructions, status, and diff. Check the code, `docs/architecture.md`, `docs/design.md`, and developer scripts. Verify previous findings against current files.
 
 Use parallel agents for separate review areas:
 - Swift behavior and structure.

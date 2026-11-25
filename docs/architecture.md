@@ -2,11 +2,11 @@
 
 One Metal renderer draws the app, Quick Look, and Finder thumbnails. GLTFKit2 loads scenes.
 Shading, cameras, and draw order are ported from Khronos commit `863b981`. Lighting uses
-exported bakes. See [upstream details](Renderer/Shaders/UPSTREAM.md).
+exported bakes. See [upstream details](../Renderer/Shaders/UPSTREAM.md).
 
 ## Modules
 
-![One renderer serves three surfaces](assets/docs/architecture.svg)
+![One renderer serves three surfaces](../assets/docs/architecture.svg)
 
 | Target | Owns |
 | --- | --- |
@@ -21,7 +21,7 @@ Both frameworks are extension-safe. The app embeds them and GLTFKit2 once in
 
 ## File loading and view state
 
-![Panels and canvas load in parallel](assets/docs/open-file.svg)
+![Panels and canvas load in parallel](../assets/docs/open-file.svg)
 
 1. `DocumentWindow` calls `DocumentWindowModel.beginOpen` and logs `open start`.
    `openSummary` parses JSON off the main thread. Panels follow the model's phase.
@@ -35,7 +35,7 @@ Toolbar, menu, and sidebar controls edit `ViewState`. SwiftUI sends `ViewOptions
 `ModelCanvas` to the controller. It applies options one call at a time; the latest options win.
 Hide/solo, selection, and overlays use this path. Fit, presets, zoom, and PNG export call the controller directly.
 
-![Load states](assets/docs/load-states.svg)
+![Load states](../assets/docs/load-states.svg)
 
 `DocumentState` has empty, loading, ready, and failed states. A new file cancels validation
 and invalidates stale generations. There is no cancelled state. Closing discards the model.
@@ -43,7 +43,7 @@ The diagrams show control flow; canvas readiness is not a measured first-frame t
 
 ## Quick Look and thumbnails
 
-![Hosts, interaction, and output](assets/docs/surfaces.svg)
+![Hosts, interaction, and output](../assets/docs/surfaces.svg)
 
 Quick Look uses the stored look, floor, rest pose, and automatic camera rotation.
 It keeps authored placement unless the model is far from the origin
@@ -53,19 +53,19 @@ Only the app writes `AppGroupSettings.defaults`. The sandboxed extensions read i
 
 ## Frame passes and accuracy
 
-![Environment, scene passes, tone mapping, then overlays](assets/docs/frame-passes.svg)
+![Environment, scene passes, tone mapping, then overlays](../assets/docs/frame-passes.svg)
 
 Bind the environment, draw scene passes, then tone map. Draw the floor, grid, selection
 outline, and gizmos after tone mapping.
 
-![Reference-image comparisons](assets/docs/reference-tests.svg)
+![Reference-image comparisons](../assets/docs/reference-tests.svg)
 
 `TestModels/References/` holds former Khronos web-viewer captures: pinned samples in
 `manifest.json`, fixed-time poses in `Animated/`, and app features in `Features/`.
 Some overlay baselines changed later; their independent provenance is not established.
 `PixelDiffMetalTests`, `FeatureReferenceTests`, and `AnimatedReferenceTests` enforce both
 manifest error budgets. Missing samples fail. These tests cover their inputs, not complete
-glTF conformance or identical pixels on all hardware. See [provenance](TestModels/References/README.md).
+glTF conformance or identical pixels on all hardware. See [provenance](../TestModels/References/README.md).
 
 ## Source map and diagnostics
 
@@ -85,4 +85,4 @@ Categories are `app`, `renderer`, `thumbnail`, and `settings`. Pixel diffs go to
 Diagrams use SeeCode specs in `assets/docs/*.json`; contact sheets use sibling `.mjs` scripts.
 To rebuild a diagram, set `SEECODE`, run `node "$SEECODE" render assets/docs/<name>.json`,
 then `node "$SEECODE" export assets/docs/<name>.html --formats svg`. Check light and dark
-appearance. Use `resvg` for PNG checks. See [development](docs/development.md) for commands.
+appearance. Use `resvg` for PNG checks. See [development](development.md) for commands.

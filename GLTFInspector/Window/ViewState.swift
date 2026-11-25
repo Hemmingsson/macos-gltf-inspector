@@ -4,7 +4,7 @@ import Observation
 import Renderer
 
 /// How this window shows its file: stage, look, camera, scene, variant and selection
-/// (DESIGN.md "this window" job). The toolbar, the menu bar and the sidebar all edit this one
+/// (docs/design.md "this window" job). The toolbar, the menu bar and the sidebar all edit this one
 /// object; `options` is what the canvas draws with, and the camera commands go to `canvas`.
 ///
 /// Backdrop, floor and auto-rotate follow Settings until this window changes them. Nothing here

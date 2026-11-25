@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the adaptive-UI test fixtures under `TestModels/Fixture Models/`.
 
-One tiny, self-contained glTF per capability the new UI shows/hides (DESIGN.md
+One tiny, self-contained glTF per capability the new UI shows/hides (docs/design.md
 "show only what the model has"). Geometry is the flat unit triangle used by the
 in-memory test builders, so every file is byte-small and loads in the renderer and the
 validator. Buffers are embedded as base64 `data:` URIs — single file, no `.bin`

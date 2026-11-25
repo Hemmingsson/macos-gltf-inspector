@@ -1,7 +1,7 @@
 # Test fixtures
 
 Small, committed glTF/GLB models for tests **and** for exercising the new UI's adaptive behaviour
-(DESIGN.md — *show only what the model has*). Files live in
+(docs/design.md — *show only what the model has*). Files live in
 [`TestModels/Fixture Models/`](../../TestModels/Fixture%20Models/). Tests reach them through
 [`GLTFInspectorTests/TestFixtures.swift`](../../GLTFInspectorTests/TestFixtures.swift), which resolves
 paths from the source tree via `#filePath` — **fixtures are not bundled resources**.

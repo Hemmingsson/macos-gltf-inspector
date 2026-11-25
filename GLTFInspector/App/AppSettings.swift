@@ -4,7 +4,7 @@ import Observation
 
 /// The app's Settings, stored in the App Group suite (`AppGroupSettings`) so Quick Look and the
 /// Finder thumbnail read what Settings writes. New windows start from these; a window's own
-/// changes never write back (DESIGN.md three-job rule).
+/// changes never write back (docs/design.md three-job rule).
 @MainActor
 @Observable
 final class AppSettings {

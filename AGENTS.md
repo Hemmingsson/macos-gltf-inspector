@@ -4,8 +4,8 @@ macOS 26+ viewer for `.glb` / `.gltf`: document window, Quick Look preview and F
 thumbnail, all drawn by one Metal renderer with shading hand-ported from the Khronos glTF Sample Renderer.
 The GitHub repo is `macos-gltf-inspector`; the installed app name is **glTF Inspector**.
 
-- How it fits together: [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- Product and UX principles: [`DESIGN.md`](DESIGN.md); look and components: [`DESIGN.md`](DESIGN.md)
+- How it fits together: [`docs/architecture.md`](docs/architecture.md)
+- Product and UX principles: [`docs/design.md`](docs/design.md)
 
 ## Layout
 
@@ -43,7 +43,7 @@ The GitHub repo is `macos-gltf-inspector`; the installed app name is **glTF Insp
 - **Icons**: the drawn set first (`assets/icons/inspector/`, 78 original hand-drawn icons), with
   SF Symbols as fallbacks. Call sites use `DSGlyph` / `DSLabel`, never an image name; glTF
   type glyphs stay in `DSTypeIcon`. System: `assets/icons/inspector/README.md`; rules:
-  `DESIGN.md` › Icons.
+  `docs/design.md` › Icons.
 - **Verify UI on screen** with `dev.sh run <fixture>`: one `open start`, `open ready|failed`,
   `canvas ready|failed`, and no "Modifying state during view update" warnings.
 - Work on `main`; `.agents/` plans and handoffs are intent, not shipped behavior.
@@ -53,6 +53,6 @@ The GitHub repo is `macos-gltf-inspector`; the installed app name is **glTF Insp
 - Follow the concise, visual style of Sketchfab → glTF, Quick Preview, and Netlify for Alfred.
 - Keep the tone relaxed, friendly, and matter-of-fact. Use everyday words; skip sales copy and formal report language.
 - README: what the app does, a useful visual, install, essential use, and links. Use short, direct sentences.
-- Put detailed controls in `docs/usage.md`, build/release instructions in `docs/development.md`, and internals in `ARCHITECTURE.md` / `DESIGN.md`.
+- Put detailed controls in `docs/usage.md`, build/release instructions in `docs/development.md`, and internals in `docs/architecture.md` / `docs/design.md`.
 - Avoid exhaustive feature/shortcut tables, implementation names, wireframes, and test methodology in the README. Use visuals when they explain a user task.
 - Link dependency notices instead of listing them all. Keep capture disclosures and download availability accurate.
