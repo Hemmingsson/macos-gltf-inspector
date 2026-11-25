@@ -15,3 +15,7 @@ First public release. Build 4. macOS 26+ on Apple Silicon.
 
 Limits: partial extension coverage; animation pointers ignored; validation skipped above 48 MiB;
 Quick Look and thumbnails use the rest pose.
+
+### Known issue
+
+Finder can show a generic icon for loose `.gltf` files when macOS selects its SceneKit thumbnail provider. GLB thumbnails and Quick Look previews are unaffected.
