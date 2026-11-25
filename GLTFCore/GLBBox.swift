@@ -27,7 +27,7 @@ public struct GLBBox {
         }
         var payload = data
         if payload.starts(with: [0xEF, 0xBB, 0xBF]) {
-            payload = payload.subdata(in: 3..<payload.count)
+            payload = payload[3...]
         }
         guard let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any] else {
             throw Error.invalidGLB
@@ -125,11 +125,9 @@ public struct GLBBox {
     }
 
     static func readUInt32(_ data: Data, _ offset: Int) -> UInt32 {
-        var value: UInt32 = 0
-        _ = withUnsafeMutableBytes(of: &value) { dest in
-            data.copyBytes(to: dest, from: offset..<(offset + 4))
+        data.withUnsafeBytes { raw in
+            UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: offset, as: UInt32.self))
         }
-        return UInt32(littleEndian: value)
     }
 
     /// Also used by `GLTFBinaryStore` when a sidecar buffer or image is inlined.

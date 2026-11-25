@@ -54,7 +54,9 @@ public struct AnimationSampler: Sendable {
 
         switch interpolation {
         case .step:
-            return copyValue(atKey: lastKeyIndex(atOrBefore: t))
+            // After clamp, nextKey is lower_bound(t). Exact key → that index; else the previous.
+            let key = input[nextKey] > t ? nextKey - 1 : nextKey
+            return copyValue(atKey: key)
         case .linear:
             let a = copyValue(atKey: prevKey)
             let b = copyValue(atKey: nextKey)
@@ -113,25 +115,19 @@ public struct AnimationSampler: Sendable {
         return min(max(rawTime, first), last)
     }
 
+    /// First key index with `input[i] >= t` (glTF inputs are strictly increasing), then at least 1.
     private func nextKeyframeIndex(for t: Float) -> Int {
-        var nextKey = 0
-        for i in 0 ..< input.count where t <= input[i] {
-            nextKey = i
-            break
+        var lo = 0
+        var hi = input.count
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2
+            if input[mid] < t {
+                lo = mid + 1
+            } else {
+                hi = mid
+            }
         }
-        if nextKey < 1 {
-            nextKey = 1
-        }
-        return nextKey
-    }
-
-    /// Largest key index whose time is at or before `t`. `t` is already clamped to the key range, so index 0 is the floor.
-    private func lastKeyIndex(atOrBefore t: Float) -> Int {
-        var key = 0
-        for i in 0 ..< input.count where input[i] <= t {
-            key = i
-        }
-        return key
+        return lo < 1 ? 1 : lo
     }
 
     private func copyValue(atKey key: Int) -> [Float] {

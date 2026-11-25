@@ -678,10 +678,6 @@ public final class ModelView: NSView {
     /// start of the orbit: the camera turns rigidly about this point, so it stays put on screen.
     private var orbitPivot: SIMD3<Double>?
 
-    private func selectionOrbitPivot() -> SIMD3<Double>? {
-        options.orbitsAroundSelection ? selectionCentre() : nil
-    }
-
     /// Box centre of the selected node's subtree in the pose on screen; nil for a file camera.
     private func selectionCentre() -> SIMD3<Double>? {
         guard options.fileCameraNodeIndex == nil,
@@ -757,7 +753,7 @@ public final class ModelView: NSView {
             if !didReportOrbit, dx != 0 || dy != 0 {
                 didReportOrbit = true
                 onOrbitStart?()
-                orbitPivot = selectionOrbitPivot()
+                orbitPivot = options.orbitsAroundSelection ? selectionCentre() : nil
             }
             if let orbitPivot {
                 camera.orbit(dx, dy, around: orbitPivot)

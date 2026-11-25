@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 export const esc = value =>
   String(value)
     .replaceAll('&', '&amp;')
@@ -18,3 +21,7 @@ export const badge = (out, n, x, y) => {
   out.push(`<circle cx="${x}" cy="${y}" r="14" class="badge"/>`);
   text(out, x, y + 5, n, 'badgeText', 'middle');
 };
+
+export const imageData = (root, name) =>
+  `data:image/png;base64,${fs.readFileSync(path.join(root, 'TestModels/References/Features', name)).toString('base64')}`;
+

@@ -55,10 +55,9 @@ extension MetalScene {
     /// nodes (and their descendants, including off-scene joints) recompute; everyone else keeps
     /// the cached matrix. That walk is O(nodes + draws) and is cheap next to the draw itself.
     func framePose(pose: AnimationPose?) -> SceneFramePose {
-        let restWorlds = nodeRests.map(\.worldMatrix)
         let overrides = posedOverrides(pose)
         if overrides.isEmpty {
-            return SceneFramePose(transforms: draws.map(Self.restTransform), nodeWorlds: restWorlds)
+            return SceneFramePose(transforms: restTransforms, nodeWorlds: restWorlds)
         }
 
         var dirty = Array(repeating: false, count: nodeRests.count)
@@ -96,9 +95,10 @@ extension MetalScene {
         }
         for index in nodeRests.indices where dirty[index] { resolve(index) }
 
-        let transforms = draws.map { draw in
+        let transforms = draws.indices.map { drawIndex -> DrawFrameTransform in
+            let draw = draws[drawIndex]
             let node = draw.nodeIndex
-            guard nodeRests.indices.contains(node), dirty[node] else { return Self.restTransform(draw) }
+            guard nodeRests.indices.contains(node), dirty[node] else { return restTransforms[drawIndex] }
             let model = worlds[node] * draw.instanceMatrix
             return DrawFrameTransform(
                 model: model,
@@ -118,13 +118,5 @@ extension MetalScene {
             overrides[index] = override
         }
         return overrides
-    }
-
-    private static func restTransform(_ draw: MetalDraw) -> DrawFrameTransform {
-        DrawFrameTransform(
-            model: draw.worldTransform,
-            normalMatrix: draw.worldTransform.inverse.transpose,
-            negativeScale: draw.negativeScale
-        )
     }
 }

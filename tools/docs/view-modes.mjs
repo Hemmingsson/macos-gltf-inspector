@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { rect as pushRect, text as pushText } from './svg-helpers.mjs';
+import { imageData as featureImageData, rect as pushRect, text as pushText } from './svg-helpers.mjs';
 
 const here = new URL('.', import.meta.url).pathname;
 const root = path.resolve(here, '../..');
 const output = path.join(here, 'view-modes.png');
 const temp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gltf-view-modes-')), 'sheet.svg');
-const imageData = name => `data:image/png;base64,${fs.readFileSync(path.join(root, 'TestModels/References/Features', name)).toString('base64')}`;
+const imageData = name => featureImageData(root, name);
 const out = [];
 const text = (x, y, value, cls = 'body', anchor = 'start') =>
   pushText(out, x, y, value, cls, anchor);

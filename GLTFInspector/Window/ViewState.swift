@@ -145,7 +145,9 @@ final class ViewState {
 
     /// What the canvas draws with.
     var options: ViewOptions {
-        ViewOptions(
+        // One material → mesh scan per options read (body / canvas update); both fields share it.
+        let materialHighlight = materialHighlightNodeIndices
+        return ViewOptions(
             look: RenderLook(exposureEV: exposure, environmentIntensity: 1, environmentYawDegrees: environmentYaw,
                              environment: environment, toneMapping: toneMapping, background: backdrop.color),
             viewMode: viewMode,
@@ -163,8 +165,8 @@ final class ViewState {
             selectedNodeIndices: Set(storedSelectedIDs.filter { $0.kind == .mesh || $0.kind == .empty }.map(\.index)),
             orbitsAroundSelection: settings.orbitsAroundSelection,
             zoomsTowardPointer: settings.zoomsTowardPointer,
-            highlightedNodeIndices: materialHighlightNodeIndices.nodes,
-            materialHighlightMaterialIndex: materialHighlightNodeIndices.materialIndex,
+            highlightedNodeIndices: materialHighlight.nodes,
+            materialHighlightMaterialIndex: materialHighlight.materialIndex,
             gizmoSelectedNodeIndex: selection.flatMap { $0.kind.isSceneNode ? $0.index : nil },
             selectedSkinIndex: selection.flatMap { $0.kind == .skin ? $0.index : nil },
             hiddenNodeIndices: hiddenNodes,

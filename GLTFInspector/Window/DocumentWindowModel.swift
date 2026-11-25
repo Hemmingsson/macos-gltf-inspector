@@ -23,6 +23,8 @@ final class DocumentWindowModel {
     /// What the file contains, for the outliner and inspector. Empty until the JSON is read.
     private(set) var document = GLTFDocument()
     private(set) var validationState: GLTFValidationState?
+    /// Resolved once when `document` or `validationState` changes — not on every window body pass.
+    private(set) var validation = ValidationResult(status: .pending)
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
     let view: ViewState
@@ -44,9 +46,6 @@ final class DocumentWindowModel {
         view.canvas.onTogglePick = { [weak self] index in self?.view.toggleSelection(ofNode: index) }
         view.canvas.onOrbitStart = { [weak self] in self?.view.canvasDidOrbit() }
     }
-
-    /// The validator's findings, resolved to outliner rows.
-    var validation: ValidationResult { ValidationResult(validationState, document: document) }
 
     /// The file currently loading or open; chrome prefers the in-flight URL.
     var openURL: URL? { loadingURL ?? documentURL }
@@ -112,8 +111,7 @@ final class DocumentWindowModel {
         do {
             let document = try await load(url)
             guard generation == loadGeneration else { return }
-            self.document = document
-            view.document = document
+            applyDocument(document)
             view.sceneIndex = document.defaultSceneIndex
             view.viewModes = document.viewModes
             phase = .ready
@@ -159,7 +157,7 @@ final class DocumentWindowModel {
                 AppLog.error(AppLog.app, "validation failed \(url.lastPathComponent)")
             }
             guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
-            self.validationState = state
+            self.applyValidationState(state)
         }
     }
 
@@ -170,13 +168,25 @@ final class DocumentWindowModel {
         validationTask?.cancel()
         validationTask = nil
         resetDocument()
-        validationState = nil
+        applyValidationState(nil)
         view.reset()
     }
 
     private func resetDocument() {
-        document = GLTFDocument()
+        applyDocument(GLTFDocument())
+    }
+
+    /// Keeps `validation` in step with the panels' document; subjects resolve against this JSON.
+    private func applyDocument(_ document: GLTFDocument) {
+        self.document = document
         view.document = document
+        validation = ValidationResult(validationState, document: document)
+    }
+
+    /// Keeps `validation` in step with the Khronos run; avoids re-resolving on every body pass.
+    private func applyValidationState(_ state: GLTFValidationState?) {
+        validationState = state
+        validation = ValidationResult(state, document: document)
     }
 
     deinit {

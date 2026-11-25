@@ -181,6 +181,10 @@ public final class MetalScene {
     public let nodeParents: [Int]
     /// Load-time TRS and world matrix for each node, parallel to `asset.nodes`.
     let nodeRests: [MetalNodeRest]
+    /// `nodeRests.map(\.worldMatrix)` — reused by every rest / posed `framePose`.
+    let restWorlds: [simd_float4x4]
+    /// Per-draw rest model / normal / winding — avoids re-inverting on still frames.
+    let restTransforms: [DrawFrameTransform]
     /// Skins parallel to `asset.skins`. Draws point at these with `skinIndex`.
     let skins: [MetalSkin]
     /// Children of each node, in index order. Used to push a posed parent into its subtree.
@@ -210,6 +214,14 @@ public final class MetalScene {
         self.lights = lights
         self.asset = asset
         self.nodeRests = nodeRests
+        self.restWorlds = nodeRests.map(\.worldMatrix)
+        self.restTransforms = draws.map { draw in
+            DrawFrameTransform(
+                model: draw.worldTransform,
+                normalMatrix: draw.worldTransform.inverse.transpose,
+                negativeScale: draw.negativeScale
+            )
+        }
         self.skins = skins
         self.inSceneNodes = inSceneNodes
         self.visibleNodes = visibleNodes
