@@ -9,11 +9,9 @@ Preview them in Finder with Quick Look and thumbnails.
 
 </div>
 
-glTF Inspector is a native Swift macOS viewer for the [glTF 2.0](https://www.khronos.org/gltf/)
-format. It loads `.glb` and `.gltf` scenes and renders them with Metal using one shared
-renderer for the app window, Quick Look, and Finder thumbnails. Its material and lighting
-shading is hand-ported from the Khronos glTF Sample Renderer, so the same rendering path
-is used whether you open a model directly or preview it from Finder.
+Native Swift macOS app for opening [glTF 2.0](https://www.khronos.org/gltf/) models with
+Metal. The app, Quick Look, and Finder thumbnails share one renderer with shading adapted
+from the Khronos glTF Sample Renderer.
 
 <p align="center">
   <img src="docs/media/screenshot.png" width="100%" alt="glTF Inspector showing a model with the material inspector open"><br>
