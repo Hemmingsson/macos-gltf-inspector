@@ -7,6 +7,10 @@
 Open and inspect `.glb` and `.gltf` models on your Mac.
 Preview them in Finder with Quick Look and thumbnails.
 
+<a href="https://github.com/Hemmingsson/macos-gltf-inspector/releases/latest"><img src="https://img.shields.io/github/v/release/Hemmingsson/macos-gltf-inspector?label=release" alt="Latest release"></a>
+<img src="https://img.shields.io/badge/macOS-26%2B-111111" alt="macOS 26 or later">
+<img src="https://img.shields.io/badge/Swift-native-F05138" alt="Native Swift app">
+
 </div>
 
 Native Swift macOS app for opening [glTF 2.0](https://www.khronos.org/gltf/) models with
