@@ -4,21 +4,20 @@
 
 ## Look around
 
-Drag to orbit the model. Hold **Shift** while dragging to pan. Scroll to zoom.
-Use **Fit** (⌘9) to bring the whole model back into view.
+Drag to orbit. **Shift-drag** to pan. Scroll to zoom. **Fit** (⌘9) frames the whole model.
 
-Select an item in the sidebar to see its properties in the inspector.
-You can hide or solo nodes and frame a selection without changing the source file.
+Select a sidebar row to see its properties. Hide or solo nodes, or frame the selection —
+none of that changes the file on disk.
 
-The canvas controls change the backdrop, floor, view mode, lighting, and camera.
-Only options supported by the open file are shown.
+Canvas controls cover backdrop, floor, view mode, lighting, and camera.
+Only options the open file supports are shown.
 
 ## Animation and export
 
-Choose a clip in the timeline to play, pause, scrub, loop, or change playback speed.
+Use the timeline to pick a clip, play, pause, scrub, loop, or change speed.
 
-Choose **Export PNG…** for the current view, or **Export Turntable Video…** /
-**Export Turntable GIF…** for a complete orbit. MP4 uses H.264 at 30 fps; GIF loops at 15 fps.
+**Export PNG…** saves the current view. **Export Turntable Video…** / **Export Turntable GIF…**
+orbit once around the model. MP4 is H.264 at 30 fps; GIF loops at 15 fps.
 
 ## Shortcuts
 
@@ -31,21 +30,20 @@ Choose **Export PNG…** for the current view, or **Export Turntable Video…** 
 | Auto-rotate | ⌘R |
 | Export PNG | ⌘E |
 
-The menu bar lists the remaining commands and shortcuts.
+The menu bar has the rest.
 
 ## Finder
 
-Select a model and press **Space** for Quick Look. Finder also shows model thumbnails.
-Open the installed app once to register its extensions. For `.gltf`, keep referenced
-`.bin` and texture files with the model.
+**Space** opens Quick Look. Finder also shows thumbnails. Open the app once so the
+extensions register. For `.gltf`, keep `.bin` and texture files with the model.
 
-Quick Look rotates the camera automatically. Both Finder surfaces show the rest pose,
-without the app window’s hidden or soloed nodes.
+Quick Look spins the camera. Finder previews use the rest pose and ignore hide/solo
+from the app window.
 
 ## Limits
 
-The viewer supports glTF 2.0 and selected extensions. Animation supports node transforms
-and morph weights; animation pointer targets are ignored.
+glTF 2.0 with selected extensions. Animation covers node transforms and morph weights;
+animation pointers are ignored.
 
-The built-in validator checks the file, not the viewer’s rendering. It skips source files
-larger than 48 MiB. Findings appear in the sidebar and inspector.
+The built-in validator checks the file, not the renderer. It skips sources larger than
+48 MiB. Findings show up in the sidebar and inspector.

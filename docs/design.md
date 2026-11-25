@@ -1,10 +1,8 @@
 # Design
 
-Keep the model in focus. Use quiet native controls. Check the code when this guide and the app differ.
+Keep the model in focus. Use quiet native controls. When this guide and the code disagree, trust the code.
 
-These rules do not certify feature coverage. See [limits](usage.md#limits).
-
-This file defines product, layout, component, and copy rules.
+Coverage limits: [usage](usage.md#limits).
 
 ## Product rules
 
@@ -12,8 +10,8 @@ This file defines product, layout, component, and copy rules.
 - Use compact controls, small type, and hairlines. Omit text that does not help the user.
 - Settings define new-window defaults. `ViewState` defines this window. Give each control one owner. Window controls do not rewrite Settings.
 - Show controls only for data in the file. Hide controls that do not apply.
-- Panels describe source JSON, not the renderer's retained data. Validation checks the file, not render coverage. File dimensions and statistics are derived values, not independent measurements.
-- Use Khronos Sample Viewer output as the reference on all surfaces. This is a design target, not a conformance claim.
+- Panels describe the file JSON. Validation checks the file, not how it renders.
+- Match Khronos Sample Viewer looks on every surface.
 - Keep opening responsive. Load lighting bakes during frame setup and cache them. Center and fit in the app by default; expose centering as view state.
 - Use accent for selection and active state. Use role tints for glTF types.
 - Never write the source file. Hide/solo, picking, gizmos, skeleton overlays, and animation are window state. Quick Look and thumbnails keep the rest pose with nothing hidden.

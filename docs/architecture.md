@@ -39,7 +39,7 @@ Hide/solo, selection, and overlays use this path. Fit, presets, zoom, and PNG ex
 
 `DocumentState` has empty, loading, ready, and failed states. A new file cancels validation
 and invalidates stale generations. There is no cancelled state. Closing discards the model.
-The diagrams show control flow; canvas readiness is not a measured first-frame timestamp.
+The diagrams show control flow, not frame timing.
 
 ## Quick Look and thumbnails
 
@@ -60,12 +60,10 @@ outline, and gizmos after tone mapping.
 
 ![Reference-image comparisons](../assets/docs/reference-tests.svg)
 
-`TestModels/References/` holds former Khronos web-viewer captures: pinned samples in
-`manifest.json`, fixed-time poses in `Animated/`, and app features in `Features/`.
-Some overlay baselines changed later; their independent provenance is not established.
-`PixelDiffMetalTests`, `FeatureReferenceTests`, and `AnimatedReferenceTests` enforce both
-manifest error budgets. Missing samples fail. These tests cover their inputs, not complete
-glTF conformance or identical pixels on all hardware. See [provenance](../TestModels/References/README.md).
+`TestModels/References/` holds Khronos-style stills: pinned samples in `manifest.json`,
+fixed-time poses in `Animated/`, and app features in `Features/`.
+`PixelDiffMetalTests`, `FeatureReferenceTests`, and `AnimatedReferenceTests` enforce the
+error budgets. Missing samples fail. See [provenance](../TestModels/References/README.md).
 
 ## Source map and diagnostics
 
