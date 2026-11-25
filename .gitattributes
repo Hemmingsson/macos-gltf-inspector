@@ -2,3 +2,8 @@
 # Preserve pinned third-party reference code byte-for-byte.
 Renderer/Environments/tools/upstream/** -whitespace
 scripts/khronos-animated-references/upstream/** -whitespace
+
+# Keep bundled third-party JavaScript out of the repository language summary.
+Vendor/gltf-validator/** linguist-vendored
+Renderer/Environments/tools/upstream/** linguist-vendored
+scripts/khronos-animated-references/upstream/** linguist-vendored
