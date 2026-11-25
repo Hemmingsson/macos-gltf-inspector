@@ -1,8 +1,4 @@
 {
-  "app": {
-    "model": "TestModels/Khronos samples/BoomBox/BoomBox.glb",
-    "zoom": 0.48
-  },
   "quicklook": {
     "model": "TestModels/Khronos samples/BoomBox/BoomBox.glb",
     "zoom": 0.48

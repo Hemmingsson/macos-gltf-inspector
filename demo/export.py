@@ -46,13 +46,13 @@ def frames():
 def video(shot, fps, resolution):
     OUT.mkdir(parents=True, exist_ok=True)
     source = (VIDEO / 'index.html').read_text()
-    composition = 'index.html'
     generated = VIDEO / 'clip.generated.html'
-    if shot != 'demo':
-        source = source.replace('const ONLY_SHOT = null;', f'const ONLY_SHOT = "{shot}";')
-        source = source.replace('data-duration="16"', 'data-duration="4"')
-        generated.write_text(source)
-        composition = generated.name
+    if shot not in SHOTS:
+        raise ValueError(f'Unsupported mock scene: {shot}')
+    source = source.replace('const ONLY_SHOT = null;', f'const ONLY_SHOT = "{shot}";')
+    source = source.replace('data-duration="12"', 'data-duration="4"')
+    generated.write_text(source)
+    composition = generated.name
     try:
         run('npx', '--yes', 'hyperframes@0.8.77', 'render', VIDEO, '--composition', composition,
             '--fps', fps, '--resolution', resolution, '--output', OUT / f'{shot}.mp4')
@@ -69,14 +69,12 @@ def video(shot, fps, resolution):
         generated.unlink(missing_ok=True)
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('command', choices=['frames', 'demo', 'clips', 'all'])
+parser.add_argument('command', choices=['frames', 'clips', 'all'])
 parser.add_argument('--fps', type=int, default=30)
 parser.add_argument('--resolution', default='1080p', choices=['720p', '1080p', '4k'])
 args = parser.parse_args()
 if args.command in ('frames', 'all'):
     frames()
-if args.command in ('demo', 'all'):
-    video('demo', args.fps, args.resolution)
 if args.command in ('clips', 'all'):
     for shot in SHOTS:
         video(shot, args.fps, args.resolution)

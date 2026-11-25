@@ -2,7 +2,7 @@
 
 Keep the model in focus. Use quiet native controls. Check the code when this guide and the app differ.
 
-These rules do not certify feature coverage. See [limits](README.md#scope-and-limits).
+These rules do not certify feature coverage. See [limits](docs/usage.md#limits).
 
 This file defines product, layout, component, and copy rules.
 

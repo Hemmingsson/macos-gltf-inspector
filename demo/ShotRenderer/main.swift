@@ -1,8 +1,8 @@
 // shot-renderer — real frames from the one renderer, with no window.
 //
 // Every moving picture in the README is drawn by `Renderer.ModelView`, the same canvas the
-// document window, Quick Look and the Finder thumbnail mount. The macOS chrome around it is
-// mocked in HTML (demo/video); the model inside it never is.
+// document window, Quick Look and the Finder thumbnail mount. Quick Look and Finder chrome may be
+// mocked in HTML (demo/video); app UI images must be actual window captures.
 //
 // Usage:
 //   shot-renderer --model FILE --out DIR [options]

@@ -47,3 +47,12 @@ The GitHub repo is `macos-gltf-inspector`; the installed app name is **glTF Insp
 - **Verify UI on screen** with `dev.sh run <fixture>`: one `open start`, `open ready|failed`,
   `canvas ready|failed`, and no "Modifying state during view update" warnings.
 - Work on `main`; `.agents/` plans and handoffs are intent, not shipped behavior.
+
+## Documentation
+
+- Follow the concise, visual style of Sketchfab → glTF, Quick Preview, and Netlify for Alfred.
+- Keep the tone relaxed, friendly, and matter-of-fact. Use everyday words; skip sales copy and formal report language.
+- README: what the app does, a useful visual, install, essential use, and links. Use short, direct sentences.
+- Put detailed controls in `docs/usage.md`, build/release instructions in `docs/development.md`, and internals in `ARCHITECTURE.md` / `DESIGN.md`.
+- Avoid exhaustive feature/shortcut tables, implementation names, wireframes, and test methodology in the README. Use visuals when they explain a user task.
+- Link dependency notices instead of listing them all. Keep capture disclosures and download availability accurate.
