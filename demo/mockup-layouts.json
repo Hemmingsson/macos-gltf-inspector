@@ -1,0 +1,17 @@
+{
+  "thumbnails": {
+    "size": [1200, 760],
+    "layers": [{"source": "finder", "rect": [0, 0, 1200, 760]}]
+  },
+  "quick-look": {
+    "size": [1200, 760],
+    "layers": [
+      {"source": "finder", "rect": [0, 170, 800, 590]},
+      {"source": "quick-look", "rect": [430, 0, 770, 760]}
+    ]
+  },
+  "preview-pane": {
+    "size": [1200, 760],
+    "layers": [{"source": "finder", "rect": [0, 0, 1200, 760]}]
+  }
+}
