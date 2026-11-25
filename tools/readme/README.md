@@ -7,12 +7,12 @@ them when capturing release media.
 ## App hero
 
 ```sh
-./demo/snapshot.sh lumenStudio
-./demo/snapshot.sh lumenStudio /absolute/path/to/wallpaper.jpg
+./tools/readme/snapshot.sh lumenStudio
+./tools/readme/snapshot.sh lumenStudio /absolute/path/to/wallpaper.jpg
 ```
 
 Builds and opens the fixture, waits for ready logs, captures the window, and writes
-`docs/media/screenshot.png` on a 1920×1080 background. Raw window: `.build/demo/window.png`.
+`assets/readme/screenshot.png` on a 1920×1080 background. Raw window: `.build/readme/window.png`.
 
 Needs a logged-in desktop and Screen Recording permission for the terminal.
 Override the wallpaper with a second argument or `SCREENSHOT_WALLPAPER`.
@@ -43,21 +43,21 @@ variety of models, not three copies of one model.
    view for thumbnails, and list view with its preview pane for the preview animation.
    For Quick Look, select a file in Finder and press Space. Keep the pointer outside
    the windows and close popovers and dialogs.
-2. Find the visible window IDs with `swift demo/window-ids.swift`. Quick Look may
+2. Find the visible window IDs with `swift tools/readme/window-ids.swift`. Quick Look may
    appear under a separate system process; choose its visible title, not a PID.
 3. Capture with the commands below, substituting the actual IDs. Screen Recording
    permission, Xcode command-line tools and `brew install webp` are required.
 
 ```sh
-python3 demo/finder-mockups.py thumbnails --finder 123
-python3 demo/finder-mockups.py quick-look --finder 123 --quick-look 456
-python3 demo/finder-mockups.py preview-pane --finder 789
+python3 tools/readme/finder-mockups.py thumbnails --finder 123
+python3 tools/readme/finder-mockups.py quick-look --finder 123 --quick-look 456
+python3 tools/readme/finder-mockups.py preview-pane --finder 789
 ```
 
-`demo/mockup-layouts.json` stores the 1200 × 760 composition, including the overlapping
+`tools/readme/mockup-layouts.json` stores the 1200 × 760 composition, including the overlapping
 Finder and Quick Look windows. Rectangles are `[x, y, width, height]` from the top-left;
 captures fit without stretching. Adjust the rectangles if the native window proportions
-change. `demo/compose-mockup.swift` composites the transparent PNGs. The Python command
+change. `tools/readme/compose-mockup.swift` composites the transparent PNGs. The Python command
 captures a six-second sequence and exports looping lossless WebP with `img2webp`, using
 measured capture intervals so slow captures do not speed up the model rotation. Use
 `--seconds` or `--fps` to change the capture budget.
@@ -76,10 +76,10 @@ the approved README assets themselves.
 To capture an already-open Release window without rebuilding:
 
 ```sh
-RELEASE_APP="/absolute/path/to/glTF Inspector.app" ./demo/snapshot.sh
+RELEASE_APP="/absolute/path/to/glTF Inspector.app" ./tools/readme/snapshot.sh
 ```
 
-The default background is the blue Tahoe wallpaper cached at `.build/demo/tahoe-dark.jpg`.
+The default background is the blue Tahoe wallpaper cached at `.build/readme/tahoe-dark.jpg`.
 Pass `-` explicitly to use the built-in gradient. Native capture transparency is preserved;
 no white backing frame is added. Keep raw captures and version/source
 information with the release evidence.

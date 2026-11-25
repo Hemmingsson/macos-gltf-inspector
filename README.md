@@ -14,7 +14,7 @@ Metal. The app, Quick Look, and Finder thumbnails share one renderer with shadin
 from the Khronos glTF Sample Renderer.
 
 <p align="center">
-  <img src="docs/media/screenshot.png" width="100%" alt="glTF Inspector showing a model with the material inspector open"><br>
+  <img src="assets/readme/screenshot.png" width="100%" alt="glTF Inspector showing a model with the material inspector open"><br>
   <small>App</small>
 </p>
 
@@ -73,4 +73,4 @@ Also: [architecture](docs/architecture.md), [design](docs/design.md), [contribut
 [dependencies](GLTFInspector/Resources/ThirdPartyLicenses),
 [lighting images](Renderer/Environments/LICENSES.md).
 
-App screenshot and Finder mockups: [media guide](demo/README.md).
+App screenshot and Finder mockups: [media guide](tools/readme/README.md).

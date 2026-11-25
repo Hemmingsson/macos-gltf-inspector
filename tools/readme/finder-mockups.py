@@ -36,7 +36,7 @@ if args.frames_dir:
     durations = [round(1000 / args.fps)] * len(frames)
 else:
     composer = out / 'compose-mockup'
-    run('swiftc', ROOT / 'demo/compose-mockup.swift', '-o', composer)
+    run('swiftc', ROOT / 'tools/readme/compose-mockup.swift', '-o', composer)
     source = out / 'sources'
     source.mkdir()
     frame_dir = out / 'frames'
@@ -56,7 +56,7 @@ else:
         if args.kind == 'quick-look':
             run('screencapture', '-x', '-l', args.quick_look, source / 'quick-look.png')
         frame = frame_dir / f'{len(frames):04d}.png'
-        run(composer, ROOT / 'demo/mockup-layouts.json', args.kind, source, frame)
+        run(composer, ROOT / 'tools/readme/mockup-layouts.json', args.kind, source, frame)
         frames.append(frame)
     durations.append(max(1, round((time.monotonic() - previous) * 1000)))
 name = {'thumbnails': 'finder-thumbnails', 'quick-look': 'quick-look', 'preview-pane': 'preview-pane'}[args.kind]
@@ -70,6 +70,6 @@ else:
 (out / 'capture.json').write_text(json.dumps({
     'kind': args.kind, 'finder': args.finder, 'quickLook': args.quick_look,
     'frameCount': len(frames), 'durationMs': sum(durations),
-    'layout': json.loads((ROOT / 'demo/mockup-layouts.json').read_text())[args.kind],
+    'layout': json.loads((ROOT / 'tools/readme/mockup-layouts.json').read_text())[args.kind],
 }, indent=2) + '\n')
 print(out)

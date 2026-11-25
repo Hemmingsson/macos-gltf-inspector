@@ -80,7 +80,7 @@ Without that file, use `log stream --predicate 'subsystem == "lol.mattias.gltf-i
 Categories are `app`, `renderer`, `thumbnail`, and `settings`. Pixel diffs go to
 `/tmp/GLTFInspector-pixel-diff/` as `-actual`, `-expected`, and `-diff` PNGs.
 `dev.sh bench` reports load, first-still, and GPU times for three samples.
-Diagrams use SeeCode specs in `assets/docs/*.json`; contact sheets use sibling `.mjs` scripts.
-To rebuild a diagram, set `SEECODE`, run `node "$SEECODE" render assets/docs/<name>.json`,
-then `node "$SEECODE" export assets/docs/<name>.html --formats svg`. Check light and dark
+Diagrams use SeeCode specs in `tools/docs/*.json`; generated images live in `assets/docs/`.
+To rebuild a diagram, set `SEECODE`, run `node "$SEECODE" render tools/docs/<name>.json`,
+then `node "$SEECODE" export tools/docs/<name>.html --formats svg`. Check light and dark
 appearance. Use `resvg` for PNG checks. See [development](development.md) for commands.
