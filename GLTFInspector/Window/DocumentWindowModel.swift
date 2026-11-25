@@ -122,8 +122,7 @@ final class DocumentWindowModel {
         } catch {
             guard generation == loadGeneration else { return }
             AppLog.error(AppLog.app, "open failed \(url.lastPathComponent)")
-            document = GLTFDocument()
-            view.document = document
+            resetDocument()
             phase = .failed("The model could not be opened. Check that it is a valid glTF or GLB file.")
         }
     }
@@ -167,10 +166,14 @@ final class DocumentWindowModel {
         summaryTask = nil
         validationTask?.cancel()
         validationTask = nil
-        document = GLTFDocument()
-        view.document = document
+        resetDocument()
         validationState = nil
         view.reset()
+    }
+
+    private func resetDocument() {
+        document = GLTFDocument()
+        view.document = document
     }
 
     deinit {

@@ -30,7 +30,7 @@ extension XCTestCase {
 
     /// `canvasReadyMarker`: exists only while the canvas shows the model.
     func canvasReady(in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: "canvas-ready").firstMatch
+        marker("canvas-ready", in: app)
     }
 
     @discardableResult
@@ -50,7 +50,7 @@ extension XCTestCase {
     }
 
     func documentReady(in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: "document-ready").firstMatch
+        marker("document-ready", in: app)
     }
 
     @discardableResult
@@ -71,6 +71,10 @@ extension XCTestCase {
 
     func inspectorSelection(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: "inspector-selection").firstMatch
+    }
+
+    private func marker(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
     /// Clicks the sidebar outliner when rows are not exposed in the accessibility tree.

@@ -16,13 +16,7 @@ enum DSStatus: Sendable, Hashable, CaseIterable {
 
     /// SF Symbol for the status. Shape differs per status, so it never relies on colour alone.
     var systemImage: String {
-        switch self {
-        case .valid: "checkmark.circle"
-        case .warning: "exclamationmark.triangle"
-        case .error: "xmark.octagon"
-        case .pending: "ellipsis.circle"
-        case .note: "info.circle"
-        }
+        glyph.symbol
     }
 
     /// Glyph colour.

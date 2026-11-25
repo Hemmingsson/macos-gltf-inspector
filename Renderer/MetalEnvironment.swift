@@ -117,9 +117,12 @@ final class MetalEnvironment {
                       level.face >= 0, level.face < (cube ? 6 : 1) else {
                     throw MetalRendererError.resource("Invalid environment level \(name)")
                 }
-                level.data.withUnsafeBytes { bytes in
+                try level.data.withUnsafeBytes { bytes in
+                    guard let baseAddress = bytes.baseAddress else {
+                        throw MetalRendererError.resource("Invalid environment level \(name)")
+                    }
                     texture.replace(region: MTLRegionMake2D(0, 0, level.width, level.height), mipmapLevel: level.mip,
-                                    slice: level.face, withBytes: bytes.baseAddress!, bytesPerRow: level.width * 8,
+                                    slice: level.face, withBytes: baseAddress, bytesPerRow: level.width * 8,
                                     bytesPerImage: level.width * level.height * 8)
                 }
                 bake.textures[index].levels[levelIndex].data = Data()

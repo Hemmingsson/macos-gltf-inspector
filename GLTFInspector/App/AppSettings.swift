@@ -13,24 +13,24 @@ final class AppSettings {
     @ObservationIgnored private let defaults: UserDefaults
     private typealias Key = AppGroupSettings.Key
 
-    var backdrop: BackdropStyle { didSet { defaults.set(backdrop.rawValue, forKey: Key.background) } }
-    var showsFloor: Bool { didSet { defaults.set(showsFloor, forKey: Key.showFloor) } }
-    var autoRotates: Bool { didSet { defaults.set(autoRotates, forKey: Key.autoRotate) } }
+    var backdrop: BackdropStyle { didSet { persist(backdrop.rawValue, forKey: Key.background) } }
+    var showsFloor: Bool { didSet { persist(showsFloor, forKey: Key.showFloor) } }
+    var autoRotates: Bool { didSet { persist(autoRotates, forKey: Key.autoRotate) } }
     var appearance: AppAppearance {
         didSet {
-            defaults.set(appearance.rawValue, forKey: Key.appearance)
+            persist(appearance.rawValue, forKey: Key.appearance)
             appearance.apply()
         }
     }
     /// Lighting for new windows, Quick Look and thumbnails.
-    var environment: LightingEnvironment { didSet { defaults.set(environment.rawValue, forKey: Key.environment) } }
-    var toneMapping: RenderLook.ToneMapping { didSet { defaults.set(toneMapping.rawValue, forKey: Key.toneMapping) } }
+    var environment: LightingEnvironment { didSet { persist(environment.rawValue, forKey: Key.environment) } }
+    var toneMapping: RenderLook.ToneMapping { didSet { persist(toneMapping.rawValue, forKey: Key.toneMapping) } }
     /// Selecting a node moves the orbit pivot onto it.
-    var orbitsAroundSelection: Bool { didSet { defaults.set(orbitsAroundSelection, forKey: Key.orbitAroundSelection) } }
+    var orbitsAroundSelection: Bool { didSet { persist(orbitsAroundSelection, forKey: Key.orbitAroundSelection) } }
     /// Scroll and pinch zoom into the spot under the pointer.
-    var zoomsTowardPointer: Bool { didSet { defaults.set(zoomsTowardPointer, forKey: Key.zoomTowardPointer) } }
+    var zoomsTowardPointer: Bool { didSet { persist(zoomsTowardPointer, forKey: Key.zoomTowardPointer) } }
     /// Hairline tree guides in the layer list (on by default since 2026-11-04).
-    var showsTreeGuides: Bool { didSet { defaults.set(showsTreeGuides, forKey: Key.outlinerTreeGuides) } }
+    var showsTreeGuides: Bool { didSet { persist(showsTreeGuides, forKey: Key.outlinerTreeGuides) } }
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -45,6 +45,10 @@ final class AppSettings {
         orbitsAroundSelection = defaults.bool(forKey: Key.orbitAroundSelection)
         zoomsTowardPointer = defaults.bool(forKey: Key.zoomTowardPointer)
         showsTreeGuides = defaults.bool(forKey: Key.outlinerTreeGuides)
+    }
+
+    private func persist(_ value: Any, forKey key: String) {
+        defaults.set(value, forKey: key)
     }
 }
 

@@ -14,8 +14,5 @@ enum DocumentState: Equatable, Sendable, Hashable {
     /// Open rejected. Always show the message — never a spinner.
     case failed(String)
 
-    var isReady: Bool {
-        if case .ready = self { return true }
-        return false
-    }
+    var isReady: Bool { self == .ready }
 }

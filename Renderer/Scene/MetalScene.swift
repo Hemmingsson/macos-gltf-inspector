@@ -267,6 +267,18 @@ public enum MetalSceneError: LocalizedError {
 /// (`getSceneExtents`, `subtreeAABB`): accessor `min`/`max` corners, transformed by the node's
 /// world matrix, instancing and skinning ignored.
 extension MetalScene {
+    private static func normalizedAccessorValue(_ number: NSNumber, accessor: GLTFAccessor) -> Float {
+        let raw = number.floatValue
+        guard accessor.isNormalized else { return raw }
+        switch accessor.componentType {
+        case .byte: return Swift.max(raw / 127, -1)
+        case .unsignedByte: return raw / 255
+        case .short: return Swift.max(raw / 32767, -1)
+        case .unsignedShort: return raw / 65535
+        default: return raw
+        }
+    }
+
     /// The scene drawn for `ViewOptions.sceneIndex` (nil keeps the file's default scene).
     func gltfSceneIndex(for sceneIndex: Int?) -> Int? {
         if let sceneIndex { return asset.scenes.indices.contains(sceneIndex) ? sceneIndex : nil }
@@ -327,19 +339,16 @@ extension MetalScene {
     ) {
         guard let accessor = primitive.attribute(forName: "POSITION")?.accessor,
               accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { return }
-        func value(_ number: NSNumber) -> Float {
-            let raw = number.floatValue
-            guard accessor.isNormalized else { return raw }
-            switch accessor.componentType {
-            case .byte: return Swift.max(raw / 127, -1)
-            case .unsignedByte: return raw / 255
-            case .short: return Swift.max(raw / 32767, -1)
-            case .unsignedShort: return raw / 65535
-            default: return raw
-            }
-        }
-        let lo = SIMD3(value(accessor.minValues[0]), value(accessor.minValues[1]), value(accessor.minValues[2]))
-        let hi = SIMD3(value(accessor.maxValues[0]), value(accessor.maxValues[1]), value(accessor.maxValues[2]))
+        let lo = SIMD3(
+            Self.normalizedAccessorValue(accessor.minValues[0], accessor: accessor),
+            Self.normalizedAccessorValue(accessor.minValues[1], accessor: accessor),
+            Self.normalizedAccessorValue(accessor.minValues[2], accessor: accessor)
+        )
+        let hi = SIMD3(
+            Self.normalizedAccessorValue(accessor.maxValues[0], accessor: accessor),
+            Self.normalizedAccessorValue(accessor.maxValues[1], accessor: accessor),
+            Self.normalizedAccessorValue(accessor.maxValues[2], accessor: accessor)
+        )
         var primitiveBox = Self.emptyBox
         for i in 0..<8 {
             let corner = SIMD4<Float>(i & 4 == 0 ? lo.x : hi.x, i & 2 == 0 ? lo.y : hi.y, i & 1 == 0 ? lo.z : hi.z, 1)
@@ -382,19 +391,16 @@ extension MetalScene {
         for primitive in mesh.primitives {
             guard let accessor = primitive.attribute(forName: "POSITION")?.accessor,
                   accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { continue }
-            func value(_ number: NSNumber) -> Float {
-                let raw = number.floatValue
-                guard accessor.isNormalized else { return raw }
-                switch accessor.componentType {
-                case .byte: return Swift.max(raw / 127, -1)
-                case .unsignedByte: return raw / 255
-                case .short: return Swift.max(raw / 32767, -1)
-                case .unsignedShort: return raw / 65535
-                default: return raw
-                }
-            }
-            let cornerLo = SIMD3(value(accessor.minValues[0]), value(accessor.minValues[1]), value(accessor.minValues[2]))
-            let cornerHi = SIMD3(value(accessor.maxValues[0]), value(accessor.maxValues[1]), value(accessor.maxValues[2]))
+            let cornerLo = SIMD3(
+                Self.normalizedAccessorValue(accessor.minValues[0], accessor: accessor),
+                Self.normalizedAccessorValue(accessor.minValues[1], accessor: accessor),
+                Self.normalizedAccessorValue(accessor.minValues[2], accessor: accessor)
+            )
+            let cornerHi = SIMD3(
+                Self.normalizedAccessorValue(accessor.maxValues[0], accessor: accessor),
+                Self.normalizedAccessorValue(accessor.maxValues[1], accessor: accessor),
+                Self.normalizedAccessorValue(accessor.maxValues[2], accessor: accessor)
+            )
             lo = min(lo, cornerLo)
             hi = max(hi, cornerHi)
         }

@@ -25,13 +25,12 @@ enum NavigationAxis: CaseIterable, Hashable, Sendable {
     }
 
     var color: Color {
-        switch self {
+        guard isPositive else { return DS.Color.Axis.negative }
+        return switch self {
         case .posX: DS.Color.Axis.x
-        case .negX: DS.Color.Axis.negative
         case .posY: DS.Color.Axis.y
-        case .negY: DS.Color.Axis.negative
         case .posZ: DS.Color.Axis.z
-        case .negZ: DS.Color.Axis.negative
+        default: DS.Color.Axis.negative
         }
     }
 

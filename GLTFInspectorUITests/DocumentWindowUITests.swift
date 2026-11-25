@@ -62,9 +62,7 @@ final class DocumentWindowUITests: XCTestCase {
     // MARK: 3. Canvas click → selection
 
     func testCanvasPickSelectsMesh() {
-        let app = makeApp(file: UIFixture.cube)
-        app.launch()
-        self.app = app
+        let app = launch(file: UIFixture.cube)
         waitForCanvas(in: app)
         waitForDocument(in: app)
 
@@ -98,8 +96,8 @@ final class DocumentWindowUITests: XCTestCase {
         attachScreenshot(app, named: "selection")
     }
 
-    private func launch() -> XCUIApplication {
-        let app = makeApp(file: UIFixture.boxAnimated)
+    private func launch(file: URL = UIFixture.boxAnimated) -> XCUIApplication {
+        let app = makeApp(file: file)
         app.launch()
         self.app = app
         return app

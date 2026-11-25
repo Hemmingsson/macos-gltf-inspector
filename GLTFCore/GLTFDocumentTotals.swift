@@ -49,12 +49,9 @@ extension GLTFDocument {
 
     private func totals(roots: [Int]) -> GLTFGeometryTotals {
         var totals = GLTFGeometryTotals()
-        var visited = Set<Int>()
         var meshes = Set<Int>()
         var materials = Set<Int>()
-        var stack = roots.reversed().filter { nodes.indices.contains($0) }
-        while let index = stack.popLast() {
-            guard visited.insert(index).inserted else { continue }
+        for index in reachableNodeIndices(from: roots) {
             let node = nodes[index]
             totals.nodeCount += 1
             if let mesh = node.meshIndex {
@@ -63,9 +60,8 @@ extension GLTFDocument {
                 totals.triangleCount += node.triangleCount
                 totals.vertexCount += node.vertexCount
                 totals.drawCallCount += node.meshPrimitives.count
-                materials.formUnion(node.meshPrimitives.compactMap(\.materialIndex))
+                materials.formUnion(node.meshPrimitives.compactMap { $0.materialIndex })
             }
-            stack.append(contentsOf: node.children.reversed().filter { nodes.indices.contains($0) })
         }
         totals.uniqueMeshCount = meshes.count
         totals.materialCount = materials.count

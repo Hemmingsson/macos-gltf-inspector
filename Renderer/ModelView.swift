@@ -843,7 +843,7 @@ public final class ModelView: NSView {
         hoverPending = false
         hoverThrottle.didPick(at: CACurrentMediaTime())
         guard let location = hoverPoint, dragAnchor == nil, window != nil else { return }
-        let index = (try? nodeIndex(atWindowPoint: location)) ?? nil
+        let index = try? nodeIndex(atWindowPoint: location)
         let changed = index != hoveredNode
         hoveredNode = index
         onHover?(index, index == nil ? nil : tooltipPoint(location))

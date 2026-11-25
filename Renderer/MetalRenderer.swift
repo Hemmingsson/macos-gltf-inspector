@@ -662,7 +662,12 @@ public final class MetalRenderer {
         encoder.setFragmentTexture(background, index: 30)
         var gpuLights = lights.map(GPULight.init)
         if gpuLights.isEmpty { gpuLights = [GPULight.zero] }
-        gpuLights.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 4) }
+        try gpuLights.withUnsafeBytes { raw in
+            guard let baseAddress = raw.baseAddress else {
+                throw MetalRendererError.resource("light uniforms")
+            }
+            encoder.setFragmentBytes(baseAddress, length: raw.count, index: 4)
+        }
         // Wireframe-on-shaded: a second pass of edges over the shaded frame (`MetalDrawStyle`).
         let passes: [MetalDrawStyle] = style == .wireframeOnShaded ? [.shaded, .wireframeOnShaded] : [style]
         for passStyle in passes {
@@ -1268,10 +1273,6 @@ struct MetalDrawLists {
             width *= 2
         }
         return (items.map(\.0), items.map(\.1))
-    }
-
-    static func viewDepth(of draw: MetalDraw, view: simd_float4x4) -> Float {
-        viewDepth(centroid: draw.centroid, model: draw.worldTransform, view: view)
     }
 
     /// gl-matrix `multiply(view, world)` then `transformMat4(centroid)`: double arithmetic,

@@ -289,8 +289,14 @@ extension GLTFDocument {
     /// Every node reachable from one scene's roots; cycle-safe for malformed files.
     public func nodeIndices(inScene sceneIndex: Int) -> [Int] {
         guard scenes.indices.contains(sceneIndex) else { return [] }
+        return reachableNodeIndices(from: scenes[sceneIndex].rootNodeIndices)
+    }
+
+    /// Every node reachable from a set of roots, in root/child declaration order.
+    /// Cycle-safe and tolerant of out-of-range references in malformed files.
+    func reachableNodeIndices(from roots: [Int]) -> [Int] {
         var visited = Set<Int>()
-        var stack = scenes[sceneIndex].rootNodeIndices.reversed().filter { nodes.indices.contains($0) }
+        var stack = roots.reversed().filter { nodes.indices.contains($0) }
         var indices: [Int] = []
         while let index = stack.popLast() {
             guard visited.insert(index).inserted else { continue }
