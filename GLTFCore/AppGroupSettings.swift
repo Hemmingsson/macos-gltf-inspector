@@ -41,23 +41,6 @@ public enum AppGroupSettings {
         ]
     }
 
-    /// Read-only access for extensions and other consumers that must not write settings.
-    public struct ReadOnlyStore {
-        private let storage: UserDefaults
-
-        fileprivate init(storage: UserDefaults) {
-            self.storage = storage
-        }
-
-        public func string(forKey key: String) -> String? {
-            storage.string(forKey: key)
-        }
-
-        public func bool(forKey key: String) -> Bool {
-            storage.bool(forKey: key)
-        }
-    }
-
     /// The group suite. `UserDefaults(suiteName:)` fails only for a reserved name, so the
     /// fallback keeps the app usable (unshared settings) instead of crashing; it is logged.
     private static let suite: UserDefaults = {
@@ -68,9 +51,9 @@ public enum AppGroupSettings {
         return suite
     }()
 
-    /// Writable access is kept for the app's settings model; extensions should use `readOnly`.
+    /// App Group suite. The app writes through `AppSettings`; extensions read via
+    /// `look(defaults:)` / `ViewOptions.stored`.
     public static let defaults = suite
-    public static let readOnly = ReadOnlyStore(storage: suite)
 
     public static func registerDefaults(in defaults: UserDefaults = defaults) {
         defaults.register(defaults: defaultValues)

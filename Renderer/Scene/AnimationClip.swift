@@ -195,7 +195,8 @@ public enum AnimationClipLoader {
         )
     }
 
-    private static func rawJSONObject(at url: URL) -> [String: Any]? {
+    /// Source-file JSON (GLB chunk or `.gltf`). Nil when the file cannot be read or parsed.
+    static func rawJSONObject(at url: URL) -> [String: Any]? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         var json = data
         if data.count >= 20, data.prefix(4) == Data("glTF".utf8) {

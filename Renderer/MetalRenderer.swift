@@ -965,17 +965,8 @@ public final class MetalRenderer {
     }
 
     private func jointBuffer(skinIndex: Int, byteCount: Int) throws -> any MTLBuffer {
-        var ring = jointRings[skinIndex] ?? []
-        if ring.count != 3 || ring[0].length < byteCount {
-            ring = try (0..<3).map { _ in
-                guard let made = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
-                    throw MetalRendererError.resource("joint buffer")
-                }
-                return made
-            }
-            jointRings[skinIndex] = ring
-        }
-        return ring[jointSlot]
+        try ringBuffer(rings: &jointRings, key: skinIndex, byteCount: byteCount, slot: jointSlot,
+                       label: "joint buffer")
     }
 
     /// Active (index, weight) pairs for morph targets; large payloads use a 3-deep ring buffer per draw.
@@ -1013,17 +1004,24 @@ public final class MetalRenderer {
     }
 
     private func morphWeightBuffer(drawIndex: Int, byteCount: Int) throws -> any MTLBuffer {
-        var ring = morphWeightRings[drawIndex] ?? []
+        try ringBuffer(rings: &morphWeightRings, key: drawIndex, byteCount: byteCount, slot: morphWeightSlot,
+                       label: "morph weight buffer")
+    }
+
+    /// 3-deep per-key ring of shared MTLBuffers, resized when `byteCount` outgrows the current set.
+    private func ringBuffer(rings: inout [Int: [any MTLBuffer]], key: Int, byteCount: Int, slot: Int,
+                            label: String) throws -> any MTLBuffer {
+        var ring = rings[key] ?? []
         if ring.count != 3 || ring[0].length < byteCount {
             ring = try (0..<3).map { _ in
                 guard let made = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
-                    throw MetalRendererError.resource("morph weight buffer")
+                    throw MetalRendererError.resource(label)
                 }
                 return made
             }
-            morphWeightRings[drawIndex] = ring
+            rings[key] = ring
         }
-        return ring[morphWeightSlot]
+        return ring[slot]
     }
 
     func overlayMultisampleTarget(matching output: any MTLTexture, samples: Int,

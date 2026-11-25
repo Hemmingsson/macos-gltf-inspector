@@ -21,7 +21,7 @@ enum SavePanel {
                     result.resume(nil)
                     return
                 }
-                if let window = NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible) {
+                if let window = sheetHost {
                     panel.beginSheetModal(for: window) { response in
                         result.resume(response == .OK ? panel.url : nil)
                     }
@@ -43,11 +43,16 @@ enum SavePanel {
         alert.alertStyle = .warning
         alert.messageText = title
         alert.informativeText = "The export could not be completed. Check the destination and try again."
-        if let window = NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible) {
+        if let window = sheetHost {
             alert.beginSheetModal(for: window)
         } else {
             alert.runModal()
         }
+    }
+
+    /// Key window, or the first visible window when none is key.
+    private static var sheetHost: NSWindow? {
+        NSApp.keyWindow ?? NSApp.windows.first(where: \.isVisible)
     }
 
     private final class SavePanelResult: @unchecked Sendable {

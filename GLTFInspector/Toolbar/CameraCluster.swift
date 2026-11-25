@@ -6,11 +6,12 @@ struct CameraCluster: View {
     @Bindable var view: ViewState
 
     var body: some View {
+        let projectionGlyph = view.isOrthographic ? DSGlyphs.orthographic : DSGlyphs.perspective
         DSGlassCluster {
             DSGlassToggleButton(
                 "Projection",
-                systemImage: (view.isOrthographic ? DSGlyphs.orthographic : DSGlyphs.perspective).symbol,
-                assetImage: (view.isOrthographic ? DSGlyphs.orthographic : DSGlyphs.perspective).assetImage,
+                systemImage: projectionGlyph.symbol,
+                assetImage: projectionGlyph.assetImage,
                 isOn: $view.isOrthographic,
                 shortcut: Shortcuts.action(.orthographic)
             )

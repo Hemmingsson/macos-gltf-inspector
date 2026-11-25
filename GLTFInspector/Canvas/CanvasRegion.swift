@@ -182,7 +182,7 @@ struct CanvasRegion<Content: View>: View {
 
     /// Keep the timeline between the navigation gizmo and the dimensions readout.
     private var bottomOverlayClearance: CGFloat {
-        OverlayMetrics.inset + OverlayMetrics.navigationGizmoSize + DS.Spacing.xl
+        OverlayMetrics.inset + DS.Metrics.navigationGizmoSize + DS.Spacing.xl
     }
 }
 

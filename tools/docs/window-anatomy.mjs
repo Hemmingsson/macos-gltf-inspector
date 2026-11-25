@@ -233,7 +233,7 @@ const clusterW = c => c.islands.reduce((a, i) => a + islandW(i), 0) + (c.islands
 function cluster(c, x0) { let x = x0; const xs = []; c.islands.forEach(i => { xs.push(x); x += island(x, i) + IS.gap; }); return xs; }
 const st = C.clusters.stage, lk = C.clusters.look, cm = C.clusters.camera;
 const stX = CL + IN, lkX = CC - clusterW(lk) / 2, cmX = CR - IN - clusterW(cm);
-const stXs = cluster(st, stX); const lkXs = cluster(lk, lkX); const cmXs = cluster(cm, cmX);
+cluster(st, stX); cluster(lk, lkX); const cmXs = cluster(cm, cmX);
 badge(7, stX + clusterW(st) / 2, CY + 26);
 badge(8, CC, CY + 26);
 badge(9, cmX + clusterW(cm) / 2, CY + 26);

@@ -62,16 +62,7 @@ private final class Builder {
 
     func nodeIndex(_ node: GLTFNode) -> Int { nodeIndexByIdentity[ObjectIdentifier(node)] ?? -1 }
     /// The source file's JSON (GLB chunk or .gltf), for extension fields GLTFKit2 parses incorrectly.
-    lazy var rawJSON: [String: Any]? = {
-        guard let data = try? Data(contentsOf: sourceURL) else { return nil }
-        var json = data
-        if data.count >= 20, data.prefix(4) == Data("glTF".utf8) {
-            let length = data.subdata(in: 12..<16).withUnsafeBytes { Int(UInt32(littleEndian: $0.loadUnaligned(as: UInt32.self))) }
-            guard data.count >= 20 + length else { return nil }
-            json = data.subdata(in: 20..<(20 + length))
-        }
-        return (try? JSONSerialization.jsonObject(with: json)) as? [String: Any]
-    }()
+    lazy var rawJSON: [String: Any]? = AnimationClipLoader.rawJSONObject(at: sourceURL)
 
 
     /// Decodes every image a material binds once, then makes the linear and/or sRGB textures its

@@ -24,8 +24,6 @@ const animatedDir = path.join(root, "TestModels/References/Animated");
 const manifestPath = path.join(animatedDir, "manifest.json");
 const work = path.join(root, ".build/khronos-anim-capture");
 const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const rendererCommit = "10201cb4746c0749125c0d7279b86985d1e84dfe";
-const pageCommit = "f1fd1af";
 
 const types = new Map([
     [".html", "text/html; charset=utf-8"],

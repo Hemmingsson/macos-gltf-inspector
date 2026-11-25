@@ -311,28 +311,32 @@ final class ViewState {
 
     /// Hide Selection: hides every selected scene node, or shows them when all are hidden.
     func toggleHiddenSelection() {
-        let nodes = Set(selectedSceneNodes).intersection(activeSceneNodes)
+        let nodes = selectedSceneNodeSet.intersection(activeSceneNodes)
         guard !nodes.isEmpty else { return }
         if selectionIsHidden { hiddenNodes.subtract(nodes) } else { hiddenNodes.formUnion(nodes) }
     }
 
     /// Solo Selection: solos exactly the selected scene nodes; again clears the solo.
     func toggleSoloSelection() {
-        let nodes = Set(selectedSceneNodes).intersection(activeSceneNodes)
+        let nodes = selectedSceneNodeSet.intersection(activeSceneNodes)
         guard !nodes.isEmpty else { return }
         soloNodes = selectionIsSoloed ? [] : nodes
     }
 
     /// Every selected scene node is hidden (the menu then offers Show Selection).
     var selectionIsHidden: Bool {
-        let nodes = Set(selectedSceneNodes)
+        let nodes = selectedSceneNodeSet
         return !nodes.isEmpty && nodes.isSubset(of: hiddenNodes)
     }
 
     /// Exactly the selected scene nodes are soloed.
     var selectionIsSoloed: Bool {
-        let nodes = Set(selectedSceneNodes)
+        let nodes = selectedSceneNodeSet
         return !nodes.isEmpty && soloNodes == nodes
+    }
+
+    private var selectedSceneNodeSet: Set<Int> {
+        Set(selectedSceneNodes)
     }
 
     /// Hide or show one scene node in this window; the file is not touched.

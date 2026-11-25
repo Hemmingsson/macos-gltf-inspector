@@ -6,7 +6,6 @@ enum OverlayMetrics {
     /// Slightly under `DS.Metrics.glassControl` so the readout stays compact.
     static let dimensionsHeight: CGFloat = 30
     static let timelineHeight: CGFloat = DS.Metrics.glassControl
-    static let navigationGizmoSize = DS.Metrics.navigationGizmoSize
     /// Hover name tag sits just clear of the pointer.
     static let tooltipOffset: CGFloat = 8
 
