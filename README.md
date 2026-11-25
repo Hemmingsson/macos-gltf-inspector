@@ -73,4 +73,3 @@ Also: [architecture](docs/architecture.md), [design](docs/design.md), [contribut
 [dependencies](GLTFInspector/Resources/ThirdPartyLicenses),
 [lighting images](Renderer/Environments/LICENSES.md).
 
-App screenshot and Finder mockups: [media guide](tools/readme/README.md).
