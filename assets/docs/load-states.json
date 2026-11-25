@@ -1,0 +1,38 @@
+{
+  "type": "state",
+  "title": "Document load states",
+  "subtitle": "A new generation cancels validation and ignores stale load results.",
+  "size": "wide",
+  "motion": "none",
+  "fonts": "system",
+  "watermark": false,
+  "legend": false,
+  "nodes": [
+    {"id": "start", "shape": "start", "row": 0, "col": 0},
+    {"id": "idle", "label": "Idle", "sub": "empty", "row": 0, "col": 1},
+    {"id": "loading", "label": "Loading", "sub": "bytes in flight", "focal": true, "row": 0, "col": 2},
+    {"id": "ready", "label": "Ready", "sub": "document available", "row": 0, "col": 3},
+    {"id": "failed", "label": "Failed", "sub": "message shown", "kind": "muted", "row": 1, "col": 2},
+    {"id": "closed", "shape": "end", "row": 2, "col": 3}
+  ],
+  "edges": [
+    ["start", "idle"],
+    ["idle", "loading", "open file", "primary"],
+    ["loading", "ready", "JSON read", "primary"],
+    ["loading", "failed", "read error"],
+    ["ready", "loading", "new file", "primary"],
+    ["failed", "loading", "retry"],
+    ["ready", "ready", "same URL: unchanged"],
+    ["loading", "loading", "new file: cancel validation"],
+    ["loading", "closed", "window closes: discard model", "muted"],
+    ["ready", "closed", "window closes: discard model", "muted"]
+  ],
+  "evidence": [
+    {"id": "idle", "file": "GLTFInspector/Window/DocumentState.swift", "line": 8},
+    {"id": "loading", "file": "GLTFInspector/Window/DocumentState.swift", "line": 10},
+    {"id": "ready", "file": "GLTFInspector/Window/DocumentState.swift", "line": 12},
+    {"id": "failed", "file": "GLTFInspector/Window/DocumentState.swift", "line": 14},
+    {"id": "loading-generation", "file": "GLTFInspector/Window/DocumentWindowModel.swift", "line": 73}
+  ],
+  "out": "load-states.html"
+}

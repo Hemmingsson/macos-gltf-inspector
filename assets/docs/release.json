@@ -1,0 +1,57 @@
+{
+  "watermark": false,
+  "fonts": "system",
+  "legend": false,
+  "eyebrow": "",
+  "motion": "none",
+  "skin": "light",
+  "type": "process",
+  "title": "Release pipeline",
+  "subtitle": "release.sh runs archive.sh, appcast.sh, and the GitHub release in this order.",
+  "numbered": true,
+  "steps": [
+    {
+      "label": "Bump version",
+      "sub": "project.yml"
+    },
+    {
+      "label": "Archive",
+      "sub": "./scripts/archive.sh"
+    },
+    {
+      "label": "Sign app",
+      "sub": "Developer ID Application"
+    },
+    {
+      "label": "Notarize",
+      "sub": "notarytool; stapler"
+    },
+    {
+      "label": "Zip app",
+      "sub": "ditto zip"
+    },
+    {
+      "label": "Sign appcast",
+      "sub": "Sparkle EdDSA"
+    },
+    {
+      "label": "Publish",
+      "sub": "./scripts/release.sh",
+      "focal": true
+    }
+  ],
+  "evidence": [
+    {
+      "id": "archive",
+      "file": "scripts/archive.sh"
+    },
+    {
+      "id": "appcast",
+      "file": "scripts/appcast.sh"
+    },
+    {
+      "id": "release",
+      "file": "scripts/release.sh"
+    }
+  ]
+}

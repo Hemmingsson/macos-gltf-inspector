@@ -1,0 +1,10 @@
+{
+  "title": "Export results",
+  "width": 1120,
+  "height": 520,
+  "actions": [
+    { "label": "Export PNG…", "shortcut": "⌘E", "result": "BoomBox.png", "detail": "Canvas at the current camera pose" },
+    { "label": "Export Turntable Video…", "shortcut": "—", "result": "BoomBox turntable.mp4", "detail": "One 360° orbit · H.264 · 30 fps" },
+    { "label": "Export Turntable GIF…", "shortcut": "—", "result": "BoomBox turntable.gif", "detail": "One 360° orbit · looping GIF · 15 fps" }
+  ]
+}

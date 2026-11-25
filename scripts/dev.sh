@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# Dev entry point — build, install, run, debug, logs. Never opens the app unless you ask.
+#
+#   ./scripts/dev.sh build
+#   ./scripts/dev.sh install              # → .build/glTF Inspector.app (+ /Applications on main)
+#   ./scripts/dev.sh test [-only-testing:…]  # xcodebuild test into this branch's DerivedData
+#   ./scripts/dev.sh uitest [-only-testing:…] # opt-in XCUITest flows (steals focus) → .build/uitest.xcresult
+#   ./scripts/dev.sh run [fixture]        # install + launch fixture (default: cube)
+#   ./scripts/dev.sh logs                 # tail .build/logs/debug.log (or unified log stream)
+#   ./scripts/dev.sh fixtures             # list fixture ids
+#   ./scripts/dev.sh bench                # opt-in PerfBench table → .build/bench/
+#
+# Env (all optional; see CONTRIBUTING.md):
+#   DEVELOPER_DIR                Xcode to use (default /Applications/Xcode.app/Contents/Developer)
+#   GLTF_DERIVED_DATA            DerivedData dir (default /tmp/GLTFInspector-<branch>-dd)
+#   GLTF_SKIP_SYSTEM_INSTALL=1   on main, do not also copy into /Applications
+set -euo pipefail
+
+source "$(cd "$(dirname "$0")" && pwd)/lib/dev-env.sh"
+
+DEFAULT_FIXTURE=cube
+
+usage() {
+  sed -n '2,16p' "$0"
+}
+
+require_xcodegen() {
+  command -v xcodegen >/dev/null || {
+    echo "install XcodeGen: brew install xcodegen" >&2
+    exit 1
+  }
+}
+
+# xcodegen + xcodebuild for one scheme in this branch's DerivedData; the rest is xcodebuild args.
+xcb() {
+  local scheme="$1"
+  shift
+  require_xcodegen
+  cd "$ROOT"
+  xcodegen generate
+  DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+    xcodebuild -scheme "$scheme" -destination 'platform=macOS' \
+    -derivedDataPath "$DERIVED_DATA" "$@"
+}
+
+dev_build() {
+  xcb GLTFInspector build
+}
+
+# The opt-in perf bench (`dev.sh bench`) is left out entirely, not just skipped, so the test
+# count stays the suite's own.
+dev_test() {
+  xcb GLTFInspector test -skip-testing:GLTFInspectorTests/PerfBench "$@"
+}
+
+# Real-window XCUITest flows (separate scheme, never part of `test`). Takes focus while it runs.
+dev_uitest() {
+  local result="$ROOT/.build/uitest.xcresult"
+  mkdir -p "$ROOT/.build"
+  rm -rf "$result"
+  xcb GLTFInspectorUITests -resultBundlePath "$result" test "$@"
+}
+
+# Copy the built app as signed. After a `dev.sh test` the hosted GLTFInspectorTests.xctest is
+# inside the app's seal, so it stays: deleting it breaks `codesign --verify`.
+install_app() {
+  local dst="$1"
+  rm -rf "$dst"
+  cp -R "$BUILD_PRODUCT" "$dst"
+  codesign --verify --deep --strict "$dst" || {
+    echo "codesign verify failed: $dst" >&2
+    exit 1
+  }
+}
+
+dev_install() {
+  local system_installed=0
+  dev_build
+  mkdir -p "$ROOT/.build"
+  install_app "$LOCAL_APP"
+
+  if [[ "$INSTALL_KIND" == "main" && "${GLTF_SKIP_SYSTEM_INSTALL:-0}" != "1" ]]; then
+    install_app "$SYSTEM_APP"
+    qlmanage -r
+    system_installed=1
+  fi
+
+  echo "installed $LOCAL_APP"
+  if [[ "${system_installed:-0}" == "1" ]]; then
+    echo "installed $SYSTEM_APP"
+  fi
+}
+
+dev_run() {
+  local fixture="${1:-$DEFAULT_FIXTURE}"
+  local model
+  model="$(dev_fixture_path "$fixture")"
+  if [[ ! -e "$model" ]]; then
+    echo "missing fixture file: $model" >&2
+    exit 1
+  fi
+
+  dev_install
+  mkdir -p "$LOG_DIR" "$(dirname "$LOCAL_APP")"
+  : >"$LOG_FILE"
+  cat >"$(dirname "$LOCAL_APP")/dev-env" <<EOF
+GLTF_REPO_ROOT=$ROOT
+GLTF_LOG_FILE=$LOG_FILE
+GLTF_FULLSCREEN=${GLTF_FULLSCREEN:-}
+EOF
+
+  echo "run $fixture → $model"
+  echo "log $LOG_FILE"
+  # `open` survives VS Code task exit; direct exec + & gets SIGHUP when the task ends.
+  open -a "$LOCAL_APP" "$model"
+}
+
+dev_logs() {
+  mkdir -p "$LOG_DIR"
+  if [[ -f "$LOG_FILE" ]]; then
+    echo "tailing $LOG_FILE (Ctrl-C to stop)"
+    tail -n 200 -f "$LOG_FILE"
+    return
+  fi
+
+  echo "no $LOG_FILE yet — streaming unified log (Ctrl-C to stop)"
+  log stream --style compact --info \
+    --predicate 'subsystem == "lol.mattias.gltf-inspector"'
+}
+
+dev_fixtures() {
+  dev_fixture_ids
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  -h|--help|help|"")
+    usage
+    ;;
+  build)
+    dev_build
+    ;;
+  install)
+    dev_install
+    ;;
+  test)
+    dev_test "$@"
+    ;;
+  uitest)
+    dev_uitest "$@"
+    ;;
+  run)
+    dev_run "$@"
+    ;;
+  logs)
+    dev_logs
+    ;;
+  fixtures)
+    dev_fixtures
+    ;;
+  bench)
+    # Opt-in perf bench (`PerfBench`, GLTF_BENCH=1): a table on stdout and in
+    # .build/bench/<stamp>.txt (raw xcodebuild log beside it). GLTF_BENCH_RUNS=N (default 3).
+    # Wall-clock numbers — run on an idle machine, never alongside another build.
+    mkdir -p "$ROOT/.build/bench"
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    raw="$ROOT/.build/bench/$stamp.log"
+    table="$ROOT/.build/bench/$stamp.txt"
+    status=0
+    TEST_RUNNER_GLTF_BENCH=1 TEST_RUNNER_GLTF_BENCH_RUNS="${GLTF_BENCH_RUNS:-3}" \
+      xcb GLTFInspector test -only-testing:GLTFInspectorTests/PerfBench "$@" \
+      >"$raw" 2>&1 || status=$?
+    {
+      echo "# bench $stamp $(git rev-parse --short HEAD) runs=${GLTF_BENCH_RUNS:-3} load=$(sysctl -n vm.loadavg)"
+      grep -E '^bench[|]' "$raw" | awk -F'|' '
+        BEGIN { printf "%-13s %-14s %-24s %9s %13s %4s\n", "section", "file", "metric (ms)", "median", "spread", "n" }
+        { printf "%-13s %-14s %-24s %9s %13s %4s\n", $2, $3, $4, $5, $6, $7 }'
+    } | tee "$table"
+    if [[ $status -ne 0 ]]; then
+      grep -E "error|failed|Issue recorded" "$raw" | tail -20 >&2
+      echo "bench failed ($status): $raw" >&2
+      exit "$status"
+    fi
+    echo "wrote $table"
+    ;;
+  *)
+    echo "unknown command: $cmd" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

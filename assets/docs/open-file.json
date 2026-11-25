@@ -1,0 +1,47 @@
+{
+  "type": "sequence",
+  "title": "Opening a file",
+  "subtitle": "The panels and canvas load in parallel. Validation starts after the first canvas frame.",
+  "numbered": true,
+  "size": "wide",
+  "motion": "none",
+  "fonts": "system",
+  "watermark": false,
+  "legend": false,
+  "participants": [
+    {"id": "user", "label": "User", "kind": "external"},
+    {"id": "win", "label": "Document window"},
+    {"id": "model", "label": "DocumentWindowModel", "sub": "panels"},
+    {"id": "canvas", "label": "ModelCanvasController", "sub": "canvas", "focal": true},
+    {"id": "view", "label": "ModelView", "sub": "MetalRenderer"},
+    {"id": "validator", "label": "GLTF-Validator", "kind": "external"}
+  ],
+  "messages": [
+    ["user", "win", "Open .glb / .gltf"],
+    ["win", "model", "beginOpen(url)"],
+    ["model", "model", "phase loading · open start"],
+    ["win", "canvas", "mount with ViewOptions"],
+    ["model", "model", "openSummary · read JSON"],
+    ["canvas", "view", "load(url, options)", "primary"],
+    ["view", "canvas", "first frame | error", "reply"],
+    ["canvas", "canvas", "canvas ready | failed(message)"],
+    ["model", "win", "open ready | failed(message)", "reply"],
+    ["win", "model", "noteCanvasReady"],
+    ["model", "validator", "validate after first paint", "async"],
+    ["validator", "model", "findings → outliner rows", "reply"]
+  ],
+  "fragments": [
+    {"kind": "par", "label": "panels and canvas load in parallel", "from": 1, "to": 8}
+  ],
+  "notes": [
+    {"at": 9, "over": ["win", "model"], "text": "Validation starts after canvas ready."}
+  ],
+  "evidence": [
+    {"id": "win", "file": "GLTFInspector/Window/DocumentWindow.swift", "line": 76},
+    {"id": "model", "file": "GLTFInspector/Window/DocumentWindowModel.swift", "line": 55},
+    {"id": "canvas", "file": "Renderer/ModelCanvas.swift", "line": 441},
+    {"id": "view", "file": "Renderer/ModelView.swift", "line": 97},
+    {"id": "validator", "file": "GLTFCore/GLTFValidator.swift", "line": 37}
+  ],
+  "out": "open-file.html"
+}

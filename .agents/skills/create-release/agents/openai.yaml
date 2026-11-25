@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Release"
+  short_description: "Build a release with current docs and media"
+  default_prompt: "Use $create-release to produce a release with a signed build, current documentation, screenshots, videos, diagrams, and wireframes."

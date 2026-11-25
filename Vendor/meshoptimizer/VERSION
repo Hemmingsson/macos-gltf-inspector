@@ -1,0 +1,7 @@
+Upstream: https://github.com/zeux/meshoptimizer
+Tag: v1.2 (MESHOPTIMIZER_VERSION 1020), matching the decoder version in the pinned Khronos page.
+Only the decoder translation units are vendored; files unmodified. License: MIT (LICENSE.md).
+SHA256 meshoptimizer.h: 21a72040a75bacf6ddefb7e74f1cf566af1e68ea5e4dc0db598278f4681e0b87
+SHA256 vertexcodec.cpp: a3c51e91602c607a82ad0fdc32b089e890e3a3caf7934d82b7a993d64cd683ed
+SHA256 indexcodec.cpp: 8648e71f044e0a23622c199f250818a62d68fd05673e2e692167f257de27565f
+SHA256 vertexfilter.cpp: 22fe9f4bb0179be212d8d440bd5cb3510a505be8b2a7ba069ae890cdd0010998

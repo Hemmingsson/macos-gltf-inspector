@@ -1,0 +1,75 @@
+import AppKit
+import Foundation
+import simd
+import Testing
+@testable import GLTFInspector
+import Renderer
+
+struct NavigationGizmoTests {
+    private let panel = CGSize(width: 76, height: 76)
+
+    @Test func ballLayoutsDepthSortPutsFartherEndsFirst() {
+        // Identity view rotation: +Z toward the viewer draws on top of -Z.
+        let layouts = NavigationGizmoLayout.ballLayouts(viewRotation: matrix_identity_float3x3, panelSize: panel)
+        let sorted = NavigationGizmoLayout.sortedForDrawing(layouts)
+        let depths = sorted.map(\.viewDepth)
+        #expect(depths == depths.sorted(), "draw order must be back-to-front by view-space z")
+        let front = layouts.first { $0.axis == .posZ }
+        let back = layouts.first { $0.axis == .negZ }
+        #expect(front != nil && back != nil)
+        #expect(front!.viewDepth > back!.viewDepth, "+Z should be closer than −Z at identity")
+        #expect(sorted.last?.axis == .posZ)
+        let side = layouts.first { $0.axis == .posX }
+        #expect(front!.radius > side!.radius, "the facing ball stays full size; the others are smaller")
+        #expect(abs(side!.radius - NavigationGizmoLayout.positiveRadius * NavigationGizmoLayout.inactiveScale) < 0.01)
+    }
+
+    @Test func rotatedViewReordersAxisEnds() {
+        var rotation = matrix_identity_float3x3
+        rotation.columns.2 = SIMD3(0, 0, -1)
+        rotation.columns.0 = SIMD3(-1, 0, 0)
+        let sorted = NavigationGizmoLayout.sortedForDrawing(
+            NavigationGizmoLayout.ballLayouts(viewRotation: rotation, panelSize: panel)
+        )
+        #expect(sorted.first?.axis != sorted.last?.axis)
+    }
+
+    @Test(arguments: [
+        (NavigationAxis.posX, CameraPreset.right),
+        (.negX, .left),
+        (.posY, .top),
+        (.negY, .bottom),
+        (.posZ, .front),
+        (.negZ, .back),
+    ])
+    func axisMapsToCameraPreset(axis: NavigationAxis, preset: CameraPreset) {
+        #expect(axis.cameraPreset == preset)
+    }
+
+    @Test func selectingActivePresetFlipsToOpposite() {
+        #expect(NavigationGizmoLayout.cameraPreset(for: .posZ, activePreset: .front) == .back)
+        #expect(NavigationGizmoLayout.cameraPreset(for: .posX, activePreset: .right) == .left)
+        #expect(NavigationGizmoLayout.cameraPreset(for: .posY, activePreset: nil) == .top)
+        #expect(NavigationGizmoLayout.cameraPreset(for: .posZ, activePreset: .back) == .front)
+    }
+
+    @Test func downwardGizmoDragMatchesCanvasOrbitSign() {
+        let startUI = CGPoint(x: 10, y: 10)
+        let endUI = CGPoint(x: 10, y: 20)
+        let gizmo = NavigationGizmoLayout.dragDelta(from: startUI, to: endUI)
+        #expect(gizmo.dy > 0)
+
+        let startWindow = NSPoint(x: 10, y: 20)
+        let endWindow = NSPoint(x: 10, y: 10)
+        let canvasDy = Double(startWindow.y - endWindow.y)
+        #expect(canvasDy > 0)
+        #expect(gizmo.dy == canvasDy)
+
+        var fromGizmo = MetalUserCamera()
+        var fromCanvas = MetalUserCamera()
+        fromGizmo.orbit(gizmo.dx, gizmo.dy)
+        fromCanvas.orbit(Double(endWindow.x - startWindow.x), canvasDy)
+        #expect(fromGizmo.rotAroundX == fromCanvas.rotAroundX)
+        #expect(fromGizmo.rotAroundY == fromCanvas.rotAroundY)
+    }
+}

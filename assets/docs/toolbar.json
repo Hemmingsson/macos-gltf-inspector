@@ -1,0 +1,76 @@
+{
+  "title": "Toolbar controls",
+  "width": 1240,
+  "height": 650,
+  "clusters": [
+    {
+      "number": 1,
+      "name": "Stage",
+      "purpose": "Set the backdrop and floor.",
+      "controls": [
+        {
+          "label": "Backdrop",
+          "detail": "None · White · Dark"
+        },
+        {
+          "label": "Floor",
+          "detail": "Show or hide"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "name": "Look",
+      "purpose": "Set the view mode and lighting.",
+      "controls": [
+        {
+          "label": "View mode",
+          "detail": "Shaded · channels"
+        },
+        {
+          "label": "Lighting",
+          "detail": "Exposure · look"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "name": "Camera",
+      "purpose": "Set the projection, lens, and camera.",
+      "controls": [
+        {
+          "label": "Perspective",
+          "detail": "or Orthographic"
+        },
+        {
+          "label": "Field of view",
+          "detail": "15°–160°"
+        },
+        {
+          "label": "View",
+          "detail": "Zoom · Fit · presets"
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "name": "Open in",
+      "purpose": "Open related actions.",
+      "controls": [
+        {
+          "label": "Open in",
+          "detail": ""
+        }
+      ]
+    }
+  ],
+  "shortcuts": [
+    "⌘1–⌘5 · view modes",
+    "⌘+ / ⌘− · zoom",
+    "⌘9 · Fit",
+    "⌥⌘F · Frame Selection",
+    "⌘0 · Reset View",
+    "⌘R · Auto-Rotate",
+    "⌥⌘5 · Orthographic"
+  ]
+}

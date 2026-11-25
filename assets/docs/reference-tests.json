@@ -1,0 +1,35 @@
+{
+  "watermark": false,
+  "fonts": "system",
+  "legend": false,
+  "eyebrow": "",
+  "motion": "none",
+  "skin": "light",
+  "type": "sequence",
+  "title": "Reference-image test cycle",
+  "subtitle": "Run every pinned case and compare the Metal frame with the committed reference.",
+  "numbered": true,
+  "participants": [
+    {"id": "khronos", "label": "Khronos renderer", "sub": "golden output", "kind": "external"},
+    {"id": "refs", "label": "Committed PNG", "sub": "TestModels/References", "kind": "store"},
+    {"id": "metal", "label": "Metal renderer", "sub": "our actual frame", "focal": true},
+    {"id": "diff", "label": "PixelDiff", "sub": "mean and bad pixels"},
+    {"id": "pass", "label": "Pass", "sub": "within tolerance"},
+    {"id": "fail", "label": "Diff files", "sub": "/tmp/GLTFInspector-pixel-diff", "kind": "muted"}
+  ],
+  "messages": [
+    ["khronos", "refs", "write expected PNG"],
+    ["metal", "diff", "send actual frame", "primary"],
+    ["refs", "diff", "send expected PNG"],
+    ["diff", "pass", "mean <= 1/255; bad >16 <= 0.1%", "primary"],
+    ["diff", "fail", "write -actual, -expected, -diff", "async"]
+  ],
+  "fragments": [
+    {"kind": "loop", "label": "each manifest entry", "from": 0, "to": 4}
+  ],
+  "evidence": [
+    {"id": "manifest", "file": "TestModels/References/manifest.json"},
+    {"id": "comparison", "file": "GLTFInspectorTests/PixelDiff.swift"},
+    {"id": "tests", "file": "GLTFInspectorTests/PixelDiffMetalTests.swift"}
+  ]
+}

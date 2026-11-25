@@ -1,0 +1,376 @@
+name: GLTFInspector
+options:
+  bundleIdPrefix: lol.mattias
+  deploymentTarget:
+    macOS: "26.0"
+  fileTypes:
+    icon:
+      file: true
+      buildPhase: resources
+
+schemes:
+    GLTFInspector:
+      build:
+        targets:
+          GLTFInspector: all
+      run:
+      test:
+        targets:
+          - GLTFInspectorTests
+
+    # Off-screen frame renderer for the README demo and the marketing stills.
+    ShotRenderer:
+      build:
+        targets:
+          ShotRenderer: all
+
+    # Opt-in real-window XCUITest flows (`./scripts/dev.sh uitest`); not part of `dev.sh test`.
+    GLTFInspectorUITests:
+      build:
+        targets:
+          GLTFInspector: all
+          GLTFInspectorUITests: [test]
+      test:
+        targets:
+          - GLTFInspectorUITests
+
+# Shared across every target so signing and versions live in one place.
+settings:
+  base:
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 94A9N4B67S
+    ENABLE_HARDENED_RUNTIME: YES
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "4"
+    ARCHS: arm64
+
+packages:
+  GLTFKit2:
+    url: https://github.com/warrenm/GLTFKit2
+    exactVersion: "0.5.15"
+  DracoSwift:
+    url: https://github.com/warrenm/DracoSwift
+    exactVersion: "1.5.7"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.9.6"
+
+targets:
+  # Extension-safe core: what the file contains (JSON summary, validator, stats), the look
+  # vocabulary and the App Group settings. Linked by the host (embedded once), both extensions
+  # and the tests. No AppKit or SwiftUI.
+  GLTFCore:
+    type: framework
+    platform: macOS
+    sources:
+      - GLTFCore
+      - path: Vendor/gltf-validator
+        includes:
+          - gltf_validator.dart.js
+          - LICENSE
+          - NOTICES
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.GLTFCore
+        GENERATE_INFOPLIST_FILE: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+  # The Metal port of the Khronos glTF Sample Renderer and the canvas every surface mounts
+  # (`ModelView`, `ModelCanvas`, `ThumbnailRenderer`). Extension-safe; its `default.metallib` and
+  # lighting bakes ship in this framework (`Bundle(for:)`). DracoSwift links in statically.
+  # GLTFKit2 is a dynamic framework that only the host app's own package dependency embeds (in
+  # Contents/Frameworks, where the extensions' `@executable_path/../../../../Frameworks` rpath
+  # finds it); a framework target's package dependency is not embedded, and `embed: true` on
+  # the package names a nonexistent `GLTFKit2-product`.
+  Renderer:
+    type: framework
+    platform: macOS
+    sources:
+      # Per-vertex/per-texel load loops stay optimised in Debug too (bench and tests); plain C, so
+      # -O2 changes speed only, not results.
+      - path: Vendor/mikktspace
+        includes: [mikktspace.c, mikktspace.h]
+        headerVisibility: private
+        compilerFlags: [-O2]
+      - path: Vendor/meshoptimizer
+        includes: [meshoptimizer.h, vertexcodec.cpp, indexcodec.cpp, vertexfilter.cpp]
+        headerVisibility: private
+      - path: Renderer
+        excludes:
+          - Shaders/UPSTREAM.md
+          - Shaders/LICENSE.md
+          - Shaders/THIRD_PARTY_NOTICES.txt
+          - Scene/MetalLoadKernels.c
+          - Environments
+          - Shaders/ShaderTypes.metalh
+        headerVisibility: public
+      - path: Renderer/Scene/MetalLoadKernels.c
+        compilerFlags: [-O2]
+      - path: Renderer/Environments
+        includes: ["*.metalibl"]
+        buildPhase: resources
+    settings:
+      base:
+        MTL_FAST_MATH: NO
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.Renderer
+        GENERATE_INFOPLIST_FILE: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CLANG_CXX_LANGUAGE_STANDARD: c++20
+        HEADER_SEARCH_PATHS: $(SRCROOT)/Vendor/libktx/include
+    dependencies:
+      - target: GLTFCore
+        embed: false
+      - package: GLTFKit2
+        product: GLTFKit2
+      - package: DracoSwift
+        product: DracoSwift
+
+  GLTFInspector:
+    type: application
+    platform: macOS
+    sources:
+      - GLTFInspector
+      - path: assets/ICON.icon
+        type: file
+        buildPhase: resources
+    # Not sandboxed. The only entitlement is the App Group, so Settings (the group suite) is
+    # visible to both extensions.
+    entitlements:
+      path: GLTFInspector/GLTFInspector.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - 94A9N4B67S.lol.mattias.gltf-inspector
+    info:
+      path: GLTFInspector/Info.plist
+      properties:
+        CFBundleIconName: ICON
+        CFBundleDisplayName: glTF Inspector
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: GL Transmission Format Binary
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Default
+            LSItemContentTypes:
+              - org.khronos.glb
+          - CFBundleTypeName: GL Transmission Format
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Default
+            LSItemContentTypes:
+              - org.khronos.gltf
+          - CFBundleTypeName: glTF sidecar
+            CFBundleTypeRole: None
+            LSHandlerRank: None
+            NSIsRelatedItemType: true
+            LSTypeIsPackage: false
+            CFBundleTypeExtensions:
+              - bin
+              - png
+              - jpg
+              - jpeg
+              - webp
+              - ktx2
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.khronos.glb
+            UTTypeDescription: GL Transmission Format Binary
+            UTTypeConformsTo:
+              - public.data
+              - public.3d-content
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - glb
+              public.mime-type:
+                - model/gltf-binary
+          - UTTypeIdentifier: org.khronos.gltf
+            UTTypeDescription: GL Transmission Format
+            UTTypeConformsTo:
+              - public.data
+              - public.3d-content
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - gltf
+              public.mime-type:
+                - model/gltf+json
+        NSMainStoryboardFile: ""
+        NSPrincipalClass: NSApplication
+        LSSupportsOpeningDocumentsInPlace: true
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        SUFeedURL: https://github.com/Hemmingsson/macos-gltf-inspector/releases/latest/download/appcast.xml
+        SUPublicEDKey: OQrffRwGjVoW1aFeEKHsEcYco5WgZo1qH7syaZmjoQ8=
+        SUEnableAutomaticChecks: true
+        SUAutomaticallyUpdate: false
+        SUAllowsAutomaticUpdates: true
+    settings:
+      base:
+        PRODUCT_NAME: glTF Inspector
+        PRODUCT_MODULE_NAME: GLTFInspector
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: ICON
+      configs:
+        Debug:
+          ENABLE_DEBUG_DYLIB: YES
+        Release:
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+    dependencies:
+      - package: GLTFKit2
+      - target: GLTFCore
+        embed: true
+      - target: Renderer
+        embed: true
+      - target: PreviewExtension
+        embed: true
+      - target: ThumbnailExtension
+        embed: true
+      - package: Sparkle
+        product: Sparkle
+
+  PreviewExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - PreviewExtension
+    entitlements:
+      path: PreviewExtension/PreviewExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        # Settings live in the App Group shared with the host (GLTFCore/AppGroupSettings.swift).
+        com.apple.security.application-groups:
+          - 94A9N4B67S.lol.mattias.gltf-inspector
+        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.files.downloads.read-only: true
+        # glTF assets reference sibling files (.bin buffers, textures) that can sit anywhere the
+        # user opens from, so the sandboxed extensions need read access beyond the opened file.
+        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+          - /
+    info:
+      path: PreviewExtension/Info.plist
+      properties:
+        CFBundleDisplayName: glTF Inspector
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.preview
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).PreviewViewController"
+          NSExtensionAttributes:
+            QLSupportedContentTypes:
+              - org.khronos.glb
+              - org.khronos.gltf
+            QLSupportsSearchableItems: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.PreviewExtension
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+        ENABLE_DEBUG_DYLIB: NO
+    dependencies:
+      - target: GLTFCore
+        embed: false
+      - target: Renderer
+        embed: false
+
+  ThumbnailExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - ThumbnailExtension
+    entitlements:
+      path: ThumbnailExtension/ThumbnailExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        # Settings live in the App Group shared with the host (GLTFCore/AppGroupSettings.swift).
+        com.apple.security.application-groups:
+          - 94A9N4B67S.lol.mattias.gltf-inspector
+        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.files.downloads.read-only: true
+        # glTF assets reference sibling files (.bin buffers, textures) that can sit anywhere the
+        # user opens from, so the sandboxed extensions need read access beyond the opened file.
+        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+          - /
+    info:
+      path: ThumbnailExtension/Info.plist
+      properties:
+        CFBundleDisplayName: glTF Inspector
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.thumbnail
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ThumbnailProvider"
+          NSExtensionAttributes:
+            QLSupportedContentTypes:
+              - org.khronos.glb
+              - org.khronos.gltf
+            QLSupportsSearchableItems: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.ThumbnailExtension
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+        ENABLE_DEBUG_DYLIB: NO
+    dependencies:
+      - target: GLTFCore
+        embed: false
+      - target: Renderer
+        embed: false
+
+  # Draws README frames off-screen with the one renderer (`demo/`). It mounts the same
+  # `ModelView` the window, Quick Look and the thumbnail mount, so every demo frame is real
+  # output rather than a mock; the macOS chrome around it is drawn in HTML. Never shipped.
+  ShotRenderer:
+    type: tool
+    platform: macOS
+    sources:
+      - demo/ShotRenderer
+    settings:
+      base:
+        PRODUCT_NAME: shot-renderer
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.ShotRenderer
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        # The tool runs from the built-products directory, where GLTFCore, Renderer and
+        # GLTFKit2 sit beside it; nothing is embedded, so nothing is duplicated.
+        LD_RUNPATH_SEARCH_PATHS: [$(inherited), "@executable_path"]
+        # Those frameworks are ad-hoc signed in Debug, and dyld refuses to load an ad-hoc
+        # library into a team-signed process. The tool never ships, so it signs ad-hoc too.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+    dependencies:
+      - target: GLTFCore
+        embed: false
+      - target: Renderer
+        embed: false
+      - package: GLTFKit2
+
+  GLTFInspectorTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - GLTFInspectorTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/glTF Inspector.app/Contents/MacOS/glTF Inspector"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - target: GLTFInspector
+      - target: GLTFCore
+        embed: false
+      - target: Renderer
+        embed: false
+
+  # Real-window flows over accessibility only (open, view modes, outliner → inspector,
+  # launch / open-to-content metrics). Imports no app module.
+  GLTFInspectorUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - GLTFInspectorUITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.uitests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: GLTFInspector

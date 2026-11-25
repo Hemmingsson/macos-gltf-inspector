@@ -1,0 +1,29 @@
+import GLTFCore
+import SwiftUI
+
+/// The view-mode chip and its menu: Shaded · Wireframe · every debug channel the file *has*
+/// (`ViewState.viewModes`, filled from the file). Nothing is shown disabled.
+struct ViewModeMenu: View {
+    @Bindable var view: ViewState
+
+    var body: some View {
+        DSGlassMenuButton(
+            "View mode",
+            systemImage: view.viewMode.glyph.symbol,
+            assetImage: view.viewMode.glyph.assetImage,
+            style: .titled(view.viewMode.title),
+            isEngaged: view.viewMode != .shaded
+        ) {
+            Picker("View mode", selection: $view.viewMode) {
+                ForEach(view.viewModes, id: \.self) { mode in
+                    DSLabel(mode.title, mode.glyph)
+                        .tag(mode)
+                        .keyboardShortcutIfAvailable(Shortcuts.viewMode(mode))
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        }
+        .contentTransition(.identity)
+    }
+}

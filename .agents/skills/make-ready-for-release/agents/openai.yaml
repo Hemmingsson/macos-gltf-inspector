@@ -1,0 +1,4 @@
+interface:
+  display_name: "Make Ready for Release"
+  short_description: "Prepare glTF Inspector for a public release"
+  default_prompt: "Use $make-ready-for-release to audit this repository and implement justified fixes before publication."

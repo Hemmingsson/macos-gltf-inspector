@@ -1,0 +1,76 @@
+import Foundation
+import os
+
+/// Failures and rare framing/lighting notes. Do not add per-frame or load-path chatter —
+/// that made Spacebar hitch. Messages log `.private`, so file names and file-derived text stay
+/// out of the unified log for anyone but the user.
+///
+/// When `GLTF_LOG_FILE` is set (dev.sh / launch.json), messages mirror to that file so agents
+/// can read `.build/logs/debug.log` without `log stream`.
+public enum AppLog {
+    public static let subsystem = "lol.mattias.gltf-inspector"
+
+    public static let thumbnail = Logger(subsystem: subsystem, category: "thumbnail")
+    public static let settings = Logger(subsystem: subsystem, category: "settings")
+    /// The app: opening documents, panels, validation, export.
+    public static let app = Logger(subsystem: subsystem, category: "app")
+    /// The Metal renderer and the canvas that hosts it.
+    public static let renderer = Logger(subsystem: subsystem, category: "renderer")
+    /// JSON parse intervals for Instruments ›
+    /// Points of Interest. Free when nobody is recording; never a substitute for a log line.
+    public static let signposter = OSSignposter(subsystem: subsystem, category: .pointsOfInterest)
+
+    /// Process uptime in ms, for ordering host and canvas log lines (the log stamps are seconds).
+    public static func uptimeMs() -> Int {
+        Int(ProcessInfo.processInfo.systemUptime * 1000)
+    }
+
+    private static let fileLock = NSLock()
+    private static var logFilePath: String?
+
+    /// Truncates and opens `GLTF_LOG_FILE` when set. Safe to call more than once.
+    public static func configureFileSink() {
+        guard let path = ProcessInfo.processInfo.environment["GLTF_LOG_FILE"], !path.isEmpty else { return }
+
+        let url = URL(fileURLWithPath: path)
+        let directory = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        fileLock.lock()
+        logFilePath = path
+        fileLock.unlock()
+
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        appendToFile("[\(stamp)] [INFO] --- session start ---\n")
+    }
+
+    public static func info(_ logger: Logger, _ message: String) {
+        logger.info("\(message, privacy: .private)")
+        mirrorToFile(level: "INFO", message: message)
+    }
+
+    public static func error(_ logger: Logger, _ message: String) {
+        logger.error("\(message, privacy: .private)")
+        mirrorToFile(level: "ERROR", message: message)
+    }
+
+    private static func mirrorToFile(level: String, message: String) {
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        appendToFile("[\(stamp)] [\(level)] \(message)\n")
+    }
+
+    private static func appendToFile(_ line: String) {
+        fileLock.lock()
+        defer { fileLock.unlock() }
+        guard let path = logFilePath, let data = line.data(using: .utf8) else { return }
+
+        if FileManager.default.fileExists(atPath: path) {
+            guard let handle = FileHandle(forWritingAtPath: path) else { return }
+            defer { try? handle.close() }
+            handle.seekToEndOfFile()
+            handle.write(data)
+        } else {
+            try? data.write(to: URL(fileURLWithPath: path))
+        }
+    }
+}

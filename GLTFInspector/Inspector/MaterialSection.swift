@@ -1,0 +1,233 @@
+import AppKit
+import GLTFCore
+import simd
+import SwiftUI
+
+/// A material as the file authors it. Each fact is said once: the inspector header already
+/// names a selected material, and present maps appear as chips (compact) or as sized rows
+/// (full), never both.
+struct MaterialSection: View {
+    enum Density {
+        /// A mesh is selected: its material's name and map chips.
+        case compact
+        /// The material itself is selected: its facts and sized maps.
+        case full
+    }
+
+    var document: GLTFDocument
+    var index: Int
+    var density: Density
+    var onSelect: ((NodeID) -> Void)?
+
+    private var material: GLTFDocument.Material { document.materials[index] }
+    private var name: String { document.displayName(of: NodeID(kind: .material, index: index)) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            InspectorSectionHeader("Material")
+            Group {
+                switch density {
+                case .compact:
+                    if let onSelect {
+                        Button { onSelect(NodeID(kind: .material, index: index)) } label: {
+                            compactBody
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Inspect \(name)")
+                    } else {
+                        compactBody
+                    }
+                case .full: fullBody
+                }
+            }
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.top, DS.Spacing.xxs)
+            .padding(.bottom, DS.Spacing.l)
+        }
+        .accessibilityElement(children: density == .full ? .contain : .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var compactBody: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.m) {
+            HStack(spacing: DS.Spacing.m) {
+                DSTypeIcon(
+                    .material,
+                    swatchColor: document.swatchColor(for: NodeID(kind: .material, index: index))
+                )
+                Text(name)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+            if !material.textures.isEmpty {
+                HStack(spacing: DS.Spacing.s) {
+                    ForEach(material.textures, id: \.kind) { texture in
+                        DSIcon(texture.kind.glyph)
+                            .frame(width: 18, height: 18)
+                            .accessibilityLabel(texture.kind.title)
+                    }
+                }
+            }
+        }
+    }
+
+    private var fullBody: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.l) {
+            VStack(spacing: 0) {
+                DSFactRow("Workflow", value: material.workflowTitle)
+                DSFactRow("Alpha", value: material.alphaTitle)
+                DSFactRow("Faces", value: material.isDoubleSided ? "Double-sided" : "Single-sided")
+            }
+
+            VStack(spacing: DS.Spacing.xs) {
+                if let factor = material.visibleBaseColorFactor {
+                    colorRow("Base color", SIMD3(factor.x, factor.y, factor.z))
+                }
+                if let value = material.visibleMetallicFactor {
+                    DSFactorRow("Metallic", value: Double(value))
+                }
+                if let value = material.visibleRoughnessFactor {
+                    DSFactorRow("Roughness", value: Double(value))
+                }
+                if let factor = material.visibleEmissiveFactor {
+                    colorRow("Emissive", factor)
+                }
+                if let value = material.visibleEmissiveStrength {
+                    DSFactRow("Emissive strength", value: String(format: "%.2g", value))
+                }
+                if let value = material.visibleNormalScale {
+                    DSFactRow("Normal scale", value: String(format: "%.2g", value))
+                }
+                if let value = material.visibleOcclusionStrength {
+                    DSFactorRow("Occlusion", value: Double(value))
+                }
+            }
+
+            if !material.textures.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(material.textures, id: \.kind) { mapRow($0) }
+                }
+            }
+
+            if !usedByNodeIndices.isEmpty {
+                UsedBySection(document: document, nodeIndices: usedByNodeIndices, onSelect: onSelect)
+            }
+        }
+    }
+
+    private var usedByNodeIndices: [Int] {
+        document.nodeIndices(usingMaterial: index)
+    }
+
+    private func mapRow(_ texture: GLTFDocument.TextureSlot) -> some View {
+        HStack(spacing: DS.Spacing.m) {
+            mapThumb(texture)
+            Text(texture.kind.title)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Spacer(minLength: DS.Spacing.m)
+            if let width = texture.width, let height = texture.height {
+                Text("\(width)×\(height)")
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.primary)
+            }
+            if texture.texCoord != 0 {
+                Text("UV\(texture.texCoord)")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, DS.Spacing.xxs)
+    }
+
+    /// Half the decoded thumbnail's longest edge, so a 2x display draws it pixel for pixel.
+    private static let mapThumbSize = CGFloat(GLTFDocument.TextureSlot.thumbnailMaxEdge) / 2
+
+    @ViewBuilder
+    private func mapThumb(_ texture: GLTFDocument.TextureSlot) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
+        Group {
+            if let data = texture.thumbnailPNG, let image = NSImage(data: data) {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.medium)
+                    .clipShape(shape)
+            } else {
+                DSIcon(texture.kind.glyph)
+                    .foregroundStyle(.secondary)
+                    .padding(4)
+                    .background(shape.fill(.quinary))
+            }
+        }
+        .frame(width: Self.mapThumbSize, height: Self.mapThumbSize)
+        .overlay { shape.strokeBorder(DS.Color.separator, lineWidth: DS.Metrics.hairline) }
+        .accessibilityHidden(true)
+    }
+
+    private func colorRow(_ label: String, _ color: SIMD3<Float>) -> some View {
+        let clamped = simd_clamp(color, .zero, .one)
+        return DSFactRow(label) {
+            HStack(spacing: DS.Spacing.s) {
+                MaterialSwatch(color: Color(.sRGB, red: Double(clamped.x), green: Double(clamped.y), blue: Double(clamped.z)), size: 12)
+                Text(String(format: "#%02X%02X%02X", Int((clamped.x * 255).rounded()),
+                            Int((clamped.y * 255).rounded()), Int((clamped.z * 255).rounded())))
+            }
+        }
+    }
+
+    private var accessibilityLabel: String {
+        var parts = ["Material \(name)"]
+        if !material.textures.isEmpty {
+            parts.append("maps: \(material.textures.map(\.kind.title).joined(separator: ", "))")
+        }
+        if density == .full {
+            parts += [material.workflowTitle, material.alphaTitle]
+            let users = document.nodeIndices(usingMaterial: index)
+            if !users.isEmpty {
+                parts.append("used by \(users.map { document.displayName(of: NodeID(kind: .mesh, index: $0)) }.joined(separator: ", "))")
+            }
+        }
+        return parts.joined(separator: ", ")
+    }
+}
+
+private struct UsedBySection: View {
+    var document: GLTFDocument
+    var nodeIndices: [Int]
+    var onSelect: ((NodeID) -> Void)?
+
+    var body: some View {
+        let names = nodeIndices.map { document.displayName(of: NodeID(kind: .mesh, index: $0)) }
+        VStack(alignment: .leading, spacing: 0) {
+            InspectorSectionHeader("Used by", top: DS.Spacing.m)
+            ForEach(nodeIndices, id: \.self) { nodeIndex in
+                let name = document.displayName(of: NodeID(kind: .mesh, index: nodeIndex))
+                Button {
+                    onSelect?(NodeID(kind: .mesh, index: nodeIndex))
+                } label: {
+                    HStack(spacing: DS.Spacing.m) {
+                        DSTypeIcon(.mesh)
+                        Text(name)
+                            .font(.callout)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Spacer(minLength: DS.Spacing.m)
+                    }
+                    .padding(.vertical, DS.Spacing.xxs)
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(name)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction(named: "Select \(name)") {
+                    onSelect?(NodeID(kind: .mesh, index: nodeIndex))
+                }
+            }
+        }
+        .padding(.horizontal, DS.Spacing.l)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(names.isEmpty ? "Used by" : "Used by, \(names.joined(separator: ", "))")
+    }
+}

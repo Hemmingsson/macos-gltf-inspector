@@ -1,0 +1,75 @@
+# Xcode
+GLTFInspector.xcodeproj/
+xcuserdata/
+*.xcworkspace
+DerivedData/
+build/
+.build/
+
+# Local research / agent scratch (not the product)
+.worktrees/
+.zed/
+# Claude Code: keep project settings, drop the runtime lock
+.claude/scheduled_tasks.lock
+.cursor/*
+# Project MCP lives at /.mcp.json (shared by Claude + Cursor via symlink)
+.xcodebuildmcp/
+.conductor/
+.dex/
+.superpowers/
+plans/
+TestModels/Khronos samples/
+
+# Sparkle release artifacts and local CLI cache
+dist/
+tools/sparkle/
+sparkle_private_key.txt
+
+# Generated plists (xcodegen recreates these)
+PreviewExtension/Info.plist
+ThumbnailExtension/Info.plist
+GLTFInspector/Info.plist
+
+# Entitlements (xcodegen recreates these)
+PreviewExtension/PreviewExtension.entitlements
+ThumbnailExtension/ThumbnailExtension.entitlements
+GLTFInspector/GLTFInspector.entitlements
+
+# macOS
+.DS_Store
+
+# Local-only icon bake input (ICON.icon stays in git)
+ICON.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# Accidental Peekaboo window captures at worktree root
+/window-*.png
+
+TestModels/References/REGENERATE
+TestModels/References/MEASURE_NOISE
+
+# generated diagrams / tool state
+/diagrams/
+/.seecode/
+
+# Personal agent and editor tooling (kept locally, not part of the project)
+/.fejk-agents/
+/.atelier/
+/.codex/
+/.seecode/
+/.mcp.json
+/.vscode/
+/.claude/
+
+# Reproducible showcase intermediates
+/demo/video/assets/app/
+/demo/video/assets/quicklook/
+/demo/video/assets/preview/
+/demo/video/assets/thumbnails/
+/demo/video/assets/manifest.json
+/demo/video/clip.generated.html
+/demo/video/renders/
+.artifacts/

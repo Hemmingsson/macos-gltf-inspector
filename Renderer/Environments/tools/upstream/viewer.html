@@ -1,0 +1,189 @@
+<!doctype html>
+<!--
+  The one page every surface renders through: Finder thumbnail, Quick Look preview and the
+  document window. Two modes, one renderer — a second page would let the surfaces drift, which
+  is the exact failure the one-renderer rule exists to prevent.
+
+  Swift drives it by evaluating `__viewer.exec(<json>)`; the page answers on
+  `webkit.messageHandlers.viewer`. Every command carries an `id` so replies can be correlated.
+  See Shared/WebRenderer/WebRendererBridge.swift for the typed Swift side.
+
+  Nothing here is fetched from the network. All bytes arrive through the Swift scheme handler,
+  and paths stay relative — the Khronos renderer rejects absolute URLs for its library and LUT
+  paths ("Absolute URLs are not allowed for security reasons").
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: transparent; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+<!--
+  Must be a classic script and must come before the module: it defines the global
+  `createKtxModule` that `createResourceLoader` reads. Without it, construction throws
+  "Can't find variable: createKtxModule".
+-->
+<script src="libs/libktx.js"></script>
+<!--
+  Same story for Draco: `DracoDecoder` reads a global `DracoDecoderModule`, and the Khronos
+  bundle ships no decoder — the sample viewer fetches one from a CDN, which this page cannot do.
+  Vendored from google/draco (Apache-2.0); the wrapper locates draco_decoder_gltf.wasm beside
+  itself. Missing this throws "Can't find variable: DracoDecoderModule" at module load, which
+  breaks every file, not just Draco-compressed ones.
+-->
+<script src="libs/draco_wasm_wrapper_gltf.js"></script>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<script type="module">
+import { GltfView, GltfState } from "./gltf-viewer.module.js";
+
+const send = (payload) => window.webkit.messageHandlers.viewer.postMessage(payload);
+
+const canvas = document.getElementById("stage");
+const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, alpha: true });
+if (!gl) {
+    send({ event: "error", stage: "context", message: "WebGL 2 unavailable" });
+    throw new Error("WebGL 2 unavailable");
+}
+
+const view = new GltfView(gl);
+const state = view.createState();
+// Relative libPath, per the absolute-URL restriction noted above.
+const resources = view.createResourceLoader(undefined, undefined, "libs/");
+
+state.renderingParameters.toneMap = GltfState.ToneMaps.KHR_PBR_NEUTRAL;
+
+let live = false;
+
+/** Continuous rendering for the document window and Quick Look. */
+function tick() {
+    if (!live) return;
+    resize();
+    view.renderFrame(state, canvas.width, canvas.height);
+    requestAnimationFrame(tick);
+}
+
+function resize() {
+    const w = Math.max(1, Math.round(canvas.clientWidth * window.devicePixelRatio));
+    const h = Math.max(1, Math.round(canvas.clientHeight * window.devicePixelRatio));
+    if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+    }
+}
+
+const commands = {
+    /** Fixed pixel size for still mode; live mode follows the view instead. */
+    configure({ mode, size }) {
+        live = mode === "live";
+        if (!live && size) {
+            canvas.style.width = canvas.style.height = "auto";
+            canvas.width = canvas.height = size;
+        }
+        if (live) requestAnimationFrame(tick);
+        return { mode };
+    },
+
+    async setEnvironment({ url }) {
+        const hdr = await (await fetch(url)).arrayBuffer();
+        state.environment = await resources.loadEnvironment(hdr, {
+            lut_ggx_file: "assets/lut_ggx.png",
+            lut_charlie_file: "assets/lut_charlie.png",
+            lut_sheen_E_file: "assets/lut_sheen_E.png",
+        });
+        return {};
+    },
+
+    async load({ url }) {
+        const bytes = await (await fetch(url)).arrayBuffer();
+        state.gltf = await resources.loadGltf(bytes);
+        state.sceneIndex = state.gltf.scene ?? 0;
+        state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+        const stats = view.gatherStatistics(state) ?? {};
+        return {
+            sceneCount: state.gltf.scenes?.length ?? 0,
+            animationCount: state.gltf.animations?.length ?? 0,
+            triangles: stats.faceCount ?? 0,
+            meshes: stats.meshCount ?? 0,
+        };
+    },
+
+    setScene({ index }) {
+        state.sceneIndex = index;
+        state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+        return {};
+    },
+
+    /**
+     * Orbit to absolute angles. Degrees in, radians out — `UserCamera` works in radians
+     * despite its docstring claiming degrees.
+     *
+     * `setRotation` only re-aims the camera; it does not move it. Calling it alone points the
+     * camera away from the model and renders an empty frame. The target must be captured
+     * *before* rotating — it is derived from position and look direction — and the camera
+     * pushed back out to distance afterwards. This mirrors what `fitCameraTargetToExtents`
+     * does internally.
+     *
+     * `rotAroundY` / `rotAroundX` are updated too, so a later `fit()` or user orbit continues
+     * from here rather than snapping back.
+     */
+    setCamera({ azimuth, elevation, distance }) {
+        const camera = state.userCamera;
+        const target = camera.getTarget();
+        const radius = distance ?? camera.distance;
+        camera.rotAroundY = azimuth * Math.PI / 180;
+        camera.rotAroundX = elevation * Math.PI / 180;
+        camera.setRotation(camera.rotAroundY, camera.rotAroundX);
+        camera.setDistanceFromTarget(radius, target);
+        return {};
+    },
+
+    fit() {
+        state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
+        return {};
+    },
+
+    setToneMapping({ name }) {
+        state.renderingParameters.toneMap = name;
+        return {};
+    },
+
+    /** Pass "None" to leave debug mode. */
+    setDebugChannel({ name }) {
+        state.renderingParameters.debugOutput = name;
+        return {};
+    },
+
+    /** Still mode: render one frame and hand back PNG bytes. */
+    renderStill() {
+        view.renderFrame(state, canvas.width, canvas.height);
+        return { png: canvas.toDataURL("image/png") };
+    },
+};
+
+window.__viewer = {
+    async exec(command) {
+        const { id, type } = command ?? {};
+        try {
+            const handler = commands[type];
+            if (!handler) throw new Error(`unknown command '${type}'`);
+            const result = (await handler(command)) ?? {};
+            send({ event: "result", id, ...result });
+        } catch (error) {
+            send({ event: "failed", id, message: String(error?.message ?? error) });
+        }
+    },
+};
+
+// Anything that escapes a handler still has to produce a message, or Swift only sees a timeout.
+window.addEventListener("error", (e) =>
+    send({ event: "error", stage: "runtime", message: String(e.error?.message ?? e.message) }));
+window.addEventListener("unhandledrejection", (e) =>
+    send({ event: "error", stage: "runtime", message: String(e.reason?.message ?? e.reason) }));
+
+send({ event: "ready" });
+</script>
+</body>
+</html>

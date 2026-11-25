@@ -1,0 +1,233 @@
+{
+  "type": "wireframe",
+  "id": "UI-WINDOW-001",
+  "title": "Document window",
+  "units": "pt",
+  "window": {
+    "w": 1200,
+    "h": 760,
+    "radius": 16
+  },
+  "titleBar": {
+    "h": 52,
+    "centreY": 26,
+    "trafficLights": {
+      "firstX": 26,
+      "pitch": 20,
+      "d": 12,
+      "clearance": 78
+    }
+  },
+  "sidebar": {
+    "w": 248,
+    "min": 220,
+    "max": 520,
+    "fileCard": {
+      "y": 61,
+      "h": 60,
+      "inset": 10
+    },
+    "scene": {
+      "headerY": 146,
+      "rowY": 156,
+      "rowH": 24,
+      "icon": 16,
+      "indent": 16,
+      "levels": [
+        0,
+        1,
+        2,
+        2,
+        3,
+        3,
+        2,
+        1,
+        2,
+        2
+      ],
+      "selected": 4,
+      "sectionHeaders": [
+        "Scenes",
+        "Scene",
+        "Materials",
+        "Skins",
+        "Animations",
+        "Morphs"
+      ]
+    },
+    "validation": {
+      "headerY": 640,
+      "rows": 3,
+      "summary": "1 error · 2 warnings"
+    }
+  },
+  "inspector": {
+    "w": 288,
+    "min": 260,
+    "max": 560,
+    "identity": {
+      "y": 61,
+      "h": 32
+    },
+    "sections": [
+      {
+        "header": "Transform",
+        "kind": "vector",
+        "rows": [
+          "Position",
+          "Rotation",
+          "Scale"
+        ]
+      },
+      {
+        "header": "Material",
+        "kind": "fact",
+        "rows": [
+          [
+            "Body",
+            "compact · maps"
+          ]
+        ]
+      },
+      {
+        "header": "Subtree · if children",
+        "kind": "chips",
+        "rows": [
+          "2 nodes",
+          "2 meshes"
+        ]
+      },
+      {
+        "header": "Shape",
+        "kind": "shape",
+        "rows": [
+          "200 × 200 preview"
+        ]
+      },
+      {
+        "header": "Geometry",
+        "kind": "chips",
+        "rows": [
+          "21,906 tris",
+          "12,480 verts",
+          "1 UV set"
+        ]
+      },
+      {
+        "header": "Primitives",
+        "kind": "fact",
+        "rows": [
+          [
+            "Primitive 1",
+            "Body · 12,480 tris"
+          ],
+          [
+            "Primitive 2",
+            "Buttons · 3,200 tris"
+          ]
+        ]
+      },
+      {
+        "header": "Issues",
+        "kind": "issue",
+        "rows": [
+          "Warning: missing optional tangents"
+        ]
+      }
+    ]
+  },
+  "canvas": {
+    "inset": 14,
+    "island": {
+      "h": 32,
+      "gap": 8,
+      "button": 32,
+      "menuButton": 46
+    },
+    "clusters": {
+      "stage": {
+        "align": "leading",
+        "islands": [
+          [
+            "icon"
+          ],
+          [
+            "menu"
+          ]
+        ]
+      },
+      "look": {
+        "align": "centre",
+        "islands": [
+          [
+            "menu",
+            "divider",
+            "menu"
+          ],
+          [
+            "swatches"
+          ]
+        ]
+      },
+      "camera": {
+        "align": "trailing",
+        "islands": [
+          [
+            "menu"
+          ],
+          [
+            "icon"
+          ],
+          [
+            "icon"
+          ]
+        ]
+      }
+    },
+    "openIn": {
+      "w": 92,
+      "h": 28
+    },
+    "dimensionsHud": {
+      "h": 28,
+      "w": 160,
+      "text": "1.20 × 0.80 × 0.45 m"
+    },
+    "timelineHud": {
+      "h": 40,
+      "w": 420,
+      "gap": 8,
+      "conditional": "file has animations"
+    },
+    "gizmo": {
+      "size": 76,
+      "corner": "bottom-trailing",
+      "axes": "X red · Y green · Z blue"
+    }
+  },
+  "variant": {
+    "name": "Sidebar closed",
+    "stageX": 92,
+    "note": "78 traffic-light clearance + 14 inset"
+  },
+  "key": [
+    "Title bar · 52 overlay band, centred on y 26",
+    "Traffic lights · first at x 26",
+    "Sidebar · translucent pane, 248 (220–520)",
+    "Document file card · from y 61",
+    "Outliner · Scene, Materials, Skins…",
+    "Validation section · pinned to bottom",
+    "Stage cluster · leading, inset 14",
+    "Look cluster · View mode, Lighting",
+    "Camera cluster · trailing, inset 14",
+    "Open in · menu button",
+    "Canvas · Metal 3D view; model centred in visible area",
+    "Timeline HUD · animated files only",
+    "Dimensions readout HUD",
+    "Navigation gizmo · 76, X red / Y green / Z blue",
+    "Inspector · 288 (260–560); identity row",
+    "Inspector sections · selection-dependent",
+    "Vector rows · Position, Rotation, Scale",
+    "Fact rows and chips · file values"
+  ]
+}

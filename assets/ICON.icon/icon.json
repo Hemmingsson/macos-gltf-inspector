@@ -1,0 +1,178 @@
+{
+  "groups": [
+    {
+      "name": "Pocket Cube",
+      "layers": [
+        {
+          "name": "Turning crown",
+          "image-name": "Turning crown.png",
+          "glass": false,
+          "opacity": 1,
+          "fill": "none",
+          "position": {
+            "scale": 1.17,
+            "translation-in-points": [
+              0,
+              32
+            ]
+          }
+        },
+        {
+          "name": "Lower shell",
+          "image-name": "Lower shell.png",
+          "glass": false,
+          "opacity": 1,
+          "fill": "none",
+          "position": {
+            "scale": 1.17,
+            "translation-in-points": [
+              0,
+              32
+            ]
+          }
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    },
+    {
+      "name": "Contact shadow",
+      "layers": [
+        {
+          "name": "Contact shadow",
+          "image-name": "Contact shadow.svg",
+          "glass": false,
+          "opacity": 1,
+          "fill": "none"
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    },
+    {
+      "name": "Turntable",
+      "layers": [
+        {
+          "name": "Fine grain",
+          "image-name": "Fine grain.png",
+          "glass": false,
+          "opacity": 0.33,
+          "fill": "none"
+        },
+        {
+          "name": "Turntable",
+          "glass": false,
+          "opacity": 0.76,
+          "fill": "none",
+          "image-name-specializations": [
+            {
+              "value": "Turntable.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "Turntable dark.svg"
+            }
+          ]
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    },
+    {
+      "name": "Backdrop bloom",
+      "layers": [
+        {
+          "name": "Backdrop bloom",
+          "glass": false,
+          "opacity": 1,
+          "fill": "none",
+          "image-name-specializations": [
+            {
+              "value": "Bloom.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "Bloom dark.svg"
+            }
+          ]
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    }
+  ],
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.992,0.994,0.991,1",
+          "srgb:0.919,0.935,0.947,1"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1
+          }
+        }
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.20392,0.24314,0.28627,1",
+          "srgb:0.08627,0.11373,0.14510,1"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1
+          }
+        }
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

@@ -1,0 +1,4 @@
+
+# Preserve pinned third-party reference code byte-for-byte.
+Renderer/Environments/tools/upstream/** -whitespace
+scripts/khronos-animated-references/upstream/** -whitespace

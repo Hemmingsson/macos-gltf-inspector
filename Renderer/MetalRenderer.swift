@@ -1,0 +1,1327 @@
+import CoreGraphics
+import Foundation
+import GLTFCore
+import Metal
+import QuartzCore
+import simd
+
+public enum MetalRendererError: Error, LocalizedError {
+    case unavailable, resource(String), gpu(String), noScene, presentationBackpressure
+    public var errorDescription: String? {
+        switch self {
+        case .unavailable: "Metal is unavailable."
+        case .resource(let message): "Metal resource: \(message)"
+        case .gpu(let message): "Metal GPU: \(message)"
+        case .noScene: "No model has been loaded."
+        case .presentationBackpressure: "Skipped a live frame because three are already in flight."
+        }
+    }
+}
+
+/// Native Khronos renderer. One instance has one caller; loading and drawing must not overlap.
+/// `ModelView` presents its frames; stills are read back.
+public final class MetalRenderer {
+    public let device: any MTLDevice
+    let queue: any MTLCommandQueue
+    let library: any MTLLibrary
+    private let stateLock = NSRecursiveLock()
+    private let metricsLock = NSLock()
+    private var currentScene: MetalScene?
+    private var currentGPUMilliseconds = 0.0
+    private var currentPipelineMilliseconds = 0.0
+    public var scene: MetalScene? {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return currentScene
+    }
+    public var gpuMilliseconds: Double {
+        metricsLock.lock(); defer { metricsLock.unlock() }
+        return currentGPUMilliseconds
+    }
+    public var pipelineMilliseconds: Double {
+        metricsLock.lock(); defer { metricsLock.unlock() }
+        return currentPipelineMilliseconds
+    }
+    var overlayPipeline: (any MTLRenderPipelineState)?
+    var overlayCopyPipeline: (any MTLRenderPipelineState)?
+    var selectionOutlinePipeline: (any MTLRenderPipelineState)?
+    private var presentationPipeline: (any MTLRenderPipelineState)?
+    private var pipelines: [String: any MTLRenderPipelineState] = [:]
+    private var pickPipelines: [VertexVariant: any MTLRenderPipelineState] = [:]
+    private var capturePipelines: [VertexVariant: any MTLRenderPipelineState] = [:]
+    /// Slot in the 3-deep joint-palette ring. Advanced once per frame, shared by every pass.
+    private var jointSlot = 0
+    private var jointRings: [Int: [any MTLBuffer]] = [:]
+    private var jointUploaded: Set<Int> = []
+    private var jointPalettes: [Int: [GPUJointPair]] = [:]
+    private var morphWeightSlot = 0
+    /// One 3-deep ring per draw. A single shared ring would let a later morph in the same frame overwrite an earlier one before the GPU reads it.
+    private var morphWeightRings: [Int: [any MTLBuffer]] = [:]
+    private let tonePipeline: any MTLRenderPipelineState
+    private let depthWrite: any MTLDepthStencilState
+    private let depthRead: any MTLDepthStencilState
+    private var environment: MetalEnvironment?
+    private var materialResources: [ObjectIdentifier: MetalMaterialResources] = [:]
+    private var environmentID: LightingEnvironment?
+    /// Khronos keeps its drawable lists across frames and re-sorts them in place, so depth ties
+    /// keep the previous frame's order. Rebuilt on every load, like `prepareScene` on new nodes.
+    private var drawLists = MetalDrawLists(draws: [])
+    /// The draw mask of the last filter, so an idle filter is not re-resolved every frame. The
+    /// scene identifier is only meaningful while that scene is alive, so `load` clears this.
+    private var drawVisibility: (filter: MetalDrawFilter, scene: ObjectIdentifier, visible: [Bool])?
+
+    private struct TextureCacheKey: Hashable {
+        var format: MTLPixelFormat
+        var width: Int
+        var height: Int
+        var sampleCount: Int
+        var textureType: MTLTextureType
+        var usageRaw: UInt
+        var storage: MTLStorageMode
+        var mipmapped: Bool
+        /// Live canvas frames use three in-flight target sets; stills and picks use `nil`.
+        var liveRingIndex: Int?
+
+        init(format: MTLPixelFormat, width: Int, height: Int, sampleCount: Int, textureType: MTLTextureType,
+             usage: MTLTextureUsage, storage: MTLStorageMode, mipmapped: Bool, liveRingIndex: Int?) {
+            self.format = format
+            self.width = width
+            self.height = height
+            self.sampleCount = sampleCount
+            self.textureType = textureType
+            self.usageRaw = usage.rawValue
+            self.storage = storage
+            self.mipmapped = mipmapped
+            self.liveRingIndex = liveRingIndex
+        }
+    }
+
+    private var textureCache: [TextureCacheKey: any MTLTexture] = [:]
+    private var blackTexture: (any MTLTexture)?
+    private var liveRingIndex = 0
+    private let presentationSlots = DispatchSemaphore(value: 3)
+    private var currentTextureAllocationCount = 0
+    internal var textureAllocationCount: Int {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return currentTextureAllocationCount
+    }
+
+    internal enum RenderWaitPolicy {
+        case waitForGPU
+        case submitForPresentation
+    }
+
+    internal func resetTextureAllocationCount() {
+        stateLock.lock(); defer { stateLock.unlock() }
+        currentTextureAllocationCount = 0
+    }
+
+    public convenience init() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw MetalRendererError.unavailable }
+        try self.init(device: device)
+    }
+
+    /// A second renderer for the same loaded scene (e.g. an inspector preview): shared GPU
+    /// buffers, its own draw lists, pipelines and material resources.
+    public convenience init(sharing scene: MetalScene) throws {
+        let device = scene.draws.first?.vertexBuffer.device ?? MTLCreateSystemDefaultDevice()
+        guard let device else { throw MetalRendererError.unavailable }
+        try self.init(device: device)
+        try adopt(scene)
+    }
+
+    private init(device: any MTLDevice) throws {
+        guard let queue = device.makeCommandQueue() else { throw MetalRendererError.unavailable }
+        self.device = device
+        self.queue = queue
+        library = try device.makeDefaultLibrary(bundle: Bundle(for: MetalRenderer.self))
+        let tone = MTLRenderPipelineDescriptor()
+        tone.vertexFunction = library.makeFunction(name: "khronos_tonemap_vertex")
+        tone.fragmentFunction = library.makeFunction(name: "khronos_tonemap_fragment")
+        tone.colorAttachments[0].pixelFormat = .rgba8Unorm
+        tonePipeline = try device.makeRenderPipelineState(descriptor: tone)
+        let depth = MTLDepthStencilDescriptor()
+        depth.depthCompareFunction = .lessEqual
+        depth.isDepthWriteEnabled = true
+        guard let write = device.makeDepthStencilState(descriptor: depth) else { throw MetalRendererError.resource("depth") }
+        depthWrite = write
+        depth.isDepthWriteEnabled = false
+        guard let read = device.makeDepthStencilState(descriptor: depth) else { throw MetalRendererError.resource("depth read") }
+        depthRead = read
+    }
+
+    /// Points at an already-loaded scene and rebuilds draw lists. Pipelines and per-renderer
+    /// material caches stay on this instance; `MetalEnvironment.shared` is unchanged.
+    public func adopt(_ loaded: MetalScene) throws {
+        stateLock.lock(); defer { stateLock.unlock() }
+        try adoptLocked(loaded)
+    }
+
+    private func adoptLocked(_ loaded: MetalScene) throws {
+        for draw in loaded.draws {
+            guard draw.vertexBuffer.device === device, draw.indexBuffer.device === device else {
+                throw MetalRendererError.resource("device mismatch")
+            }
+            for binding in draw.material.textures.values {
+                guard binding.texture.device === device, binding.sampler.device === device else {
+                    throw MetalRendererError.resource("device mismatch")
+                }
+            }
+            for buffer in [draw.morphBuffer, draw.morphSourceOfBuffer, draw.skinBuffer].compactMap({ $0 }) {
+                guard buffer.device === device else { throw MetalRendererError.resource("device mismatch") }
+            }
+        }
+        drainPresentationSlots()
+        textureCache.removeAll(keepingCapacity: true)
+        blackTexture = nil
+        jointRings.removeAll(keepingCapacity: true)
+        jointUploaded.removeAll(keepingCapacity: true)
+        jointPalettes.removeAll(keepingCapacity: true)
+        morphWeightRings.removeAll(keepingCapacity: true)
+        materialResources.removeAll()
+        currentScene = loaded
+        drawLists = MetalDrawLists(draws: loaded.draws)
+        drawVisibility = nil
+    }
+
+    /// `sceneIndex` nil draws the file's default scene.
+    public func load(url: URL, sceneIndex: Int? = nil, materialVariantIndex: Int? = nil) async throws {
+        let loaded = try await MetalSceneLoader.load(url: url, device: device, sceneIndex: sceneIndex, materialVariantIndex: materialVariantIndex)
+        try adopt(loaded)
+    }
+
+    /// One frame read back as straight-alpha sRGB. `extents` sizes the floor and origin gizmo
+    /// (the camera's measured box); nil uses the drawn bounds. The transmission prepass is
+    /// Khronos's 1024²; thumbnails pass a smaller edge to save memory.
+    public func image(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                      extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
+                      transmissionResolution: Int = 1024,
+                      animationPose: AnimationPose? = nil) throws -> CGImage {
+        let output = try renderTexture(options, pose: pose, width: width, height: height, extents: extents,
+                                       transmissionResolution: transmissionResolution, animationPose: animationPose)
+        let byteCount = try MetalResourceLimits.product(width, height, label: "Image readback pixels",
+                                                        limit: MetalResourceLimits.maxStillBytes / 4)
+        let readbackBytes = try MetalResourceLimits.product(byteCount, 4, label: "Image readback",
+                                                            limit: MetalResourceLimits.maxStillBytes)
+        var bytes = [UInt8](repeating: 0, count: readbackBytes)
+        output.getBytes(&bytes, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+        // WebGL's premultiplied canvas is quantized to RGBA8 before PNG unpremultiplication.
+        for offset in stride(from: 0, to: bytes.count, by: 4) {
+            let alpha = Int(bytes[offset + 3])
+            if alpha > 0 && alpha < 255 {
+                for component in 0..<3 {
+                    bytes[offset + component] = UInt8(min(255, (Int(bytes[offset + component]) * 255 + alpha / 2) / alpha))
+                }
+            }
+        }
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData),
+              let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                                  bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                                  provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+        else { throw MetalRendererError.resource("image readback") }
+        return image
+    }
+
+    /// `centerOffset` moves the orbit camera's projection centre by that many pixels (x right,
+    /// y up); the live canvas uses it to centre the model beside the sidebar and inspector.
+    /// User-camera view-projection and letterbox aspect for overlay-aligned gizmo hit tests.
+    func gizmoPickFrame(options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                        centerOffset: SIMD2<Float> = .zero) throws -> (viewProjection: simd_float4x4, viewportAspect: Float?) {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard let scene else { throw MetalRendererError.noScene }
+        let orthographic = options.isOrthographic
+        var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
+        if centerOffset != .zero {
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: nil)
+            camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
+        }
+        var viewProjection = camera.openGLProjectionMatrix * camera.viewMatrix
+        var viewportAspect: Float? = nil
+        if let index = options.fileCameraNodeIndex,
+           let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
+            viewProjection = fileCamera.viewProjection
+            viewportAspect = fileCamera.viewportAspect
+        }
+        return (viewProjection, viewportAspect)
+    }
+
+    /// glTF node index under `point` (x right, y down), or nil for background / mask holes.
+    func pick(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+              centerOffset: SIMD2<Float> = .zero, point: SIMD2<Int>,
+              animationPose: AnimationPose? = nil) throws -> Int? {
+        try pickResult(options, pose: pose, width: width, height: height, centerOffset: centerOffset,
+                       point: point, animationPose: animationPose).nodeIndex
+    }
+
+    /// Mesh pick at `point` plus stored depth (Metal 0…1; 1 when nothing was drawn).
+    func pickResult(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                    centerOffset: SIMD2<Float> = .zero, point: SIMD2<Int>,
+                    animationPose: AnimationPose? = nil) throws -> MetalPickResult {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard let scene else { throw MetalRendererError.noScene }
+        try validateRenderRequest(width: width, height: height, transmissionResolution: 0, live: false, pick: true)
+        let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
+                                        centerOffset: centerOffset, scene: scene, animationPose: animationPose)
+        let pickTarget = try cachedTexture(.r32Uint, width, height, [.renderTarget, .shaderRead])
+        let depth = try cachedTexture(.depth32Float, width, height, [.renderTarget, .shaderRead])
+        guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
+        command.label = "Khronos pick"
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = pickTarget
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.storeAction = .store
+        pass.depthAttachment.clearDepth = 1
+        try encodePick(command: command, pass: pass, frame: setup.frame, scene: scene,
+                       draws: setup.mainDraws, transforms: setup.transforms, worlds: setup.nodeWorlds,
+                       viewport: setup.viewport, animationPose: animationPose)
+        let x = min(max(point.x, 0), width - 1)
+        let y = min(max(point.y, 0), height - 1)
+        let idReadback = try pickReadbackIDTexture()
+        let depthReadback = try pickReadbackDepthTexture()
+        guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("pick blit") }
+        blit.copy(from: pickTarget, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: x, y: y, z: 0), sourceSize: MTLSize(width: 1, height: 1, depth: 1),
+                  to: idReadback, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(from: depth, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: x, y: y, z: 0), sourceSize: MTLSize(width: 1, height: 1, depth: 1),
+                  to: depthReadback, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        command.commit()
+        command.waitUntilCompleted()
+        if let error = command.error { throw MetalRendererError.gpu(error.localizedDescription) }
+        var drawID: UInt32 = 0
+        idReadback.getBytes(&drawID, bytesPerRow: 4, from: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0)
+        var storedDepth: Float = 1
+        depthReadback.getBytes(&storedDepth, bytesPerRow: 4, from: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0)
+        guard drawID > 0, Int(drawID) <= scene.draws.count else {
+            return MetalPickResult(nodeIndex: nil, depth: storedDepth)
+        }
+        return MetalPickResult(nodeIndex: scene.draws[Int(drawID) - 1].nodeIndex, depth: storedDepth)
+    }
+
+    func renderTexture(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                       extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
+                       transmissionResolution: Int = 1024,
+                       centerOffset: SIMD2<Float> = .zero,
+                       animationPose: AnimationPose? = nil,
+                       waitPolicy: RenderWaitPolicy = .waitForGPU,
+                       presentOn drawable: (any CAMetalDrawable)? = nil,
+                       presentationSlotReserved: Bool = false) throws -> any MTLTexture {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        if drawable != nil { precondition(waitPolicy == .submitForPresentation) }
+        var reservedPresentationSlot = presentationSlotReserved
+        defer {
+            if reservedPresentationSlot { presentationSlots.signal() }
+        }
+        guard let scene else { throw MetalRendererError.noScene }
+        try validateRenderRequest(width: width, height: height, transmissionResolution: transmissionResolution,
+                                 live: waitPolicy == .submitForPresentation)
+        let wireframe = options.viewMode == .wireframe
+        let setup = try sceneFrameSetup(options: options, pose: pose, width: width, height: height,
+                                        centerOffset: centerOffset, scene: scene, animationPose: animationPose)
+        var overlays = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
+        overlays.nodeWorlds = setup.nodeWorlds
+        var frame = setup.frame
+        let viewportAspect = setup.viewportAspect
+        let viewport = setup.viewport
+        let lights = setup.lights
+        let order = MetalDrawLists.Frame(transmissionPrepass: setup.transmissionPrepass, main: setup.mainDraws)
+        if waitPolicy == .submitForPresentation && !presentationSlotReserved {
+            // Drop the frame instead of stalling the main thread when three are already on the GPU.
+            guard presentationSlots.wait(timeout: .now()) == .success else {
+                throw MetalRendererError.presentationBackpressure
+            }
+            reservedPresentationSlot = true
+        }
+        let liveRing = waitPolicy == .submitForPresentation ? liveRingIndex : nil
+        let outputStorage: MTLStorageMode = waitPolicy == .submitForPresentation ? .private : .shared
+        let hdr = try cachedTexture(.rgba16Float, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRing)
+        let flags = try cachedTexture(.r8Uint, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRing)
+        // Stored for overlay soft depth: floor / gizmo / AABB must sit behind the model.
+        let depth = try cachedTexture(.depth32Float, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRing)
+        let output = try cachedTexture(.rgba8Unorm, width, height, [.renderTarget, .shaderRead],
+                                       storage: outputStorage, liveRingIndex: liveRing)
+        guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("command buffer") }
+        command.label = waitPolicy == .submitForPresentation ? "Khronos live" : "Khronos still"
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = hdr
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        // clearFrame: the tonemap flag attachment clears to 1 (linear to sRGB).
+        pass.colorAttachments[1].texture = flags
+        pass.colorAttachments[1].loadAction = .clear
+        pass.colorAttachments[1].storeAction = .store
+        pass.colorAttachments[1].clearColor = MTLClearColorMake(1, 0, 0, 0)
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.storeAction = .store
+        pass.depthAttachment.clearDepth = 1
+        let black = try sharedBlackTexture()
+        var background: any MTLTexture = black
+        if let prepass = order.transmissionPrepass {
+            let prepassStyle = MetalDrawStyle(options.viewMode)
+            background = try transmissionBackground(command: command, frame: frame, scene: scene, draws: prepass,
+                                                    transforms: setup.transforms, worlds: setup.nodeWorlds,
+                                                    lights: lights, fallback: black,
+                                                    wireframe: wireframe, style: prepassStyle,
+                                                    resolution: transmissionResolution,
+                                                    animationPose: animationPose, liveRingIndex: liveRing)
+        }
+        try encodeScene(command: command, pass: pass, frame: frame, scene: scene, lights: lights,
+                        draws: order.main, transforms: setup.transforms, worlds: setup.nodeWorlds,
+                        background: background,
+                        wireframe: wireframe, style: MetalDrawStyle(options.viewMode), viewport: viewport,
+                        animationPose: animationPose)
+        let tone = MTLRenderPassDescriptor()
+        tone.colorAttachments[0].texture = output
+        // Outside a letterboxed viewport the canvas keeps its transparent clear.
+        tone.colorAttachments[0].loadAction = viewportAspect == nil ? .dontCare : .clear
+        tone.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        tone.colorAttachments[0].storeAction = .store
+        guard let finish = command.makeRenderCommandEncoder(descriptor: tone) else { throw MetalRendererError.resource("tonemap encoder") }
+        finish.setViewport(viewport)
+        finish.setRenderPipelineState(tonePipeline)
+        finish.setFragmentTexture(hdr, index: 0)
+        finish.setFragmentTexture(flags, index: 1)
+        if MetalDrawStyle(options.viewMode) == .xray { frame.options.z |= MetalDrawStyle.straightToneMapBit }
+        finish.setFragmentBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        finish.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        finish.endEncoding()
+        let lines = overlayVertices(scene: scene, options: overlays)
+        let silhouetteNodes = options.useSilhouetteSelectionOutline
+            ? silhouetteOutlineNodeIndices(options: overlays, scene: scene) : []
+        var selectionIDs: (any MTLTexture)?
+        if options.useSilhouetteSelectionOutline, !silhouetteNodes.isEmpty {
+            let outlineDraws = selectionOutlineDrawIndices(options: options, scene: scene, nodeIndices: silhouetteNodes)
+            if !outlineDraws.isEmpty {
+                selectionIDs = try renderSelectionIDBuffer(frame: frame, transforms: setup.transforms, worlds: setup.nodeWorlds,
+                                                           viewport: viewport, scene: scene, draws: outlineDraws,
+                                                           width: width, height: height, command: command,
+                                                           animationPose: animationPose, liveRingIndex: liveRing)
+            }
+        }
+        if !lines.isEmpty || selectionIDs != nil {
+            // Overlays always use the user camera; only occlude when that camera also drew the model.
+            try encodeOverlays(lines, command: command, output: output,
+                               viewProjection: setup.camera.openGLProjectionMatrix * setup.camera.viewMatrix, viewport: viewport,
+                               sceneDepth: depth, occlude: options.fileCameraNodeIndex == nil,
+                               selectionIDs: selectionIDs, liveRingIndex: liveRing)
+        }
+        if let drawable {
+            try encodePresentation(command: command, texture: output, drawable: drawable)
+            command.present(drawable)
+        }
+        if waitPolicy == .submitForPresentation {
+            liveRingIndex = (liveRingIndex + 1) % 3
+            reservedPresentationSlot = false
+            // The handler owns the semaphore until it signals. A weak self would skip the signal
+            // if the view is gone, and deinit then disposes a semaphore that is still in use.
+            let slots = presentationSlots
+            command.addCompletedHandler { [weak self] finished in
+                slots.signal()
+                if finished.error == nil {
+                    self?.metricsLock.lock()
+                    self?.currentGPUMilliseconds = max(0, finished.gpuEndTime - finished.gpuStartTime) * 1000
+                    self?.metricsLock.unlock()
+                }
+            }
+            command.commit()
+        } else {
+            command.commit()
+            command.waitUntilCompleted()
+            if let error = command.error { throw MetalRendererError.gpu(error.localizedDescription) }
+            metricsLock.lock()
+            currentGPUMilliseconds = max(0, command.gpuEndTime - command.gpuStartTime) * 1000
+            metricsLock.unlock()
+        }
+        return output
+    }
+
+    @discardableResult
+    func renderLiveFrame(_ options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                         extents: (min: SIMD3<Float>, max: SIMD3<Float>)? = nil,
+                         transmissionResolution: Int = 1024,
+                         centerOffset: SIMD2<Float> = .zero,
+                         animationPose: AnimationPose? = nil,
+                         drawable: () -> (any CAMetalDrawable)?) throws -> Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard presentationSlots.wait(timeout: .now()) == .success else {
+            throw MetalRendererError.presentationBackpressure
+        }
+        guard let drawable = drawable() else {
+            presentationSlots.signal()
+            return false
+        }
+        _ = try renderTexture(options, pose: pose, width: width, height: height, extents: extents,
+                              transmissionResolution: transmissionResolution, centerOffset: centerOffset,
+                              animationPose: animationPose, waitPolicy: .submitForPresentation,
+                              presentOn: drawable, presentationSlotReserved: true)
+        return true
+    }
+
+    /// Draw transforms and depth order for one frame. Encoding reads `transforms`; hide, solo and
+    /// isolate still drop draws after the sort.
+    struct MetalFrameDraws {
+        var transforms: [DrawFrameTransform]
+        var nodeWorlds: [simd_float4x4]
+        var main: [Int]
+        var transmissionPrepass: [Int]?
+    }
+
+    func frameDraws(options: ViewOptions, animationPose: AnimationPose?, view: simd_float4x4) -> MetalFrameDraws {
+        guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
+        return frameDraws(options: options, posed: scene.framePose(pose: animationPose), view: view)
+    }
+
+    func frameDraws(options: ViewOptions, posed: SceneFramePose, view: simd_float4x4) -> MetalFrameDraws {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard let scene else { return MetalFrameDraws(transforms: [], nodeWorlds: [], main: [], transmissionPrepass: nil) }
+        let xray = MetalDrawStyle(options.viewMode) == .xray
+        var order = drawLists.frame(draws: scene.draws, models: posed.transforms.map(\.model), view: view, xray: xray)
+        let filter = MetalDrawFilter(options)
+        if !filter.isEmpty {
+            let visible = visibility(of: filter, in: scene)
+            order.main = order.main.filter { visible[$0] }
+            order.transmissionPrepass = order.transmissionPrepass?.filter { visible[$0] }
+        }
+        return MetalFrameDraws(transforms: posed.transforms, nodeWorlds: posed.nodeWorlds, main: order.main, transmissionPrepass: order.transmissionPrepass)
+    }
+
+    private struct SceneFrameSetup {
+        var frame: GPUFrame
+        var view: simd_float4x4
+        var viewport: MTLViewport
+        var viewportAspect: Float?
+        var lights: [MetalPunctualLight]
+        var transforms: [DrawFrameTransform]
+        var nodeWorlds: [simd_float4x4]
+        var mainDraws: [Int]
+        var transmissionPrepass: [Int]?
+        var camera: MetalCamera
+    }
+
+    private func sceneFrameSetup(options: ViewOptions, pose: MetalCameraPose, width: Int, height: Int,
+                                 centerOffset: SIMD2<Float>, scene: MetalScene,
+                                 animationPose: AnimationPose? = nil) throws -> SceneFrameSetup {
+        beginJointFrame()
+        let look = options.look
+        let orthographic = options.isOrthographic
+        if environmentID != look.environment {
+            environment = try MetalEnvironment.shared(device: device, environment: look.environment)
+            environmentID = look.environment
+        }
+        var camera = MetalCamera(pose: pose, isOrthographic: orthographic, aspect: Float(width) / Float(height))
+        if centerOffset != .zero {
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: nil)
+            camera.centerShift = 2 * centerOffset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
+        }
+        let filter = MetalDrawFilter(options)
+        let posedFrame = scene.framePose(pose: animationPose)
+        let nodeWorlds = posedFrame.nodeWorlds
+        let lights = scene.posedLights(filter.visibleLights(in: scene), worlds: nodeWorlds)
+        var frame = GPUFrame(viewProjection: camera.openGLProjectionMatrix * camera.viewMatrix,
+                             cameraPosition: SIMD4(camera.eye, 1),
+                             environment: SIMD4(Float((90 + look.environmentYawDegrees) * .pi / 180),
+                                                Float(look.environmentIntensity) * (environment?.intensityScale ?? 1),
+                                                Float(pow(2, look.exposureEV)), 4),
+                             options: SIMD4(toneMap(look.toneMapping), debugOutput(options.viewMode), environment == nil ? 0 : 1, UInt32(lights.count)),
+                             viewport: SIMD4(Float(width), Float(height), 0, 0))
+        var view = camera.viewMatrix
+        var viewportAspect: Float? = nil
+        if let index = options.fileCameraNodeIndex, let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height), worlds: nodeWorlds) {
+            frame.viewProjection = fileCamera.viewProjection
+            frame.cameraPosition = SIMD4(fileCamera.eye, 1)
+            view = fileCamera.view
+            viewportAspect = fileCamera.viewportAspect
+        }
+        let viewport = khronosViewport(width: width, height: height, aspect: viewportAspect)
+        let posed = frameDraws(options: options, posed: posedFrame, view: view)
+        return SceneFrameSetup(frame: frame, view: view, viewport: viewport, viewportAspect: viewportAspect,
+                               lights: lights, transforms: posed.transforms, nodeWorlds: posed.nodeWorlds,
+                               mainDraws: posed.main,
+                               transmissionPrepass: posed.transmissionPrepass, camera: camera)
+    }
+
+    private func visibility(of filter: MetalDrawFilter, in scene: MetalScene) -> [Bool] {
+        let identifier = ObjectIdentifier(scene)
+        if let cached = drawVisibility, cached.filter == filter, cached.scene == identifier {
+            return cached.visible
+        }
+        let visible = filter.visibleDraws(in: scene)
+        drawVisibility = (filter, identifier, visible)
+        return visible
+    }
+
+    func present(_ texture: any MTLTexture, on drawable: any CAMetalDrawable) throws {
+        stateLock.lock(); defer { stateLock.unlock() }
+        guard let command = queue.makeCommandBuffer() else { throw MetalRendererError.resource("presentation command") }
+        try encodePresentation(command: command, texture: texture, drawable: drawable)
+        command.present(drawable)
+        command.commit()
+    }
+
+    private func encodePresentation(command: any MTLCommandBuffer, texture: any MTLTexture,
+                                    drawable: any CAMetalDrawable) throws {
+        if presentationPipeline == nil {
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = library.makeFunction(name: "khronos_tonemap_vertex")
+            d.fragmentFunction = library.makeFunction(name: "khronos_present_fragment")
+            d.colorAttachments[0].pixelFormat = drawable.texture.pixelFormat
+            presentationPipeline = try device.makeRenderPipelineState(descriptor: d)
+        }
+        guard let pipeline = presentationPipeline else { throw MetalRendererError.resource("presentation pipeline") }
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = drawable.texture
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else {
+            throw MetalRendererError.resource("presentation encoder")
+        }
+        encoder.setRenderPipelineState(pipeline)
+        encoder.setFragmentTexture(texture, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        encoder.endEncoding()
+    }
+
+    private func transmissionBackground(command: any MTLCommandBuffer, frame: GPUFrame,
+                                        scene: MetalScene, draws: [Int], transforms: [DrawFrameTransform],
+                                        worlds: [simd_float4x4],
+                                        lights: [MetalPunctualLight],
+                                        fallback: any MTLTexture, wireframe: Bool = false,
+                                        style: MetalDrawStyle = .shaded,
+                                        resolution requested: Int = 1024,
+                                        animationPose: AnimationPose? = nil, liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        // Khronos's prepass is 1024². Thumbnail stills pass a smaller edge; never grow past 1024.
+        let resolution = min(1024, max(1, requested))
+        let resolved = try cachedTexture(.rgba8Unorm, resolution, resolution, [.renderTarget, .shaderRead],
+                                         mipmapped: true, liveRingIndex: liveRingIndex)
+        let color = try cachedTexture(.rgba8Unorm, resolution, resolution, [.renderTarget],
+                                      sampleCount: 4, textureType: .type2DMultisample, liveRingIndex: liveRingIndex)
+        let flag = try cachedTexture(.r8Uint, resolution, resolution, [.renderTarget],
+                                     sampleCount: 4, textureType: .type2DMultisample, liveRingIndex: liveRingIndex)
+        let depth = try cachedTexture(.depth32Float, resolution, resolution, [.renderTarget],
+                                      sampleCount: 4, textureType: .type2DMultisample, liveRingIndex: liveRingIndex)
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = color
+        pass.colorAttachments[0].resolveTexture = resolved
+        pass.colorAttachments[0].loadAction = .clear
+        // clearFrame clears opaqueFramebufferMSAA to clearColor^2.2; the viewer's clearColor is [0, 0, 0, 0].
+        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        pass.colorAttachments[0].storeAction = .storeAndMultisampleResolve
+        pass.colorAttachments[1].texture = flag
+        pass.colorAttachments[1].loadAction = .clear
+        pass.colorAttachments[1].storeAction = .store
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.storeAction = .store
+        pass.depthAttachment.clearDepth = 1
+        var preFrame = frame
+        preFrame.options.z |= 2
+        try encodeScene(command: command, pass: pass, frame: preFrame, scene: scene, lights: lights,
+            draws: draws, transforms: transforms, worlds: worlds, background: fallback, samples: 4, format: .rgba8Unorm,
+            wireframe: wireframe, style: style, animationPose: animationPose)
+        guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("transmission mips") }
+        blit.generateMipmaps(for: resolved)
+        blit.endEncoding()
+        return resolved
+    }
+
+    /// Index is a scene draw index. A missing entry keeps the rest model, which is what a still encodes.
+    private func frameTransform(_ transforms: [DrawFrameTransform], _ index: Int, _ draw: MetalDraw) -> DrawFrameTransform {
+        if transforms.indices.contains(index) { return transforms[index] }
+        return DrawFrameTransform(model: draw.worldTransform,
+                                  normalMatrix: draw.worldTransform.inverse.transpose,
+                                  negativeScale: draw.negativeScale)
+    }
+
+    private func encodeScene(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor,
+                             frame inputFrame: GPUFrame, scene: MetalScene,
+                             lights: [MetalPunctualLight], draws: [Int], transforms: [DrawFrameTransform],
+                             worlds: [simd_float4x4],
+                             background: any MTLTexture,
+                             samples: Int = 1, format: MTLPixelFormat = .rgba16Float,
+                             wireframe: Bool = false, style: MetalDrawStyle = .shaded,
+                             viewport: MTLViewport? = nil, animationPose: AnimationPose? = nil) throws {
+        var frame = inputFrame
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw MetalRendererError.resource("render encoder") }
+        if let viewport { encoder.setViewport(viewport) }
+        encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        encoder.setFragmentBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        if wireframe { encoder.setTriangleFillMode(.lines) }
+        environment?.bind(encoder)
+        encoder.setFragmentTexture(background, index: 30)
+        var gpuLights = lights.map(GPULight.init)
+        if gpuLights.isEmpty { gpuLights = [GPULight.zero] }
+        gpuLights.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 4) }
+        // Wireframe-on-shaded: a second pass of edges over the shaded frame (`MetalDrawStyle`).
+        let passes: [MetalDrawStyle] = style == .wireframeOnShaded ? [.shaded, .wireframeOnShaded] : [style]
+        for passStyle in passes {
+        if passStyle == .wireframeOnShaded { passStyle.configureEdgePass(encoder) }
+        for index in draws {
+            let draw = scene.draws[index]
+            if passStyle == .wireframeOnShaded, !MetalDrawStyle.hasTriangles(draw) { continue }
+            let source = passStyle.material(for: draw.material)
+            let blend = passStyle.blends(source)
+            let weights = scene.morphWeights(for: draw, pose: animationPose)
+            let mask = Self.activeMorphMask(draw, weights: weights)
+            let variant = Self.vertexVariant(mask: mask, draw: draw)
+            encoder.setRenderPipelineState(try pipeline(blend: blend, samples: samples, format: format, variant: variant))
+            encoder.setDepthStencilState(blend || passStyle == .wireframeOnShaded ? depthRead : depthWrite)
+            let transform = frameTransform(transforms, index, draw)
+            encoder.setCullMode(source.doubleSided || passStyle.drawsBackFaces ? .none : .back)
+            encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
+            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix, morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            var material = GPUMaterial(source)
+            passStyle.adjust(&material)
+            encoder.setFragmentBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            let resourceKey = ObjectIdentifier(draw.vertexBuffer)
+            if materialResources[resourceKey] == nil {
+                materialResources[resourceKey] = try MetalMaterialResources(draw.material, device: device, library: library)
+            }
+            materialResources[resourceKey]?.bind(encoder)
+            encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
+            try bindMorph(encoder, draw: draw, drawIndex: index, weights: weights, mask: mask)
+            try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
+            encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
+                                          indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
+        }
+        }
+        encoder.endEncoding()
+    }
+
+    private func encodePick(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor, frame inputFrame: GPUFrame,
+                            scene: MetalScene, draws: [Int], transforms: [DrawFrameTransform],
+                            worlds: [simd_float4x4], viewport: MTLViewport,
+                            animationPose: AnimationPose?) throws {
+        var frame = inputFrame
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw MetalRendererError.resource("pick encoder") }
+        encoder.setViewport(viewport)
+        encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        encoder.setFragmentBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        for drawIndex in draws {
+            let draw = scene.draws[drawIndex]
+            let weights = scene.morphWeights(for: draw, pose: animationPose)
+            let mask = Self.activeMorphMask(draw, weights: weights)
+            let variant = Self.vertexVariant(mask: mask, draw: draw)
+            encoder.setRenderPipelineState(try pickPipeline(variant))
+            // Every draw writes depth so the nearest surface wins regardless of draw order.
+            encoder.setDepthStencilState(depthWrite)
+            let transform = frameTransform(transforms, drawIndex, draw)
+            encoder.setCullMode(draw.material.doubleSided ? .none : .back)
+            encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
+            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix, morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            var material = GPUMaterial(draw.material)
+            encoder.setFragmentBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            let resourceKey = ObjectIdentifier(draw.vertexBuffer)
+            if materialResources[resourceKey] == nil {
+                materialResources[resourceKey] = try MetalMaterialResources(draw.material, device: device, library: library)
+            }
+            materialResources[resourceKey]?.bind(encoder)
+            var drawID = UInt32(drawIndex + 1)
+            encoder.setFragmentBytes(&drawID, length: MemoryLayout<UInt32>.stride, index: 6)
+            encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
+            try bindMorph(encoder, draw: draw, drawIndex: drawIndex, weights: weights, mask: mask)
+            try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
+            encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
+                                          indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
+        }
+        encoder.endEncoding()
+    }
+
+    static let selectionOutlineAccent = SIMD4<Float>(0.15, 0.75, 1, 1)
+
+    func selectionOutlineDrawIndices(options: ViewOptions, scene: MetalScene, nodeIndices: Set<Int>) -> [Int] {
+        let filter = MetalDrawFilter(options)
+        let visible = filter.isEmpty ? Array(repeating: true, count: scene.draws.count) : visibility(of: filter, in: scene)
+        return scene.draws.enumerated().compactMap { index, draw -> Int? in
+            guard visible[index], nodeIndices.contains(draw.nodeIndex) else { return nil }
+            return index
+        }
+    }
+
+    private func renderSelectionIDBuffer(frame: GPUFrame, transforms: [DrawFrameTransform], worlds: [simd_float4x4],
+                                 viewport: MTLViewport, scene: MetalScene, draws: [Int], width: Int, height: Int,
+                                 command: any MTLCommandBuffer,
+                                 animationPose: AnimationPose?, liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        let target = try cachedTexture(.r32Uint, width, height, [.renderTarget, .shaderRead], liveRingIndex: liveRingIndex)
+        let depth = try cachedTexture(.depth32Float, width, height, [.renderTarget], liveRingIndex: liveRingIndex)
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = target
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.storeAction = .store
+        pass.depthAttachment.clearDepth = 1
+        try encodeSelectionPick(command: command, pass: pass, frame: frame, scene: scene, draws: draws,
+                                transforms: transforms, worlds: worlds, viewport: viewport, animationPose: animationPose)
+        return target
+    }
+
+    private func encodeSelectionPick(command: any MTLCommandBuffer, pass: MTLRenderPassDescriptor,
+                                     frame inputFrame: GPUFrame, scene: MetalScene, draws: [Int],
+                                     transforms: [DrawFrameTransform], worlds: [simd_float4x4],
+                                     viewport: MTLViewport, animationPose: AnimationPose?) throws {
+        var frame = inputFrame
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else {
+            throw MetalRendererError.resource("selection id encoder")
+        }
+        encoder.setViewport(viewport)
+        encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        encoder.setFragmentBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        for drawIndex in draws {
+            let draw = scene.draws[drawIndex]
+            let weights = scene.morphWeights(for: draw, pose: animationPose)
+            let mask = Self.activeMorphMask(draw, weights: weights)
+            let variant = Self.vertexVariant(mask: mask, draw: draw)
+            encoder.setRenderPipelineState(try pickPipeline(variant))
+            // Every draw writes depth so the nearest surface wins regardless of draw order.
+            encoder.setDepthStencilState(depthWrite)
+            let transform = frameTransform(transforms, drawIndex, draw)
+            encoder.setCullMode(draw.material.doubleSided ? .none : .back)
+            encoder.setFrontFacing(transform.negativeScale ? .clockwise : .counterClockwise)
+            var uniforms = GPUDraw(model: transform.model, normalMatrix: transform.normalMatrix,
+                                   morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+            var material = GPUMaterial(draw.material)
+            encoder.setFragmentBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+            let resourceKey = ObjectIdentifier(draw.vertexBuffer)
+            if materialResources[resourceKey] == nil {
+                materialResources[resourceKey] = try MetalMaterialResources(draw.material, device: device, library: library)
+            }
+            materialResources[resourceKey]?.bind(encoder)
+            var nodeID = UInt32(draw.nodeIndex + 1)
+            encoder.setFragmentBytes(&nodeID, length: MemoryLayout<UInt32>.stride, index: 6)
+            encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
+            try bindMorph(encoder, draw: draw, drawIndex: drawIndex, weights: weights, mask: mask)
+            try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
+            encoder.drawIndexedPrimitives(type: draw.primitiveType, indexCount: draw.indexCount, indexType: .uint32,
+                                          indexBuffer: draw.indexBuffer, indexBufferOffset: 0)
+        }
+        encoder.endEncoding()
+    }
+
+    private func pickPipeline(_ variant: VertexVariant) throws -> any MTLRenderPipelineState {
+        if let cached = pickPipelines[variant] { return cached }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = try khronosVertex(variant, capture: false)
+        descriptor.fragmentFunction = library.makeFunction(name: "khronos_pick_fragment")
+        descriptor.colorAttachments[0].pixelFormat = .r32Uint
+        descriptor.depthAttachmentPixelFormat = .depth32Float
+        let made = try device.makeRenderPipelineState(descriptor: descriptor)
+        pickPipelines[variant] = made
+        return made
+    }
+
+    private func pipeline(blend: Bool, samples: Int = 1, format: MTLPixelFormat = .rgba16Float, variant: VertexVariant = VertexVariant()) throws -> any MTLRenderPipelineState {
+        let key = "\(blend)-\(samples)-\(format.rawValue)-m\(variant.morphMask)-s\(variant.hasSkin ? 1 : 0)\(variant.hasJoints1 ? 1 : 0)"
+        if let cached = pipelines[key] { return cached }
+        let start = CFAbsoluteTimeGetCurrent()
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = try khronosVertex(variant, capture: false)
+        descriptor.fragmentFunction = library.makeFunction(name: "khronos_fragment")
+        descriptor.colorAttachments[0].pixelFormat = format
+        descriptor.rasterSampleCount = samples
+        descriptor.colorAttachments[1].pixelFormat = .r8Uint
+        descriptor.depthAttachmentPixelFormat = .depth32Float
+        if blend {
+            guard let color = descriptor.colorAttachments[0] else {
+                throw MetalRendererError.resource("pipeline color attachment")
+            }
+            color.isBlendingEnabled = true
+            color.sourceRGBBlendFactor = .sourceAlpha
+            color.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            color.sourceAlphaBlendFactor = .one
+            color.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        }
+        let made = try device.makeRenderPipelineState(descriptor: descriptor)
+        pipelines[key] = made
+        metricsLock.lock()
+        currentPipelineMilliseconds += (CFAbsoluteTimeGetCurrent() - start) * 1000
+        metricsLock.unlock()
+        return made
+    }
+
+    private func capturePipeline(_ variant: VertexVariant) throws -> any MTLRenderPipelineState {
+        if let cached = capturePipelines[variant] { return cached }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = try khronosVertex(variant, capture: true)
+        descriptor.fragmentFunction = library.makeFunction(name: "khronos_capture_fragment")
+        descriptor.colorAttachments[0].pixelFormat = .rgba8Unorm
+        let made = try device.makeRenderPipelineState(descriptor: descriptor)
+        capturePipelines[variant] = made
+        return made
+    }
+
+    /// `morph_mask` 0, `morph_capture` 1, `morph_streams` 2, `has_skin` 3, `has_joints1` 4.
+    /// Streams exist only when the mask is nonzero, and skin buffers only when `hasSkin` is set,
+    /// so a rigid draw's vertex function has the same resources as before morph and skin.
+    private func khronosVertex(_ variant: VertexVariant, capture: Bool) throws -> any MTLFunction {
+        var mask = variant.morphMask
+        var captureFlag = capture
+        var streams = variant.morphMask != 0
+        var skin = variant.hasSkin
+        var joints1 = variant.hasJoints1
+        let values = MTLFunctionConstantValues()
+        values.setConstantValue(&mask, type: .uint, index: 0)
+        values.setConstantValue(&captureFlag, type: .bool, index: 1)
+        values.setConstantValue(&streams, type: .bool, index: 2)
+        values.setConstantValue(&skin, type: .bool, index: 3)
+        values.setConstantValue(&joints1, type: .bool, index: 4)
+        return try library.makeFunction(name: "khronos_vertex", constantValues: values)
+    }
+
+    /// A zero weight vector uses the rigid pipeline. Capture forces the draw's mask so weight 0 still
+    /// executes the shader's `position + 0·Δ` path.
+    private static func activeMorphMask(_ draw: MetalDraw, weights: [Float], force: Bool = false) -> UInt32 {
+        guard draw.morphBuffer != nil, draw.morphMask != 0 else { return 0 }
+        if force || weights.contains(where: { $0 != 0 }) { return draw.morphMask }
+        return 0
+    }
+
+    private static func morphInfo(_ draw: MetalDraw, mask: UInt32, jointCount: Int = 0) -> SIMD4<UInt32> {
+        SIMD4(UInt32(draw.morphTargetCount), UInt32(draw.morphSourceVertexCount), mask, UInt32(jointCount))
+    }
+
+    private static func jointCount(_ draw: MetalDraw, scene: MetalScene) -> Int {
+        guard draw.skinBuffer != nil, let index = draw.skinIndex, scene.skins.indices.contains(index) else { return 0 }
+        return scene.skins[index].jointNodeIndices.count
+    }
+
+    private static func vertexVariant(mask: UInt32, draw: MetalDraw) -> VertexVariant {
+        let skinned = draw.skinBuffer != nil
+        return VertexVariant(morphMask: mask, hasSkin: skinned, hasJoints1: skinned && draw.hasJoints1)
+    }
+
+    /// One palette per skin per frame, from the node worlds `framePose` already walked.
+    /// At most 32 joints go through `setVertexBytes`; larger palettes use a 3-deep buffer ring
+    /// so a frame still in flight is not overwritten. Every pass binds buffer 8.
+    private func beginJointFrame() {
+        jointSlot = (jointSlot + 1) % 3
+        morphWeightSlot = (morphWeightSlot + 1) % 3
+        jointUploaded.removeAll(keepingCapacity: true)
+        jointPalettes.removeAll(keepingCapacity: true)
+    }
+
+    private func bindSkin(_ encoder: any MTLRenderCommandEncoder, draw: MetalDraw, scene: MetalScene, worlds: [simd_float4x4]) throws {
+        guard let skinBuffer = draw.skinBuffer, let skinIndex = draw.skinIndex, scene.skins.indices.contains(skinIndex) else { return }
+        encoder.setVertexBuffer(skinBuffer, offset: 0, index: 7)
+        let palette = jointPalette(skinIndex: skinIndex, scene: scene, worlds: worlds)
+        let upload = palette.isEmpty
+            ? [GPUJointPair(joint: matrix_identity_float4x4, normal: matrix_identity_float4x4)]
+            : palette
+        let byteCount = try MetalResourceLimits.product(upload.count, MemoryLayout<GPUJointPair>.stride,
+                                                        label: "Joint palette")
+        if byteCount <= MetalSkinning.vertexBytesLimit {
+            let uploaded = upload.withUnsafeBytes { raw -> Bool in
+                guard let base = raw.baseAddress else { return false }
+                encoder.setVertexBytes(base, length: raw.count, index: 8)
+                return true
+            }
+            guard uploaded else { throw MetalRendererError.resource("joint palette") }
+            return
+        }
+        let buffer = try jointBuffer(skinIndex: skinIndex, byteCount: byteCount)
+        if jointUploaded.insert(skinIndex).inserted {
+            let uploaded = upload.withUnsafeBytes { raw -> Bool in
+                guard let base = raw.baseAddress else { return false }
+                memcpy(buffer.contents(), base, raw.count)
+                return true
+            }
+            guard uploaded else { throw MetalRendererError.resource("joint palette") }
+        }
+        encoder.setVertexBuffer(buffer, offset: 0, index: 8)
+    }
+
+    private func jointPalette(skinIndex: Int, scene: MetalScene, worlds: [simd_float4x4]) -> [GPUJointPair] {
+        if let cached = jointPalettes[skinIndex] { return cached }
+        let built = MetalSkinning.palette(skin: scene.skins[skinIndex], worlds: worlds)
+        jointPalettes[skinIndex] = built
+        return built
+    }
+
+    private func jointBuffer(skinIndex: Int, byteCount: Int) throws -> any MTLBuffer {
+        var ring = jointRings[skinIndex] ?? []
+        if ring.count != 3 || ring[0].length < byteCount {
+            ring = try (0..<3).map { _ in
+                guard let made = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
+                    throw MetalRendererError.resource("joint buffer")
+                }
+                return made
+            }
+            jointRings[skinIndex] = ring
+        }
+        return ring[jointSlot]
+    }
+
+    /// Active (index, weight) pairs for morph targets; large payloads use a 3-deep ring buffer per draw.
+    private func bindMorph(_ encoder: any MTLRenderCommandEncoder, draw: MetalDraw, drawIndex: Int, weights: [Float], mask: UInt32) throws {
+        guard mask != 0, let morphBuffer = draw.morphBuffer, let sourceOf = draw.morphSourceOfBuffer else { return }
+        encoder.setVertexBuffer(morphBuffer, offset: 0, index: 4)
+        encoder.setVertexBuffer(sourceOf, offset: 0, index: 9)
+        var active: [UInt32] = []
+        for (index, weight) in weights.enumerated() where weight != 0 {
+            active.append(UInt32(index))
+            active.append(weight.bitPattern)
+        }
+        guard !active.isEmpty else { return }
+        var payload = [UInt32(active.count / 2)]
+        payload.append(contentsOf: active)
+        let byteCount = try MetalResourceLimits.product(payload.count, MemoryLayout<UInt32>.stride,
+                                                        label: "Morph weights")
+        if byteCount <= MetalSkinning.vertexBytesLimit {
+            let uploaded = payload.withUnsafeBytes { raw -> Bool in
+                guard let base = raw.baseAddress else { return false }
+                encoder.setVertexBytes(base, length: byteCount, index: 5)
+                return true
+            }
+            guard uploaded else { throw MetalRendererError.resource("morph weights") }
+            return
+        }
+        let buffer = try morphWeightBuffer(drawIndex: drawIndex, byteCount: byteCount)
+        let uploaded = payload.withUnsafeBytes { raw -> Bool in
+            guard let base = raw.baseAddress else { return false }
+            memcpy(buffer.contents(), base, raw.count)
+            return true
+        }
+        guard uploaded else { throw MetalRendererError.resource("morph weights") }
+        encoder.setVertexBuffer(buffer, offset: 0, index: 5)
+    }
+
+    private func morphWeightBuffer(drawIndex: Int, byteCount: Int) throws -> any MTLBuffer {
+        var ring = morphWeightRings[drawIndex] ?? []
+        if ring.count != 3 || ring[0].length < byteCount {
+            ring = try (0..<3).map { _ in
+                guard let made = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
+                    throw MetalRendererError.resource("morph weight buffer")
+                }
+                return made
+            }
+            morphWeightRings[drawIndex] = ring
+        }
+        return ring[morphWeightSlot]
+    }
+
+    func overlayMultisampleTarget(matching output: any MTLTexture, samples: Int,
+                                    liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        try cachedTexture(output.pixelFormat, output.width, output.height, [.renderTarget],
+                          sampleCount: samples, textureType: .type2DMultisample, liveRingIndex: liveRingIndex)
+    }
+
+    func overlayFrameCopy(matching output: any MTLTexture, liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        try cachedTexture(output.pixelFormat, output.width, output.height, [.shaderRead], liveRingIndex: liveRingIndex)
+    }
+
+    private func sharedBlackTexture() throws -> any MTLTexture {
+        if let blackTexture { return blackTexture }
+        let black = try cachedTexture(.rgba8Unorm, 1, 1, [.shaderRead], storage: .shared)
+        var clear: UInt32 = 0
+        black.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &clear, bytesPerRow: 4)
+        blackTexture = black
+        return black
+    }
+
+    private func pickReadbackIDTexture() throws -> any MTLTexture {
+        try cachedTexture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
+    }
+
+    private func pickReadbackDepthTexture() throws -> any MTLTexture {
+        try cachedTexture(.depth32Float, 1, 1, [.shaderRead], storage: .shared)
+    }
+
+    private func drainPresentationSlots() {
+        for _ in 0..<3 { presentationSlots.wait() }
+        for _ in 0..<3 { presentationSlots.signal() }
+        liveRingIndex = 0
+    }
+
+    private func validateRenderRequest(width: Int, height: Int, transmissionResolution: Int,
+                                       live: Bool, pick: Bool = false) throws {
+        guard width > 0, height > 0, width <= MetalResourceLimits.maxImageDimension,
+              height <= MetalResourceLimits.maxImageDimension else {
+            throw MetalRendererError.resource("invalid image size")
+        }
+        let (pixels, pixelOverflow) = width.multipliedReportingOverflow(by: height)
+        guard !pixelOverflow else { throw MetalRendererError.resource("image size is too large") }
+        let bytesPerPixel = pick ? 9 : 21
+        let (targetBytes, targetOverflow) = pixels.multipliedReportingOverflow(by: bytesPerPixel)
+        guard !targetOverflow else { throw MetalRendererError.resource("image request is too large") }
+        var estimate = targetBytes
+        if transmissionResolution > 0 {
+            guard transmissionResolution <= 1024 else {
+                throw MetalRendererError.resource("transmission resolution is too large")
+            }
+            let (transmissionPixels, transmissionOverflow) = transmissionResolution.multipliedReportingOverflow(by: transmissionResolution)
+            let (transmissionBytes, bytesOverflow) = transmissionPixels.multipliedReportingOverflow(by: 16)
+            let (total, totalOverflow) = estimate.addingReportingOverflow(transmissionBytes)
+            guard !transmissionOverflow, !bytesOverflow, !totalOverflow else {
+                throw MetalRendererError.resource("image request is too large")
+            }
+            estimate = total
+        }
+        let budget = live ? 128 * 1024 * 1024 : MetalResourceLimits.maxStillBytes
+        guard estimate <= budget else {
+            throw MetalRendererError.resource("image request exceeds the \(budget / (1024 * 1024)) MiB memory budget")
+        }
+    }
+
+    private func cachedTexture(_ format: MTLPixelFormat, _ width: Int, _ height: Int, _ usage: MTLTextureUsage,
+                               storage: MTLStorageMode = .private, sampleCount: Int = 1,
+                               textureType: MTLTextureType = .type2D, mipmapped: Bool = false,
+                               liveRingIndex: Int? = nil) throws -> any MTLTexture {
+        let key = TextureCacheKey(format: format, width: width, height: height, sampleCount: sampleCount,
+                                  textureType: textureType, usage: usage, storage: storage, mipmapped: mipmapped,
+                                  liveRingIndex: liveRingIndex)
+        if let cached = textureCache[key] { return cached }
+        let descriptor: MTLTextureDescriptor
+        if textureType == .type2DMultisample {
+            descriptor = MTLTextureDescriptor()
+            descriptor.textureType = .type2DMultisample
+            descriptor.pixelFormat = format
+            descriptor.width = width
+            descriptor.height = height
+            descriptor.sampleCount = sampleCount
+            descriptor.storageMode = storage
+            descriptor.usage = usage
+        } else {
+            descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: width, height: height,
+                                                                  mipmapped: mipmapped)
+            descriptor.storageMode = storage
+            descriptor.usage = usage
+        }
+        guard let texture = device.makeTexture(descriptor: descriptor) else {
+            throw MetalRendererError.resource("texture \(format)")
+        }
+        currentTextureAllocationCount += 1
+        textureCache[key] = texture
+        return texture
+    }
+
+    /// Vertices after the morph and skin the shader applies for `pose`.
+    /// Points so every emitted vertex runs once. The write is after skin and before the mesh
+    /// node's model matrix, so a skinned position is already in world space.
+    func captureMorphedVertices(drawIndex: Int, pose: AnimationPose?) throws -> [MetalVertex] {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard let scene else { throw MetalRendererError.noScene }
+        guard scene.draws.indices.contains(drawIndex) else { throw MetalRendererError.resource("draw index") }
+        let draw = scene.draws[drawIndex]
+        let count = draw.vertexBuffer.length / MemoryLayout<MetalVertex>.stride
+        guard count > 0 else { return [] }
+        let weights = scene.morphWeights(for: draw, pose: pose)
+        let mask = Self.activeMorphMask(draw, weights: weights, force: draw.morphTargetCount > 0)
+        let variant = Self.vertexVariant(mask: mask, draw: draw)
+        let worlds = scene.framePose(pose: pose).nodeWorlds
+        beginJointFrame()
+        let byteCount = try MetalResourceLimits.product(count, MemoryLayout<MetalVertex>.stride,
+                                                        label: "morph capture", limit: MetalResourceLimits.maxSingleAllocationBytes)
+        guard let captured = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
+            throw MetalRendererError.resource("morph capture")
+        }
+        memset(captured.contents(), 0, byteCount)
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = try cachedTexture(.rgba8Unorm, 1, 1, [.renderTarget])
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .dontCare
+        guard let command = queue.makeCommandBuffer(),
+              let encoder = command.makeRenderCommandEncoder(descriptor: pass) else {
+            throw MetalRendererError.resource("morph capture encoder")
+        }
+        encoder.setRenderPipelineState(try capturePipeline(variant))
+        var frame = GPUFrame(viewProjection: matrix_identity_float4x4, cameraPosition: .zero,
+                             environment: .zero, options: .zero, viewport: SIMD4(1, 1, 0, 0))
+        encoder.setVertexBytes(&frame, length: MemoryLayout<GPUFrame>.stride, index: 1)
+        var uniforms = GPUDraw(model: matrix_identity_float4x4, normalMatrix: matrix_identity_float4x4,
+                               morphInfo: Self.morphInfo(draw, mask: mask, jointCount: Self.jointCount(draw, scene: scene)))
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout<GPUDraw>.stride, index: 2)
+        var material = GPUMaterial(draw.material)
+        encoder.setVertexBytes(&material, length: MemoryLayout<GPUMaterial>.stride, index: 3)
+        encoder.setVertexBuffer(draw.vertexBuffer, offset: 0, index: 0)
+        try bindMorph(encoder, draw: draw, drawIndex: drawIndex, weights: weights, mask: mask)
+        try bindSkin(encoder, draw: draw, scene: scene, worlds: worlds)
+        encoder.setVertexBuffer(captured, offset: 0, index: 6)
+        encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: count)
+        encoder.endEncoding()
+        command.commit()
+        command.waitUntilCompleted()
+        if let error = command.error { throw MetalRendererError.gpu(error.localizedDescription) }
+        let pointer = captured.contents().bindMemory(to: MetalVertex.self, capacity: count)
+        return Array(UnsafeBufferPointer(start: pointer, count: count))
+    }
+}
+
+private struct VertexVariant: Hashable {
+    var morphMask: UInt32 = 0
+    var hasSkin = false
+    var hasJoints1 = false
+}
+
+/// Port of the Khronos drawable lists: `prepareScene` grouping and `drawScene` ordering.
+struct MetalDrawLists {
+    /// Opaque and mask drawables without `KHR_materials_transmission`, in `Object.groupBy` order.
+    private(set) var opaque: [Int]
+    /// `alphaMode` BLEND without `KHR_materials_transmission`.
+    private(set) var transparent: [Int]
+    /// Every drawable whose material has `KHR_materials_transmission`, whatever its alpha mode.
+    private(set) var transmission: [Int]
+
+    struct Frame: Equatable {
+        /// Opaque then sorted transparent drawables; nil when the scene has no transmission drawables.
+        var transmissionPrepass: [Int]?
+        /// Opaque, then sorted transmission, then sorted transparent drawables in front of the camera.
+        var main: [Int]
+    }
+
+    init(draws: [MetalDraw]) {
+        var groups: [String: [Int]] = [:], keys: [String] = []
+        var transparent: [Int] = [], transmission: [Int] = []
+        for (index, draw) in draws.enumerated() {
+            if draw.material.hasTransmission {
+                transmission.append(index)
+            } else if draw.material.alphaMode == 2 {
+                transparent.append(index)
+            } else {
+                // Group keys always contain "_", so the object keeps insertion order.
+                if groups[draw.opaqueGroup] == nil { keys.append(draw.opaqueGroup) }
+                groups[draw.opaqueGroup, default: []].append(index)
+            }
+        }
+        // Each instancing group is one instanced draw at its first member's position.
+        opaque = keys.flatMap { groups[$0] ?? [] }
+        self.transparent = transparent
+        self.transmission = transmission
+    }
+
+    /// One `drawScene`. `models[i]` is the per-frame model of `draws[i]` (the rest world when no
+    /// clip is active). The lists are re-sorted in place, as upstream does every frame.
+    mutating func frame(draws: [MetalDraw], models: [simd_float4x4], view: simd_float4x4, xray: Bool = false) -> Frame {
+        var prepass: [Int]?
+        var transparentDepths: [Float] = []
+        if !transmission.isEmpty {
+            (transparent, transparentDepths) = Self.sortedByDepth(transparent, draws: draws, models: models, view: view)
+            prepass = opaque + transparent
+        }
+        let transmissionDepths: [Float]
+        (transmission, transmissionDepths) = Self.sortedByDepth(transmission, draws: draws, models: models, view: view)
+        (transparent, transparentDepths) = Self.sortedByDepth(transparent, draws: draws, models: models, view: view)
+        // `filter((a) => a.depth <= 0)`: drawables whose centroid is behind the camera are skipped.
+        let front = { (list: [Int], depths: [Float]) in zip(list, depths).filter { $0.1 <= 0 }.map(\.0) }
+        var main = opaque + front(transmission, transmissionDepths) + front(transparent, transparentDepths)
+        if xray {
+            if let prepassDraws = prepass {
+                prepass = Self.sortedByDepth(prepassDraws, draws: draws, models: models, view: view).0
+            }
+            let (sortedMain, mainDepths) = Self.sortedByDepth(main, draws: draws, models: models, view: view)
+            main = front(sortedMain, mainDepths)
+        }
+        return Frame(transmissionPrepass: prepass, main: main)
+    }
+
+    mutating func frame(draws: [MetalDraw], view: simd_float4x4, xray: Bool = false) -> Frame {
+        frame(draws: draws, models: draws.map(\.worldTransform), view: view, xray: xray)
+    }
+
+    /// `Camera.sortPrimitivesByDepth`: the view-space Z of the primitive centroid, ascending
+    /// (farthest first), with `Array.prototype.sort`'s stability.
+    static func sortedByDepth(_ list: [Int], draws: [MetalDraw], models: [simd_float4x4], view: simd_float4x4) -> ([Int], [Float]) {
+        var items = list.map { index in
+            let model = models.indices.contains(index) ? models[index] : draws[index].worldTransform
+            return (index, viewDepth(centroid: draws[index].centroid, model: model, view: view))
+        }
+        // Stable merge sort; the right item moves first only when `a.depth - b.depth > 0`.
+        var buffer = items
+        var width = 1
+        while width < items.count {
+            var start = 0
+            while start < items.count {
+                let middle = min(start + width, items.count), end = min(start + 2 * width, items.count)
+                var left = start, right = middle, out = start
+                while left < middle && right < end {
+                    if items[left].1 - items[right].1 > 0 { buffer[out] = items[right]; right += 1 }
+                    else { buffer[out] = items[left]; left += 1 }
+                    out += 1
+                }
+                while left < middle { buffer[out] = items[left]; left += 1; out += 1 }
+                while right < end { buffer[out] = items[right]; right += 1; out += 1 }
+                start = end
+            }
+            swap(&items, &buffer)
+            width *= 2
+        }
+        return (items.map(\.0), items.map(\.1))
+    }
+
+    static func viewDepth(of draw: MetalDraw, view: simd_float4x4) -> Float {
+        viewDepth(centroid: draw.centroid, model: draw.worldTransform, view: view)
+    }
+
+    /// gl-matrix `multiply(view, world)` then `transformMat4(centroid)`: double arithmetic,
+    /// Float32 storage, divided by w (or 1 when w is 0). `model` is the per-frame world.
+    static func viewDepth(centroid: SIMD3<Float>, model: simd_float4x4, view: simd_float4x4) -> Float {
+        let world = model
+        func modelView(_ column: Int, _ row: Int) -> Double {
+            var sum = 0.0
+            for k in 0..<4 { sum += Double(world[column][k]) * Double(view[k][row]) }
+            return Double(Float(sum))
+        }
+        let x = Double(centroid.x), y = Double(centroid.y), z = Double(centroid.z)
+        var w = modelView(0, 3) * x + modelView(1, 3) * y + modelView(2, 3) * z + modelView(3, 3)
+        if w == 0 || w.isNaN { w = 1 }
+        return Float((modelView(0, 2) * x + modelView(1, 2) * y + modelView(2, 2) * z + modelView(3, 2)) / w)
+    }
+}
+
+private struct GPUFrame {
+    var viewProjection: simd_float4x4
+    var cameraPosition: SIMD4<Float>
+    var environment: SIMD4<Float>
+    var options: SIMD4<UInt32>
+    var viewport: SIMD4<Float>
+}
+private struct GPUDraw {
+    var model: simd_float4x4
+    var normalMatrix: simd_float4x4
+    var morphInfo: SIMD4<UInt32>
+}
+private func toneMap(_ mapping: RenderLook.ToneMapping) -> UInt32 {
+    switch mapping { case .pbrNeutral: 0; case .none: 1; case .acesNarkowicz: 2; case .acesHill: 3 }
+}
+
+/// `u_DebugOutput` in pbr.metal. Wireframe is a fill mode, not a channel.
+private func debugOutput(_ mode: RenderViewMode) -> UInt32 {
+    guard case .channel(let channel) = mode else { return 0 }
+    return switch channel {
+    case .baseColor: 1
+    case .normals: 2
+    case .metallic: 3
+    case .roughness: 4
+    case .tangents: 5
+    case .textureCoordinates: 6
+    case .ambientOcclusion: 7
+    case .emissive: 8
+    case .alpha: 9
+    case .specular: 10
+    case .clearcoat: 11
+    case .clearcoatRoughness: 12
+    case .clearcoatNormal: 13
+    }
+}

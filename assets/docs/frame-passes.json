@@ -1,0 +1,29 @@
+{
+  "type": "process",
+  "title": "One renderer frame",
+  "subtitle": "The renderer follows the Khronos order, then adds the inspector overlays.",
+  "size": "wide",
+  "motion": "none",
+  "fonts": "system",
+  "watermark": false,
+  "legend": false,
+  "numbered": false,
+  "steps": [
+    {"label": "Bind IBL", "sub": "environment and lights"},
+    {"label": "Transmission prepass", "sub": "opaque + transparent"},
+    {"label": "Draw opaque", "sub": "main scene"},
+    {"label": "Draw transmission", "sub": "front-facing"},
+    {"label": "Draw transparent", "sub": "front-facing"},
+    {"label": "Tone map", "sub": "HDR → output"},
+    {"label": "Draw overlays", "sub": "floor · select · gizmo", "focal": true}
+  ],
+  "evidence": [
+    {"id": "bind", "file": "Renderer/MetalRenderer.swift", "line": 298},
+    {"id": "prepass", "file": "Renderer/MetalRenderer.swift", "line": 322},
+    {"id": "opaque", "file": "Renderer/MetalRenderer.swift", "line": 329},
+    {"id": "tone", "file": "Renderer/MetalRenderer.swift", "line": 334},
+    {"id": "overlays", "file": "Renderer/MetalRenderer.swift", "line": 364},
+    {"id": "overlay-content", "file": "Renderer/MetalOverlays.swift", "line": 112}
+  ],
+  "out": "frame-passes.html"
+}

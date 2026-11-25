@@ -1,0 +1,46 @@
+{
+  "type": "architecture",
+  "title": "macOS glTF Inspector modules",
+  "subtitle": "One renderer serves three surfaces. The app writes shared settings.",
+  "dir": "LR",
+  "size": "wide",
+  "motion": "none",
+  "fonts": "system",
+  "watermark": false,
+  "legend": false,
+  "groups": [
+    {"id": "core", "label": "GLTFCore"},
+    {"id": "renderer", "label": "Renderer"}
+  ],
+  "nodes": [
+    {"id": "file", "label": ".glb / .gltf", "kind": "input", "row": 1, "col": 0},
+    {"id": "document", "label": "GLTFDocument", "sub": "file summary", "group": "core", "row": 0, "col": 1},
+    {"id": "validator", "label": "glTF-Validator", "sub": "Khronos · JavaScriptCore", "group": "core", "row": 1, "col": 1},
+    {"id": "rendererNode", "label": "MetalRenderer", "sub": "shared Khronos port", "group": "renderer", "focal": true, "row": 2, "col": 1},
+    {"id": "settings", "label": "App Group", "sub": "AppGroupSettings", "kind": "store", "row": 3, "col": 0},
+    {"id": "app", "label": "GLTFInspector app", "sub": "document window", "row": 0, "col": 2},
+    {"id": "ql", "label": "Quick Look preview", "sub": "PreviewExtension", "row": 1, "col": 2},
+    {"id": "thumb", "label": "Finder thumbnail", "sub": "ThumbnailExtension", "row": 2, "col": 2}
+  ],
+  "edges": [
+    ["file", "document", "JSON"],
+    ["file", "rendererNode", "load", "primary"],
+    ["document", "app", "summary"],
+    ["validator", "app", "findings"],
+    ["rendererNode", "app", "ModelCanvas", "primary"],
+    ["rendererNode", "ql", "ModelCanvas", "primary"],
+    ["rendererNode", "thumb", "ThumbnailRenderer", "primary"],
+    ["app", "settings", "write"],
+    ["settings", "rendererNode", "stored look", "async"]
+  ],
+  "evidence": [
+    {"id": "document", "file": "GLTFCore/GLTFDocument.swift", "line": 4},
+    {"id": "validator", "file": "GLTFCore/GLTFValidator.swift", "line": 37},
+    {"id": "rendererNode", "file": "Renderer/MetalRenderer.swift", "line": 21},
+    {"id": "app", "file": "GLTFInspector/Window/DocumentWindow.swift", "line": 7},
+    {"id": "ql", "file": "PreviewExtension/PreviewViewController.swift", "line": 7},
+    {"id": "thumb", "file": "ThumbnailExtension/ThumbnailProvider.swift", "line": 6},
+    {"id": "settings", "file": "GLTFCore/AppGroupSettings.swift", "line": 6}
+  ],
+  "out": "architecture.html"
+}

@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "samples": {
+    "repository": "KhronosGroup/glTF-Sample-Assets",
+    "commit": "e3cc9d8fee3ab25e21aafdcedda6558f224afbee"
+  },
+  "look": {
+    "canvasSize": 512,
+    "environment": "neutral",
+    "environmentRotationDegrees": 90,
+    "exposureEV": 0,
+    "toneMapping": "Khronos PBR Neutral",
+    "background": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "tolerance": {
+    "badPixelChannelDelta": 16,
+    "badPixelFraction": 0.001,
+    "meanAbsoluteError": 1
+  },
+  "entries": [
+    {
+      "name": "AnimatedMorphCube-t0.5",
+      "sample": "AnimatedMorphCube",
+      "source": "Models/AnimatedMorphCube/glTF-Binary",
+      "files": [
+        "AnimatedMorphCube.glb"
+      ],
+      "animation": {
+        "index": 0,
+        "time": 0.5
+      },
+      "camera": {
+        "azimuth": 25,
+        "distance": 8.309742595157289,
+        "elevation": -18,
+        "target": [
+          0,
+          0,
+          1.1920928955078125e-7
+        ],
+        "yfov": 0.7853981633974483,
+        "zfar": 14.30974413928027,
+        "znear": 2.309741051034308
+      }
+    },
+    {
+      "name": "AnimatedMorphCube-t1.0",
+      "sample": "AnimatedMorphCube",
+      "source": "Models/AnimatedMorphCube/glTF-Binary",
+      "files": [
+        "AnimatedMorphCube.glb"
+      ],
+      "animation": {
+        "index": 0,
+        "time": 1
+      },
+      "camera": {
+        "azimuth": 25,
+        "distance": 8.309742595157289,
+        "elevation": -18,
+        "target": [
+          0,
+          0,
+          1.1920928955078125e-7
+        ],
+        "yfov": 0.7853981633974483,
+        "zfar": 14.30974413928027,
+        "znear": 2.309741051034308
+      }
+    },
+    {
+      "name": "SimpleSkin-t1.0",
+      "sample": "SimpleSkin",
+      "source": "Models/SimpleSkin/glTF",
+      "files": [
+        "SimpleSkin.gltf",
+        "SimpleSkin_geometry.bin",
+        "SimpleSkin_skinningData.bin",
+        "SimpleSkin_inverseBindMatrices.bin",
+        "SimpleSkin_animation.bin"
+      ],
+      "animation": {
+        "index": 0,
+        "time": 1
+      },
+      "camera": {
+        "azimuth": 25,
+        "elevation": -18,
+        "distance": 2.699172858463896,
+        "target": [
+          -1.6445427686306857e-8,
+          0.9999999763730034,
+          6.077230452206095e-8
+        ],
+        "yfov": 0.7853981633974483,
+        "znear": 0.0025937072812319806,
+        "zfar": 25.93707281231981
+      }
+    }
+  ]
+}

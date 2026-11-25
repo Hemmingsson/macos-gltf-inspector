@@ -1,0 +1,10 @@
+{
+  "artifactDirectory" : ".artifacts",
+  "bundleIdentifier" : "lol.mattias.gltf-inspector",
+  "configuration" : "Debug",
+  "launchArguments" : [
+
+  ],
+  "project" : "GLTFInspector.xcodeproj",
+  "scheme" : "GLTFInspector"
+}

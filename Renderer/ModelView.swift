@@ -1,0 +1,866 @@
+import AppKit
+import GLTFCore
+import Metal
+import QuartzCore
+import simd
+
+/// One model drawn by the Metal renderer, with the Khronos orbit camera.
+///
+/// In a window it is the live canvas: it redraws on demand (input, option changes, resize) and
+/// every display frame while auto-rotating. Off screen it renders stills (Finder thumbnails,
+/// tests); the aspect it frames for is its `bounds`.
+///
+/// The camera follows the Khronos Sample Viewer: `MetalUserCamera` ports its `UserCamera` and
+/// framing rules, and input maps to its pointer and wheel handlers.
+@MainActor
+public final class ModelView: NSView {
+    public private(set) var options = ViewOptions()
+    /// Zoom against the last fit as a whole percent (100 = fitted), each time it changes.
+    public var onZoom: ((Int) -> Void)?
+    /// A live frame failed to draw. The view stops drawing; its owner shows the failure.
+    public var onFailure: ((Error) -> Void)?
+    /// Unmodified left-click pick: glTF node index under the pointer, or nil for background.
+    public var onPick: ((Int?) -> Void)?
+    /// The first orbit step of a pointer drag (not a pan, not auto-rotate).
+    public var onOrbitStart: (() -> Void)?
+    /// ⌘- or ⇧-click on a node: add it to the selection or remove it. Background does nothing.
+    public var onTogglePick: ((Int) -> Void)?
+    /// The node under the resting pointer and where the pointer is (view points, y down), or
+    /// (nil, nil) when it leaves the model, a drag starts or the pointer leaves the view.
+    public var onHover: ((Int?, CGPoint?) -> Void)?
+    /// Upper-left 3×3 of the view matrix used for the last draw (orbit or file camera).
+    public var onOrientation: ((simd_float3x3) -> Void)?
+
+    let renderer: MetalRenderer
+    /// Transmission prepass size for live draws and snapshots from this view.
+    public var transmissionResolution = 1024
+    private(set) var camera = MetalUserCamera()
+    private var modelURL: URL?
+    /// Distance of the last front-view fit: 100% on the zoom readout.
+    private var fitDistance: Double?
+    private var reportedZoom: Int?
+    private var drawFailed = false
+    /// Points along each edge that window chrome covers. Left and right are the panes: the orbit
+    /// camera centres and fits the model between them. Top is the title-bar band: a press there
+    /// moves the window instead of the camera. The canvas itself still draws under all of it.
+    public var contentInsets = NSEdgeInsets() {
+        didSet {
+            guard contentInsets.left != oldValue.left || contentInsets.right != oldValue.right else { return }
+            let target = (contentInsets.left - contentInsets.right) / 2
+            if hasDrawnModel, window != nil {
+                shiftGlide = Glide(from: centerShift, to: target, start: CACurrentMediaTime())
+                updateDisplayLink()
+            } else {
+                centerShift = target
+                redraw()
+            }
+        }
+    }
+    /// Points the projection centre sits right of the view centre: half the pane imbalance,
+    /// eased toward it when a pane opens or closes over a drawn model.
+    private(set) var centerShift = 0.0
+    private var hasDrawnModel = false
+    private var displayLink: CADisplayLink?
+    private var displayLinkProxy: DisplayLinkProxy?
+    /// True while animation playback runs; keeps the display link alive with auto-rotate.
+    var isPlaybackRunning = false
+    var onAnimationPlaybackStep: (() -> Void)?
+    var animationPoseProvider: (() -> AnimationPose?)?
+
+    @MainActor
+    private final class DisplayLinkProxy: NSObject {
+        weak var owner: ModelView?
+
+        init(owner: ModelView) {
+            self.owner = owner
+        }
+
+        @objc func step() {
+            owner?.displayLinkStep()
+        }
+    }
+    /// True while a turntable export runs: pointer, wheel, pinch and hover input are ignored so
+    /// the export's view and selection cannot change under it.
+    public var inputLocked = false {
+        didSet {
+            if inputLocked {
+                clearHover()
+                cancelCameraGlide()
+            }
+        }
+    }
+
+    public init(renderer: MetalRenderer) {
+        self.renderer = renderer
+        super.init(frame: NSRect(x: 0, y: 0, width: 512, height: 512))
+        wantsLayer = true
+        (layer as? CAMetalLayer)?.device = renderer.device
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+
+    private var metalLayer: CAMetalLayer? { layer as? CAMetalLayer }
+
+    override public func makeBackingLayer() -> CALayer {
+        let layer = CAMetalLayer()
+        layer.pixelFormat = .bgra8Unorm
+        layer.isOpaque = false
+        return layer
+    }
+
+    // MARK: - Model and options
+
+    /// Loads `url` drawn with `options` (the current ones when nil), frames it from the front and
+    /// draws it. A file that fails to load leaves the previous model in place.
+    public func load(_ url: URL, options next: ViewOptions? = nil) async throws {
+        if let next {
+            // The options are for the new file: do not reload the old one for a new scene.
+            let previousURL = modelURL
+            let previousOptions = options
+            modelURL = nil
+            defer { if modelURL == nil { modelURL = previousURL } }
+            do {
+                try await apply(next)
+            } catch {
+                applyOptions(previousOptions)
+                throw error
+            }
+        }
+        try await renderer.load(url: url, sceneIndex: options.sceneIndex,
+                                materialVariantIndex: options.materialVariantIndex)
+        modelURL = url
+        drawFailed = false
+        fitCamera()
+        redraw()
+    }
+
+    /// Draws an already-loaded scene (shared GPU buffers); frames and redraws like `load`.
+    public func show(scene: MetalScene, options next: ViewOptions? = nil) throws {
+        if let next { applyOptions(next) }
+        modelURL = nil
+        try renderer.adopt(scene)
+        drawFailed = false
+        fitCamera()
+        redraw()
+    }
+
+    /// Cheap values are assigned; a scene or variant change reloads the model, and a scene or
+    /// centring change refits, as the Khronos viewer does.
+    public func apply(_ next: ViewOptions) async throws {
+        let previous = options
+        applyOptions(next)
+        do {
+            let sceneChanged = previous.sceneIndex != next.sceneIndex
+            if let modelURL, sceneChanged || previous.materialVariantIndex != next.materialVariantIndex {
+                try await renderer.load(url: modelURL, sceneIndex: next.sceneIndex,
+                                        materialVariantIndex: next.materialVariantIndex)
+            }
+            if renderer.scene != nil, sceneChanged || previous.isCentered != next.isCentered {
+                fitCamera()
+            } else if previous.isOrthographic != next.isOrthographic {
+                camera.applyProjection()
+            }
+            if next.selectedNodeIndex != previous.selectedNodeIndex, next.selectedNodeIndex != nil {
+                centreOnSelection()
+            }
+            redraw()
+        } catch {
+            applyOptions(previous)
+            throw error
+        }
+    }
+
+    private func applyOptions(_ next: ViewOptions) {
+        let previous = options
+        options = next
+        if previous.fieldOfView != next.fieldOfView { camera.yfov = next.fieldOfView * .pi / 180 }
+        camera.isOrthographic = next.isOrthographic
+        let color = next.look.background
+        metalLayer?.backgroundColor = CGColor(srgbRed: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
+        updateDisplayLink()
+    }
+
+    // MARK: - Camera commands
+
+    /// Frames the model from the front.
+    public func fit() {
+        guard renderer.scene != nil else { return }
+        cancelCameraGlide()
+        fitCamera()
+        orbit(azimuth: 0, elevation: 0)
+        fitDistance = camera.distance
+        redraw()
+    }
+
+    /// Frames one node's subtree at the current orbit angles (selection framing).
+    public func frame(nodeIndex: Int) { frame(nodeIndices: [nodeIndex]) }
+
+    /// Frames the union of several nodes' subtrees at the current orbit angles.
+    public func frame(nodeIndices: [Int]) {
+        guard let scene = renderer.scene else { return }
+        cancelCameraGlide()
+        let worlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
+        let boxes = nodeIndices.compactMap { scene.bounds(ofNode: $0, worlds: worlds) }
+        guard let first = boxes.first else { return }
+        let box = boxes.dropFirst().reduce(first) { (simd_min($0.min, $1.min), simd_max($0.max, $1.max)) }
+        camera.isOrthographic = options.isOrthographic
+        if let framed = camera.frame(box: (SIMD3<Double>(box.min), SIMD3<Double>(box.max)), aspect: canvasAspect) {
+            fitDistance = framed
+        }
+        redraw()
+    }
+
+    /// Front view fitted to one node's bounds.
+    public func fit(nodeIndex: Int) { fit(nodeIndex: nodeIndex, from: .front) }
+
+    /// One node's bounds seen from a canned angle — the inspector's Shape preview, where a
+    /// three-quarter view says more about a shape than a head-on one.
+    public func fit(nodeIndex: Int, from preset: CameraPreset) {
+        guard renderer.scene != nil else { return }
+        frame(nodeIndex: nodeIndex)
+        let angles = preset.angles
+        orbit(azimuth: angles.azimuth, elevation: angles.elevation)
+        fitDistance = camera.distance
+        redraw()
+    }
+
+    /// Frames the model from a canned angle.
+    public func show(_ preset: CameraPreset) {
+        guard renderer.scene != nil else { return }
+        cancelCameraGlide()
+        fitCamera()
+        let angles = preset.angles
+        let azimuth = angles.azimuth * .pi / 180, elevation = angles.elevation * .pi / 180
+        let toCamera = SIMD3(sin(azimuth) * cos(elevation), -sin(elevation), cos(azimuth) * cos(elevation))
+        let extent = camera.sceneMax - camera.sceneMin
+        let measurable = simd_length(extent) > 0 && simd_length(extent).isFinite
+        let distance = MetalUserCamera.sharedFitDistance(extent: extent, toCamera: toCamera, aspect: canvasAspect,
+                                                         fieldOfViewDegrees: camera.yfov * 180 / .pi)
+        orbit(azimuth: angles.azimuth, elevation: angles.elevation, distance: measurable ? distance : nil)
+        redraw()
+    }
+
+    /// Dollies toward (`factor` < 1) or away from (`factor` > 1) the target at the current angle.
+    public func zoom(by factor: Double) {
+        guard renderer.scene != nil, factor > 0, camera.distance.isFinite else { return }
+        cancelCameraGlide()
+        orbit(azimuth: camera.rotAroundY * 180 / .pi, elevation: camera.rotAroundX * 180 / .pi,
+              distance: camera.distance * factor)
+        redraw()
+    }
+
+    /// Absolute orbit angles in degrees around the current target; nil keeps the distance.
+    func orbit(azimuth: Double, elevation: Double, distance: Double? = nil) {
+        camera.orbitTo(azimuth: azimuth, elevation: elevation, distance: distance ?? camera.distance, target: camera.target)
+        camera.applyProjection()
+    }
+
+    /// Khronos pointer orbit in view points (`UserCamera.orbit`).
+    public func orbit(dx: Double, dy: Double) {
+        guard renderer.scene != nil else { return }
+        cancelCameraGlide()
+        camera.orbit(dx, dy)
+        camera.applyProjection()
+        redraw()
+    }
+
+    /// Khronos `fitCamera` at the canvas aspect, for the current scene.
+    private func fitCamera() {
+        guard let scene = renderer.scene, let index = scene.gltfSceneIndex(for: options.sceneIndex) else { return }
+        cancelCameraGlide()
+        camera.isOrthographic = options.isOrthographic
+        var extents = scene.accessorExtents(sceneIndex: index)
+        // Draco replaces POSITION with an accessor without min/max; the decoded bounds are the same box.
+        if !extents.min.x.isFinite || !extents.max.x.isFinite {
+            extents = (SIMD3<Double>(scene.boundsMin), SIMD3<Double>(scene.boundsMax))
+        }
+        let far = options.centerWhenFarFromOrigin
+            && MetalUserCamera.originIsFarFromModel(min: extents.min, max: extents.max)
+        if let fitted = camera.fit(extents: extents, centered: options.isCentered || far, aspect: canvasAspect) {
+            fitDistance = fitted
+        }
+    }
+
+    /// The aspect of the uncovered part of the view, which the fit frames for.
+    private var canvasAspect: Double {
+        let width = bounds.width - contentInsets.left - contentInsets.right
+        return bounds.height > 0 && width > 0 ? width / bounds.height : 1
+    }
+
+    /// Pixels the projection centre moves right so it sits mid-way between the panes. Off for a
+    /// file camera, whose framing is authored.
+    private func centerOffset(pixelWidth: Int) -> SIMD2<Float> {
+        guard options.fileCameraNodeIndex == nil, bounds.width > 0 else { return .zero }
+        let scale = Double(pixelWidth) / bounds.width
+        return SIMD2(Float(centerShift * scale), 0)
+    }
+
+    // MARK: - Images
+
+    /// One frame at `width`×`height` from the current camera.
+    public func image(width: Int, height: Int, transmissionResolution: Int = 1024) throws -> CGImage {
+        try renderer.image(options, pose: pose(width: width, height: height), width: width, height: height,
+                           extents: extents, transmissionResolution: transmissionResolution,
+                           animationPose: animationPoseProvider?())
+    }
+
+    /// One full orbit around the current target for a turntable export: `count` frames at
+    /// `width`×`height`, starting from the current angle. Each frame goes to `frame` as it is
+    /// drawn (so a long export never holds every image), which may throw to stop; a cancelled
+    /// task stops with `CancellationError`. The orbit, the bounds and the animation pose are read
+    /// once before the first frame, so live input during the export cannot change the frames. The
+    /// export draws without selection, hover or highlight, and the live camera is left as it was.
+    public func turntable(count: Int, width: Int, height: Int,
+                          frame: (Int, CGImage) async throws -> Void) async throws {
+        guard renderer.scene != nil, count > 0 else { throw MetalRendererError.noScene }
+        var orbit = camera
+        orbit.aspectRatio = Double(width) / Double(height)
+        let azimuth = camera.rotAroundY * 180 / .pi, elevation = camera.rotAroundX * 180 / .pi
+        let distance = camera.distance, target = camera.target
+        let frozenExtents = extents
+        let pose = animationPoseProvider?()
+        var turntableOptions = options
+        turntableOptions.fileCameraNodeIndex = nil
+        turntableOptions.selectedNodeIndex = nil
+        turntableOptions.selectedNodeIndices = []
+        turntableOptions.gizmoSelectedNodeIndex = nil
+        turntableOptions.selectedSkinIndex = nil
+        turntableOptions.highlightedNodeIndices = []
+        turntableOptions.hoveredNodeIndex = nil
+        for index in 0..<count {
+            try Task.checkCancellation()
+            orbit.orbitTo(azimuth: azimuth + 360 * Double(index) / Double(count), elevation: elevation,
+                          distance: distance, target: target)
+            orbit.applyProjection()
+            try await frame(index, renderer.image(turntableOptions, pose: orbit.pose, width: width, height: height,
+                                                  extents: frozenExtents, transmissionResolution: transmissionResolution,
+                                                  animationPose: pose))
+        }
+    }
+
+    /// The live canvas's size in pixels.
+    public var drawablePixelSize: CGSize { metalLayer?.drawableSize ?? .zero }
+
+    /// One frame at the live canvas's pixel size (Export PNG).
+    public func snapshot() throws -> CGImage {
+        let size = metalLayer?.drawableSize ?? .zero
+        return try image(width: max(Int(size.width), 1), height: max(Int(size.height), 1),
+                         transmissionResolution: transmissionResolution)
+    }
+
+    /// Khronos `drawScene` records the canvas aspect on the orbit camera for every frame it draws.
+    private func pose(width: Int, height: Int) -> MetalCameraPose {
+        if options.fileCameraNodeIndex == nil { camera.aspectRatio = Double(width) / Double(height) }
+        return camera.pose
+    }
+
+    /// The camera's measured box, which sizes the floor and origin gizmo.
+    private var extents: (min: SIMD3<Float>, max: SIMD3<Float>) {
+        (SIMD3<Float>(camera.sceneMin), SIMD3<Float>(camera.sceneMax))
+    }
+
+    // MARK: - Live drawing
+
+    /// Whether a live display link is installed (playback or auto-rotate).
+    var isDisplayLinkActive: Bool { displayLink != nil }
+
+    func redraw() {
+        reportZoom()
+        reportOrientation()
+        guard window != nil, renderer.scene != nil, !drawFailed else { return }
+        do {
+            var drawn = options
+            drawn.hoveredNodeIndex = hoveredNode
+            guard let metalLayer else { return }
+            let size = metalLayer.drawableSize
+            let width = max(Int(size.width), 1), height = max(Int(size.height), 1)
+            let drawnFrame = try renderer.renderLiveFrame(drawn, pose: pose(width: width, height: height),
+                                                           width: width, height: height,
+                                                           extents: extents,
+                                                           transmissionResolution: transmissionResolution,
+                                                           centerOffset: centerOffset(pixelWidth: width),
+                                                           animationPose: animationPoseProvider?(),
+                                                           drawable: { [weak self] in self?.metalLayer?.nextDrawable() })
+            hasDrawnModel = drawnFrame
+        } catch MetalRendererError.presentationBackpressure {
+            return
+        } catch {
+            drawFailed = true
+            AppLog.error(AppLog.renderer, "draw failed: \(error.localizedDescription)")
+            onFailure?(error)
+        }
+    }
+
+    private func reportZoom() {
+        guard renderer.scene != nil, let fitDistance, fitDistance > 0, camera.distance > 0 else { return }
+        let percent = (fitDistance / camera.distance * 100).rounded()
+        guard percent.isFinite, Int(percent) != reportedZoom else { return }
+        reportedZoom = Int(percent)
+        onZoom?(Int(percent))
+    }
+
+    private var reportedOrientation: simd_float3x3?
+
+    private func reportOrientation() {
+        guard renderer.scene != nil else { return }
+        guard let metalLayer else { return }
+        let size = metalLayer.drawableSize
+        let width = max(Int(size.width), 1), height = max(Int(size.height), 1)
+        let rotation = Self.rotation3x3(from: viewMatrix(width: width, height: height))
+        guard rotation != reportedOrientation else { return }
+        reportedOrientation = rotation
+        onOrientation?(rotation)
+    }
+
+    private func viewMatrix(width: Int, height: Int) -> simd_float4x4 {
+        if let index = options.fileCameraNodeIndex, let scene = renderer.scene,
+           let fileCamera = scene.fileCamera(at: index, aspect: Float(width) / Float(height)) {
+            return fileCamera.view
+        }
+        var camera = MetalCamera(pose: pose(width: width, height: height), isOrthographic: options.isOrthographic,
+                                 aspect: Float(width) / Float(height))
+        if centerOffset(pixelWidth: width) != .zero {
+            let cameraViewport = khronosViewport(width: width, height: height, aspect: nil)
+            let offset = centerOffset(pixelWidth: width)
+            camera.centerShift = 2 * offset / SIMD2(Float(cameraViewport.width), Float(cameraViewport.height))
+        }
+        return camera.viewMatrix
+    }
+
+    static func rotation3x3(from viewMatrix: simd_float4x4) -> simd_float3x3 {
+        simd_float3x3(columns: (
+            SIMD3(viewMatrix.columns.0.x, viewMatrix.columns.0.y, viewMatrix.columns.0.z),
+            SIMD3(viewMatrix.columns.1.x, viewMatrix.columns.1.y, viewMatrix.columns.1.z),
+            SIMD3(viewMatrix.columns.2.x, viewMatrix.columns.2.y, viewMatrix.columns.2.z)
+        ))
+    }
+
+    override public func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        updateDrawableSize()
+    }
+
+    override public func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        updateDrawableSize()
+    }
+
+    override public func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateDisplayLink()
+        updateDrawableSize()
+    }
+
+    private func updateDrawableSize() {
+        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        guard let metalLayer else { return }
+        metalLayer.contentsScale = scale
+        metalLayer.drawableSize = CGSize(width: max(bounds.width * scale, 1), height: max(bounds.height * scale, 1))
+        redraw()
+    }
+
+    /// Auto-rotate and animation playback share one display link at the Khronos viewer's 60 Hz.
+    func updateDisplayLink() {
+        let wanted = window != nil && (options.autoRotates || isPlaybackRunning || isGliding)
+        guard wanted != (displayLink != nil) else { return }
+        displayLink?.invalidate()
+        displayLink = nil
+        displayLinkProxy = nil
+        guard wanted else { return }
+        let proxy = DisplayLinkProxy(owner: self)
+        let link = displayLink(target: proxy, selector: #selector(DisplayLinkProxy.step))
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
+        link.add(to: .main, forMode: .common)
+        displayLinkProxy = proxy
+        displayLink = link
+    }
+
+    @objc func displayLinkStep() {
+        guard renderer.scene != nil else { return }
+        stepGlides(at: CACurrentMediaTime())
+        if options.autoRotates {
+            if !didReportAutoRotate {
+                didReportAutoRotate = true
+                onOrbitStart?()
+            }
+            camera.orbit(1.2, 0)
+        } else {
+            didReportAutoRotate = false
+        }
+        if isPlaybackRunning { onAnimationPlaybackStep?() }
+        redraw()
+    }
+
+    // MARK: - Input: the Khronos viewer's pointer and wheel handlers
+
+    /// Window-space pointer position at the last drag step; nil when no drag started in this
+    /// view. `event.deltaX/Y` is screen motion, which also moves with a dragged window.
+    private var dragAnchor: NSPoint?
+    /// Window-space press location for click-vs-drag; unchanged while orbiting.
+    private var pointerDownStart: NSPoint?
+    private var pointerDownModifiers: NSEvent.ModifierFlags = []
+    private var dragExceededClickThreshold = false
+    private var isPanning = false
+    private var didReportOrbit = false
+    private var didReportAutoRotate = false
+
+    override public var acceptsFirstResponder: Bool { true }
+    override public func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    /// The window moves only from the title-bar band (`mouseDown`), never with a camera drag.
+    override public var mouseDownCanMoveWindow: Bool { false }
+
+    override public func mouseDown(with event: NSEvent) {
+        if isInTitleBarBand(event) {
+            titleBarPress(event)
+            return
+        }
+        beginDrag(event, pan: event.modifierFlags.contains(.shift))
+    }
+
+    private func isInTitleBarBand(_ event: NSEvent) -> Bool {
+        guard contentInsets.top > 0 else { return false }
+        let point = convert(event.locationInWindow, from: nil)
+        return (isFlipped ? point.y : bounds.height - point.y) < contentInsets.top
+    }
+
+    private func isInSideInset(_ event: NSEvent) -> Bool {
+        guard contentInsets.left > 0 || contentInsets.right > 0 else { return false }
+        let point = convert(event.locationInWindow, from: nil)
+        return point.x < contentInsets.left || point.x > bounds.width - contentInsets.right
+    }
+
+    /// What the title bar does: drag moves the window, double-click runs the system action.
+    private func titleBarPress(_ event: NSEvent) {
+        guard let window else { return }
+        if event.clickCount == 2 {
+            switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+            case "Minimize": window.performMiniaturize(nil)
+            case "None": break
+            default: window.performZoom(nil)
+            }
+        } else {
+            window.performDrag(with: event)
+        }
+    }
+    /// Built by the window when it wants a canvas menu. Nil in Quick Look and tests.
+    public var contextMenu: (@MainActor () -> NSMenu?)?
+    override public func rightMouseDown(with event: NSEvent) {
+        guard !inputLocked, let menu = contextMenu?(), menu.numberOfItems > 0 else {
+            super.rightMouseDown(with: event)
+            return
+        }
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+    override public func otherMouseDown(with event: NSEvent) { beginDrag(event, pan: event.buttonNumber == 2) }
+    override public func mouseDragged(with event: NSEvent) { drag(event) }
+    override public func otherMouseDragged(with event: NSEvent) { drag(event) }
+    override public func mouseUp(with event: NSEvent) {
+        performPickIfClick(with: event)
+        dragAnchor = nil
+        pointerDownStart = nil
+    }
+    override public func otherMouseUp(with event: NSEvent) {
+        dragAnchor = nil
+        pointerDownStart = nil
+    }
+
+    private func beginDrag(_ event: NSEvent, pan: Bool) {
+        guard !inputLocked else { return }
+        clearHover()
+        cancelCameraGlide()
+        let location = event.locationInWindow
+        dragAnchor = location
+        pointerDownStart = location
+        pointerDownModifiers = event.modifierFlags
+        dragExceededClickThreshold = false
+        didReportOrbit = false
+        orbitPivot = nil
+        isPanning = pan
+    }
+
+    private static let pickModifierMask: NSEvent.ModifierFlags = [.shift, .control, .option, .command]
+
+    /// A press that never became a drag picks: plain → `onPick`, ⌘ or ⇧ alone → `onTogglePick`.
+    /// ⌥ and ⌃ clicks pick nothing.
+    private func performPickIfClick(with event: NSEvent) {
+        guard let start = pointerDownStart, renderer.scene != nil, window != nil else { return }
+        let modifiers = pointerDownModifiers.intersection(Self.pickModifierMask)
+        let toggles = !modifiers.isEmpty && modifiers.isSubset(of: [.command, .shift])
+        guard modifiers.isEmpty || toggles else { return }
+        let end = event.locationInWindow
+        guard !dragExceededClickThreshold, ModelViewPick.isClick(start: start, end: end) else { return }
+        do {
+            let index = try nodeIndex(atWindowPoint: end)
+            if toggles {
+                if let index { onTogglePick?(index) }
+            } else {
+                onPick?(index)
+            }
+        } catch {
+            AppLog.error(AppLog.renderer, "pick failed: \(error.localizedDescription)")
+        }
+    }
+
+    private static let pickDepthEpsilon: Float = 1e-4
+
+    /// Camera / light gizmo under the point when they are drawn, else the mesh node under it.
+    private func nodeIndex(atWindowPoint location: NSPoint) throws -> Int? {
+        let viewPoint = convert(location, from: nil)
+        let yDown = isFlipped ? viewPoint.y : bounds.height - viewPoint.y
+        let (width, height, scale) = pickPixelSize
+        let point = SIMD2(min(max(Int(viewPoint.x * scale), 0), width - 1),
+                          min(max(Int(yDown * scale), 0), height - 1))
+        let pointPoints = SIMD2(Float(viewPoint.x), Float(yDown))
+        let cameraPose = pose(width: width, height: height)
+        let center = centerOffset(pixelWidth: width)
+        let mesh = try renderer.pickResult(options, pose: cameraPose, width: width, height: height,
+                                           centerOffset: center, point: point,
+                                           animationPose: animationPoseProvider?())
+        if options.showsSceneGizmos, let scene = renderer.scene {
+            let frame = try renderer.gizmoPickFrame(options: options, pose: cameraPose,
+                                                    width: width, height: height, centerOffset: center)
+            var overlayOptions = MetalOverlayOptions(options, canvasAspect: Float(width) / Float(height), extents: extents)
+            overlayOptions.nodeWorlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
+            let segments = overlayGizmoSegments(scene: scene, options: overlayOptions)
+            let hitViewport = GizmoHitViewport(viewWidthPoints: Float(bounds.width),
+                                               viewHeightPoints: Float(bounds.height),
+                                               contentAspect: frame.viewportAspect)
+            if let gizmo = gizmoHitResult(at: pointPoints, segments: segments, viewProjection: frame.viewProjection,
+                                          viewport: hitViewport) {
+                if options.fileCameraNodeIndex != nil
+                    || mesh.nodeIndex == nil
+                    || gizmo.depth <= mesh.depth + Self.pickDepthEpsilon {
+                    return gizmo.nodeIndex
+                }
+            }
+        }
+        return mesh.nodeIndex
+    }
+
+    /// The canvas's pixel size and backing scale, as picking and pointer zoom measure it.
+    private var pickPixelSize: (width: Int, height: Int, scale: CGFloat) {
+        let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        return (max(Int((bounds.width * scale).rounded()), 1), max(Int((bounds.height * scale).rounded()), 1), scale)
+    }
+
+    /// World point under a view point (y down) on the plane through the orbit target that faces
+    /// the camera. Nil for a file camera or when the ray misses the plane.
+    func pointerWorldPoint(atViewPoint viewPoint: NSPoint) -> SIMD3<Double>? {
+        guard options.fileCameraNodeIndex == nil, renderer.scene != nil, bounds.width > 0, bounds.height > 0 else { return nil }
+        let (width, height, _) = pickPixelSize
+        guard let frame = try? renderer.gizmoPickFrame(options: options, pose: pose(width: width, height: height),
+                                                       width: width, height: height,
+                                                       centerOffset: centerOffset(pixelWidth: width)) else { return nil }
+        let viewport = GizmoHitViewport(viewWidthPoints: Float(bounds.width), viewHeightPoints: Float(bounds.height),
+                                        contentAspect: frame.viewportAspect)
+        let yDown = Float(isFlipped ? viewPoint.y : bounds.height - viewPoint.y)
+        let ndc = SIMD2((Float(viewPoint.x) - viewport.originX) / viewport.contentWidth * 2 - 1,
+                        ((viewport.height - yDown) - viewport.originYFromBottom) / viewport.contentHeight * 2 - 1)
+        let inverse = frame.viewProjection.inverse
+        func unproject(_ z: Float) -> SIMD3<Double> {
+            let p = inverse * SIMD4(ndc.x, ndc.y, z, 1)
+            return SIMD3<Double>(SIMD3(p.x, p.y, p.z) / p.w)
+        }
+        let near = unproject(-1), far = unproject(1)
+        let direction = far - near
+        let normal = camera.lookDirection
+        let denominator = simd_dot(direction, normal)
+        guard abs(denominator) > 1e-12 else { return nil }
+        let t = simd_dot(camera.target - near, normal) / denominator
+        let point = near + direction * t
+        return point.x.isFinite && point.y.isFinite && point.z.isFinite ? point : nil
+    }
+
+    // MARK: - Orbit pivot on the selection
+
+    /// The selection's box centre, which an orbit drag turns about. Selecting never moves the
+    /// camera (a second click at the same pixel must still hit the same part), and neither does the
+    /// start of the orbit: the camera turns rigidly about this point, so it stays put on screen.
+    private var orbitPivot: SIMD3<Double>?
+
+    private func selectionOrbitPivot() -> SIMD3<Double>? {
+        options.orbitsAroundSelection ? selectionCentre() : nil
+    }
+
+    /// Box centre of the selected node's subtree in the pose on screen; nil for a file camera.
+    private func selectionCentre() -> SIMD3<Double>? {
+        guard options.fileCameraNodeIndex == nil,
+              let scene = renderer.scene,
+              let node = options.selectedNodeIndex else { return nil }
+        let worlds = scene.framePose(pose: animationPoseProvider?()).nodeWorlds
+        guard let box = scene.bounds(ofNode: node, worlds: worlds) else { return nil }
+        let centre = SIMD3<Double>((box.min + box.max) / 2)
+        return centre.x.isFinite && centre.y.isFinite && centre.z.isFinite ? centre : nil
+    }
+
+    // MARK: - Glides: centre on selection, pane re-centring
+
+    /// An eased move sampled by the display link.
+    struct Glide<Value> {
+        var from: Value
+        var to: Value
+        var start: CFTimeInterval
+        static var duration: CFTimeInterval { 0.35 }
+        /// Ease-out cubic progress in 0...1.
+        func progress(at now: CFTimeInterval) -> Double {
+            let t = min(max((now - start) / Self.duration, 0), 1)
+            return 1 - pow(1 - t, 3)
+        }
+    }
+
+    /// Orbit target moving to the newly selected item. Angles and distance stay, so the view
+    /// slides rather than turns or zooms. Started only when the selection changes; any camera
+    /// input or command cancels it, and nothing re-centres after the user moves the camera.
+    private(set) var targetGlide: Glide<SIMD3<Double>>?
+    private var shiftGlide: Glide<Double>?
+    var isGliding: Bool { targetGlide != nil || shiftGlide != nil }
+
+    private func centreOnSelection() {
+        guard !inputLocked, let centre = selectionCentre() else { return }
+        guard simd_distance(centre, camera.target) > 1e-9 else { return }
+        targetGlide = Glide(from: camera.target, to: centre, start: CACurrentMediaTime())
+        updateDisplayLink()
+    }
+
+    private func cancelCameraGlide() {
+        guard targetGlide != nil else { return }
+        targetGlide = nil
+        updateDisplayLink()
+    }
+
+    /// Advances both glides to `now`; the display link calls it, tests call it directly.
+    func stepGlides(at now: CFTimeInterval) {
+        if let glide = targetGlide {
+            let p = glide.progress(at: now)
+            camera.setDistanceFromTarget(camera.distance, glide.from + (glide.to - glide.from) * p)
+            if p >= 1 { targetGlide = nil }
+        }
+        if let glide = shiftGlide {
+            let p = glide.progress(at: now)
+            centerShift = glide.from + (glide.to - glide.from) * p
+            if p >= 1 { shiftGlide = nil }
+        }
+        if !isGliding { updateDisplayLink() }
+    }
+
+    /// Orbit uses y-down deltas; pan moves the camera opposite the pointer so content follows it.
+    private func drag(_ event: NSEvent) {
+        guard let start = dragAnchor, renderer.scene != nil else { return }
+        let location = event.locationInWindow
+        dragAnchor = location
+        let dx = Double(location.x - start.x), dy = Double(start.y - location.y)
+        if let press = pointerDownStart,
+           !ModelViewPick.isClick(start: press, end: location) { dragExceededClickThreshold = true }
+        if isPanning {
+            camera.pan(dx, -dy)
+        } else {
+            if !didReportOrbit, dx != 0 || dy != 0 {
+                didReportOrbit = true
+                onOrbitStart?()
+                orbitPivot = selectionOrbitPivot()
+            }
+            if let orbitPivot {
+                camera.orbit(dx, dy, around: orbitPivot)
+            } else {
+                camera.orbit(dx, dy)
+            }
+        }
+        redraw()
+    }
+
+    /// `UserCamera.zoomBy(deltaY * 0.01)`, with the browser wheel `deltaY` it was written for: the negated scroll delta
+    /// in pixels, 40 per line step.
+    override public func scrollWheel(with event: NSEvent) {
+        let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 40
+        wheel(deltaY: -Double(delta), at: event.locationInWindow)
+    }
+
+    /// Pinch maps onto the same dolly as the wheel.
+    override public func magnify(with event: NSEvent) {
+        wheel(deltaY: -Double(event.magnification) * 500, at: event.locationInWindow)
+    }
+
+    /// With `zoomsTowardPointer` the dolly heads for the spot under the pointer instead of the
+    /// orbit target. The orthographic scale follows the distance (`applyProjection`), so an axis
+    /// view zooms on screen as well as in the readout.
+    func wheel(deltaY: Double, at windowPoint: NSPoint) {
+        guard renderer.scene != nil, !inputLocked else { return }
+        cancelCameraGlide()
+        if options.zoomsTowardPointer,
+           let pointer = pointerWorldPoint(atViewPoint: convert(windowPoint, from: nil)) {
+            camera.zoomBy(deltaY * 0.01, toward: pointer)
+        } else {
+            camera.zoomBy(deltaY * 0.01)
+        }
+        camera.applyProjection()
+        redraw()
+    }
+
+    // MARK: - Hover pre-selection
+
+    private var hoverThrottle = HoverPickThrottle()
+    private var hoverPending = false
+    private var hoverPoint: NSPoint?
+    private var hoveredNode: Int?
+    private var hoverTrackingArea: NSTrackingArea?
+
+    override public func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverTrackingArea { removeTrackingArea(hoverTrackingArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override public func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        if inputLocked || isInTitleBarBand(event) { return clearHover() }
+        if isInSideInset(event) { return clearHover(notifyEvenWhenIdle: true) }
+        guard onHover != nil, renderer.scene != nil else { return clearHover() }
+        hoverPoint = event.locationInWindow
+        // The name tag follows the pointer on this event. Which node it names still waits for
+        // the paced pick below, so the label does not sit a pick behind the cursor.
+        if hoveredNode != nil {
+            onHover?(hoveredNode, tooltipPoint(event.locationInWindow))
+        }
+        let isBusy = dragAnchor != nil || options.autoRotates || isPlaybackRunning
+        guard !hoverPending, let delay = hoverThrottle.delay(at: CACurrentMediaTime(), isBusy: isBusy) else {
+            if isBusy { clearHover() }
+            return
+        }
+        hoverPending = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.pickHover() }
+    }
+
+    override public func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        hoverPoint = nil
+        clearHover()
+    }
+
+    private func pickHover() {
+        hoverPending = false
+        hoverThrottle.didPick(at: CACurrentMediaTime())
+        guard let location = hoverPoint, dragAnchor == nil, window != nil else { return }
+        let index = (try? nodeIndex(atWindowPoint: location)) ?? nil
+        let changed = index != hoveredNode
+        hoveredNode = index
+        onHover?(index, index == nil ? nil : tooltipPoint(location))
+        guard changed else { return }
+        redraw()
+    }
+
+    private func tooltipPoint(_ windowPoint: NSPoint) -> CGPoint {
+        let viewPoint = convert(windowPoint, from: nil)
+        return CGPoint(x: viewPoint.x, y: isFlipped ? viewPoint.y : bounds.height - viewPoint.y)
+    }
+
+    private func clearHover(notifyEvenWhenIdle: Bool = false) {
+        hoverPoint = nil
+        guard hoveredNode != nil || notifyEvenWhenIdle else { return }
+        hoveredNode = nil
+        onHover?(nil, nil)
+        redraw()
+    }
+}

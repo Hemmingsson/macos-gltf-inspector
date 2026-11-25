@@ -1,0 +1,53 @@
+{
+  "title": "Inspector sections",
+  "width": 1180,
+  "height": 940,
+  "selectionTypes": [
+    {
+      "number": 1,
+      "name": "Node",
+      "sections": [
+        "Transform \u00b7 authored",
+        "Subtree \u00b7 if children",
+        "Shape \u00b7 if renderable",
+        "Issues"
+      ]
+    },
+    {
+      "number": 2,
+      "name": "Mesh node",
+      "sections": [
+        "Transform \u00b7 authored",
+        "Material \u00b7 compact, per material",
+        "Subtree \u00b7 if children",
+        "Shape",
+        "Geometry",
+        "Primitives",
+        "Issues"
+      ]
+    },
+    {
+      "number": 3,
+      "name": "Material",
+      "sections": [
+        "Material",
+        "Used by",
+        "Issues"
+      ]
+    },
+    {
+      "number": 4,
+      "name": "Animation",
+      "sections": [
+        "Animation",
+        "Targets",
+        "Issues"
+      ]
+    }
+  ],
+  "layout": {
+    "cardHeight": 340,
+    "rowPitch": 34,
+    "cardRowPitch": 368
+  }
+}

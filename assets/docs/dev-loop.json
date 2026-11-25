@@ -1,0 +1,26 @@
+{
+  "watermark": false,
+  "fonts": "system",
+  "legend": false,
+  "eyebrow": "",
+  "motion": "none",
+  "skin": "light",
+  "type": "process",
+  "title": "Contributor loop",
+  "subtitle": "Prepare the checkout, run the tests, open a fixture, and read the log.",
+  "numbered": true,
+  "steps": [
+    {"label": "Clone", "sub": "GitHub repository"},
+    {"label": "Install", "sub": "brew install xcodegen"},
+    {"label": "Set IDs", "sub": "project.yml; scripts; AppGroupSettings.swift"},
+    {"label": "Fetch models", "sub": "./scripts/fetch-test-models.sh"},
+    {"label": "Run tests", "sub": "./scripts/dev.sh test"},
+    {"label": "Open fixture", "sub": "./scripts/dev.sh run <fixture>"},
+    {"label": "Read log", "sub": ".build/logs/debug.log", "focal": true}
+  ],
+  "evidence": [
+    {"id": "commands", "file": "scripts/dev.sh"},
+    {"id": "models", "file": "scripts/fetch-test-models.sh"},
+    {"id": "ids", "file": "project.yml"}
+  ]
+}

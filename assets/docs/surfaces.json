@@ -1,0 +1,48 @@
+{
+  "type": "swimlane",
+  "title": "Three rendering surfaces",
+  "subtitle": "Each surface reaches the same MetalRenderer with a different host and output.",
+  "size": "wide",
+  "motion": "none",
+  "fonts": "system",
+  "watermark": false,
+  "legend": false,
+  "lanes": [
+    {"id": "window", "label": "Document window"},
+    {"id": "preview", "label": "Quick Look preview"},
+    {"id": "thumbnail", "label": "Finder thumbnail"}
+  ],
+  "nodes": [
+    {"id": "window-request", "label": "Open file", "sub": "interactive", "lane": "window", "col": 0},
+    {"id": "window-canvas", "label": "ModelCanvas", "sub": "ViewState options", "lane": "window", "col": 1},
+    {"id": "window-renderer", "label": "Shared renderer", "sub": "MetalRenderer", "lane": "window", "col": 2, "focal": true},
+    {"id": "window-output", "label": "Live canvas", "sub": "window size", "lane": "window", "col": 3},
+    {"id": "preview-request", "label": "Preview request", "sub": "sandboxed", "lane": "preview", "col": 0},
+    {"id": "preview-canvas", "label": "ModelCanvas", "sub": "stored look · live", "lane": "preview", "col": 1},
+    {"id": "preview-renderer", "label": "Shared renderer", "sub": "MetalRenderer", "lane": "preview", "col": 2},
+    {"id": "preview-output", "label": "Live preview", "sub": "Quick Look size", "lane": "preview", "col": 3},
+    {"id": "thumbnail-request", "label": "Thumbnail request", "sub": "Finder", "lane": "thumbnail", "col": 0},
+    {"id": "thumbnail-renderer", "label": "ThumbnailRenderer", "sub": "one off-screen frame", "lane": "thumbnail", "col": 1},
+    {"id": "thumbnail-shared", "label": "Shared renderer", "sub": "MetalRenderer", "lane": "thumbnail", "col": 2},
+    {"id": "thumbnail-output", "label": "PNG reply", "sub": "requested pixels", "lane": "thumbnail", "col": 3}
+  ],
+  "edges": [
+    ["window-request", "window-canvas", "mount"],
+    ["window-canvas", "window-renderer", "load"],
+    ["window-renderer", "window-output", "interactive frames", "primary"],
+    ["preview-request", "preview-canvas", "mount"],
+    ["preview-canvas", "preview-renderer", "load"],
+    ["preview-renderer", "preview-output", "live frames", "primary"],
+    ["thumbnail-request", "thumbnail-renderer", "provide"],
+    ["thumbnail-renderer", "thumbnail-shared", "render"],
+    ["thumbnail-shared", "thumbnail-output", "PNG", "primary"]
+  ],
+  "evidence": [
+    {"id": "window", "file": "GLTFInspector/Window/DocumentWindow.swift", "line": 7},
+    {"id": "preview", "file": "PreviewExtension/PreviewViewController.swift", "line": 37},
+    {"id": "thumbnail", "file": "ThumbnailExtension/ThumbnailProvider.swift", "line": 8},
+    {"id": "shared", "file": "Renderer/ThumbnailRenderer.swift", "line": 7},
+    {"id": "stored", "file": "Renderer/ViewOptions.swift", "line": 116}
+  ],
+  "out": "surfaces.html"
+}

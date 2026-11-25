@@ -1,0 +1,6 @@
+Upstream: https://github.com/KhronosGroup/KTX-Software v4.2.1 public headers, as shipped inside
+GLTFKit2 0.5.15 (GLTFKit2/deps/libktx/ktx.xcframework/macos-arm64_x86_64/Headers). Files unmodified.
+Only headers are vendored: the libktx symbols are exported by the pinned GLTFKit2.framework binary.
+License: Apache-2.0 (LICENSE.md).
+SHA256 include/ktx.h: 6987ad5509817ba5a2cbe79e600382b24c85fbef27ca99a92c049ff989b2d7ef
+SHA256 include/KHR/khr_df.h: 0ffb0becb5cbf55b8b6ebc0841f89af53562c6841d70fa43e1d13a5b6bebd266

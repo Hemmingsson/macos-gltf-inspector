@@ -1,0 +1,156 @@
+import Darwin
+import Foundation
+import GLTFCore
+import Testing
+@testable import Renderer
+
+/// Opt-in performance bench: `./scripts/dev.sh bench` (sets `GLTF_BENCH=1` for the test runner).
+///
+/// Skipped by the default `dev.sh test` and free of wall-clock assertions: it prints
+/// `bench|section|file|metric|median|spread|n` rows, which `dev.sh bench` turns into a table.
+/// Numbers are a baseline on whatever else the machine is doing, not a gate.
+@MainActor
+@Suite(.serialized, .enabled(if: ProcessInfo.processInfo.environment["GLTF_BENCH"] == "1", "set GLTF_BENCH=1 (./scripts/dev.sh bench)"))
+struct PerfBench {
+    /// Texture-heavy and material-heavy pinned samples.
+    static let samples = ["BoomBox", "Corset", "MetalRoughSpheresNoTextures"]
+    static let stillSize = 512
+    /// Repeats per measurement (`GLTF_BENCH_RUNS`, default 3).
+    static var runs: Int {
+        ProcessInfo.processInfo.environment["GLTF_BENCH_RUNS"].flatMap(Int.init).map { max(1, $0) } ?? 3
+    }
+
+    /// Load + first still on a new renderer (cold) and on one reused renderer (warm), pipeline
+    /// specialisation on the warm one, and a 1080p frame's GPU time. In-process, so "cold" is a
+    /// fresh renderer, not a fresh extension process.
+    @Test func loadManyMorphTargetFace() async throws {
+        let url = try writeManyMorphTargetGLB(targetCount: 50)
+        defer { try? FileManager.default.removeItem(at: url) }
+        var samples: [Double] = []
+        for _ in 0..<Self.runs {
+            let start = ContinuousClock.now
+            let renderer = try MetalRenderer()
+            try await renderer.load(url: url)
+            samples.append(milliseconds(since: start))
+        }
+        row("load", "50-morph-targets", "total", samples)
+    }
+
+    @Test func loadManyNodeScan() async throws {
+        let url = try writeManyNodeScanGLB(nodeCount: 10_000)
+        defer { try? FileManager.default.removeItem(at: url) }
+        var samples: [Double] = []
+        for _ in 0..<Self.runs {
+            let start = ContinuousClock.now
+            let renderer = try MetalRenderer()
+            try await renderer.load(url: url)
+            samples.append(milliseconds(since: start))
+        }
+        row("load", "10k-node-scan", "total", samples)
+    }
+
+    @Test func loadAndFirstStill() async throws {
+        let manifest = try PixelDiffManifest.load()
+        let options = ViewOptions(look: try PixelDiffMetal.renderLook(manifest.look))
+        let warm = try MetalRenderer()
+        for name in Self.samples {
+            let entry = try #require(manifest.entries.first { $0.name == name }, "\(name) is not a pinned sample")
+            let pose = MetalCameraPose(try PixelDiffRun.camera(of: entry))
+            var cold: [Double] = [], reused: [Double] = [], gpu: [Double] = [], pipelines: [Double] = []
+            for _ in 0..<Self.runs {
+                let coldStart = ContinuousClock.now
+                let renderer = try MetalRenderer()
+                try await renderer.load(url: entry.modelURL)
+                _ = try renderer.image(options, pose: pose, width: Self.stillSize, height: Self.stillSize)
+                cold.append(milliseconds(since: coldStart))
+
+                let pipelineBefore = warm.pipelineMilliseconds
+                let warmStart = ContinuousClock.now
+                try await warm.load(url: entry.modelURL)
+                _ = try warm.image(options, pose: pose, width: Self.stillSize, height: Self.stillSize)
+                reused.append(milliseconds(since: warmStart))
+                pipelines.append(warm.pipelineMilliseconds - pipelineBefore)
+
+                _ = try warm.image(options, pose: pose, width: 1920, height: 1080)
+                gpu.append(warm.gpuMilliseconds)
+            }
+            row("still.cold", name, "total", cold)
+            row("still.warm", name, "total", reused)
+            row("pipeline", name, "specialize ms", pipelines)
+            row("gpu", name, "1080p frame ms", gpu)
+            if let footprint = physicalFootprintMB() {
+                print("bench|process|\(name)|footprint MB|\(String(format: "%.1f", footprint))|test process|1")
+            }
+        }
+    }
+
+    private func writeManyMorphTargetGLB(targetCount: Int) throws -> URL {
+        var bin = floatTriangleBin()
+        var bufferViews: [[String: Any]] = [["buffer": 0, "byteOffset": 0, "byteLength": 36]]
+        var accessors: [[String: Any]] = [
+            ["bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "max": [1, 1, 0], "min": [0, 0, 0]],
+        ]
+        var targetJSON: [[String: Int]] = []
+        for index in 0..<targetCount {
+            appendFloats([Float(index) * 0.001, 0, 0, 0, 0, 0, 0, 0, 0], to: &bin)
+            bufferViews.append(["buffer": 0, "byteOffset": 36 + index * 36, "byteLength": 36])
+            accessors.append([
+                "bufferView": index + 1, "componentType": 5126, "count": 3, "type": "VEC3",
+                "max": [1, 1, 0], "min": [0, 0, 0],
+            ])
+            targetJSON.append(["POSITION": index + 1])
+        }
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": bufferViews,
+            "accessors": accessors,
+            "meshes": [["primitives": [["attributes": ["POSITION": 0], "targets": targetJSON]]]],
+            "nodes": [["mesh": 0]],
+            "scenes": [["nodes": [0]]],
+            "scene": 0,
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "perf-morph")
+    }
+
+    private func writeManyNodeScanGLB(nodeCount: Int) throws -> URL {
+        let bin = floatTriangleBin()
+        let nodes = (0..<nodeCount).map { index in
+            ["name": "Node\(index)", "mesh": 0] as [String: Any]
+        }
+        let json: [String: Any] = [
+            "asset": ["version": "2.0"],
+            "buffers": [["byteLength": bin.count]],
+            "bufferViews": [["buffer": 0, "byteOffset": 0, "byteLength": bin.count]],
+            "accessors": [[
+                "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3",
+                "max": [1, 1, 0], "min": [0, 0, 0],
+            ]],
+            "meshes": [["primitives": [["attributes": ["POSITION": 0]]]]],
+            "nodes": nodes,
+            "scenes": [["nodes": Array(0..<nodeCount)]],
+            "scene": 0,
+        ]
+        return try TestGLB.writeTemp(try TestGLB.serialize(json: json, bin: bin), prefix: "perf-10k")
+    }
+
+    private func row(_ section: String, _ file: String, _ metric: String, _ samples: [Double]) {
+        let sorted = samples.sorted()
+        guard let first = sorted.first, let last = sorted.last else { return }
+        let spread = sorted.count > 1 ? String(format: "%.0f-%.0f", first, last) : "-"
+        print("bench|\(section)|\(file)|\(metric)|\(String(format: "%.1f", sorted[sorted.count / 2]))|\(spread)|\(sorted.count)")
+    }
+
+    private func milliseconds(since start: ContinuousClock.Instant) -> Double {
+        (ContinuousClock.now - start) / .milliseconds(1)
+    }
+
+    private func physicalFootprintMB() -> Double? {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+        }
+        return result == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : nil
+    }
+}
