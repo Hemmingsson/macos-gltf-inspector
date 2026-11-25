@@ -22,9 +22,9 @@ and `MetalRenderer.swift` mirror it. Geometry uses an 80-byte packed vertex.
 Material maps and samplers use an argument buffer; per-map flags and UV
 transforms remain uniform branches.
 
-Lighting comes from the bundled `../Environments/*.metalibl` bakes: the Khronos
-renderer's own filtered cube maps and LUTs, exported once. Nothing is filtered at
-runtime.
+Lighting comes from the bundled `../Environments/*.metalibl` bakes. The cube maps
+use documented source HDR images filtered once with the pinned Khronos renderer;
+the shared LUTs are from that renderer. Nothing is filtered at runtime.
 
 Regression accuracy is checked against the reference images in `TestModels/References/` (rendered by
 the Khronos renderer or recorded from app-specific behavior; see that directory's README):

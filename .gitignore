@@ -53,7 +53,6 @@ TestModels/References/MEASURE_NOISE
 
 # generated diagrams / tool state
 /diagrams/
-/.seecode/
 
 # Personal agent and editor tooling (kept locally, not part of the project)
 /.fejk-agents/

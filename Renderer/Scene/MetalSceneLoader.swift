@@ -811,13 +811,13 @@ private extension Builder {
         desc.minFilter = [9728,9984,9986].contains(minFilter) ? .nearest : .linear
         desc.mipFilter = minFilter >= 9984 ? ([9984,9985].contains(minFilter) ? .nearest : .linear) : .notMipmapped
         if texture.mipmapLevelCount <= 1 {
-            desc.mipFilter = .notMipmapped; desc.sAddressMode = .clampToEdge; desc.tAddressMode = .clampToEdge
-        } else {
-            func address(_ raw: Int) -> MTLSamplerAddressMode { switch raw { case 33071: .clampToEdge; case 33648: .mirrorRepeat; default: .repeat } }
-            desc.sAddressMode = address(sampler.map { Int($0.wrapS.rawValue) } ?? 10497)
-            desc.tAddressMode = address(sampler.map { Int($0.wrapT.rawValue) } ?? 10497)
-            if [9986,9987].contains(minFilter) && magFilter != 9728 { desc.maxAnisotropy = 16 }
+            desc.mipFilter = .notMipmapped
+        } else if [9986,9987].contains(minFilter) && magFilter != 9728 {
+            desc.maxAnisotropy = 16
         }
+        func address(_ raw: Int) -> MTLSamplerAddressMode { switch raw { case 33071: .clampToEdge; case 33648: .mirrorRepeat; default: .repeat } }
+        desc.sAddressMode = address(sampler.map { Int($0.wrapS.rawValue) } ?? 10497)
+        desc.tAddressMode = address(sampler.map { Int($0.wrapT.rawValue) } ?? 10497)
         guard let state = device.makeSamplerState(descriptor:desc) else { throw MetalSceneError.invalid("Metal sampler allocation failed") }
         var transform = matrix_identity_float3x3
         var uv = params.texCoord

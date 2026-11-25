@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #else
         AppLog.configureFileSink()
         #endif
+        DispatchQueue.main.async {
+            AppInstallationCoordinator.shared.offerMoveIfNeeded()
+        }
         AppSettings.shared.appearance.apply()
         // Every document gets its own window: no tabs, and no tab items in the View menu.
         UserDefaults.standard.removeObject(forKey: "AppleWindowTabbingMode")

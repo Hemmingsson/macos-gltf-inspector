@@ -53,7 +53,7 @@ need without a file on disk.
   mesh, camera, and skin assets. Both scenes can play the same animation.
 - **Inspector coverage:** named groups and meshes, six visible PBR materials, perspective
   camera, spot/point/directional lights, Squash morph target, two-joint skin, and the
-  `Breathe & sway` animation (morph wsixs + joint rotation).
+  `Breathe & sway` animation (morph twists + joint rotation).
 
 The camera and lights appear as native gizmos when enabled; their scene nodes are authored
 camera/light objects, not decorative proxy geometry. Select the named nodes or materials to

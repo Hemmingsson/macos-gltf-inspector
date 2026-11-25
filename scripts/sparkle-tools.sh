@@ -16,6 +16,12 @@ fi
 
 command -v curl >/dev/null || { echo "missing curl" >&2; exit 1; }
 command -v tar >/dev/null || { echo "missing tar" >&2; exit 1; }
+command -v shasum >/dev/null || { echo "missing shasum" >&2; exit 1; }
+
+case "$SPARKLE_VERSION" in
+  2.9.6) expected_sha256="52bf9e88cdd972fc0c81501377a880e90d47031bd8ca5462488f843e2609e192" ;;
+  *) echo "no verified Sparkle archive hash for version $SPARKLE_VERSION" >&2; exit 1 ;;
+esac
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/sparkle-tools.XXXXXX")"
 cleanup() {
@@ -52,22 +58,14 @@ extract_archive() {
   esac
 }
 
-archive=""
+archive="$tmp/Sparkle-${SPARKLE_VERSION}.tar.xz"
 base_url="https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}"
-for name in \
-  "Sparkle-${SPARKLE_VERSION}.tar.xz" \
-  "Sparkle-${SPARKLE_VERSION}.tar.gz" \
-  "Sparkle-${SPARKLE_VERSION}.zip"
-do
-  candidate="$tmp/$name"
-  if download_release "$base_url/$name" "$candidate"; then
-    archive="$candidate"
-    break
-  fi
-done
-
-if [[ -z "$archive" ]]; then
-  echo "could not download Sparkle $SPARKLE_VERSION CLI archive from $base_url" >&2
+download_release "$base_url/$(basename "$archive")" "$archive"
+actual_sha256="$(shasum -a 256 "$archive" | awk '{print $1}')"
+if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+  echo "Sparkle $SPARKLE_VERSION archive checksum mismatch" >&2
+  echo "expected: $expected_sha256" >&2
+  echo "actual:   $actual_sha256" >&2
   exit 1
 fi
 

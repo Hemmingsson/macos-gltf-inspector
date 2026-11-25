@@ -36,7 +36,7 @@ Preview them in Finder with Quick Look and thumbnails.
 macOS 26+ on Apple Silicon.
 
 1. Download [glTFInspector.zip](https://github.com/Hemmingsson/macos-gltf-inspector/releases/latest/download/glTFInspector.zip).
-2. Unzip and move **glTF Inspector.app** to **Applications**.
+2. Unzip and open **glTF Inspector.app**. If it is outside **Applications**, the app offers to copy itself there and relaunch. If a copy is already installed, replace it in Finder.
 3. Open the app once to register Quick Look and thumbnails.
 
 [Release notes](https://github.com/Hemmingsson/macos-gltf-inspector/releases/latest) · [Build from source](docs/development.md)
@@ -69,4 +69,4 @@ Also: [architecture](docs/architecture.md), [design](docs/design.md), [contribut
 [dependencies](GLTFInspector/Resources/ThirdPartyLicenses),
 [lighting images](Renderer/Environments/LICENSES.md).
 
-Screenshots are real app and Finder captures. [How they were made](demo/README.md).
+App screenshot and Finder mockups: [media guide](demo/README.md).
