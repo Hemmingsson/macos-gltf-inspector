@@ -214,16 +214,8 @@ final class GLTFBinaryStore {
     }
 
     private func resolvedSidecar(_ uri: String) -> URL? {
-        guard let fileURL, !uri.isEmpty,
-              let decoded = uri.removingPercentEncoding,
-              !decoded.hasPrefix("/"),
-              !(URL(string: decoded)?.isFileURL ?? true)
-        else { return nil }
-        let base = fileURL.deletingLastPathComponent().standardizedFileURL
-        let sidecar = base.appendingPathComponent(decoded).standardizedFileURL
-        let basePath = base.path.hasSuffix("/") ? base.path : base.path + "/"
-        guard sidecar.path == base.path || sidecar.path.hasPrefix(basePath) else { return nil }
-        return sidecar
+        guard let fileURL else { return nil }
+        return GLTFResourceIO.resolvedSidecarURL(uri, under: fileURL.deletingLastPathComponent())
     }
 
     private func elementSize(_ accessor: [String: Any]) -> Int? {

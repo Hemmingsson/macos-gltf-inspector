@@ -88,7 +88,7 @@ struct WindowLayout<Canvas: View>: View {
         .animation(DS.Motion.chrome(reduceMotion: reduceMotion), value: showsInspector)
     }
 
-    private var documentURL: URL? { window.loadingURL ?? window.documentURL }
+    private var documentURL: URL? { window.openURL }
 
     /// The setter (the user closed the inspector) clears the selection. Writes happen only in
     /// the setter, never during a view update (AGENTS.md pitfall 1).

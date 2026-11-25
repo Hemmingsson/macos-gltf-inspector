@@ -154,14 +154,7 @@ public enum GLTFValidator {
 
         if let externalBase {
             let load: @convention(block) (String) -> String? = { relative in
-                guard let decoded = relative.removingPercentEncoding,
-                      !decoded.hasPrefix("/"),
-                      !(URL(string: decoded)?.isFileURL ?? true)
-                else { return nil }
-                let base = externalBase.standardizedFileURL
-                let fileURL = base.appendingPathComponent(decoded).standardizedFileURL
-                let basePath = base.path.hasSuffix("/") ? base.path : base.path + "/"
-                guard fileURL.path == base.path || fileURL.path.hasPrefix(basePath),
+                guard let fileURL = GLTFResourceIO.resolvedSidecarURL(relative, under: externalBase),
                       let bytes = try? GLTFResourceIO.read(
                           fileURL,
                           limit: maxRawAssetBytes

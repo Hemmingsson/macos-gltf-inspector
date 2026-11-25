@@ -1,19 +1,14 @@
 import fs from 'node:fs';
+import { badge as pushBadge, esc, line as pushLine, rect as pushRect, text as pushText } from './svg-helpers.mjs';
 
 const here = new URL('.', import.meta.url).pathname;
 const spec = JSON.parse(fs.readFileSync(`${here}inspector.json`, 'utf8'));
-const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const out = [];
 const text = (x, y, value, cls = 'body', anchor = 'start') =>
-  out.push(`<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${esc(value)}</text>`);
-const rect = (x, y, w, h, cls, r = 0) =>
-  out.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" class="${cls}"/>`);
-const line = (x1, y1, x2, y2, cls = 'line') =>
-  out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${cls}"/>`);
-const badge = (n, x, y) => {
-  out.push(`<circle cx="${x}" cy="${y}" r="14" class="badge"/>`);
-  text(x, y + 5, n, 'badgeText', 'middle');
-};
+  pushText(out, x, y, value, cls, anchor);
+const rect = (x, y, w, h, cls, r = 0) => pushRect(out, x, y, w, h, cls, r);
+const line = (x1, y1, x2, y2, cls = 'line') => pushLine(out, x1, y1, x2, y2, cls);
+const badge = (n, x, y) => pushBadge(out, n, x, y);
 
 out.push(`<rect width="${spec.width}" height="${spec.height}" class="page"/>`);
 text(48, 46, spec.title, 'title');

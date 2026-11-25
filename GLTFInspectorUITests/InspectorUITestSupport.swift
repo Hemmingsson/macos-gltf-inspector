@@ -70,32 +70,35 @@ extension XCTestCase {
     }
 
     func inspectorSelection(in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: "inspector-selection").firstMatch
+        marker("inspector-selection", in: app)
     }
 
     private func marker(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
-    /// Clicks the sidebar outliner when rows are not exposed in the accessibility tree.
-    func clickSidebarOutliner(in app: XCUIApplication, normalizedY: CGFloat = 0.42) {
+    /// First document window, after it exists.
+    private func frontWindow(in app: XCUIApplication) -> XCUIElement {
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: UIWait.timeout), "window missing")
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: normalizedY)).click()
+        return window
+    }
+
+    /// Clicks the sidebar outliner when rows are not exposed in the accessibility tree.
+    func clickSidebarOutliner(in app: XCUIApplication, normalizedY: CGFloat = 0.42) {
+        frontWindow(in: app).coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: normalizedY)).click()
     }
 
     /// Clicks the canvas detail area (between sidebar and inspector), near the visual centre.
     func clickCanvasCentre(in app: XCUIApplication) {
-        let window = app.windows.firstMatch
-        XCTAssertTrue(window.waitForExistence(timeout: UIWait.timeout), "window missing")
         // Below the title-bar band; past the ~248 pt sidebar on the default 1280 pt window.
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.62, dy: 0.55)).click()
+        frontWindow(in: app).coordinate(withNormalizedOffset: CGVector(dx: 0.62, dy: 0.55)).click()
     }
 
     /// One backdrop swatch in the Stage cluster, by identifier
     /// ("backdrop-window" / "backdrop-white" / "backdrop-dark").
     func backdropSwatch(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+        marker(identifier, in: app)
     }
 
     func attachScreenshot(_ app: XCUIApplication, named name: String) {

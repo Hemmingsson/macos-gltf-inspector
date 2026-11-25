@@ -282,8 +282,8 @@ public final class MetalRenderer {
                        viewport: setup.viewport, animationPose: animationPose)
         let x = min(max(point.x, 0), width - 1)
         let y = min(max(point.y, 0), height - 1)
-        let idReadback = try pickReadbackIDTexture()
-        let depthReadback = try pickReadbackDepthTexture()
+        let idReadback = try cachedTexture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
+        let depthReadback = try cachedTexture(.depth32Float, 1, 1, [.shaderRead], storage: .shared)
         guard let blit = command.makeBlitCommandEncoder() else { throw MetalRendererError.resource("pick blit") }
         blit.copy(from: pickTarget, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: x, y: y, z: 0), sourceSize: MTLSize(width: 1, height: 1, depth: 1),
@@ -1043,14 +1043,6 @@ public final class MetalRenderer {
         black.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &clear, bytesPerRow: 4)
         blackTexture = black
         return black
-    }
-
-    private func pickReadbackIDTexture() throws -> any MTLTexture {
-        try cachedTexture(.r32Uint, 1, 1, [.shaderRead], storage: .shared)
-    }
-
-    private func pickReadbackDepthTexture() throws -> any MTLTexture {
-        try cachedTexture(.depth32Float, 1, 1, [.shaderRead], storage: .shared)
     }
 
     private func drainPresentationSlots() {

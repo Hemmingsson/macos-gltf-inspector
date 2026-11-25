@@ -3,17 +3,7 @@ import SwiftUI
 extension NodeKind {
     /// SF Symbol fallback when no catalog image or material swatch is mapped.
     var systemImage: String {
-        switch self {
-        case .scene: "square.stack.3d.up"
-        case .mesh: "cube"
-        case .camera: "video"
-        case .light: "lamp.desk"
-        case .material: "circle.lefthalf.filled"
-        case .animation: "stopwatch"
-        case .skin: "point.3.connected.trianglepath.dotted"
-        case .morph: "slider.horizontal.3"
-        case .empty: "circle.dotted"
-        }
+        glyph.symbol
     }
 
     /// Meaning-colour from `DS.Color.Role`. Only the five content roles get a hue; structural

@@ -96,8 +96,7 @@ for item in root.findall(".//item"):
         raw = enclosure.get(version_attr) if enclosure is not None else None
     if not raw or not raw.strip().isdigit():
         sys.exit("appcast item has missing or non-integer build")
-    if raw and raw.strip().isdigit():
-        versions.append(int(raw.strip()))
+    versions.append(int(raw.strip()))
 if not versions:
     sys.exit("appcast contains no builds")
 print(max(versions))

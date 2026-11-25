@@ -55,17 +55,6 @@ enum NavigationAxis: CaseIterable, Hashable, Sendable {
         case .negZ: .posZ
         }
     }
-
-    var viewDirectionName: String {
-        switch self {
-        case .posX: "right"
-        case .negX: "left"
-        case .posY: "top"
-        case .negY: "bottom"
-        case .posZ: "front"
-        case .negZ: "back"
-        }
-    }
 }
 
 struct NavigationGizmoBallLayout: Identifiable, Equatable, Sendable {

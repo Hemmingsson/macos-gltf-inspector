@@ -27,6 +27,20 @@ enum GLTFResourceIO {
         }
         return size
     }
+
+    /// Relative URI under `baseDirectory`, rejecting absolute paths and escapes above the base.
+    static func resolvedSidecarURL(_ uri: String, under baseDirectory: URL) -> URL? {
+        guard !uri.isEmpty,
+              let decoded = uri.removingPercentEncoding,
+              !decoded.hasPrefix("/"),
+              !(URL(string: decoded)?.isFileURL ?? true)
+        else { return nil }
+        let base = baseDirectory.standardizedFileURL
+        let sidecar = base.appendingPathComponent(decoded).standardizedFileURL
+        let basePath = base.path.hasSuffix("/") ? base.path : base.path + "/"
+        guard sidecar.path == base.path || sidecar.path.hasPrefix(basePath) else { return nil }
+        return sidecar
+    }
 }
 
 enum GLTFResourceError: Swift.Error, LocalizedError, Equatable {

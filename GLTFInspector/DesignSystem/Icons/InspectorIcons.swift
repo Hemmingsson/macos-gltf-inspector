@@ -50,7 +50,8 @@ enum DSGlyphs {
     static let floor = DSGlyph("floor-grid", fallback: "circle.grid.cross")
     static let showRig = DSGlyph("show-rig", fallback: "camera.viewfinder")
     static let lighting = DSGlyph("light-env", fallback: "sun.max")
-    static let view = DSGlyph("fit", fallback: "viewfinder")
+    /// Same art as `fit` — one metaphor for framing the view.
+    static let view = fit
 
     // Projection — the toolbar toggle reuses the camera glyph, one metaphor for one idea.
     static let perspective = DSGlyph("proj-perspective", fallback: "video")

@@ -279,6 +279,22 @@ extension MetalScene {
         }
     }
 
+    /// Normalized POSITION accessor AABB corners from `min`/`max`, or nil when absent.
+    private static func positionAccessorBounds(_ accessor: GLTFAccessor) -> (lo: SIMD3<Float>, hi: SIMD3<Float>)? {
+        guard accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { return nil }
+        let lo = SIMD3(
+            normalizedAccessorValue(accessor.minValues[0], accessor: accessor),
+            normalizedAccessorValue(accessor.minValues[1], accessor: accessor),
+            normalizedAccessorValue(accessor.minValues[2], accessor: accessor)
+        )
+        let hi = SIMD3(
+            normalizedAccessorValue(accessor.maxValues[0], accessor: accessor),
+            normalizedAccessorValue(accessor.maxValues[1], accessor: accessor),
+            normalizedAccessorValue(accessor.maxValues[2], accessor: accessor)
+        )
+        return (lo, hi)
+    }
+
     /// The scene drawn for `ViewOptions.sceneIndex` (nil keeps the file's default scene).
     func gltfSceneIndex(for sceneIndex: Int?) -> Int? {
         if let sceneIndex { return asset.scenes.indices.contains(sceneIndex) ? sceneIndex : nil }
@@ -338,17 +354,7 @@ extension MetalScene {
         sphere: Bool = false
     ) {
         guard let accessor = primitive.attribute(forName: "POSITION")?.accessor,
-              accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { return }
-        let lo = SIMD3(
-            Self.normalizedAccessorValue(accessor.minValues[0], accessor: accessor),
-            Self.normalizedAccessorValue(accessor.minValues[1], accessor: accessor),
-            Self.normalizedAccessorValue(accessor.minValues[2], accessor: accessor)
-        )
-        let hi = SIMD3(
-            Self.normalizedAccessorValue(accessor.maxValues[0], accessor: accessor),
-            Self.normalizedAccessorValue(accessor.maxValues[1], accessor: accessor),
-            Self.normalizedAccessorValue(accessor.maxValues[2], accessor: accessor)
-        )
+              let (lo, hi) = Self.positionAccessorBounds(accessor) else { return }
         var primitiveBox = Self.emptyBox
         for i in 0..<8 {
             let corner = SIMD4<Float>(i & 4 == 0 ? lo.x : hi.x, i & 2 == 0 ? lo.y : hi.y, i & 1 == 0 ? lo.z : hi.z, 1)
@@ -390,17 +396,7 @@ extension MetalScene {
         var hi = SIMD3<Float>(repeating: -.infinity)
         for primitive in mesh.primitives {
             guard let accessor = primitive.attribute(forName: "POSITION")?.accessor,
-                  accessor.minValues.count >= 3, accessor.maxValues.count >= 3 else { continue }
-            let cornerLo = SIMD3(
-                Self.normalizedAccessorValue(accessor.minValues[0], accessor: accessor),
-                Self.normalizedAccessorValue(accessor.minValues[1], accessor: accessor),
-                Self.normalizedAccessorValue(accessor.minValues[2], accessor: accessor)
-            )
-            let cornerHi = SIMD3(
-                Self.normalizedAccessorValue(accessor.maxValues[0], accessor: accessor),
-                Self.normalizedAccessorValue(accessor.maxValues[1], accessor: accessor),
-                Self.normalizedAccessorValue(accessor.maxValues[2], accessor: accessor)
-            )
+                  let (cornerLo, cornerHi) = Self.positionAccessorBounds(accessor) else { continue }
             lo = min(lo, cornerLo)
             hi = max(hi, cornerHi)
         }
@@ -423,8 +419,8 @@ extension MetalScene {
         guard asset.nodes.indices.contains(index) else { return nil }
         let node = asset.nodes[index]
         guard let mesh = node.mesh else { return nil }
+        guard let world = worldMatrix(ofNode: index, worlds: worlds) else { return nil }
         var box = Self.emptyBox
-        let world = worldMatrix(ofNode: index, worlds: worlds) ?? worldMatrix(node)
         for primitive in mesh.primitives {
             let resolved = primitive.material.flatMap { mat in asset.materials.firstIndex { $0 === mat } }
             guard resolved == materialIndex else { continue }
@@ -478,10 +474,7 @@ extension MetalScene {
     /// used to depth-sort drawables the way the viewer sorts them.
     func fileCamera(at index: Int, aspect: Float, worlds: [simd_float4x4]? = nil) -> (viewProjection: simd_float4x4, view: simd_float4x4, eye: SIMD3<Float>, viewportAspect: Float?)? {
         guard asset.nodes.indices.contains(index), let camera = asset.nodes[index].camera else { return nil }
-        func restWorld(_ node: GLTFNode) -> simd_float4x4 {
-            (node.parent.map(restWorld) ?? matrix_identity_float4x4) * node.matrix
-        }
-        let transform = worldMatrix(ofNode: index, worlds: worlds) ?? restWorld(asset.nodes[index])
+        guard let transform = worldMatrix(ofNode: index, worlds: worlds) else { return nil }
         let near = camera.zNear, far = camera.zFar
         let projection: simd_float4x4
         var viewportAspect: Float?

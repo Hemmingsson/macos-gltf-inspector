@@ -128,13 +128,7 @@ private final class Builder {
         }
         for node in scene.nodes { collect(node, matrix_identity_float4x4) }
         // Joints may be outside the selected scene tree.
-        func global(_ node: GLTFNode) -> simd_float4x4 {
-            if let value = world[ObjectIdentifier(node)] { return value }
-            let value = (node.parent.map { global($0) } ?? matrix_identity_float4x4) * node.matrix
-            world[ObjectIdentifier(node)] = value
-            return value
-        }
-        for skin in asset.skins { for joint in skin.joints { _ = global(joint) } }
+        for skin in asset.skins { for joint in skin.joints { _ = cachedWorld(joint) } }
         skins = try makeSkins()
         func visit(_ node: GLTFNode, visible: Bool) throws {
             let authoredVisibility = (node.extensions["KHR_node_visibility"] as? [String: Any])?["visible"] as? Bool ?? true
@@ -183,7 +177,7 @@ private final class Builder {
     }
 
     func rejectParentCycles() throws {
-        let indices = Dictionary(asset.nodes.enumerated().map { (ObjectIdentifier($1), $0) }, uniquingKeysWith: { first, _ in first })
+        let indices = nodeIndexByIdentity
         var parents = [Int](repeating: -1, count: asset.nodes.count)
         for (index, node) in asset.nodes.enumerated() {
             if let parent = node.parent, let parentIndex = indices[ObjectIdentifier(parent)] {
@@ -221,22 +215,24 @@ private final class Builder {
         }
     }
 
+    /// Cached `parent * matrix` world, filling joints (and other nodes) outside the scene walk.
+    func cachedWorld(_ node: GLTFNode) -> simd_float4x4 {
+        if let value = world[ObjectIdentifier(node)] { return value }
+        let value = (node.parent.map { cachedWorld($0) } ?? matrix_identity_float4x4) * node.matrix
+        world[ObjectIdentifier(node)] = value
+        return value
+    }
+
     /// Cached rest worlds. Nodes the scene walk did not reach (a joint outside the scene) get the
     /// same `parent * matrix` the loader uses for them.
     func nodeRests(matrixAuthoredNodes matrixNodes: Set<Int>) -> [MetalNodeRest] {
-        func ensure(_ node: GLTFNode) -> simd_float4x4 {
-            if let value = world[ObjectIdentifier(node)] { return value }
-            let value = (node.parent.map { ensure($0) } ?? matrix_identity_float4x4) * node.matrix
-            world[ObjectIdentifier(node)] = value
-            return value
-        }
-        return asset.nodes.enumerated().map { index, node in
+        asset.nodes.enumerated().map { index, node in
             MetalNodeRest(
                 translation: node.translation,
                 rotation: node.rotation,
                 scale: node.scale,
                 localMatrix: node.matrix,
-                worldMatrix: ensure(node),
+                worldMatrix: cachedWorld(node),
                 hasMatrix: matrixNodes.contains(index)
             )
         }

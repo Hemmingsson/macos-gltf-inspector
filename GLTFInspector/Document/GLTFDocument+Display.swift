@@ -26,30 +26,16 @@ extension GLTFDocument {
     /// SF Symbol for an outliner / inspector glyph. Light rows follow `KHR_lights_punctual` type;
     /// the file's default scene uses `house`.
     func systemImage(for id: NodeID) -> String {
-        if id.kind == .light,
-           nodes.indices.contains(id.index),
-           let lightIndex = nodes[id.index].lightIndex,
-           lights.indices.contains(lightIndex) {
-            return lights[lightIndex].systemImage
-        }
-        if id.kind == .scene, id.index == defaultSceneIndex {
-            return DSGlyphs.defaultScene.symbol
-        }
+        if let light = light(for: id) { return light.systemImage }
+        if isDefaultScene(id) { return DSGlyphs.defaultScene.symbol }
         return id.kind.systemImage
     }
 
     /// Catalog image for an outliner / inspector glyph (drawn inspector set).
     /// `nil` → material swatch or SF Symbol from `systemImage(for:)`.
     func assetImage(for id: NodeID, meshRefs: [Int: Int]? = nil) -> String? {
-        if id.kind == .light,
-           nodes.indices.contains(id.index),
-           let lightIndex = nodes[id.index].lightIndex,
-           lights.indices.contains(lightIndex) {
-            return DSGlyphs.light(lights[lightIndex].type).assetImage
-        }
-        if id.kind == .scene, id.index == defaultSceneIndex {
-            return DSGlyphs.defaultScene.assetImage
-        }
+        if let light = light(for: id) { return DSGlyphs.light(light.type).assetImage }
+        if isDefaultScene(id) { return DSGlyphs.defaultScene.assetImage }
         // Material rows draw a base-color swatch instead of catalog art.
         if id.kind == .material { return nil }
         if id.kind == .mesh,
@@ -79,13 +65,20 @@ extension GLTFDocument {
 
     /// VoiceOver / inspector subtype title for a light row; other kinds use `NodeKind.displayTitle`.
     func displayKindTitle(of id: NodeID) -> String {
-        if id.kind == .light,
-           nodes.indices.contains(id.index),
-           let lightIndex = nodes[id.index].lightIndex,
-           lights.indices.contains(lightIndex) {
-            return lights[lightIndex].displayTypeTitle
-        }
-        return id.kind.displayTitle
+        light(for: id)?.displayTypeTitle ?? id.kind.displayTitle
+    }
+
+    /// The punctual light a light-node row points at, when both indices are in range.
+    private func light(for id: NodeID) -> Light? {
+        guard id.kind == .light,
+              nodes.indices.contains(id.index),
+              let lightIndex = nodes[id.index].lightIndex,
+              lights.indices.contains(lightIndex) else { return nil }
+        return lights[lightIndex]
+    }
+
+    private func isDefaultScene(_ id: NodeID) -> Bool {
+        id.kind == .scene && id.index == defaultSceneIndex
     }
 
     /// The name shown for any outliner row.

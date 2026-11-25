@@ -48,10 +48,13 @@ final class DocumentWindowModel {
     /// The validator's findings, resolved to outliner rows.
     var validation: ValidationResult { ValidationResult(validationState, document: document) }
 
-    var fileName: String { (loadingURL ?? documentURL)?.lastPathComponent ?? "Model" }
+    /// The file currently loading or open; chrome prefers the in-flight URL.
+    var openURL: URL? { loadingURL ?? documentURL }
+
+    var fileName: String { openURL?.lastPathComponent ?? "Model" }
 
     var exportName: String {
-        (loadingURL ?? documentURL)?.deletingPathExtension().lastPathComponent ?? "export"
+        openURL?.deletingPathExtension().lastPathComponent ?? "export"
     }
 
     /// Resets the window for `url`; the caller then loads the panels with `openSummary`.

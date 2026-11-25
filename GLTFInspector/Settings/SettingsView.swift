@@ -28,14 +28,3 @@ extension View {
             .contentMargins(.top, 8, for: .scrollContent)
     }
 }
-
-struct SettingsFooter<Content: View>: View {
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        content
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}

@@ -2,18 +2,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { rect as pushRect, text as pushText } from './svg-helpers.mjs';
 
 const here = new URL('.', import.meta.url).pathname;
 const root = path.resolve(here, '../..');
 const output = path.join(here, 'view-modes.png');
 const temp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gltf-view-modes-')), 'sheet.svg');
-const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const imageData = name => `data:image/png;base64,${fs.readFileSync(path.join(root, 'TestModels/References/Features', name)).toString('base64')}`;
 const out = [];
 const text = (x, y, value, cls = 'body', anchor = 'start') =>
-  out.push(`<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${esc(value)}</text>`);
-const rect = (x, y, w, h, cls, r = 0) =>
-  out.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" class="${cls}"/>`);
+  pushText(out, x, y, value, cls, anchor);
+const rect = (x, y, w, h, cls, r = 0) => pushRect(out, x, y, w, h, cls, r);
 const image = (x, y, w, h, name) =>
   out.push(`<image x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice" href="${imageData(name)}"/>`);
 

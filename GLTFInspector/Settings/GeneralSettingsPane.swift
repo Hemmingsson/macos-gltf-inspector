@@ -34,9 +34,10 @@ struct GeneralSettingsPane: View {
                         }
                     }
                 } footer: {
-                    SettingsFooter {
-                        Text("macOS may still confirm the change. Finder and Quick Look can keep their own handlers.")
-                    }
+                    Text("macOS may still confirm the change. Finder and Quick Look can keep their own handlers.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
 

@@ -29,7 +29,6 @@ public struct ViewModeAvailability: Sendable, Equatable {
     }
 
     public private(set) var hasTriangles = false
-    public private(set) var hasVertexColors = false
     private var hasNormals = false
     private var hasUVs = false
     private var hasTangents = false
@@ -57,9 +56,6 @@ public struct ViewModeAvailability: Sendable, Equatable {
                 if attributes["TANGENT"] != nil { hasTangents = true }
                 if attributes.keys.contains(where: { $0.hasPrefix("TEXCOORD_") }) {
                     hasUVs = true
-                }
-                if attributes.keys.contains(where: { $0.hasPrefix("COLOR_") }) {
-                    hasVertexColors = true
                 }
                 let mode = GLTFJSON.int(primitive["mode"]) ?? 4
                 if mode == 4 || mode == 5 || mode == 6 {

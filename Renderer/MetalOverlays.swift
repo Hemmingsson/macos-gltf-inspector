@@ -208,26 +208,18 @@ func nearestJointAncestor(of nodeIndex: Int, jointSet: Set<Int>, nodeParents: [I
     return nil
 }
 
-private func isSkinJoint(_ nodeIndex: Int, scene: MetalScene) -> Bool {
-    scene.isSkinJoint(nodeIndex)
-}
-
 /// Screen-space silhouette replaces the AABB for mesh nodes; groups and non-mesh selections keep the box.
 func usesSilhouetteSelectionOutline(nodeIndex: Int, scene: MetalScene) -> Bool {
     guard scene.asset.nodes.indices.contains(nodeIndex) else { return false }
     let node = scene.asset.nodes[nodeIndex]
     guard node.mesh != nil, node.camera == nil, node.light == nil else { return false }
-    return !isSkinJoint(nodeIndex, scene: scene)
+    return !scene.isSkinJoint(nodeIndex)
 }
 
 func silhouetteOutlineNodeIndices(options: MetalOverlayOptions, scene: MetalScene) -> Set<Int> {
     var nodes = options.selectedNodes
     if let primary = options.selectedNode { nodes.insert(primary) }
     return Set(nodes.filter { usesSilhouetteSelectionOutline(nodeIndex: $0, scene: scene) })
-}
-
-private func jointNodeIndices(in scene: MetalScene, skin: GLTFSkin) -> [Int] {
-    scene.jointNodeIndices(skin: skin)
 }
 
 private func collectSkeletonOverlay(
@@ -242,7 +234,7 @@ private func collectSkeletonOverlay(
     let resolved: (skin: GLTFSkin, highlightedJoint: Int?)?
     if let skinIndex = selectedSkinIndex, scene.asset.skins.indices.contains(skinIndex) {
         resolved = (scene.asset.skins[skinIndex], nil)
-    } else if let nodeIndex = selectedNode, isSkinJoint(nodeIndex, scene: scene),
+    } else if let nodeIndex = selectedNode, scene.isSkinJoint(nodeIndex),
               let skinIndex = scene.skinJointNodeIndices.firstIndex(where: { $0.contains(nodeIndex) }) {
         resolved = (scene.asset.skins[skinIndex], nodeIndex)
     } else {
@@ -250,7 +242,7 @@ private func collectSkeletonOverlay(
     }
     guard let (skin, highlightedJoint) = resolved else { return }
 
-    let joints = jointNodeIndices(in: scene, skin: skin)
+    let joints = scene.jointNodeIndices(skin: skin)
     let jointSet = Set(joints)
     let cross = span * 0.03
 
@@ -298,35 +290,12 @@ func overlayGizmoSegments(scene: MetalScene, options: MetalOverlayOptions) -> [M
         if index == options.skipCameraNodeIndex, node.camera != nil { continue }
         if !showsSceneGizmo(nodeIndex: index, scene: scene, options: options) { continue }
         let selected = index == options.selectedNode
-        appendSceneNodeGizmoSegments(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
-                                     selected: selected, worlds: options.nodeWorlds, into: &segments)
+        collectSceneNodeGizmo(scene: scene, nodeIndex: index, span: span, canvasAspect: options.canvasAspect,
+                              selected: selected, worlds: options.nodeWorlds) { a, b, _ in
+            segments.append(MetalGizmoSegment(a: a, b: b, nodeIndex: index))
+        }
     }
     return segments
-}
-
-private func appendSceneNodeGizmoSegments(
-    scene: MetalScene,
-    nodeIndex: Int,
-    span: Float,
-    canvasAspect: Float,
-    selected: Bool,
-    worlds: [simd_float4x4]?,
-    into segments: inout [MetalGizmoSegment]
-) {
-    guard scene.asset.nodes.indices.contains(nodeIndex),
-          let world = scene.worldMatrix(ofNode: nodeIndex, worlds: worlds) else { return }
-    let node = scene.asset.nodes[nodeIndex]
-    func emit(_ a: SIMD3<Float>, _ b: SIMD3<Float>) {
-        segments.append(MetalGizmoSegment(a: a, b: b, nodeIndex: nodeIndex))
-    }
-    if let camera = node.camera {
-        collectCameraFrustum(world: world, camera: camera, span: span, canvasAspect: canvasAspect,
-                             selected: selected, line: { a, b, _ in emit(a, b) })
-        return
-    }
-    if let light = node.light {
-        collectLightGizmo(world: world, light: light, span: span, color: .zero, line: { a, b, _ in emit(a, b) })
-    }
 }
 
 private func collectSceneNodeGizmo(
@@ -376,7 +345,7 @@ private func collectSelectionGizmo(
         return
     }
 
-    if isSkinJoint(nodeIndex, scene: scene) { return }
+    if scene.isSkinJoint(nodeIndex) { return }
 
     if useSilhouetteSelectionOutline,
        usesSilhouetteSelectionOutline(nodeIndex: nodeIndex, scene: scene) { return }

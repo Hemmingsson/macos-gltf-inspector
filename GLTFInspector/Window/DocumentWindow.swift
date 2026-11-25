@@ -44,7 +44,7 @@ struct DocumentWindow: View {
     /// The file the canvas draws. Nil while the window is empty or the open path rejected the
     /// file; the canvas region then follows the panels.
     private var canvasURL: URL? {
-        guard let url = window.loadingURL ?? documentURL, DocumentOpening.isGLTFFile(url) else { return nil }
+        guard let url = window.openURL, DocumentOpening.isGLTFFile(url) else { return nil }
         return url
     }
 
