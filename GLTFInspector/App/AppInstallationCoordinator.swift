@@ -17,7 +17,14 @@ final class AppInstallationCoordinator {
         let applicationsDirectory = applicationsURL
             .standardizedFileURL
             .resolvingSymlinksInPath()
-        return bundleDirectory == applicationsDirectory
+        return sameLocation(bundleDirectory, applicationsDirectory)
+    }
+
+    /// File URL equality also compares directory hints/trailing slashes; launch services
+    /// can return the same bundle with a different hint than the copy destination.
+    static func sameLocation(_ first: URL, _ second: URL) -> Bool {
+        first.standardizedFileURL.resolvingSymlinksInPath().pathComponents
+            == second.standardizedFileURL.resolvingSymlinksInPath().pathComponents
     }
 
     func offerMoveIfNeeded(
@@ -67,7 +74,8 @@ final class AppInstallationCoordinator {
             configuration.createsNewApplicationInstance = true
             let completion: (NSRunningApplication?, Error?) -> Void = { application, error in
                 DispatchQueue.main.async {
-                    if application?.bundleURL?.resolvingSymlinksInPath() == destination.resolvingSymlinksInPath(), error == nil {
+                    if let launchedURL = application?.bundleURL,
+                       Self.sameLocation(launchedURL, destination), error == nil {
                         NSApp.terminate(nil)
                     } else {
                         self.showFailure(error ?? CocoaError(.executableLoad))

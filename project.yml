@@ -233,9 +233,10 @@ targets:
           - 94A9N4B67S.lol.mattias.gltf-inspector
         com.apple.security.files.user-selected.read-only: true
         com.apple.security.files.downloads.read-only: true
-        # glTF assets reference sibling files (.bin buffers, textures) that can sit anywhere the
-        # user opens from, so the sandboxed extensions need read access beyond the opened file.
-        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+        # Loose glTF resources can live beside a selected manifest outside the home folder.
+        # Read-only access preserves those URIs; macOS folder privacy (TCC) still applies.
+        # The loader rejects resource URIs that escape the model directory.
+        com.apple.security.temporary-exception.files.absolute-path.read-only:
           - /
     info:
       path: PreviewExtension/Info.plist
@@ -277,9 +278,10 @@ targets:
           - 94A9N4B67S.lol.mattias.gltf-inspector
         com.apple.security.files.user-selected.read-only: true
         com.apple.security.files.downloads.read-only: true
-        # glTF assets reference sibling files (.bin buffers, textures) that can sit anywhere the
-        # user opens from, so the sandboxed extensions need read access beyond the opened file.
-        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+        # Loose glTF resources can live beside a selected manifest outside the home folder.
+        # Read-only access preserves those URIs; macOS folder privacy (TCC) still applies.
+        # The loader rejects resource URIs that escape the model directory.
+        com.apple.security.temporary-exception.files.absolute-path.read-only:
           - /
     info:
       path: ThumbnailExtension/Info.plist
