@@ -13,6 +13,8 @@ Read repository instructions, `project.yml`, `docs/development.md`, and the curr
 
 Use the requested version. If none is given, propose a version from the changes and confirm it before publication. Keep the build number newer than published builds. Check version values across the app, extensions, archive, notes, tag, and update feed.
 
+Create or resume a durable release checklist in the existing release evidence location (use `dist/release-evidence.md` if none exists). Record the approved version/build, exact source commit, requested endpoint (prepare or publish), authorization already given, artifact paths/checksums, and each remaining step. Update it as evidence arrives so a handoff can resume without guessing. Keep local archive, notarization, update signing, publication, and public verification as separate completion states.
+
 Check recent release-readiness evidence. Use [make-ready-for-release](../make-ready-for-release/SKILL.md) if a full audit is needed. Resolve known release blockers. Do not repeat a completed audit without a reason.
 
 ## Assign work
@@ -61,10 +63,20 @@ Test the extracted distribution archive, not only the development build. Check a
 
 ## Publish and verify
 
-Prepare reviewable notes, artifacts, evidence, and the exact target commit before any required approval. Follow the user's authorization: a request to publish authorizes publication; a request to prepare leaves it pending. Creating this skill does not authorize a release. Never change repository visibility implicitly.
+Prepare reviewable notes, artifacts, evidence, and the exact target commit before any required approval. Follow the user's authorization: a request to publish authorizes publication; a request to prepare leaves it pending. Creating this skill does not authorize a release. Honor publication and version approval already given in the session; do not ask again for the same authorized step. A prepare-only request leaves publication pending. Never change repository visibility implicitly; if public hosting requires a visibility change, use existing explicit authorization or report that specific remaining prerequisite.
 
 Ensure the tag points to the tested source. Check remote state before publishing. Do not overwrite an existing release or tag. After a partial failure, inspect what succeeded before retrying.
 
 Publish only the verified final archives, notes, feed, and required update files. Keep private keys, credentials, DerivedData, and intermediate build files out of the release. Verify checksums against downloaded assets. Retain the prior release and a recovery plan; do not attempt to downgrade users by lowering the build number.
 
-After publication, verify the release page, downloadable files, checksums, stable download link, feed URLs, and update metadata. Report the release URL, version, commit, artifacts, checks, and remaining issues. If blocked, state the exact missing prerequisite and leave completed work available for review.
+After publication, verify anonymously, without GitHub credentials:
+- The public release page is stable (not draft/prerelease unless requested), and its tag resolves to the tested commit.
+- Download both the versioned ZIP and `releases/latest/download/glTFInspector.zip`; compare their SHA-256 values with the verified archive. Check the downloaded app's signatures, stapled ticket, and Gatekeeper result.
+- Open every install/download link in the published README and confirm it reaches the intended public artifact. Remove “not available yet” text only as part of the authorized publication, and verify the final public README.
+- Download the public appcast and its referenced archive, notes, and delta assets. Check version/build, minimum OS, lengths, signatures and HTTPS URLs against the final artifacts.
+
+A notarized local archive is not a published release. For an authorized publication request, continue through upload and these public checks; do not silently stop at a signed ZIP or describe it as shipped. Mark the durable checklist complete only when the requested endpoint is verified. For prepare-only requests, mark publication pending explicitly.
+
+If blocked, record the failed step, exact prerequisite or error, what succeeded, and the next safe command in the evidence. Resolve recoverable failures within existing authorization; inspect partial publication before retrying and never recreate or overwrite an existing release blindly. Hand back only a specific blocker requiring user input or an external change, with completed artifacts available. Do not claim publication or verification that has not happened.
+
+Report the release URL, version/build, exact commit, downloadable artifacts, checks, and any remaining gaps. Link the evidence checklist.

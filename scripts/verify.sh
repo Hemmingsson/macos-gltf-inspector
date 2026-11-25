@@ -42,12 +42,14 @@ done
 
 # The first (elected) copy must be the one inside /Applications. DerivedData / .build copies
 # with a higher CFBundleShortVersionString steal Finder preview and show a blank failure UI.
-elected="$(pluginkit -m -v -i lol.mattias.gltf-inspector.PreviewExtension 2>/dev/null || true)"
-if ! grep -q "/Applications/glTF Inspector.app/Contents/PlugIns/PreviewExtension.appex" <<<"$elected"; then
-  echo "PreviewExtension is not elected from $APP — unregister stale debug apps, open $APP, qlmanage -r" >&2
-  echo "$elected" >&2
-  exit 1
-fi
+for plug in PreviewExtension ThumbnailExtension; do
+  elected="$(pluginkit -m -v -i "lol.mattias.gltf-inspector.$plug" 2>/dev/null || true)"
+  if ! grep -E '^\+' <<<"$elected" | grep -Fq "$APP/Contents/PlugIns/$plug.appex"; then
+    echo "$plug is not elected from $APP — unregister stale build copies, open $APP, qlmanage -r" >&2
+    echo "$elected" >&2
+    exit 1
+  fi
+done
 
 echo "ok $APP"
 echo "ok PreviewExtension + ThumbnailExtension registered (elected from /Applications)"

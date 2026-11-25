@@ -4,6 +4,8 @@
 
 First public release. Build 4. macOS 26+ on Apple Silicon.
 
+### Added
+
 - Native `.glb` / `.gltf` window, Quick Look, and Finder thumbnails — one Metal renderer for all three
 - Inspect scenes, nodes, meshes, materials, cameras, lights, and animation
 - Khronos validator findings linked to outliner rows

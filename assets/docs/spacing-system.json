@@ -1,0 +1,69 @@
+{
+  "title": "Spacing you can see",
+  "scale": [
+    [
+      "xxs",
+      2
+    ],
+    [
+      "xs",
+      4
+    ],
+    [
+      "s",
+      6
+    ],
+    [
+      "m",
+      8
+    ],
+    [
+      "l",
+      12
+    ],
+    [
+      "xl",
+      16
+    ],
+    [
+      "xxl",
+      24
+    ]
+  ],
+  "examples": [
+    [
+      "Pane inset",
+      8
+    ],
+    [
+      "Canvas cluster inset",
+      14
+    ],
+    [
+      "Glass button",
+      32
+    ],
+    [
+      "Glass with menu",
+      46
+    ]
+  ],
+  "radii": [
+    [
+      "small",
+      6
+    ],
+    [
+      "medium",
+      8
+    ],
+    [
+      "large",
+      12
+    ],
+    [
+      "pane",
+      18
+    ]
+  ]
+}

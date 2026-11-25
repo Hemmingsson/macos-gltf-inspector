@@ -8,14 +8,16 @@ func fail(_ message: String) -> Never {
 }
 let args = Array(CommandLine.arguments.dropFirst())
 if args.first == "window" {
-    guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { fail("Cannot list windows") }
+    guard let list = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { fail("Cannot list windows") }
     let expectedPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : ""
     let pid = NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == expectedPath }?.processIdentifier
     if !expectedPath.isEmpty && pid == nil { fail("Requested app is not running: " + expectedPath) }
+    let expectedTitle = args.count > 2 ? args[2] : ""
     let matches = list.filter {
         ($0[kCGWindowOwnerName as String] as? String) == "glTF Inspector" &&
         (pid == nil || ($0[kCGWindowOwnerPID as String] as? Int32) == pid) &&
         ($0[kCGWindowLayer as String] as? Int) == 0 &&
+        (expectedTitle.isEmpty || ($0[kCGWindowName as String] as? String) == expectedTitle) &&
         (($0[kCGWindowBounds as String] as? [String: Any])?["Width"] as? Double ?? 0) > 400
     }
     guard let window = matches.first, let id = window[kCGWindowNumber as String] as? Int else { fail("No visible glTF Inspector window") }
@@ -43,18 +45,11 @@ if args.first == "window" {
     let factor = min(1640 / capture.size.width, 860 / capture.size.height)
     let width = capture.size.width * factor, height = capture.size.height * factor
     let windowRect = NSRect(x: (size.width-width)/2, y: (size.height-height)/2, width: width, height: height)
-    NSGraphicsContext.saveGraphicsState()
-    let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.28)
-    shadow.shadowBlurRadius = 28
-    shadow.shadowOffset = NSSize(width: 0, height: -12)
-    shadow.set()
-    NSColor.white.setFill()
-    NSBezierPath(roundedRect: windowRect, xRadius: 16, yRadius: 16).fill()
-    NSGraphicsContext.restoreGraphicsState()
+    // The window capture already includes its native shadow and transparent margins.
+    // Draw it directly so the wallpaper shows through; a backing plate creates a white frame.
     NSBezierPath(roundedRect: windowRect, xRadius: 16, yRadius: 16).addClip()
     capture.draw(in: windowRect)
     NSGraphicsContext.restoreGraphicsState()
     guard let png = bitmap.representation(using: .png, properties: [:]) else { fail("Cannot encode PNG") }
     try png.write(to: URL(fileURLWithPath: args[3]), options: .atomic)
-} else { fail("usage: capture window | capture compose WINDOW.png WALLPAPER|- OUTPUT.png") }
+} else { fail("usage: capture window [APP_PATH [WINDOW_TITLE]] | capture compose WINDOW.png WALLPAPER|- OUTPUT.png") }

@@ -64,12 +64,4 @@ TestModels/References/MEASURE_NOISE
 /.vscode/
 /.claude/
 
-# Reproducible showcase intermediates
-/demo/video/assets/app/
-/demo/video/assets/quicklook/
-/demo/video/assets/preview/
-/demo/video/assets/thumbnails/
-/demo/video/assets/manifest.json
-/demo/video/clip.generated.html
-/demo/video/renders/
 .artifacts/

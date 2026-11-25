@@ -54,6 +54,24 @@ profile (default `glb-preview-notary`), the Sparkle EdDSA private key in Keychai
 | `./scripts/appcast.sh dist/glTFInspector-<version>.zip` | Sign the update and write the appcast |
 | `./scripts/release.sh` | Full release and GitHub upload |
 
+Use a clean, pushed commit with an unused version/tag and a build number above published
+builds. Keep `CHANGELOG.md` and `dist/glTFInspector-<version>.md` in sync. Run the release
+checks first:
+
+```sh
+python3 scripts/sparkle-readiness-test.py
+python3 scripts/release-source-test.py
+bash scripts/rewrite-appcast-urls-test.sh
+./scripts/release.sh --preflight
+```
+
+Keep a release checklist with the exact commit, version/build, checksums, test results, and
+signing/notarization evidence. A local notarized ZIP still needs publication. After upload,
+verify the public release tag, README download, stable ZIP, appcast and every referenced
+asset anonymously; downloaded ZIP checksums must match the verified archive. Record any
+installation or update-test gaps. [Create-release workflow](../.agents/skills/create-release/SKILL.md)
+covers the full handoff.
+
 Sparkle is off in Debug (`UpdateConfig.shouldStartUpdater`). Test updates with Release
 builds. The public EdDSA key lives in `project.yml` as `SUPublicEDKey`.
 

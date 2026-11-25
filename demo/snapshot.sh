@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Real app capture + wallpaper. First argument is a fixture ID; optional second is wallpaper.
+# Real app capture on the blue Tahoe wallpaper.
+# Debug: ./demo/snapshot.sh <fixture> [wallpaper|-]
+# Release: RELEASE_APP=/absolute/exported.app ./demo/snapshot.sh (already open and ready).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p .build/demo docs/media
+# "-" explicitly selects the built-in gradient; never silently replace the wallpaper.
 WALLPAPER="${2:-${SCREENSHOT_WALLPAPER:-$PWD/.build/demo/tahoe-dark.jpg}}"
-if [[ ! -f "$WALLPAPER" ]]; then
+if [[ "$WALLPAPER" != "-" && ! -f "$WALLPAPER" ]]; then
     if [[ -n "${2:-${SCREENSHOT_WALLPAPER:-}}" ]]; then
         echo "Wallpaper not found: $WALLPAPER" >&2
         exit 1
@@ -14,7 +17,13 @@ if [[ ! -f "$WALLPAPER" ]]; then
         -o "$WALLPAPER"
 fi
 swiftc demo/capture.swift -o .build/demo/capture
-./scripts/dev.sh run "${1:-cube}"
+if [[ -n "${RELEASE_APP:-}" ]]; then
+    # Capture an already opened, verified Release document. Never build, install, or
+    # launch a different bundle here. The release workflow verifies ready logs first.
+    CAPTURE_APP="$(cd "$RELEASE_APP" && pwd -P)"
+    [[ -f "$CAPTURE_APP/Contents/Info.plist" ]] || { echo "Invalid RELEASE_APP bundle" >&2; exit 1; }
+else
+    ./scripts/dev.sh run "${1:-cube}"
 python3 - <<'PY'
 import pathlib, time
 log = pathlib.Path('.build/logs/debug.log')
@@ -28,8 +37,9 @@ for _ in range(120):
 else:
     raise SystemExit('Timed out waiting for canvas ready')
 PY
-source scripts/lib/dev-env.sh
-CAPTURE_APP="$LOCAL_APP"
+    source scripts/lib/dev-env.sh
+    CAPTURE_APP="$LOCAL_APP"
+fi
 WINDOW_ID="$(.build/demo/capture window "$CAPTURE_APP")"
 if ! screencapture -x -l "$WINDOW_ID" .build/demo/window.png; then
     echo "Window capture failed. Check Screen Recording permission for your terminal in System Settings." >&2

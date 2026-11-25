@@ -23,6 +23,14 @@ check the implementation when a view differs.
 
 ## Window anatomy
 
+![Exploded window: floating controls, side panes, and the full-window Metal canvas](../assets/docs/window-exploded.svg)
+
+Floating controls sit in front of the canvas. The sidebar and inspector are pulled apart
+individually so each is visible: sidebar on the left, inspector on the right. Each layer
+repeats the window outline to show where its controls or pane belong. The sidebar
+holds the outliner and validation; the inspector follows the selection. The separation
+explains composition, not physical depth or an overlap between the two panes.
+
 ![The document window: sidebar, canvas with three glass clusters, inspector](../assets/docs/window-anatomy.svg)
 
 | Part | Size (pt) | Token |
@@ -90,7 +98,9 @@ caption 10.
 
 ## Spacing and size
 
-A 4 pt scale (`DS.Spacing`):
+A compact spacing scale (`DS.Spacing`), measured in points:
+
+![Spacing tokens drawn to scale, with pane insets, glass controls, and corner radii](../assets/docs/spacing-system.svg)
 
 | xxs | xs | s | m | l | xl | xxl |
 | --- | --- | --- | --- | --- | --- | --- |

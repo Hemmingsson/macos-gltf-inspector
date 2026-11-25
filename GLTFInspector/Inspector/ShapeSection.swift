@@ -9,8 +9,6 @@ struct ShapeSection: View {
     @Bindable var view: ViewState
     let selection: NodeID
 
-    private static let previewSize: CGFloat = 200
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             InspectorSectionHeader("Shape")
@@ -25,13 +23,11 @@ struct ShapeSection: View {
                     ShapePreviewRepresentable(controller: view.shapePreview)
                 }
             }
-            .frame(width: Self.previewSize, height: Self.previewSize)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .aspectRatio(1, contentMode: .fit)
             // No fill of its own: the pane already carries `DS.Color.paneFill`, and a second
             // coat of it reads as a white box around the model.
             .padding(.horizontal, DS.Spacing.l)
-            // The preview is a fixed square in a pane the person can widen, so it centres rather
-            // than hanging off the leading edge under the section header.
-            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.bottom, DS.Spacing.m)
         }
         // One trigger: a change of scene, selection or window options re-runs the task (a new id

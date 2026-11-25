@@ -1,0 +1,147 @@
+{
+  "type": "exploded",
+  "title": "Window composition",
+  "subtitle": "Window outline repeated on each layer; separation is explanatory",
+  "parts": [
+    {
+      "label": "BACK \u00b7 Metal canvas",
+      "sub": "Full window, behind both panes",
+      "w": 360,
+      "d": 228,
+      "t": 2,
+      "r": 8,
+      "items": [
+        {
+          "box": [
+            0.4,
+            0.35,
+            0.6,
+            0.65
+          ],
+          "tone": "mid",
+          "r": 4
+        }
+      ],
+      "level": 0
+    },
+    {
+      "label": "Sidebar",
+      "sub": "LEFT EDGE \u00b7 outliner and validation",
+      "w": 360,
+      "d": 228,
+      "t": 2,
+      "r": 8,
+      "x": 0,
+      "items": [
+        {
+          "box": [
+            0,
+            0,
+            0.20666666666666667,
+            1
+          ],
+          "tone": "mid"
+        },
+        {
+          "shape": "text",
+          "box": [
+            0.025,
+            0.1,
+            0.18,
+            0.9
+          ],
+          "tone": "dark",
+          "n": 9
+        }
+      ],
+      "level": 1,
+      "y": 0
+    },
+    {
+      "label": "Inspector",
+      "sub": "RIGHT EDGE \u00b7 selection properties",
+      "w": 360,
+      "d": 228,
+      "t": 2,
+      "r": 8,
+      "x": 0,
+      "items": [
+        {
+          "box": [
+            0.76,
+            0,
+            1,
+            1
+          ],
+          "tone": "mid"
+        },
+        {
+          "shape": "text",
+          "box": [
+            0.79,
+            0.1,
+            0.975,
+            0.9
+          ],
+          "tone": "dark",
+          "n": 9
+        }
+      ],
+      "level": 2,
+      "y": 0
+    },
+    {
+      "label": "FRONT \u00b7 Controls",
+      "sub": "Stage \u00b7 Look \u00b7 Camera \u00b7 HUDs",
+      "w": 360,
+      "d": 228,
+      "t": 2,
+      "r": 8,
+      "items": [
+        {
+          "box": [
+            0.23,
+            0.03,
+            0.4,
+            0.09
+          ],
+          "tone": "dark",
+          "r": 5
+        },
+        {
+          "box": [
+            0.43,
+            0.03,
+            0.6,
+            0.09
+          ],
+          "tone": "dark",
+          "r": 5
+        },
+        {
+          "box": [
+            0.63,
+            0.03,
+            0.75,
+            0.09
+          ],
+          "tone": "dark",
+          "r": 5
+        },
+        {
+          "box": [
+            0.35,
+            0.9,
+            0.65,
+            0.96
+          ],
+          "tone": "dark",
+          "r": 5
+        }
+      ],
+      "level": 3
+    }
+  ],
+  "motion": "none",
+  "watermark": false
+}

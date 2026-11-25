@@ -18,12 +18,6 @@ schemes:
         targets:
           - GLTFInspectorTests
 
-    # Off-screen frame renderer for the README demo and the marketing stills.
-    ShotRenderer:
-      build:
-        targets:
-          ShotRenderer: all
-
     # Opt-in real-window XCUITest flows (`./scripts/dev.sh uitest`); not part of `dev.sh test`.
     GLTFInspectorUITests:
       build:
@@ -312,36 +306,6 @@ targets:
         embed: false
       - target: Renderer
         embed: false
-
-  # Draws README frames off-screen with the one renderer (`demo/`). It mounts the same
-  # `ModelView` the window, Quick Look and the thumbnail mount, so every demo frame is real
-  # output rather than a mock; the macOS chrome around it is drawn in HTML. Never shipped.
-  ShotRenderer:
-    type: tool
-    platform: macOS
-    sources:
-      - demo/ShotRenderer
-    settings:
-      base:
-        PRODUCT_NAME: shot-renderer
-        PRODUCT_BUNDLE_IDENTIFIER: lol.mattias.gltf-inspector.ShotRenderer
-        GENERATE_INFOPLIST_FILE: YES
-        SKIP_INSTALL: YES
-        # The tool runs from the built-products directory, where GLTFCore, Renderer and
-        # GLTFKit2 sit beside it; nothing is embedded, so nothing is duplicated.
-        LD_RUNPATH_SEARCH_PATHS: [$(inherited), "@executable_path"]
-        # Those frameworks are ad-hoc signed in Debug, and dyld refuses to load an ad-hoc
-        # library into a team-signed process. The tool never ships, so it signs ad-hoc too.
-        CODE_SIGN_STYLE: Manual
-        CODE_SIGN_IDENTITY: "-"
-        DEVELOPMENT_TEAM: ""
-        ENABLE_HARDENED_RUNTIME: NO
-    dependencies:
-      - target: GLTFCore
-        embed: false
-      - target: Renderer
-        embed: false
-      - package: GLTFKit2
 
   GLTFInspectorTests:
     type: bundle.unit-test

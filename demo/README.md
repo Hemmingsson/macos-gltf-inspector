@@ -22,3 +22,14 @@ Keep these three for the README:
 - [Thumbnails](../assets/finder_thumbnails.png)
 - [Preview pane](../assets/finder_details_pane.webp)
 - [Quick Look](../assets/quick_look.webp)
+
+To capture an already-open Release window without rebuilding:
+
+```sh
+RELEASE_APP="/absolute/path/to/glTF Inspector.app" ./demo/snapshot.sh
+```
+
+The default background is the blue Tahoe wallpaper cached at `.build/demo/tahoe-dark.jpg`.
+Pass `-` explicitly to use the built-in gradient. Native capture transparency is preserved;
+no white backing frame is added. Keep raw captures and version/source
+information with the release evidence.

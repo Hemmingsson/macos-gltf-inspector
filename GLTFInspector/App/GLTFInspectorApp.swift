@@ -24,7 +24,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         // As a test host, a test's own window may be the last one; quitting then ends the run.
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+        // Swift Testing may run in the app-hosted test process without the legacy
+        // configuration environment variable. XCTest's runtime class still identifies
+        // that host; production does not link XCTest.
+        if Self.isTestHost(
+            environment: ProcessInfo.processInfo.environment,
+            hasXCTestCaseClass: NSClassFromString("XCTestCase") != nil
+        ) {
             return false
         }
         // While Finder / `open` is still delivering kAEOpenDocuments, the welcome window may be
@@ -39,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Cold-launch-to-welcome is enforced by `.restorationBehavior(.disabled)` on the scenes;
         // opt into secure coding so AppKit doesn't fall back to the legacy path.
         true
+    }
+
+    static func isTestHost(environment: [String: String], hasXCTestCaseClass: Bool) -> Bool {
+        environment["XCTestConfigurationFilePath"] != nil || hasXCTestCaseClass
     }
 
     private static var isOpenDocumentsAppleEventPending: Bool {
