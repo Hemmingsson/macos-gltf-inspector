@@ -1,0 +1,111 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { delimiter, join } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
+import { test } from "node:test";
+
+function pluginShim(t) {
+  const dir = mkdtempSync(join(tmpdir(), "hf-resolve-plugin-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, "lib"));
+  for (const file of ["resolve.mjs", "lib/npx-sync.mjs", "lib/windows-exe-search.mjs"]) {
+    copyFileSync(fileURLToPath(new URL(file, import.meta.url)), join(dir, file));
+  }
+  const marker = join(dir, "npx-ran");
+  writeFileSync(join(dir, "npx"), `#!/bin/sh\ntouch "${marker}"\nexit 9\n`, { mode: 0o755 });
+  const run = (env) =>
+    spawnSync(process.execPath, [join(dir, "resolve.mjs"), "--intent", "a & b"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${dir}${delimiter}${process.env.PATH}`,
+        HYPERFRAMES_PLUGIN_VERSION: "1.2.3",
+        HYPERFRAMES_SKIP_SKILLS: "1",
+        HYPERFRAMES_CLI_ENTRY: "",
+        ...env,
+      },
+    });
+  return { dir, marker, run };
+}
+
+test(
+  "plugin resolver runs the CLI the launcher handed over, not npx in the project",
+  { skip: process.platform === "win32" },
+  (t) => {
+    const { dir, marker, run } = pluginShim(t);
+    const launcher = join(dir, "launcher.mjs");
+    writeFileSync(
+      launcher,
+      "console.log(JSON.stringify({args:process.argv.slice(2),skip:process.env.HYPERFRAMES_SKIP_SKILLS}));process.exit(7);",
+    );
+    const result = run({ HYPERFRAMES_CLI_ENTRY: launcher });
+    assert.equal(result.status, 7, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      args: ["media-use", "resolve", "--intent", "a & b"],
+      skip: "1",
+    });
+    assert.equal(existsSync(marker), false);
+  },
+);
+
+test(
+  "plugin resolver without a handed-over CLI fails with the fix",
+  { skip: process.platform === "win32" },
+  (t) => {
+    const { marker, run } = pluginShim(t);
+    const result = run({});
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /plugin-cli\.mjs --script/);
+    assert.equal(existsSync(marker), false);
+  },
+);
+
+// fails without the fix: with no plugin version set, the shim ran packages/cli/dist/cli.js (or bun on src/cli.ts)
+// from three folders above itself, which in a project-scope install is the project's own folder.
+test(
+  "a project-scope install never runs a CLI planted beside its skills folder",
+  { skip: process.platform === "win32" },
+  (t) => {
+    const project = mkdtempSync(join(tmpdir(), "hf-resolve-project-"));
+    t.after(() => rmSync(project, { recursive: true, force: true }));
+    const scripts = join(project, ".agents/skills/media-use/scripts");
+    mkdirSync(join(scripts, "lib"), { recursive: true });
+    for (const file of ["resolve.mjs", "lib/npx-sync.mjs", "lib/windows-exe-search.mjs"]) {
+      copyFileSync(fileURLToPath(new URL(file, import.meta.url)), join(scripts, file));
+    }
+    const ran = join(project, "planted-ran");
+    const plant = `require("node:fs").writeFileSync(${JSON.stringify(ran)}, "ran");`;
+    for (const file of ["packages/cli/dist/cli.js", "packages/cli/src/cli.ts"]) {
+      mkdirSync(join(project, ".agents", file, ".."), { recursive: true });
+      writeFileSync(join(project, ".agents", file), plant);
+    }
+    writeFileSync(join(project, "bun"), `#!/bin/sh\ntouch "${ran}"\n`, { mode: 0o755 });
+    const handed = join(project, "handed.mjs");
+    writeFileSync(handed, 'console.log("handed");');
+    const run = (env) =>
+      spawnSync(process.execPath, [join(scripts, "resolve.mjs")], {
+        cwd: project,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${project}${delimiter}${process.env.PATH}`,
+          HYPERFRAMES_PLUGIN_VERSION: "",
+          HYPERFRAMES_CLI_ENTRY: "",
+          ...env,
+        },
+      });
+    const refused = run({});
+    assert.equal(refused.status, 1);
+    assert.match(refused.stderr, /plugin-cli\.mjs --script/);
+    rmSync(join(project, ".agents/packages/cli/dist/cli.js"));
+    assert.equal(run({}).status, 1);
+    assert.equal(existsSync(ran), false);
+    const chosen = run({ HYPERFRAMES_CLI_ENTRY: handed });
+    assert.equal(chosen.status, 0, chosen.stderr);
+    assert.equal(chosen.stdout.trim(), "handed");
+    assert.equal(existsSync(ran), false);
+  },
+);
