@@ -4,7 +4,6 @@ import SwiftUI
 /// Infos/hints stay out of this footer — they only surface in the inspector for a selection.
 struct ValidationSection: View {
     var validation: ValidationResult
-    var digests: ValidationDigestStore
 
     /// Errors and warnings only — notes belong on the selected outliner row’s inspector.
     private var faultIssues: [ValidationResult.Issue] {
@@ -39,7 +38,7 @@ struct ValidationSection: View {
         )
         let groups = ValidationIssueGrouping.group(faultIssues)
         return ValidationDigestCard(
-            title: digests.cardTitle(for: faultIssues, groups: groups, fallback: counts),
+            title: counts,
             status: status,
             groups: groups
         )

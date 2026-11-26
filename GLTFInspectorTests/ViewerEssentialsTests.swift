@@ -70,7 +70,7 @@ struct ViewerEssentialsTests {
         let document = assembly
         return Inspector(view: ViewState(settings: try settings()), document: document, selection: selection,
                          documentState: .ready, validation: ValidationResult(nil, document: document),
-                         validationDigests: ValidationDigestStore(), documentURL: nil)
+                         documentURL: nil)
     }
 
     // MARK: - mdleya4f stats

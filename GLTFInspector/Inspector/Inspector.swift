@@ -10,7 +10,6 @@ struct Inspector: View {
     var documentState: DocumentState
     /// File-wide validator report; the inspector shows the issues about the selection.
     var validation: ValidationResult
-    var validationDigests: ValidationDigestStore
     var documentURL: URL?
     var onSelect: ((NodeID) -> Void)?
 
@@ -33,7 +32,7 @@ struct Inspector: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         sections(for: selection)
-                        IssuesSection(issues: validation.issues(for: selection), digests: validationDigests)
+                        IssuesSection(issues: validation.issues(for: selection))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, DS.Spacing.xl)

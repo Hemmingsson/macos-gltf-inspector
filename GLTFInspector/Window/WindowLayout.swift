@@ -23,7 +23,6 @@ struct WindowLayout<Canvas: View>: View {
         let validation = window.validation
         NavigationSplitView(columnVisibility: sidebarVisibility) {
             Sidebar(document: window.document, fileName: window.fileName, validation: validation,
-                        validationDigests: window.validationDigests,
                         view: window.view, documentState: window.phase)
                 .toolbar(removing: .sidebarToggle)
                 .toolbar {
@@ -69,7 +68,6 @@ struct WindowLayout<Canvas: View>: View {
                     selection: window.view.selection,
                     documentState: window.phase,
                     validation: validation,
-                    validationDigests: window.validationDigests,
                     documentURL: documentURL,
                     onSelect: { window.view.selection = $0 }
                 )

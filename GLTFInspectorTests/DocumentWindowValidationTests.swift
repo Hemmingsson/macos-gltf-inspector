@@ -85,7 +85,6 @@ struct DocumentWindowValidationTests {
         #expect(try await waitUntil { window.validationState != nil })
         #expect(log.all == [url])
         #expect(window.validation.errorCount == 1)
-        #expect(window.validationDigests.digest(for: window.validation.issues) != nil)
     }
 
     @Test

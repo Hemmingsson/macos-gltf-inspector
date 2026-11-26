@@ -25,8 +25,6 @@ final class DocumentWindowModel {
     private(set) var validationState: GLTFValidationState?
     /// Resolved once when `document` or `validationState` changes — not on every window body pass.
     private(set) var validation = ValidationResult(status: .pending)
-    /// On-device (and count-only) digests for the sidebar card and inspector issues.
-    let validationDigests = ValidationDigestStore()
     private(set) var loadGeneration = 0
     private(set) var loadingURL: URL?
     let view: ViewState
@@ -170,7 +168,6 @@ final class DocumentWindowModel {
         summaryTask = nil
         validationTask?.cancel()
         validationTask = nil
-        validationDigests.cancelAll()
         resetDocument()
         applyValidationState(nil)
         view.reset()
@@ -191,11 +188,6 @@ final class DocumentWindowModel {
     private func applyValidationState(_ state: GLTFValidationState?) {
         validationState = state
         validation = ValidationResult(state, document: document)
-        // File-scope digest: faults only; infos/hints use the inspector selection request.
-        let faults = validation.issues.filter { $0.severity == .error || $0.severity == .warning }
-        if !faults.isEmpty {
-            validationDigests.request(faults, scope: .file)
-        }
     }
 
     deinit {

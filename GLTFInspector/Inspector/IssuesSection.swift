@@ -7,7 +7,6 @@ import SwiftUI
 /// first, notes (infos and hints) stay neutral. Nothing renders when the selection has no issues.
 struct IssuesSection: View {
     var issues: [ValidationResult.Issue]
-    var digests: ValidationDigestStore
 
     var body: some View {
         if !issues.isEmpty {
@@ -18,15 +17,8 @@ struct IssuesSection: View {
                 notes: issues.filter { $0.severity == .info || $0.severity == .hint }.count
             )
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
-                // One raw issue needs no count line; an AI sentence or a multi-finding list does.
-                if let headline = digests.modelHeadline(for: issues),
-                   ValidationIssueGrouping.headlineAddsValue(headline, groups: groups) {
-                    Text(headline)
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(Text(verbatim: "Issue summary: \(headline)"))
-                } else if groups.count > 1 || groups.contains(where: { $0.count > 1 }) {
+                // One raw issue needs no count line; a multi-finding list does.
+                if groups.count > 1 || groups.contains(where: { $0.count > 1 }) {
                     Text(counts)
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.secondary)
@@ -41,9 +33,6 @@ struct IssuesSection: View {
             .padding(.bottom, DS.Spacing.m)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Validation issues")
-            .task(id: ValidationIssueGrouping.digestKey(issues)) {
-                digests.request(issues, scope: .selection)
-            }
         }
     }
 }
