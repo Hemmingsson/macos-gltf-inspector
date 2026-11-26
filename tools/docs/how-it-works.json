@@ -1,0 +1,53 @@
+{
+  "type": "architecture",
+  "title": "How it works",
+  "subtitle": "The summary and the scene load in parallel. Validation starts after the first frame.",
+  "dir": "LR",
+  "size": "wide",
+  "motion": "none",
+  "fonts": "system",
+  "watermark": false,
+  "legend": false,
+  "groups": [
+    {"id": "open", "label": "01 Open"},
+    {"id": "read", "label": "02 Read"},
+    {"id": "draw", "label": "03 Draw"},
+    {"id": "show", "label": "04 Show"}
+  ],
+  "nodes": [
+    {"id": "file", "label": "Open a model", "sub": ".glb or .gltf", "icon": "document", "group": "open", "row": 1, "col": 0},
+    {"id": "summary", "label": "File summary", "sub": "GLTFDocument", "icon": "document", "group": "read", "row": 0, "col": 1},
+    {"id": "scene", "label": "Decode scene", "sub": "MetalSceneLoader", "icon": "code", "group": "read", "row": 1, "col": 1},
+    {"id": "renderer", "label": "Native Metal port", "sub": "Khronos renderer", "group": "draw", "focal": true, "row": 1, "col": 2},
+    {"id": "settings", "label": "App Group", "sub": "app writes", "kind": "store", "row": 3, "col": 4},
+    {"id": "validator", "label": "Validate", "sub": "glTF-Validator", "row": 2, "col": 2},
+    {"id": "window", "label": "Document window", "sub": "ModelCanvas", "icon": "home", "group": "show", "row": 0, "col": 4},
+    {"id": "ql", "label": "Quick Look", "sub": "stored look", "icon": "sun", "group": "show", "row": 1, "col": 4},
+    {"id": "thumb", "label": "Finder thumbnail", "sub": "ThumbnailRenderer", "group": "show", "row": 2, "col": 4}
+  ],
+  "edges": [
+    ["file", "summary", "JSON"],
+    ["file", "scene", "", "primary"],
+    ["scene", "renderer", "scene", "primary"],
+    ["summary", "window", "panels"],
+    ["renderer", "window", "", "primary"],
+    ["renderer", "ql", "", "primary"],
+    ["renderer", "thumb", "PNG", "primary"],
+    ["renderer", "validator", "first frame", "async"],
+    ["validator", "window", "findings"],
+    ["settings", "ql", "look", "async"],
+    ["settings", "thumb", "", "async"]
+  ],
+  "evidence": [
+    {"id": "file", "file": "GLTFInspector/Window/DocumentWindow.swift", "line": 6},
+    {"id": "summary", "file": "GLTFInspector/Window/DocumentWindowModel.swift", "line": 106},
+    {"id": "scene", "file": "Renderer/Scene/MetalSceneLoader.swift", "line": 12},
+    {"id": "renderer", "file": "Renderer/MetalRenderer.swift", "line": 21},
+    {"id": "settings", "file": "GLTFCore/AppGroupSettings.swift", "line": 54},
+    {"id": "validator", "file": "GLTFInspector/Window/DocumentWindowModel.swift", "line": 133},
+    {"id": "window", "file": "Renderer/ModelCanvas.swift", "line": 19},
+    {"id": "ql", "file": "PreviewExtension/PreviewViewController.swift", "line": 78},
+    {"id": "thumb", "file": "Renderer/ThumbnailRenderer.swift", "line": 14}
+  ],
+  "out": "how-it-works.html"
+}

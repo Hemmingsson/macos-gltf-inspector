@@ -39,6 +39,10 @@ from the Khronos glTF Sample Renderer.
   </tr>
 </table>
 
+## How it works
+
+![The file summary and the scene load in parallel. One Metal renderer draws the window, Quick Look, and the Finder thumbnail.](assets/docs/how-it-works.svg)
+
 ## Install
 
 macOS 26+ on Apple Silicon.

@@ -4,6 +4,13 @@ One Metal renderer draws the app, Quick Look, and Finder thumbnails. GLTFKit2 lo
 Shading, cameras, and draw order are ported from Khronos commit `863b981`. Lighting uses
 exported bakes. See [upstream details](../Renderer/Shaders/UPSTREAM.md).
 
+![How it works](../assets/docs/how-it-works.svg)
+
+The panels read the file's JSON while `MetalSceneLoader` decodes the scene. A native
+Metal port of the Khronos renderer draws the window, Quick Look, and the Finder
+thumbnail. Validation starts after the first frame. Only the app writes the shared
+look; Quick Look and thumbnails read it.
+
 ## Modules
 
 ![One renderer serves three surfaces](../assets/docs/architecture.svg)
