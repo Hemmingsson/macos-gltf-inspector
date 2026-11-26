@@ -64,3 +64,6 @@ TestModels/References/MEASURE_NOISE
 /.claude/
 
 .artifacts/
+
+# HyperFrames local transaction scratch
+docs/.*.hf-transaction-*/

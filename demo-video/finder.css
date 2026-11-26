@@ -1,0 +1,22 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px -apple-system, BlinkMacSystemFont, sans-serif; color: #262626; }
+main { position: relative; overflow: hidden; width: 800px; height: 508px; }
+.finder-window { position: absolute; inset: 34px 32px 40px; overflow: hidden; border-radius: 14px; background: white; box-shadow: 0 8px 24px #0004, 0 1px 5px #0003; }
+.toolbar { height: 44px; background: url("finder/toolbar.png") center / 100% 100%; border-bottom: 1px solid #dedede; }
+.columns { display: flex; height: calc(100% - 44px); }
+.files { flex: 1; padding: 0 8px; }
+.heading { color: #777; font-size: 12px; padding: 9px 28px; border-bottom: 1px solid #eaeaea; margin-bottom: 5px; }
+.file { height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 5px; }
+.file img { height: 22px; width: 22px; border-radius: 4px; }
+.file:nth-child(odd) { background: #f6f6f6; }
+.file.selected { background: #087aff; color: white; }
+aside { width: 278px; border-left: 1px solid #ddd; padding: 18px 20px; background: #fafafa; }
+.model { width: 220px; height: 200px; margin: 0 auto 14px; border-radius: 7px; background-image: url("finder/preview-sheet.webp"); }
+.model.studio { background: #ecedef url("finder/aet.webp") center/contain no-repeat; }
+h2 { margin: 0 0 4px; font-size: 17px; }
+p { margin: 0 0 18px; color: #707070; font-size: 13px; }
+h3 { margin: 0 0 8px; font-size: 14px; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 4px; font-size: 12px; margin: 0; }
+dt { color: #777; } dd { margin: 0; text-align: right; }
+.quick-look { position: absolute; width: 480px; height: 380px; left: 246px; top: 58px; transform-origin: 0% 30%; background-image: url("finder/quick-look-sheet.webp"); border-radius: 14px; box-shadow: 0 9px 30px #0005; }
+.pointer { position: absolute; left: 0; top: 0; width: 17px; filter: drop-shadow(0 1px 1px #0006); }

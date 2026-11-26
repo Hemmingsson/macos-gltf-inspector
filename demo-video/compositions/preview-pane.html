@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Preview pane · AET_Showcase</title>
+    <script src="../node_modules/gsap/dist/gsap.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: transparent;
+        font:
+          13px -apple-system,
+          BlinkMacSystemFont,
+          "Helvetica Neue",
+          sans-serif;
+        color: #1d1d1f;
+      }
+      main {
+        position: relative;
+        width: 800px;
+        height: 508px;
+        overflow: hidden;
+      }
+      #window {
+        position: absolute;
+        inset: 16px 20px 18px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.14),
+          0 18px 40px rgba(0, 0, 0, 0.3);
+        display: grid;
+        grid-template-columns: 148px 220px 1fr;
+        grid-template-rows: 42px 1fr 48px;
+      }
+      #toolbar {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 14px;
+        background: #f6f6f7;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      #toolbar .traffic {
+        display: flex;
+        gap: 6px;
+        width: 52px;
+      }
+      #toolbar .traffic i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #d0d0d2;
+      }
+      #toolbar .nav {
+        color: #8e8e93;
+        font-size: 14px;
+      }
+      #toolbar .title {
+        flex: 1;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      #toolbar .search {
+        width: 110px;
+        height: 22px;
+        border-radius: 6px;
+        background: #ebebed;
+        color: #8e8e93;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+      }
+      #sidebar {
+        background: #f2f2f3;
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 10px 8px;
+        font-size: 11px;
+      }
+      #sidebar .group {
+        color: #6e6e73;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 8px 8px 4px;
+      }
+      #sidebar .row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: #3a3a3c;
+      }
+      #sidebar .row.active {
+        background: #d9d9dc;
+      }
+      #sidebar .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      #list {
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 8px 6px;
+        background: #fafafa;
+      }
+      #list h2 {
+        margin: 0 8px 6px;
+        font-size: 10px;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        color: #3a3a3c;
+      }
+      .row.selected {
+        background: #007aff;
+        color: white;
+      }
+      .row img {
+        width: 18px;
+        height: 18px;
+        border-radius: 3px;
+        object-fit: cover;
+        background: #ddd;
+      }
+      #preview {
+        position: relative;
+        background: #eceef0;
+      }
+      #clip {
+        position: absolute;
+        inset: 12px 12px 78px;
+        width: calc(100% - 24px);
+        height: calc(100% - 90px);
+        object-fit: contain;
+        border-radius: 8px;
+        background: #eceef0;
+      }
+      #meta {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 12px;
+      }
+      #meta strong {
+        display: block;
+        font-size: 13px;
+      }
+      #meta small {
+        color: #6e6e73;
+        font-size: 11px;
+      }
+      #footer {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        background: #f6f6f7;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      #footer .ghost {
+        padding: 5px 12px;
+        border-radius: 6px;
+        background: #e8e8ea;
+        font-size: 12px;
+      }
+      #footer .actions {
+        display: flex;
+        gap: 8px;
+      }
+      #footer .cancel {
+        padding: 5px 14px;
+        border-radius: 6px;
+        background: #e8e8ea;
+        font-size: 12px;
+      }
+      #footer .open {
+        padding: 5px 16px;
+        border-radius: 6px;
+        background: #007aff;
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main
+      id="preview-pane"
+      data-composition-id="preview-pane"
+      data-width="800"
+      data-height="508"
+      data-start="0"
+      data-duration="3"
+      data-fps="60"
+    >
+      <div id="window" class="clip" data-start="0" data-duration="3">
+        <div id="toolbar">
+          <span class="traffic"><i></i><i></i><i></i></span>
+          <span class="nav">‹ ›</span>
+          <span class="title">3D Models ▾</span>
+          <span class="search">􀊫 Search</span>
+        </div>
+        <aside id="sidebar">
+          <div class="group">Favourites</div>
+          <div class="row">Recents</div>
+          <div class="row">Applications</div>
+          <div class="row">Documents</div>
+          <div class="row active">Downloads</div>
+          <div class="group">iCloud</div>
+          <div class="row">iCloud Drive</div>
+          <div class="row">Shared</div>
+          <div class="group">Tags</div>
+          <div class="row"><i class="dot" style="background: #ff3b30"></i>Red</div>
+          <div class="row"><i class="dot" style="background: #ff9500"></i>Orange</div>
+        </aside>
+        <aside id="list">
+          <h2>Name</h2>
+          <div class="row">
+            <img src="../finder/cube.webp" alt="" />cube.gltf
+          </div>
+          <div class="row">
+            <img src="../finder/lumen.webp" alt="" />lumenStudio.glb
+          </div>
+          <div class="row">
+            <img src="../finder/boombox.webp" alt="" />boombox.glb
+          </div>
+          <div class="row selected">
+            <img src="../finder/aet.webp" alt="" />AET_Showcase.glb
+          </div>
+          <div class="row">
+            <img src="../finder/aet.webp" alt="" />AET_Gen2.glb
+          </div>
+          <div class="row">
+            <img src="../finder/studio.webp" alt="" />studio_light.glb
+          </div>
+          <div class="row">
+            <img src="../finder/aet.webp" alt="" />Wheel_Single.glb
+          </div>
+        </aside>
+        <section id="preview">
+          <video
+            id="clip"
+            class="clip"
+            muted
+            playsinline
+            preload="auto"
+            src="../turntable.mp4"
+            data-start="0"
+            data-duration="3"
+            data-track-index="0"
+          ></video>
+          <div id="meta">
+            <strong>AET_Showcase.glb</strong>
+            <small>GL Transmission Format - Binary · 1.8 MB</small>
+          </div>
+        </section>
+        <div id="footer">
+          <span class="ghost">Options</span>
+          <div class="actions">
+            <span class="cancel">Cancel</span>
+            <span class="open">Open</span>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script>
+      window.__timelines = {
+        "preview-pane": gsap.timeline({ paused: true }),
+      };
+    </script>
+  </body>
+</html>

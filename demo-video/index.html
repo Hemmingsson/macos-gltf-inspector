@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>glTF Inspector · AET_Showcase</title>
+    <script src="./node_modules/gsap/dist/gsap.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          13px -apple-system,
+          BlinkMacSystemFont,
+          "Helvetica Neue",
+          sans-serif;
+        color: #1d1d1f;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        position: relative;
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        border-radius: 13px;
+        background: url("./assets/readme/screenshot.png") -274.29px -105.71px /
+          1828.57px 1028.57px;
+      }
+      #model {
+        position: absolute;
+        left: 247px;
+        top: 52px;
+        width: 744px;
+        height: 668px;
+        z-index: 1;
+      }
+      #toolbar-fill {
+        position: absolute;
+        left: 247px;
+        top: 41px;
+        width: 744px;
+        height: 11px;
+        background: #eceff0;
+        z-index: 2;
+      }
+      #zoom {
+        position: absolute;
+        left: 912px;
+        top: 13px;
+        width: 45px;
+        background: #f1f2f3;
+        text-align: center;
+        font-weight: 600;
+        line-height: 21px;
+        z-index: 3;
+      }
+      #inspector-blank {
+        position: absolute;
+        inset: 45px 0 0 991px;
+        background: #ffffff;
+        z-index: 2;
+      }
+      #sidebar {
+        position: absolute;
+        inset: 45px auto 0 0;
+        width: 248px;
+        padding: 8px 8px 56px;
+        background: #ffffff;
+        overflow: hidden;
+        z-index: 3;
+      }
+      #doc-card {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 4px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: #f5f5f7;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      #doc-card .doc-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: #007aff;
+        color: white;
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      #doc-card .doc-icon img {
+        width: 16px;
+        height: 16px;
+        filter: brightness(0) invert(1);
+      }
+      #doc-card strong {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      #doc-card small {
+        color: #6e6e73;
+        font-size: 11px;
+      }
+      #sidebar h2 {
+        margin: 14px 8px 4px;
+        color: #6e6e73;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #1d1d1f;
+      }
+      .item .glyph {
+        width: 16px;
+        height: 16px;
+        flex: none;
+        background: currentColor;
+        -webkit-mask: center / contain no-repeat;
+        mask: center / contain no-repeat;
+      }
+      .item.mesh {
+        color: #6e6e73;
+      }
+      .item.mesh .glyph {
+        -webkit-mask-image: url("./assets/icons/inspector/node-mesh.svg");
+        mask-image: url("./assets/icons/inspector/node-mesh.svg");
+      }
+      .item.material {
+        color: #a06bd6;
+      }
+      .item.material .glyph {
+        -webkit-mask-image: url("./assets/icons/inspector/node-material.svg");
+        mask-image: url("./assets/icons/inspector/node-material.svg");
+      }
+      .item .swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        flex: none;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.32);
+      }
+      #wheel {
+        background: #007aff;
+        color: white;
+      }
+      #sidebar.material #wheel,
+      #sidebar.mesh #wheel {
+        background: transparent;
+        color: #6e6e73;
+      }
+      #sidebar.material #paint {
+        background: #007aff;
+        color: white;
+      }
+      #sidebar.mesh #wheel {
+        background: #007aff;
+        color: white;
+      }
+      #valid {
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: rgba(52, 199, 89, 0.16);
+        color: #1d1d1f;
+        font-size: 13px;
+        font-weight: 500;
+        z-index: 4;
+      }
+      #valid .check {
+        color: #34c759;
+        font-weight: 700;
+      }
+      #material-detail,
+      #mesh-detail,
+      #mesh-detail-open,
+      #menu,
+      #wire-chip {
+        position: absolute;
+        z-index: 4;
+      }
+      #mesh-detail,
+      #mesh-detail-open,
+      #material-detail {
+        inset: 48px 0 0 991px;
+        padding: 2px 0 12px;
+        background: #ffffff;
+        width: 289px;
+      }
+      .identity {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 2px 12px 12px;
+      }
+      .identity .type-icon {
+        width: 16px;
+        height: 16px;
+        flex: none;
+        background: currentColor;
+        -webkit-mask: center / contain no-repeat;
+        mask: center / contain no-repeat;
+      }
+      .identity .type-icon.mesh {
+        color: #6e6e73;
+        -webkit-mask-image: url("./assets/icons/inspector/node-mesh.svg");
+        mask-image: url("./assets/icons/inspector/node-mesh.svg");
+      }
+      .identity .swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #898989;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.32);
+        flex: none;
+      }
+      .identity strong {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.25;
+      }
+      .identity small {
+        display: block;
+        font-size: 12px;
+        color: #6e6e73;
+        line-height: 1.25;
+      }
+      .section-title {
+        margin: 16px 0 4px;
+        padding: 0 12px;
+        color: #6e6e73;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .section-title.first {
+        margin-top: 0;
+      }
+      .facts {
+        padding: 0 12px;
+      }
+      .fact {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-height: 22px;
+        font-size: 12px;
+      }
+      .fact dt {
+        color: #6e6e73;
+        flex: 1;
+        font-size: 12px;
+      }
+      .fact dd {
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: right;
+      }
+      .fact .swatch-sm {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        vertical-align: -1px;
+        margin-right: 6px;
+        background: #898989;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.32);
+      }
+      .vec {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 12px;
+        margin-bottom: 6px;
+      }
+      .vec > b {
+        flex: none;
+        width: 14px;
+        color: #6e6e73;
+        font-size: 12px;
+        font-weight: 400;
+      }
+      .cell {
+        flex: 1;
+        min-width: 0;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: #f5f5f7;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+        line-height: 1.35;
+      }
+      .factor {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+      .factor > span {
+        flex: 1;
+        color: #6e6e73;
+      }
+      .factor-bar {
+        position: relative;
+        flex: 1;
+        height: 22px;
+        border-radius: 6px;
+        background: #f5f5f7;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+        text-align: center;
+        line-height: 20px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+      }
+      .factor-bar i {
+        position: absolute;
+        inset: 0 auto 0 0;
+        background: rgba(0, 122, 255, 0.45);
+      }
+      .factor-bar b {
+        position: relative;
+        font-weight: 500;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 2px 12px 0;
+      }
+      .chips span {
+        padding: 3px 8px;
+        border-radius: 6px;
+        background: #f5f5f7;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        font-size: 11px;
+        color: #3a3a3c;
+      }
+      #menu {
+        left: 535px;
+        top: 43px;
+        width: 210px;
+      }
+      #menu-panel {
+        padding: 5px;
+        background: rgba(249, 249, 250, 0.97);
+        border-radius: 10px;
+        box-shadow:
+          inset 0 0 0 1px #fff,
+          0 0 0 1px #0002,
+          0 5px 17px #0003;
+        opacity: 0;
+      }
+      .mode-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 24px;
+        border-radius: 5px;
+        padding: 0 6px;
+        font-size: 13px;
+      }
+      .mode-row::before {
+        content: "";
+        width: 10px;
+      }
+      .mode-row.current::before {
+        content: "✓";
+      }
+      .mode-row img,
+      #wire-chip img {
+        width: 16px;
+        height: 16px;
+      }
+      .mode-row kbd {
+        margin-left: auto;
+        opacity: 0.6;
+        font: inherit;
+      }
+      .hovered {
+        background: #007aff;
+        color: white;
+      }
+      .hovered img {
+        filter: brightness(0) invert(1);
+      }
+      #wire-chip {
+        top: 9px;
+        left: 533px;
+        width: 114px;
+        height: 31px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        background: #f4f5f6;
+        border-radius: 17px 0 0 17px;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      #cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 22px;
+        transform-origin: 1px 1px;
+        filter: drop-shadow(0 1px 2px #5558);
+        z-index: 10;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main
+      id="demo"
+      data-composition-id="demo"
+      data-start="0"
+      data-duration="15"
+      data-width="1280"
+      data-height="720"
+      data-fps="60"
+    >
+      <video
+        id="model"
+        class="clip"
+        muted
+        playsinline
+        preload="auto"
+        src="./turntable.mp4"
+        data-start="0"
+        data-duration="15"
+        data-track-index="0"
+      ></video>
+      <div id="toolbar-fill" class="clip" data-start="0" data-duration="15"></div>
+      <span id="zoom" class="clip" data-start="0" data-duration="15">208%</span>
+      <div
+        id="inspector-blank"
+        class="clip"
+        data-start="0"
+        data-duration="15"
+      ></div>
+      <aside id="sidebar" class="clip" data-start="0" data-duration="15">
+        <div id="doc-card">
+          <div class="doc-icon">
+            <img src="./assets/icons/inspector/node-mesh.svg" alt="" />
+          </div>
+          <div>
+            <strong>AET_Showcase</strong>
+            <small>GL Transmission Format - Binary</small>
+          </div>
+        </div>
+        <h2>Scene</h2>
+        <div class="item mesh" id="wheel">
+          <i class="glyph" aria-hidden="true"></i>Wheel_Single
+        </div>
+        <div class="item mesh">
+          <i class="glyph" aria-hidden="true"></i>Wheel_Double
+        </div>
+        <div class="item mesh">
+          <i class="glyph" aria-hidden="true"></i>AET_Gen2
+        </div>
+        <div class="item mesh">
+          <i class="glyph" aria-hidden="true"></i>AET_Gen2.001
+        </div>
+        <div class="item mesh">
+          <i class="glyph" aria-hidden="true"></i>AET_Gen2.002
+        </div>
+        <div class="item mesh">
+          <i class="glyph" aria-hidden="true"></i>Wheel_Single.001
+        </div>
+        <div class="item mesh">
+          <i class="glyph" aria-hidden="true"></i>Wheel_Double.001
+        </div>
+        <h2>Materials · 27</h2>
+        <div class="item material">
+          <i class="swatch" style="background: #040404" aria-hidden="true"></i
+          >MI_Rubber_Rough.001
+        </div>
+        <div class="item material" id="paint">
+          <i class="swatch" style="background: #898989" aria-hidden="true"></i
+          >AutonomusWhitePaint
+        </div>
+        <div class="item material">
+          <i class="swatch" style="background: #cad1ee" aria-hidden="true"></i
+          >MI_Metal_Bump_02
+        </div>
+        <div class="item material">
+          <i class="swatch" style="background: #010101" aria-hidden="true"></i
+          >MI_Plastic_Rough
+        </div>
+        <div class="item material">
+          <i class="swatch" style="background: #a80100" aria-hidden="true"></i
+          >MI_Reflector_Traingle_Red
+        </div>
+        <div class="item material">
+          <i class="swatch" style="background: #9c9c9c" aria-hidden="true"></i
+          >MI_Metal_Chrome_01
+        </div>
+        <div class="item material">
+          <i class="swatch" style="background: #000" aria-hidden="true"></i
+          >AutonomusBlackPaint
+        </div>
+        <div id="valid"><span class="check">✓</span>Valid glTF 2.0</div>
+      </aside>
+      <aside
+        id="material-detail"
+        class="clip"
+        data-start="3"
+        data-duration="9.1"
+        data-track-index="2"
+      >
+        <div class="identity">
+          <i class="swatch" aria-hidden="true"></i>
+          <div>
+            <strong>AutonomusWhitePaint</strong>
+            <small>Material</small>
+          </div>
+        </div>
+        <div class="section-title first">Material</div>
+        <div class="facts">
+          <div class="fact"><dt>Workflow</dt><dd>Metallic-roughness</dd></div>
+          <div class="fact"><dt>Alpha</dt><dd>Opaque</dd></div>
+          <div class="fact"><dt>Faces</dt><dd>Double-sided</dd></div>
+        </div>
+        <div style="margin-top: 10px">
+          <div class="facts">
+            <div class="fact">
+              <dt>Base color</dt>
+              <dd><i class="swatch-sm"></i>#898989</dd>
+            </div>
+          </div>
+          <div class="factor">
+            <span>Metallic</span>
+            <div class="factor-bar"><i style="width: 0%"></i><b>0.000</b></div>
+          </div>
+          <div class="factor">
+            <span>Roughness</span>
+            <div class="factor-bar"><i style="width: 8%"></i><b>0.080</b></div>
+          </div>
+        </div>
+      </aside>
+      <aside
+        id="mesh-detail-open"
+        class="clip"
+        data-start="0"
+        data-duration="3"
+        data-track-index="2"
+      >
+        <div class="identity">
+          <span class="type-icon mesh" aria-hidden="true"></span>
+          <div>
+            <strong>Wheel_Single</strong>
+            <small>Mesh</small>
+          </div>
+        </div>
+        <div class="section-title first">Transform · authored</div>
+        <div class="vec">
+          <b>P</b><span class="cell">−5.31</span><span class="cell">0.58</span
+          ><span class="cell">16.25</span>
+        </div>
+        <div class="vec">
+          <b>R</b><span class="cell">0.00°</span><span class="cell">0.00°</span
+          ><span class="cell">0.00°</span>
+        </div>
+        <div class="vec">
+          <b>S</b><span class="cell">0.52</span><span class="cell">0.52</span
+          ><span class="cell">0.52</span>
+        </div>
+        <div class="section-title">Geometry</div>
+        <div class="chips">
+          <span>4 primitives</span>
+          <span>Tangents</span>
+        </div>
+        <div class="section-title">Primitives</div>
+        <div class="facts">
+          <div class="fact">
+            <dt>Primitive 1</dt>
+            <dd>
+              <i class="swatch-sm" style="background: #040404"></i
+              >MI_Rubber_Rough.001
+            </dd>
+          </div>
+          <div class="fact">
+            <dt>Primitive 2</dt>
+            <dd><i class="swatch-sm"></i>AutonomusWhitePaint</dd>
+          </div>
+          <div class="fact">
+            <dt>Primitive 3</dt>
+            <dd>
+              <i class="swatch-sm" style="background: #cad1ee"></i
+              >MI_Metal_Bump_02
+            </dd>
+          </div>
+          <div class="fact">
+            <dt>Primitive 4</dt>
+            <dd>
+              <i class="swatch-sm" style="background: #010101"></i
+              >MI_Plastic_Rough
+            </dd>
+          </div>
+        </div>
+      </aside>
+      <aside
+        id="mesh-detail"
+        class="clip"
+        data-start="12.1"
+        data-duration="2.9"
+        data-track-index="2"
+      >
+        <div class="identity">
+          <span class="type-icon mesh" aria-hidden="true"></span>
+          <div>
+            <strong>Wheel_Single</strong>
+            <small>Mesh</small>
+          </div>
+        </div>
+        <div class="section-title first">Transform · authored</div>
+        <div class="vec">
+          <b>P</b><span class="cell">−5.31</span><span class="cell">0.58</span
+          ><span class="cell">16.25</span>
+        </div>
+        <div class="vec">
+          <b>R</b><span class="cell">0.00°</span><span class="cell">0.00°</span
+          ><span class="cell">0.00°</span>
+        </div>
+        <div class="vec">
+          <b>S</b><span class="cell">0.52</span><span class="cell">0.52</span
+          ><span class="cell">0.52</span>
+        </div>
+        <div class="section-title">Geometry</div>
+        <div class="chips">
+          <span>4 primitives</span>
+          <span>Tangents</span>
+        </div>
+        <div class="section-title">Primitives</div>
+        <div class="facts">
+          <div class="fact">
+            <dt>Primitive 1</dt>
+            <dd>
+              <i class="swatch-sm" style="background: #040404"></i
+              >MI_Rubber_Rough.001
+            </dd>
+          </div>
+          <div class="fact">
+            <dt>Primitive 2</dt>
+            <dd><i class="swatch-sm"></i>AutonomusWhitePaint</dd>
+          </div>
+          <div class="fact">
+            <dt>Primitive 3</dt>
+            <dd>
+              <i class="swatch-sm" style="background: #cad1ee"></i
+              >MI_Metal_Bump_02
+            </dd>
+          </div>
+          <div class="fact">
+            <dt>Primitive 4</dt>
+            <dd>
+              <i class="swatch-sm" style="background: #010101"></i
+              >MI_Plastic_Rough
+            </dd>
+          </div>
+        </div>
+      </aside>
+      <div
+        id="wire-chip"
+        class="clip"
+        data-start="7.2"
+        data-duration="3.5"
+        data-track-index="3"
+      >
+        <img src="./assets/icons/inspector/view-wireframe.svg" alt="" />Wireframe
+        ⌄
+      </div>
+      <div id="menu" class="clip" data-start="0" data-duration="15" data-track-index="3">
+        <div id="menu-panel">
+          <div class="mode-row" data-mode="shaded">
+            <img src="./assets/icons/inspector/view-shaded.svg" alt="" />Shaded
+            <kbd>⌘1</kbd>
+          </div>
+          <div class="mode-row" data-mode="wireframe">
+            <img src="./assets/icons/inspector/view-wireframe.svg" alt="" />Wireframe
+            <kbd>⌘2</kbd>
+          </div>
+          <div class="mode-row">
+            <img
+              src="./assets/icons/inspector/view-wireframe-shaded.svg"
+              alt=""
+            />Wireframe on Shaded
+            <kbd>⌘3</kbd>
+          </div>
+          <div class="mode-row">
+            <img src="./assets/icons/inspector/view-xray.svg" alt="" />X-Ray
+            <kbd>⌘4</kbd>
+          </div>
+          <div class="mode-row">
+            <img src="./assets/icons/inspector/view-clay.svg" alt="" />Clay
+            <kbd>⌘5</kbd>
+          </div>
+          <div class="mode-row">
+            <img
+              src="./assets/icons/inspector/channel-base-color.svg"
+              alt=""
+            />Base Color
+          </div>
+          <div class="mode-row">
+            <img
+              src="./assets/icons/inspector/channel-metallic.svg"
+              alt=""
+            />Metallic
+          </div>
+          <div class="mode-row">
+            <img
+              src="./assets/icons/inspector/channel-roughness.svg"
+              alt=""
+            />Roughness
+          </div>
+          <div class="mode-row">
+            <img
+              src="./assets/icons/inspector/channel-normals.svg"
+              alt=""
+            />Normals
+          </div>
+        </div>
+      </div>
+      <svg
+        id="cursor"
+        class="clip"
+        data-start="0"
+        data-duration="15"
+        data-track-index="4"
+        viewBox="0 0 24 32"
+      >
+        <path
+          d="M2 1v25l6-6 5 10 5-3-6-9h9Z"
+          fill="#222"
+          stroke="white"
+          stroke-width="2"
+        />
+      </svg>
+    </main>
+    <script src="./scene.js"></script>
+  </body>
+</html>

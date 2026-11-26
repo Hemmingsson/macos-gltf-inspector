@@ -1,10 +1,24 @@
 # Screenshots
 
-The app hero shows the real app. The three README Finder mockups live in
+The app screenshot supplies the demo window chrome. The three original Finder mockups live in
 `assets/mockups/` and must stay separate from generated captures. Do not overwrite
 them when capturing release media.
 
-## App hero
+## Animated README demo
+
+Run from the repository root with Node.js 22 or later, FFmpeg, and WebP's `img2webp` installed. Agent skills from `npx skills add heygen-com/hyperframes` live in `.agents/skills/hyperframes*` and drive the CLI.
+
+```sh
+cd demo-video
+npm ci
+npm run export
+```
+
+`export.mjs` prefers the skill CLI, then the local `hyperframes` package. It renders each composition at 60 fps and encodes looping WebPs in `docs/`. To render one loop, pass its name, for example `npm run export -- quick-look`. The other names are `demo`, `finder-thumbnails`, and `preview-pane`.
+
+The exporter also writes the full app animation to `docs/demo.mp4`. The hero and Finder loops use a 15-second turntable of AET_Showcase rendered by the app’s Metal renderer. Place `demo-video/AET_Showcase.glb` (meshopt/quantized files are decoded automatically), build with `./scripts/dev.sh install`, then run `./demo-video/turntable.sh` before exporting.
+
+## App screenshot
 
 ```sh
 ./tools/readme/snapshot.sh lumenStudio
@@ -19,11 +33,11 @@ Override the wallpaper with a second argument or `SCREENSHOT_WALLPAPER`.
 
 ## Finder demos
 
-Keep these three for the README:
+Source media for the Finder demos:
 
-- [Thumbnails](../assets/mockups/finder-thumbnails.png)
-- [Preview pane](../assets/mockups/preview-pane.webp)
-- [Quick Look](../assets/mockups/quick-look.webp)
+- [Thumbnails](../../assets/mockups/finder-thumbnails.png)
+- [Preview pane](../../assets/mockups/preview-pane.webp)
+- [Quick Look](../../assets/mockups/quick-look.webp)
 
 ### Make a new set in the same style
 

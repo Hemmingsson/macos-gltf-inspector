@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Finder thumbnails · AET</title>
+    <script src="../node_modules/gsap/dist/gsap.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: transparent;
+        font:
+          13px -apple-system,
+          BlinkMacSystemFont,
+          "Helvetica Neue",
+          sans-serif;
+        color: #1d1d1f;
+      }
+      main {
+        position: relative;
+        width: 800px;
+        height: 508px;
+        overflow: hidden;
+      }
+      #window {
+        position: absolute;
+        inset: 18px 22px 22px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.14),
+          0 18px 40px rgba(0, 0, 0, 0.3);
+        display: grid;
+        grid-template-columns: 168px 1fr;
+        grid-template-rows: 42px 1fr;
+      }
+      #toolbar {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 14px;
+        background: #f6f6f7;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      #toolbar .traffic {
+        display: flex;
+        gap: 6px;
+        width: 52px;
+      }
+      #toolbar .traffic i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #d0d0d2;
+      }
+      #toolbar .nav {
+        display: flex;
+        gap: 4px;
+        color: #8e8e93;
+        font-size: 14px;
+      }
+      #toolbar .title {
+        flex: 1;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      #toolbar .search {
+        width: 120px;
+        height: 22px;
+        border-radius: 6px;
+        background: #ebebed;
+        color: #8e8e93;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+      }
+      #sidebar {
+        background: #f2f2f3;
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 10px 8px;
+        font-size: 11px;
+      }
+      #sidebar .group {
+        color: #6e6e73;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        padding: 8px 8px 4px;
+      }
+      #sidebar .row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 6px;
+        color: #3a3a3c;
+      }
+      #sidebar .row.active {
+        background: #d9d9dc;
+      }
+      #sidebar .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      #content {
+        position: relative;
+        background: #ffffff;
+        overflow: hidden;
+      }
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px 10px;
+        padding: 18px 16px;
+      }
+      .card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+      }
+      .card .thumb {
+        width: 108px;
+        height: 108px;
+        border-radius: 14px;
+        object-fit: cover;
+        background: #eceef0;
+        box-shadow:
+          inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+          0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+      .card span {
+        max-width: 118px;
+        font-size: 10.5px;
+        text-align: center;
+        line-height: 1.25;
+        color: #3a3a3c;
+        word-break: break-all;
+      }
+      #selection {
+        position: absolute;
+        border: 3px solid #067aff;
+        background: #167aff22;
+        border-radius: 16px;
+        width: 114px;
+        height: 114px;
+        pointer-events: none;
+        z-index: 2;
+      }
+      #cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 17px;
+        filter: drop-shadow(0 1px 2px #888);
+        z-index: 5;
+      }
+    </style>
+  </head>
+  <body>
+    <main
+      id="thumbnails"
+      data-composition-id="thumbnails"
+      data-width="800"
+      data-height="508"
+      data-start="0"
+      data-duration="4"
+      data-fps="60"
+    >
+      <div id="window" class="clip" data-start="0" data-duration="4">
+        <div id="toolbar">
+          <span class="traffic"><i></i><i></i><i></i></span>
+          <span class="nav">‹ › □</span>
+          <span class="title">3D Models ▾</span>
+          <span class="search">􀊫 Search</span>
+        </div>
+        <aside id="sidebar">
+          <div class="group">Favourites</div>
+          <div class="row">Recents</div>
+          <div class="row">Applications</div>
+          <div class="row">Documents</div>
+          <div class="row active">Downloads</div>
+          <div class="group">iCloud</div>
+          <div class="row">iCloud Drive</div>
+          <div class="row">Shared</div>
+          <div class="group">Tags</div>
+          <div class="row"><i class="dot" style="background: #ff3b30"></i>Red</div>
+          <div class="row"><i class="dot" style="background: #ff9500"></i>Orange</div>
+          <div class="row"><i class="dot" style="background: #ffcc00"></i>Yellow</div>
+        </aside>
+        <section id="content">
+          <div id="grid">
+            <div class="card">
+              <img class="thumb" src="../finder/aet-0.webp" alt="" />
+              <span>AET_Showcase.glb</span>
+            </div>
+            <div class="card">
+              <img class="thumb" src="../finder/lumen.webp" alt="" />
+              <span>lumenStudio.glb</span>
+            </div>
+            <div class="card">
+              <img class="thumb" src="../finder/aet-2.webp" alt="" />
+              <span>AET_Gen2.glb</span>
+            </div>
+            <div class="card">
+              <img class="thumb" src="../finder/cube.webp" alt="" />
+              <span>cube.gltf</span>
+            </div>
+            <div class="card">
+              <img class="thumb" src="../finder/aet-4.webp" alt="" />
+              <span>Wheel_Single.glb</span>
+            </div>
+            <div class="card">
+              <img class="thumb" src="../finder/boombox.webp" alt="" />
+              <span>boombox.glb</span>
+            </div>
+            <div class="card">
+              <img class="thumb" src="../finder/aet-1.webp" alt="" />
+              <span>Wheel_Double.glb</span>
+            </div>
+            <div class="card">
+              <img class="thumb" src="../finder/studio.webp" alt="" />
+              <span>studio_light.glb</span>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div
+        id="selection"
+        class="clip"
+        data-start="0"
+        data-duration="4"
+        data-track-index="1"
+      ></div>
+      <svg
+        id="cursor"
+        class="clip"
+        data-start="0"
+        data-duration="4"
+        data-track-index="2"
+        viewBox="0 0 24 32"
+      >
+        <path
+          d="M2 1v25l6-6 5 10 5-3-6-9h9Z"
+          fill="#222"
+          stroke="white"
+          stroke-width="2"
+        />
+      </svg>
+    </main>
+    <script>
+      // Grid origin inside #content (after sidebar + toolbar chrome).
+      const originX = 22 + 168 + 16;
+      const originY = 18 + 42 + 18;
+      const cells = [
+        [originX, originY],
+        [originX + 148, originY],
+        [originX + 296, originY],
+        [originX, originY],
+      ];
+      const selection = document.querySelector("#selection");
+      const cursor = document.querySelector("#cursor");
+      const clock = { time: 0 };
+      const smooth = (value) => {
+        const x = Math.max(0, Math.min(1, value));
+        return x * x * (3 - 2 * x);
+      };
+      function draw() {
+        const t = clock.time * 0.75;
+        const n = Math.floor(t) % 3;
+        const phase = Math.min(1, (t % 1) * 2);
+        const f = smooth(phase);
+        const a = cells[n];
+        const b = cells[n + 1];
+        const active = phase < 1 ? a : b;
+        gsap.set(selection, { x: active[0], y: active[1] });
+        gsap.set(cursor, {
+          x: 35 + a[0] + (b[0] - a[0]) * f,
+          y: 44 + a[1] + (b[1] - a[1]) * f,
+        });
+      }
+      const timeline = gsap.timeline({ paused: true });
+      timeline.to(clock, {
+        time: 4,
+        duration: 4,
+        ease: "none",
+        onUpdate: draw,
+      });
+      window.__timelines = { thumbnails: timeline };
+      draw();
+    </script>
+  </body>
+</html>

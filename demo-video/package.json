@@ -1,0 +1,12 @@
+{
+  "name": "demo-video",
+  "version": "1.0.0",
+  "scripts": {
+    "export": "node export.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.15.1",
+    "hyperframes": "^0.9.96"
+  },
+  "private": true
+}

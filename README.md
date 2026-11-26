@@ -18,22 +18,22 @@ Metal. The app, Quick Look, and Finder thumbnails share one renderer with shadin
 from the Khronos glTF Sample Renderer.
 
 <p align="center">
-  <img src="assets/readme/screenshot.png" width="100%" alt="glTF Inspector showing a model with the material inspector open"><br>
+  <a href="docs/demo.mp4"><img src="docs/demo.webp" width="100%" alt="Einride AET rotating as the pointer inspects AutonomusWhitePaint, switches to wireframe, and selects Wheel_Single"></a><br>
   <small>App</small>
 </p>
 
 <table>
   <tr>
     <td align="center" valign="top" width="33%">
-      <img src="assets/mockups/finder-thumbnails.png" alt="Finder thumbnails for .glb and .gltf files"><br>
+      <img src="docs/finder-thumbnails.webp" alt="Finder thumbnails of AET_Showcase.glb"><br>
       <small>Thumbnails</small>
     </td>
     <td align="center" valign="top" width="33%">
-      <img src="assets/mockups/quick-look.webp" alt="Quick Look preview of a .glb file"><br>
+      <img src="docs/quick-look.webp" alt="Quick Look preview of AET_Showcase.glb"><br>
       <small>Quick Look</small>
     </td>
     <td align="center" valign="top" width="33%">
-      <img src="assets/mockups/preview-pane.webp" alt="Finder preview pane for a .glb file"><br>
+      <img src="docs/preview-pane.webp" alt="Finder preview pane showing AET_Showcase.glb"><br>
       <small>Preview pane</small>
     </td>
   </tr>
