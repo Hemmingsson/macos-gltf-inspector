@@ -177,6 +177,10 @@ private struct ViewMenuItems: View {
             Toggle(isOn: $view.showsSceneGizmos) { DSLabel("Show Cameras & Lights", DSGlyphs.showRig) }
         }
 
+        Toggle(isOn: $view.showsInspectorSelectionShape) {
+            DSLabel("Inspector Selection Shape", RenderViewMode.wireframe.glyph)
+        }
+
         Toggle(isOn: $view.autoRotates) { DSLabel("Auto-Rotate", DSGlyphs.autoRotate) }
             .keyboardShortcut(Shortcuts.action(.autoRotate))
 

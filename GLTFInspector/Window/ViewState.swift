@@ -40,6 +40,12 @@ final class ViewState {
         set { overrides.showsFloor = newValue }
     }
     var showsSceneGizmos = false
+    /// Inspector Shape preview for the selection. Off by default; View ▸ Inspector Selection Shape.
+    var showsInspectorSelectionShape = false {
+        didSet {
+            if !showsInspectorSelectionShape { shapePreview.reset() }
+        }
+    }
     var autoRotates: Bool {
         get { overrides.autoRotates ?? settings.autoRotates }
         set { overrides.autoRotates = newValue }
@@ -195,6 +201,7 @@ final class ViewState {
         selection = nil
         activeCameraPreset = nil
         showsSceneGizmos = false
+        showsInspectorSelectionShape = false
         lastPick = nil
         shapePreview.reset()
         showAll()

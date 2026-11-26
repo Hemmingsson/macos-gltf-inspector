@@ -295,12 +295,19 @@ struct ViewStateTests {
             "materials": [["name": "M"]],
         ])
         view.showsSceneGizmos = true
+        view.showsInspectorSelectionShape = true
         view.pick(0)
         view.pick(0)
         view.reset()
         #expect(!view.showsSceneGizmos)
+        #expect(!view.showsInspectorSelectionShape)
         view.pick(0)
         #expect(view.selection == NodeID(kind: .mesh, index: 0))
+    }
+
+    @Test func inspectorSelectionShapeDefaultsOff() throws {
+        let view = ViewState(settings: try settings())
+        #expect(!view.showsInspectorSelectionShape)
     }
 
     @Test func fileCameraClearsTheActivePreset() async throws {
