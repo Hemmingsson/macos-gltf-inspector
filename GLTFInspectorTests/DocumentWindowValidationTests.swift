@@ -54,6 +54,41 @@ struct DocumentWindowValidationTests {
     }
 
     @Test
+    func canvasFailureStillStartsValidation() async throws {
+        let url = TestFixtures.invalid
+        let window = DocumentWindowModel(documentURL: url)
+        let log = ValidationLog()
+        window.validateFile = { validated in
+            log.add(validated)
+            return GLTFValidationReport(
+                validatorVersion: "test",
+                errorCount: 1,
+                warningCount: 0,
+                messages: [
+                    GLTFValidationIssue(
+                        code: "MESH_NOT_FOUND",
+                        message: "Unresolved mesh.",
+                        severity: 0,
+                        pointer: "/nodes/0/mesh"
+                    ),
+                ]
+            )
+        }
+
+        guard case .started = window.beginOpen(url) else {
+            Issue.record("open did not start")
+            return
+        }
+        // DocumentWindow calls noteCanvasReady for .failed as well as .ready.
+        window.noteCanvasReady()
+
+        #expect(try await waitUntil { window.validationState != nil })
+        #expect(log.all == [url])
+        #expect(window.validation.errorCount == 1)
+        #expect(window.validationDigests.digest(for: window.validation.issues) != nil)
+    }
+
+    @Test
     func newOpenCancelsAndWaitsForTheNextCanvas() async throws {
         let first = TestFixtures.cube
         let second = TestFixtures.tiny

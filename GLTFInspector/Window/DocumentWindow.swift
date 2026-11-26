@@ -35,6 +35,16 @@ struct DocumentWindow: View {
             window.documentURL = url
             if let url { loadDocument(url) }
         }
+        // Observe the controller here, not on `ModelCanvas`: a failed load unmounts the canvas
+        // view, and validation must still run so the sidebar can name the file's problems.
+        .onChange(of: window.view.canvas.phase, initial: true) { _, phase in
+            switch phase {
+            case .ready, .failed:
+                window.noteCanvasReady()
+            case .loading:
+                break
+            }
+        }
         .onDisappear {
             window.view.cancelBackgroundTasks()
             window.close()
@@ -71,9 +81,6 @@ struct DocumentWindow: View {
         if let canvasURL {
             ModelCanvas(url: canvasURL, options: window.view.options, controller: window.view.canvas)
                 .canvasReadyMarker(isReady: window.view.canvas.phase == .ready)
-                .onChange(of: window.view.canvas.phase, initial: true) { _, phase in
-                    if phase == .ready { window.noteCanvasReady() }
-                }
         }
     }
 

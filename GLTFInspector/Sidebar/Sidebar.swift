@@ -6,6 +6,7 @@ struct Sidebar: View {
     var document: GLTFDocument
     var fileName: String
     var validation: ValidationResult
+    var validationDigests: ValidationDigestStore
     @Bindable var view: ViewState
     var documentState: DocumentState
     /// Measured height of the validation footer's content; the footer shows up to 280 pt of it.
@@ -72,12 +73,13 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             Divider()
             ScrollView {
-                ValidationSection(validation: validation)
+                ValidationSection(validation: validation, digests: validationDigests)
                     .padding(.bottom, DS.Spacing.s)
                     .onGeometryChange(for: CGFloat.self, of: \.size.height) { validationHeight = $0 }
             }
             .scrollBounceBehavior(.basedOnSize)
-            .frame(height: min(validationHeight, 280))
+            // Floor at 1 so the first layout pass can measure; cap so a long list stays scrollable.
+            .frame(height: min(max(validationHeight, 1), 280))
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }

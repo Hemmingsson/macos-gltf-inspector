@@ -10,7 +10,6 @@ struct DocumentStatusView: View {
 
     var state: DocumentState
     var placement: Placement
-
     var body: some View {
         switch placement {
         case .inspector:
@@ -39,6 +38,7 @@ struct DocumentStatusView: View {
 
     /// Loading and failure copy is shared; only the empty state differs per placement. A ready
     /// document leaves the canvas blank, while the inspector keeps its empty state.
+    /// Validation findings live in the sidebar footer, not under the canvas failure copy.
     @ViewBuilder
     private var status: some View {
         switch state {

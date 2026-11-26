@@ -7,12 +7,33 @@ import SwiftUI
 /// first, notes (infos and hints) stay neutral. Nothing renders when the selection has no issues.
 struct IssuesSection: View {
     var issues: [ValidationResult.Issue]
+    var digests: ValidationDigestStore
 
     var body: some View {
         if !issues.isEmpty {
+            let groups = ValidationIssueGrouping.group(issues)
+            let counts = issueSummary(
+                errors: issues.filter { $0.severity == .error }.count,
+                warnings: issues.filter { $0.severity == .warning }.count,
+                notes: issues.filter { $0.severity == .info || $0.severity == .hint }.count
+            )
             VStack(alignment: .leading, spacing: DS.Spacing.s) {
-                ForEach(issues) { issue in
-                    InlineIssue(issue.message, status: issue.severity.dsStatus)
+                // One raw issue needs no count line; an AI sentence or a multi-finding list does.
+                if let headline = digests.modelHeadline(for: issues),
+                   ValidationIssueGrouping.headlineAddsValue(headline, groups: groups) {
+                    Text(headline)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(Text(verbatim: "Issue summary: \(headline)"))
+                } else if groups.count > 1 || groups.contains(where: { $0.count > 1 }) {
+                    Text(counts)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(Text(verbatim: "Issue summary: \(counts)"))
+                }
+                ForEach(groups) { group in
+                    InlineGroupedIssue(group: group)
                 }
             }
             .padding(.horizontal, DS.Spacing.l)
@@ -20,38 +41,31 @@ struct IssuesSection: View {
             .padding(.bottom, DS.Spacing.m)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Validation issues")
+            .task(id: ValidationIssueGrouping.digestKey(issues)) {
+                digests.request(issues, scope: .selection)
+            }
         }
     }
 }
 
-/// One finding on the status wash, where it applies.
-private struct InlineIssue: View {
-    private let text: String
-    private let status: DSStatus
-
-    init(_ text: String, status: DSStatus = .warning) {
-        self.text = text
-        self.status = status
-    }
+/// One grouped finding on the status wash — shared block layout, per-row chrome.
+private struct InlineGroupedIssue: View {
+    var group: GroupedValidationIssue
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.m) {
-            Image(systemName: status.systemImage)
-                .font(.caption)
-                .foregroundStyle(status.tint)
-                .accessibilityHidden(true)
-            Text(text)
-                .font(.callout)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, DS.Spacing.l)
-        .padding(.vertical, DS.Spacing.m)
-        .background(status.fill, in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(verbatim: "\(Self.spokenPrefix(status)) \(text)"))
+        GroupedIssueBlock(group: group, detailForegroundStyle: .primary)
+            .accessibilityHidden(true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, DS.Spacing.l)
+            .padding(.vertical, DS.Spacing.m)
+            .background(
+                group.severity.dsStatus.fill,
+                in: RoundedRectangle(cornerRadius: DS.Radius.medium, style: .continuous)
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                Text(verbatim: "\(Self.spokenPrefix(group.severity.dsStatus)) \(GroupedIssueBlock.accessibilityText(for: group))")
+            )
     }
 
     private static func spokenPrefix(_ status: DSStatus) -> String {

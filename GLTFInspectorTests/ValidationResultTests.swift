@@ -44,6 +44,11 @@ struct ValidationResultTests {
             pointer: "/accessors/0"
         )
         let result = ValidationResult(report([tangent, npot, accessor]), document: document)
+        #expect(result.issues.map(\.code) == [
+            "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+            "IMAGE_NPOT_DIMENSIONS",
+            "ACCESSOR_NOTE",
+        ])
 
         let mesh = NodeID(kind: .mesh, index: 0)
         let material = NodeID(kind: .material, index: 0)

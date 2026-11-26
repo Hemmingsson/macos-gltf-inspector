@@ -33,7 +33,8 @@ struct SceneInteractionComponentTests {
         let defaults = try! UserDefaults(suiteName: suite)!
         return Inspector(view: ViewState(settings: AppSettings(defaults: defaults)),
                          document: document, selection: selection, documentState: .ready,
-                         validation: ValidationResult(nil, document: document), documentURL: nil,
+                         validation: ValidationResult(nil, document: document),
+                         validationDigests: ValidationDigestStore(), documentURL: nil,
                          onSelect: onSelect)
     }
 

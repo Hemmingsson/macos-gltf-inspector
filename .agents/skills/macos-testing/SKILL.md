@@ -9,15 +9,13 @@ Run commands from the repository root. This app requires macOS 26+, Xcode, Xcode
 
 ## Where to run
 
-Always prefer a linked T3 remote Mac when one answers:
+**Always test on datorn** (this Mac / Big Mac desktop). Run `dev.sh` / BigMac here.
 
-1. Call `t3_environment_links`.
-2. Pick a reachable Mac (`status: "reachable"`). Prefer a host labeled Big Mac / datorn / desktop Mac over this agent host when both exist.
-3. If none is linked or reachable, call `t3_environment_link` with hint `bigmac` (or the name the user gave) and stop until it links — do not fall back silently for on-screen or UI work that needs a WindowServer session.
-4. Run the acceptance work on that host with `delegate_task`, `role: "test"`, `target.environmentId` set to that link, and a self-contained task that follows this skill. Mention the child's thread `link` in the reply.
-5. Use local only when no remote Mac is available **and** this machine itself has an interactive macOS desktop with WindowServer. Unit/reference tests may still run locally when Metal and samples are present.
+**Never test on Navisalma** (or any other laptop) unless the user explicitly names that machine
+for testing. An “install on Navisalma” ask is not permission to run UI tests there.
 
-T3 `device_*` tools are for iOS Simulator / Android Emulator panels. Do **not** use them for this macOS app. Drive the remote desktop Mac through the environment link + shell / BigMac on that host.
+Do not call `t3_environment_links` / `delegate_task` to Navisalma for verification. T3
+`device_*` tools are for iOS Simulator / Android Emulator panels only — not this macOS app.
 
 ## BigMac first
 

@@ -46,6 +46,8 @@ The GitHub repo is `macos-gltf-inspector`; the installed app name is **glTF Insp
   `docs/design.md` › Icons.
 - **Verify UI on screen** with `dev.sh run <fixture>`: one `open start`, `open ready|failed`,
   `canvas ready|failed`, and no "Modifying state during view update" warnings.
+- **Test on datorn only.** Never launch, install, or UI-test on Navisalma unless the user
+  explicitly asks for that machine. Install-on-Navisalma requests are fine; testing is not.
 - Work on `main`; `.agents/` plans and handoffs are intent, not shipped behavior.
 
 ## Documentation

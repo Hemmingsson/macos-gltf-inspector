@@ -12,6 +12,8 @@ struct ValidationResult: Sendable, Hashable {
         }
 
         var severity: Severity
+        /// Khronos validator code (`issues.messages[].code`), when present.
+        var code: String
         var message: String
         /// glTF JSON pointer the validator blamed, when it gave one.
         var pointer: String?
@@ -19,15 +21,17 @@ struct ValidationResult: Sendable, Hashable {
         /// accessor, a buffer view) shows only in the file-wide list.
         var subjects: [NodeID]
 
-        var id: String { "\(severity.rawValue)|\(pointer ?? "")|\(message)" }
+        var id: String { "\(severity.rawValue)|\(code)|\(pointer ?? "")|\(message)" }
 
         init(
             severity: Severity,
             message: String,
+            code: String = "",
             pointer: String? = nil,
             subjects: [NodeID] = []
         ) {
             self.severity = severity
+            self.code = code
             self.message = message
             self.pointer = pointer
             self.subjects = subjects
@@ -94,6 +98,7 @@ extension ValidationResult {
                 Issue(
                     severity: Issue.Severity(validatorSeverity: message.severity),
                     message: message.message,
+                    code: message.code,
                     pointer: message.pointer,
                     subjects: GLTFIssueResolver.subjects(forPointer: message.pointer, in: document).compactMap { subject in
                         switch subject {

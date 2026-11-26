@@ -69,7 +69,8 @@ struct ViewerEssentialsTests {
     private func inspector(_ selection: NodeID?) throws -> Inspector {
         let document = assembly
         return Inspector(view: ViewState(settings: try settings()), document: document, selection: selection,
-                         documentState: .ready, validation: ValidationResult(nil, document: document), documentURL: nil)
+                         documentState: .ready, validation: ValidationResult(nil, document: document),
+                         validationDigests: ValidationDigestStore(), documentURL: nil)
     }
 
     // MARK: - mdleya4f stats
